@@ -453,6 +453,70 @@ namespace XT
 
                 Console.WriteLine($"{addr:X} MOV {name},${al:X}");
             }
+            else if (opcode == 0x8c) {  // MOV rmw,sr
+                bool word = true;
+                byte o1   = get_pc_byte();
+
+                int  mod  = o1 >> 6;
+                int  sreg = (o1 >> 3) & 7;
+                int  reg  = o1 & 7;
+
+                string name = "error";
+
+                ushort v = 0;
+
+                if (sreg == 0) {
+                    v = es;
+                    name = "ES";
+                }
+                else if (sreg == 1) {
+                    v = cs;
+                    name = "CS";
+                }
+                else if (sreg == 2) {
+                    v = ss;
+                    name = "SS";
+                }
+                else if (sreg == 3) {
+                    v = ds;
+                    name = "DS";
+                }
+
+                put_register_mem(reg, mod, word, v);
+
+                Console.WriteLine($"{addr:X} MOV {name},");
+            }
+            else if (opcode == 0x8e) {  // MOV sr,rmw
+                bool word = true;
+                byte o1   = get_pc_byte();
+
+                int  mod  = o1 >> 6;
+                int  sreg = (o1 >> 3) & 7;
+                int  reg  = o1 & 7;
+
+                ushort v  = get_register_mem(reg, mod, word);
+
+                string name = "error";
+
+                if (sreg == 0) {
+                    es = v;
+                    name = "ES";
+                }
+                else if (sreg == 1) {
+                    cs = v;
+                    name = "CS";
+                }
+                else if (sreg == 2) {
+                    ss = v;
+                    name = "SS";
+                }
+                else if (sreg == 3) {
+                    ds = v;
+                    name = "DS";
+                }
+
+                Console.WriteLine($"{addr:X} MOV {name},");
+            }
             else if (opcode == 0x9e) {  // SAHF
                 ushort keep = (ushort)(flags & 0b1111111100101010);
                 ushort add_ = (ushort)(ah & 0b11010101);
