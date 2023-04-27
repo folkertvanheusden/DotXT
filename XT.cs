@@ -401,6 +401,7 @@ namespace XT
             out_ += get_flag_o() ? "o" : "-";
             out_ += get_flag_s() ? "s" : "-";
             out_ += get_flag_z() ? "z" : "-";
+            out_ += get_flag_c() ? "c" : "-";
 
             return out_;
         }
@@ -433,7 +434,7 @@ namespace XT
                 int  reg2 = o1 & 7;
 
                 (ushort r1, string name1) = get_register_mem(reg1, mod, word);
-                (ushort r2, string name2) = get_register_mem(reg2, mod, word);
+                (ushort r2, string name2) = get_register(reg2, word);
 
                 ushort result = 0;
 
@@ -446,7 +447,17 @@ namespace XT
                 else if (function == 3)
                     result = (ushort)(r1 ^ r2);
 
-                put_register_mem(reg2, mod, word, result);
+                // if (opcode == 0x33)
+                //     Console.WriteLine($"r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
+
+                put_register(reg2, word, result);
+
+                set_flag_o(false);
+                set_flag_s((word ? result & 0x80 : result & 0x80) != 0);
+                set_flag_z(word ? result == 0 : (result & 0xff) == 0);
+                set_flag_a(false);
+
+                set_flag_p((byte)result);  // TODO verify
 
                 Console.WriteLine($"{prefix_str} XOR {name1},{name2}");
             }
@@ -756,12 +767,26 @@ namespace XT
 
                 Console.WriteLine($"{prefix_str} {name} {to} ({new_addr:X})");
             }
+            else if (opcode == 0xeb) {  // JMP
+                byte to = get_pc_byte();
+
+                ip = (ushort)(ip + (sbyte)to);
+
+                Console.WriteLine($"{prefix_str} JP {ip:X}");
+            }
             else if (opcode == 0xf4) {  // HLT
                 ip--;
 
                 Console.WriteLine($"{prefix_str} HLT");
             }
+            else if (opcode == 0xf8) {  // CLC
+                set_flag_c(false);
+
+                Console.WriteLine($"{prefix_str} CLC");
+            }
             else if (opcode == 0xf9) {  // STC
+                set_flag_c(true);
+
                 Console.WriteLine($"{prefix_str} STC");
             }
             else {
