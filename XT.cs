@@ -19,9 +19,27 @@ namespace XT
         }
     }
 
+    class rom
+    {
+        byte[] contents;
+
+        public rom(string filename)
+        {
+            contents = File.ReadAllBytes(filename);
+        }
+
+        public byte read_byte(uint addr)
+        {
+            return contents[addr];
+        }
+    }
+
     class bus
     {
         memory m = new memory();
+
+        rom bios  = new rom("roms/BIOS_5160_09MAY86_U18_59X7268_62X0890_27256_F800.BIN");
+        rom basic = new rom("roms/BIOS_5160_09MAY86_U19_62X0819_68X4370_27256_F000.BIN");
 
         public bus()
         {
@@ -29,6 +47,12 @@ namespace XT
 
         public byte read_byte(uint addr)
         {
+            if (addr >= 0x000f0000 && addr <= 0x000f7fff)
+                return bios.read_byte(addr - 0x000f0000);
+
+            if (addr >= 0x000f8000 && addr <= 0x000fffff)
+                return basic.read_byte(addr - 0x000f8000);
+
             return m.read_byte(addr);
         }
 
@@ -59,7 +83,7 @@ namespace XT
 
         ushort flags;
 
-        uint mem_mask = (uint)0x00ffffff;
+        const uint mem_mask = (uint)0x00ffffff;
 
         bus b = new bus();
 
@@ -69,8 +93,10 @@ namespace XT
 
         public void tick()
         {
-            uint addr   = (uint)(cs + ip) & mem_mask;
+            uint addr   = (uint)(cs * 16 + ip++) & mem_mask;
             byte opcode = b.read_byte(addr);
+
+
         }
     }
 }
