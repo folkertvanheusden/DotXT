@@ -290,21 +290,94 @@ namespace XT
 
                 Console.WriteLine($"{addr:X} CLI");
             }
-            else if (opcode == 0xb0) {  // MOV AL,ib
-                al = get_pc_byte();
+            else if ((opcode & 0xf8) == 0xb0) {  // MOV reg,ib
+                int  reg  = opcode & 0x07;
 
-                Console.WriteLine($"{addr:X} MOV AL,${al:X}");
+                ushort v  = get_pc_byte();
+
+                string name = "error";
+
+                if (reg == 0x00) {
+                    al = (byte)v;
+                    name = "AL";
+                }
+                else if (reg == 0x01) {
+                    cl = (byte)v;
+                    name = "CL";
+                }
+                else if (reg == 0x02) {
+                    dl = (byte)v;
+                    name = "DL";
+                }
+                else if (reg == 0x03) {
+                    bl = (byte)v;
+                    name = "BL";
+                }
+                else if (reg == 0x04) {
+                    ah = (byte)v;
+                    name = "AH";
+                }
+                else if (reg == 0x05) {
+                    ch = (byte)v;
+                    name = "CH";
+                }
+                else if (reg == 0x06) {
+                    dh = (byte)v;
+                    name = "DH";
+                }
+                else if (reg == 0x07) {
+                    bh = (byte)v;
+                    name = "BH";
+                }
+
+                Console.WriteLine($"{addr:X} MOV {name},${al:X}");
             }
-            else if (opcode == 0xb4) {  // MOV AH,ib
-                ah = get_pc_byte();
+            else if ((opcode & 0xf8) == 0xb8) {  // MOV reg,iw
+                int  reg  = opcode & 0x0f;
 
-                Console.WriteLine($"{addr:X} MOV AH,${ah:X}");
-            }
-            else if (opcode == 0xb8) {  // MOV AX,iw
-                al = get_pc_byte();
-                ah = get_pc_byte();
+                byte v1 = get_pc_byte();
+                byte v2 = get_pc_byte();
 
-                Console.WriteLine($"{addr:X} MOV AX,${ah:X} {al:X}");
+                string name = "error";
+
+                if (reg == 0x08) {
+                    al = v1;
+                    ah = v2;
+                    name = "AX";
+                }
+                else if (reg == 0x09) {
+                    cl = v1;
+                    ch = v2;
+                    name = "CX";
+                }
+                else if (reg == 0x0a) {
+                    dl = v1;
+                    dh = v2;
+                    name = "DX";
+                }
+                else if (reg == 0x0b) {
+                    bl = v1;
+                    bh = v2;
+                    name = "BX";
+                }
+                else if (reg == 0x0c) {
+                    sp = (ushort)(v1 | (v2 << 8));
+                    name = "SP";
+                }
+                else if (reg == 0x0d) {
+                    bp = (ushort)(v1 | (v2 << 8));
+                    name = "BH";
+                }
+                else if (reg == 0x0e) {
+                    si = (ushort)(v1 | (v2 << 8));
+                    name = "SI";
+                }
+                else if (reg == 0x0f) {
+                    di = (ushort)(v1 | (v2 << 8));
+                    name = "DI";
+                }
+
+                Console.WriteLine($"{addr:X} MOV {name},${al:X}");
             }
             else if (opcode == 0x9e) {  // SAHF
                 ushort keep = (ushort)(flags & 0b1111111100101010);
