@@ -107,11 +107,22 @@ namespace XT
         ushort get_register_mem(int reg, int mod, bool w)
         {
             if (mod == 3) {
-                if (reg == 0) {
+                if (reg == 0)
                     return (ushort)(w ? (ah << 8) | al : al);
-                }
-                else {
-                }
+                if (reg == 1)
+                    return (ushort)(w ? (ch << 8) | cl : cl);
+                if (reg == 2)
+                    return (ushort)(w ? (dh << 8) | dl : dl);
+                if (reg == 3)
+                    return (ushort)(w ? (bh << 8) | bl : bl);
+                if (reg == 4)
+                    return (ushort)(w ? sp : ah);
+                if (reg == 5)
+                    return (ushort)(w ? bp : ch);
+                if (reg == 6)
+                    return (ushort)(w ? si : dh);
+                if (reg == 7)
+                    return (ushort)(w ? di : bh);
             }
             else {
             }
@@ -127,14 +138,69 @@ namespace XT
                     if (w) {
                         ah = (byte)(val >> 8);
                         al = (byte)val;
-                        return;
                     }
                     else {
                         al = (byte)val;
-                        return;
                     }
+                    return;
                 }
-                else {
+                if (reg == 1) {
+                    if (w) {
+                        ch = (byte)(val >> 8);
+                        cl = (byte)val;
+                    }
+                    else {
+                        cl = (byte)val;
+                    }
+                    return;
+                }
+                if (reg == 2) {
+                    if (w) {
+                        dh = (byte)(val >> 8);
+                        dl = (byte)val;
+                    }
+                    else {
+                        dl = (byte)val;
+                    }
+                    return;
+                }
+                if (reg == 3) {
+                    if (w) {
+                        bh = (byte)(val >> 8);
+                        bl = (byte)val;
+                    }
+                    else {
+                        bl = (byte)val;
+                    }
+                    return;
+                }
+                if (reg == 4) {
+                    if (w)
+                        sp = val;
+                    else
+                        ah = (byte)val;
+                    return;
+                }
+                if (reg == 5) {
+                    if (w)
+                        bp = val;
+                    else
+                        ch = (byte)val;
+                    return;
+                }
+                if (reg == 6) {
+                    if (w)
+                        si = val;
+                    else
+                        dh = (byte)val;
+                    return;
+                }
+                if (reg == 7) {
+                    if (w)
+                        di = val;
+                    else
+                        bh = (byte)val;
+                    return;
                 }
             }
             else {
@@ -409,6 +475,46 @@ namespace XT
                 bl = (byte)bx;
 
                 Console.WriteLine($"{addr:X} DEC BX");
+            }
+            else if ((opcode & 0xf8) == 0xd0) {  // RCR
+                bool word = (opcode & 1) == 1;
+                byte o1   = get_pc_byte();
+
+                int  mod  = o1 >> 6;
+                int  reg1 = o1 & 7;
+
+                ushort v1 = get_register_mem(reg1, mod, word);
+
+                int  count_spec = opcode & 3;
+                int  count = -1;
+
+                if (count_spec == 0 || count_spec == 1)
+                    count = 1;
+                else if (count_spec == 2 || count_spec == 3)
+                    count = cl;
+
+                bool old_sign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
+
+                for(int i=0; i<count; i++) {
+                    bool new_carry = (v1 & 1) == 1;
+                    v1 >>= 1;
+
+                    bool old_carry = get_flag_c();
+
+                    if (old_carry)
+                        v1 |= (ushort)(word ? 0x8000 : 0x80);
+
+                    set_flag_c(new_carry);
+                }
+
+                bool new_sign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
+
+                set_flag_o(old_sign != new_sign);
+
+                if (!word)
+                    v1 &= 0xff;
+
+                put_register_mem(reg1, mod, word, v1);
             }
             else if ((opcode & 0xf0) == 0b01110000) {  // J...
                 byte to = get_pc_byte();
