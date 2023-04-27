@@ -104,7 +104,8 @@ namespace XT
             return val;
         }
   
-        (ushort, string) get_register(int reg, bool w) {
+        (ushort, string) get_register(int reg, bool w)
+        {
             if (w) {
                 if (reg == 0)
                     return ((ushort)((ah << 8) | al), "AX");
@@ -143,6 +144,22 @@ namespace XT
             }
 
             Console.WriteLine($"reg {reg} w {w} not supported for get_register");
+
+            return (0, "error");
+        }
+  
+        (ushort, string) get_sregister(int reg)
+        {
+            if (reg == 0b000)
+                return (es, "ES");
+            if (reg == 0b001)
+                return (cs, "CS");
+            if (reg == 0b010)
+                return (ss, "SS");
+            if (reg == 0b011)
+                return (ds, "DS");
+
+            Console.WriteLine($"reg {reg} not supported for get_sregister");
 
             return (0, "error");
         }
@@ -253,6 +270,30 @@ namespace XT
             }
 
             Console.WriteLine($"reg {reg} w {w} not supported for put_register ({val:X})");
+
+            return "error";
+        }
+  
+        string put_sregister(int reg, ushort v)
+        {
+            if (reg == 0b000) {
+                es = v;
+                return "ES";
+            }
+            if (reg == 0b001) {
+                cs = v;
+                return "CS";
+            }
+            if (reg == 0b010) {
+                ss = v;
+                return "SS";
+            }
+            if (reg == 0b011) {
+                ds = v;
+                return "DS";
+            }
+
+            Console.WriteLine($"reg {reg} not supported for get_sregister");
 
             return "error";
         }
@@ -425,7 +466,7 @@ namespace XT
 
                 Console.WriteLine($"{prefix_str} MOV {name},${v:X}");
             }
-            else if (((opcode & 0b11111100) == 0b10001000) || opcode == 0b10001110 || ((opcode & 0b11111110) == 0b11000110) || ((opcode & 0b11111100) == 0b10100000) || opcode == 0x8c || opcode == 0x8e) {
+            else if (((opcode & 0b11111100) == 0b10001000) || opcode == 0b10001110 || ((opcode & 0b11111110) == 0b11000110) || ((opcode & 0b11111100) == 0b10100000) || opcode == 0x8c) {
                 bool dir  = (opcode & 2) == 2;  // direction
                 bool word = (opcode & 1) == 1;  // b/w
 
@@ -434,17 +475,35 @@ namespace XT
                 int  reg  = (o1 >> 3) & 7;
                 int  rm   = o1 & 7;
 
+                bool sreg = opcode == 0x8e || opcode == 0x8c;
+
+                if (sreg)
+                    word = true;
+
+                // Console.WriteLine($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}");
+
                 if (dir == true) {  // to 'REG' from 'rm'
                     (ushort v, string from_name) = get_register_mem(rm, mode, word);
 
-                    string to_name = put_register(reg, word, v);
+                    string to_name = "error";
+
+                    if (sreg)
+                        to_name = put_sregister(reg, v);
+                    else
+                        to_name = put_register(reg, word, v);
 
                     Console.WriteLine($"{prefix_str} MOV {to_name},{from_name}");
                 }
                 else {  // from 'REG' to 'rm'
-                    (ushort v, string from_name) = get_register(reg, word);
+                    ushort v = 0;
+                    string from_name = "error";
 
-                    string to_name = put_register_mem(reg, mode, word, v);
+                    if (sreg)
+                        (v, from_name) = get_sregister(reg);
+                    else
+                        (v, from_name) = get_register(reg, word);
+
+                    string to_name = put_register_mem(rm, mode, word, v);
 
                     Console.WriteLine($"{prefix_str} MOV {to_name},{from_name}");
                 }
