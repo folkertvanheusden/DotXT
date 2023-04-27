@@ -421,45 +421,9 @@ namespace XT
 
                 ushort v  = get_pc_byte();
 
-                string name = "error";
+                string name = put_register(reg, false, v);
 
-                if (reg == 0x00) {
-                    al = (byte)v;
-                    name = "AL";
-                }
-                else if (reg == 0x01) {
-                    cl = (byte)v;
-                    name = "CL";
-                }
-                else if (reg == 0x02) {
-                    dl = (byte)v;
-                    name = "DL";
-                }
-                else if (reg == 0x03) {
-                    bl = (byte)v;
-                    name = "BL";
-                }
-                else if (reg == 0x04) {
-                    ah = (byte)v;
-                    name = "AH";
-                }
-                else if (reg == 0x05) {
-                    ch = (byte)v;
-                    name = "CH";
-                }
-                else if (reg == 0x06) {
-                    dh = (byte)v;
-                    name = "DH";
-                }
-                else if (reg == 0x07) {
-                    bh = (byte)v;
-                    name = "BH";
-                }
-                else {
-                    Console.WriteLine("MOVB: unexpected register {reg}");
-                }
-
-                Console.WriteLine($"{addr:X} MOV {name},${al:X}");
+                Console.WriteLine($"{addr:X} MOV {name},${v:X}");
             }
             else if (((opcode & 0b11111100) == 0b10001000) || opcode == 0b10001110 || ((opcode & 0b11111110) == 0b11000110) || ((opcode & 0b11111100) == 0b10100000) || opcode == 0x8c || opcode == 0x8e) {
                 bool dir  = (opcode & 2) == 2;  // direction
