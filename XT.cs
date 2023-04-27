@@ -189,6 +189,11 @@ namespace XT
             set_flag(2, (count & 1) == 0);
         }
 
+        bool get_flag_p()
+        {
+            return get_flag(2);
+        }
+
         void set_flag_a(bool state)
         {
             set_flag(4, state);
@@ -309,6 +314,11 @@ namespace XT
 
                 Console.WriteLine($"{addr:X} SAHF (set to {get_flags_as_str()})");
             }
+            else if (opcode == 0x9f) {  // LAHF
+                ah = (byte)flags;
+
+                Console.WriteLine($"{addr:X} LAHF");
+            }
             else if (opcode == 0x4a) {  // DEC BX
                 // overflow, sign, zero, auxiliary, parity flags
 
@@ -361,6 +371,30 @@ namespace XT
                 }
                 else {
                     Console.WriteLine($"{addr:X} JNE {to}");
+                }
+            }
+            else if (opcode == 0x79) {  // JNS
+                byte to = get_pc_byte();
+
+                if (get_flag_s() == false) {
+                    ip = (ushort)(ip + (sbyte)to);
+
+                    Console.WriteLine($"{addr:X} JNS {to} - TAKEN");
+                }
+                else {
+                    Console.WriteLine($"{addr:X} JNS {to}");
+                }
+            }
+            else if (opcode == 0x7b) {  // JNP/JPO
+                byte to = get_pc_byte();
+
+                if (get_flag_p() == false) {
+                    ip = (ushort)(ip + (sbyte)to);
+
+                    Console.WriteLine($"{addr:X} JNP/JPO {to} - TAKEN");
+                }
+                else {
+                    Console.WriteLine($"{addr:X} JNP/JPO {to}");
                 }
             }
             else if (opcode == 0xf4) {  // HLT
