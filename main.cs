@@ -11,6 +11,9 @@ namespace dotxt
             Console.WriteLine("Released under in the public domain");
 
             p8086 p = new p8086();
+
+            for(;;)
+                p.tick();
         }
     }
 }
