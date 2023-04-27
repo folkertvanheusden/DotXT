@@ -592,8 +592,6 @@ namespace XT
                 Console.WriteLine($"{prefix_str} LAHF");
             }
             else if (opcode == 0x4a) {  // DEC BX
-                // overflow, sign, zero, auxiliary, parity flags
-
                 ushort bx = (ushort)((bh << 8) | bl);
 
                 bx--;
@@ -757,7 +755,7 @@ namespace XT
                     name  = "JNLE";
                 }
                 else {
-                    Console.WriteLine($"{prefix_str} Opcode {opcode:x} not implemented");
+                    Console.WriteLine($"{prefix_str} Opcode {opcode:x2} not implemented");
                 }
 
                 ushort new_addr = (ushort)(ip + (sbyte)to);
@@ -765,14 +763,26 @@ namespace XT
                 if (state)
                     ip = new_addr;
 
-                Console.WriteLine($"{prefix_str} {name} {to} ({new_addr:X})");
+                Console.WriteLine($"{prefix_str} {name} {to} ({new_addr:X4})");
+            }
+            else if (opcode == 0xe6) {  // OUT
+                byte to = get_pc_byte();
+
+                // TODO
+
+                Console.WriteLine($"{prefix_str} OUT {to:X2},AL");
+            }
+            else if (opcode == 0xee) {  // OUT
+                // TODO
+
+                Console.WriteLine($"{prefix_str} OUT {dh:X2}{dl:X2},AL");
             }
             else if (opcode == 0xeb) {  // JMP
                 byte to = get_pc_byte();
 
                 ip = (ushort)(ip + (sbyte)to);
 
-                Console.WriteLine($"{prefix_str} JP {ip:X}");
+                Console.WriteLine($"{prefix_str} JP {ip:X4}");
             }
             else if (opcode == 0xf4) {  // HLT
                 ip--;
