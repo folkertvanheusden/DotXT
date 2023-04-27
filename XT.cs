@@ -325,7 +325,7 @@ namespace XT
 
                 Console.WriteLine($"{addr:X} JMP {ip:X}");
             }
-            else if ((opcode & 254) == 0b00110010) {  // XOR
+            else if ((opcode & 254) == 0b00110010) {  // XOR, 0x62/0x63
                 bool word = (opcode & 1) == 1;
                 byte o1   = get_pc_byte();
 
@@ -339,6 +339,8 @@ namespace XT
                 ushort result = (ushort)(r1 ^ r2);
 
                 put_register_mem(reg2, mod, word, result);
+
+                Console.WriteLine($"{addr:X} XOR");
             }
             else if (opcode == 0xea) {  // JMP far ptr
                 byte o0 = get_pc_byte();
@@ -395,6 +397,9 @@ namespace XT
                     bh = (byte)v;
                     name = "BH";
                 }
+                else {
+                    Console.WriteLine("MOVB: unexpected register {reg}");
+                }
 
                 Console.WriteLine($"{addr:X} MOV {name},${al:X}");
             }
@@ -441,6 +446,9 @@ namespace XT
                 else if (reg == 0x0f) {
                     di = (ushort)(v1 | (v2 << 8));
                     name = "DI";
+                }
+                else {
+                    Console.WriteLine("MOVW: unexpected register {reg}");
                 }
 
                 Console.WriteLine($"{addr:X} MOV {name},${al:X}");
@@ -515,8 +523,10 @@ namespace XT
                     v1 &= 0xff;
 
                 put_register_mem(reg1, mod, word, v1);
+
+                Console.WriteLine($"{addr:X} RCR");
             }
-            else if ((opcode & 0xf0) == 0b01110000) {  // J...
+            else if ((opcode & 0xf0) == 0b01110000) {  // J..., 0x70
                 byte to = get_pc_byte();
 
                 bool   state = false;
@@ -546,13 +556,48 @@ namespace XT
                     state = get_flag_z() == false;
                     name  = "JNE";
                 }
+                else if (opcode == 0x76) {
+                    state = get_flag_c() == true || get_flag_z() == true;
+                    name  = "JBE/JNA";
+                }
+                else if (opcode == 0x77) {
+                    state = get_flag_c() == false && get_flag_z() == false;
+                    name  = "JA/JNBE";
+                }
+                else if (opcode == 0x78) {
+                    state = get_flag_s() == true;
+                    name  = "JS";
+                }
                 else if (opcode == 0x79) {
                     state = get_flag_s() == false;
                     name  = "JNS";
                 }
+                else if (opcode == 0x7a) {
+                    state = get_flag_p() == true;
+                    name  = "JNP/JPO";
+                }
                 else if (opcode == 0x7b) {
                     state = get_flag_p() == false;
                     name  = "JNP/JPO";
+                }
+                else if (opcode == 0x7c) {
+                    state = get_flag_s() != get_flag_o();
+                    name  = "JNGE";
+                }
+                else if (opcode == 0x7d) {
+                    state = get_flag_s() == get_flag_o();
+                    name  = "JNL";
+                }
+                else if (opcode == 0x7e) {
+                    state = get_flag_z() || get_flag_s() != get_flag_o();
+                    name  = "JLE";
+                }
+                else if (opcode == 0x7f) {
+                    state = get_flag_z() && get_flag_s() == get_flag_o();
+                    name  = "JNLE";
+                }
+                else {
+                    Console.WriteLine($"{addr:X} Opcode {opcode:x} not implemented");
                 }
 
                 if (state) {
@@ -568,6 +613,9 @@ namespace XT
                 ip--;
 
                 Console.WriteLine($"{addr:X} HLT");
+            }
+            else if (opcode == 0xf9) {  // STC
+                Console.WriteLine($"{addr:X} STC");
             }
             else {
                 Console.WriteLine($"{addr:X} Opcode {opcode:x} not implemented");
