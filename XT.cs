@@ -337,64 +337,52 @@ namespace XT
 
                 Console.WriteLine($"{addr:X} DEC BX");
             }
-            else if (opcode == 0x72) {  // JC
+            else if ((opcode & 0xf0) == 0b01110000) {  // J...
                 byte to = get_pc_byte();
 
-                if (get_flag_c() == true) {
+                bool   state = false;
+                string name  = System.String.Empty;
+
+                if (opcode == 0x70) {
+                    state = get_flag_o() == true;
+                    name  = "JO";
+                }
+                else if (opcode == 0x71) {
+                    state = get_flag_o() == false;
+                    name  = "JO";
+                }
+                else if (opcode == 0x72) {
+                    state = get_flag_c() == true;
+                    name  = "JC";
+                }
+                else if (opcode == 0x73) {
+                    state = get_flag_c() == false;
+                    name  = "JAE/JNB";
+                }
+                else if (opcode == 0x74) {
+                    state = get_flag_z() == true;
+                    name  = "JNE";
+                }
+                else if (opcode == 0x75) {
+                    state = get_flag_z() == false;
+                    name  = "JNE";
+                }
+                else if (opcode == 0x79) {
+                    state = get_flag_s() == false;
+                    name  = "JNS";
+                }
+                else if (opcode == 0x7b) {
+                    state = get_flag_p() == false;
+                    name  = "JNP/JPO";
+                }
+
+                if (state) {
                     ip = (ushort)(ip + (sbyte)to);
 
-                    Console.WriteLine($"{addr:X} JC {to} - TAKEN");
+                    Console.WriteLine($"{addr:X} {name} {to} - TAKEN");
                 }
                 else {
-                    Console.WriteLine($"{addr:X} JC {to}");
-                }
-            }
-            else if (opcode == 0x73) {  // JAE/JNB
-                byte to = get_pc_byte();
-
-                if (get_flag_c() == false) {
-                    ip = (ushort)(ip + (sbyte)to);
-
-                    Console.WriteLine($"{addr:X} JAE/JNB {to} - TAKEN");
-                }
-                else {
-                    Console.WriteLine($"{addr:X} JAE/JNB {to}");
-                }
-            }
-            else if (opcode == 0x75) {  // JNE
-                byte to = get_pc_byte();
-
-                if (get_flag_z() == false) {
-                    ip = (ushort)(ip + (sbyte)to);
-
-                    Console.WriteLine($"{addr:X} JNE {to} - TAKEN");
-                }
-                else {
-                    Console.WriteLine($"{addr:X} JNE {to}");
-                }
-            }
-            else if (opcode == 0x79) {  // JNS
-                byte to = get_pc_byte();
-
-                if (get_flag_s() == false) {
-                    ip = (ushort)(ip + (sbyte)to);
-
-                    Console.WriteLine($"{addr:X} JNS {to} - TAKEN");
-                }
-                else {
-                    Console.WriteLine($"{addr:X} JNS {to}");
-                }
-            }
-            else if (opcode == 0x7b) {  // JNP/JPO
-                byte to = get_pc_byte();
-
-                if (get_flag_p() == false) {
-                    ip = (ushort)(ip + (sbyte)to);
-
-                    Console.WriteLine($"{addr:X} JNP/JPO {to} - TAKEN");
-                }
-                else {
-                    Console.WriteLine($"{addr:X} JNP/JPO {to}");
+                    Console.WriteLine($"{addr:X} {name} {to}");
                 }
             }
             else if (opcode == 0xf4) {  // HLT
