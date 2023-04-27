@@ -424,7 +424,7 @@ namespace XT
 
                 Console.WriteLine($"{prefix_str} JMP {ip:X}");
             }
-            else if ((opcode & 254) == 0b00110010) {  // XOR, 0x62/0x63
+            else if ((opcode >= 0x30 && opcode <= 0x33) || (opcode >= 0x20 && opcode <= 0x23) || (opcode >= 0x08 && opcode <= 0x0b)) {
                 bool word = (opcode & 1) == 1;
                 byte o1   = get_pc_byte();
 
@@ -435,11 +435,57 @@ namespace XT
                 (ushort r1, string name1) = get_register_mem(reg1, mod, word);
                 (ushort r2, string name2) = get_register_mem(reg2, mod, word);
 
-                ushort result = (ushort)(r1 ^ r2);
+                ushort result = 0;
+
+                int function = opcode >> 4;
+
+                if (function == 0)
+                    result = (ushort)(r1 | r2);
+                else if (function == 2)
+                    result = (ushort)(r1 & r2);
+                else if (function == 3)
+                    result = (ushort)(r1 ^ r2);
 
                 put_register_mem(reg2, mod, word, result);
 
                 Console.WriteLine($"{prefix_str} XOR {name1},{name2}");
+            }
+            else if ((opcode == 0x34 || opcode == 0x35) || (opcode == 0x24 || opcode == 0x25) || (opcode == 0x0c || opcode == 0x0d)) {
+                bool word = (opcode & 1) == 1;
+
+                byte b_low  = get_pc_byte();
+                byte b_high = word ? get_pc_byte() : (byte)0;
+
+                int function = opcode >> 4;
+
+                if (function == 0) {
+                    al |= b_low;
+
+                    if (word)
+                        ah |= b_high;
+                }
+                else if (function == 2) {
+                    al &= b_low;
+
+                    if (word)
+                        ah &= b_high;
+                }
+                else if (function == 3) {
+                    al ^= b_low;
+
+                    if (word)
+                        ah ^= b_high;
+                }
+
+                set_flag_o(false);
+                set_flag_s((word ? ah & 0x80 : al & 0x80) != 0);
+                set_flag_z(word ? ah == 0 && al == 0 : al == 0);
+                set_flag_a(false);
+
+                if (word)
+                    set_flag_p(ah);  // TODO verify
+                else
+                    set_flag_p(al);
             }
             else if (opcode == 0xea) {  // JMP far ptr
                 byte o0 = get_pc_byte();
@@ -630,7 +676,7 @@ namespace XT
                 put_register_mem(reg1, mod, word, v1);
             }
             else if ((opcode & 0xf0) == 0b01110000) {  // J..., 0x70
-                byte to = get_pc_byte();
+                byte   to    = get_pc_byte();
 
                 bool   state = false;
                 string name  = System.String.Empty;
