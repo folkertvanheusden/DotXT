@@ -590,7 +590,7 @@ namespace XT
                 }
                 else if (opcode == 0x73) {
                     state = get_flag_c() == false;
-                    name  = "JAE/JNB";
+                    name  = "JNC";
                 }
                 else if (opcode == 0x74) {
                     state = get_flag_z() == true;
