@@ -413,7 +413,7 @@ namespace XT
 
             string flag_str = get_flags_as_str();
 
-            string prefix_str = $"{flag_str} {addr:X} {opcode:X}";
+            string prefix_str = $"{flag_str} {addr:X4} {opcode:X2} AX:{ah:X2}{al:X2} BX:{bh:X2}{bl:X2} CX:{ch:X2}{cl:X2} DX:{dh:X2}{dl:X2} SP:{sp:X4} BP:{bp:X4} SI:{si:X4} DI:{di:X4}";
 
             if (opcode == 0xe9) {  // JMP np
                 byte o0 = get_pc_byte();
@@ -447,10 +447,10 @@ namespace XT
                 else if (function == 3)
                     result = (ushort)(r1 ^ r2);
 
-                // if (opcode == 0x33)
+                // if (opcode == 0x0b || opcode == 0x33)
                 //     Console.WriteLine($"r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
 
-                put_register(reg2, word, result);
+                put_register_mem(reg1, mod, word, result);
 
                 set_flag_o(false);
                 set_flag_s((word ? result & 0x80 : result & 0x80) != 0);
