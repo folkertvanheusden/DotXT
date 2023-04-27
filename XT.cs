@@ -103,110 +103,168 @@ namespace XT
 
             return val;
         }
-
-        ushort get_register_mem(int reg, int mod, bool w)
-        {
-            if (mod == 3) {
+  
+        (ushort, string) get_register(int reg, bool w) {
+            if (w) {
                 if (reg == 0)
-                    return (ushort)(w ? (ah << 8) | al : al);
+                    return ((ushort)((ah << 8) | al), "AX");
                 if (reg == 1)
-                    return (ushort)(w ? (ch << 8) | cl : cl);
+                    return ((ushort)((ch << 8) | cl), "CX");
                 if (reg == 2)
-                    return (ushort)(w ? (dh << 8) | dl : dl);
+                    return ((ushort)((dh << 8) | dl), "DX");
                 if (reg == 3)
-                    return (ushort)(w ? (bh << 8) | bl : bl);
+                    return ((ushort)((bh << 8) | bl), "BX");
                 if (reg == 4)
-                    return (ushort)(w ? sp : ah);
+                    return (sp, "SP");
                 if (reg == 5)
-                    return (ushort)(w ? bp : ch);
+                    return (bp, "BP");
                 if (reg == 6)
-                    return (ushort)(w ? si : dh);
+                    return (si, "SI");
                 if (reg == 7)
-                    return (ushort)(w ? di : bh);
+                    return (di, "DI");
             }
             else {
+                if (reg == 0)
+                    return (al, "AL");
+                if (reg == 1)
+                    return (cl, "CL");
+                if (reg == 2)
+                    return (dl, "DL");
+                if (reg == 3)
+                    return (bl, "BL");
+                if (reg == 4)
+                    return (ah, "AH");
+                if (reg == 5)
+                    return (ch, "CH");
+                if (reg == 6)
+                    return (dh, "DH");
+                if (reg == 7)
+                    return (bh, "BH");
             }
 
-            Console.WriteLine($"reg {reg} mod {mod} w {w} not supported for get");
-            return 0;
+            Console.WriteLine($"reg {reg} w {w} not supported for get_register");
+
+            return (0, "error");
         }
 
-        void put_register_mem(int reg, int mod, bool w, ushort val)
+        (ushort, string) get_register_mem(int reg, int mod, bool w)
         {
-            if (mod == 3) {
-                if (reg == 0) {
-                    if (w) {
-                        ah = (byte)(val >> 8);
-                        al = (byte)val;
-                    }
-                    else {
-                        al = (byte)val;
-                    }
-                    return;
+            if (mod == 3)
+                return get_register(reg, w);
+
+            Console.WriteLine($"reg {reg} mod {mod} w {w} not supported for get");
+
+            return (0, "error");
+        }
+
+        string put_register(int reg, bool w, ushort val)
+        {
+            if (reg == 0) {
+                if (w) {
+                    ah = (byte)(val >> 8);
+                    al = (byte)val;
+
+                    return "AX";
                 }
-                if (reg == 1) {
-                    if (w) {
-                        ch = (byte)(val >> 8);
-                        cl = (byte)val;
-                    }
-                    else {
-                        cl = (byte)val;
-                    }
-                    return;
-                }
-                if (reg == 2) {
-                    if (w) {
-                        dh = (byte)(val >> 8);
-                        dl = (byte)val;
-                    }
-                    else {
-                        dl = (byte)val;
-                    }
-                    return;
-                }
-                if (reg == 3) {
-                    if (w) {
-                        bh = (byte)(val >> 8);
-                        bl = (byte)val;
-                    }
-                    else {
-                        bl = (byte)val;
-                    }
-                    return;
-                }
-                if (reg == 4) {
-                    if (w)
-                        sp = val;
-                    else
-                        ah = (byte)val;
-                    return;
-                }
-                if (reg == 5) {
-                    if (w)
-                        bp = val;
-                    else
-                        ch = (byte)val;
-                    return;
-                }
-                if (reg == 6) {
-                    if (w)
-                        si = val;
-                    else
-                        dh = (byte)val;
-                    return;
-                }
-                if (reg == 7) {
-                    if (w)
-                        di = val;
-                    else
-                        bh = (byte)val;
-                    return;
-                }
+
+                al = (byte)val;
+
+                return "AL";
             }
-            else {
+            else if (reg == 1) {
+                if (w) {
+                    ch = (byte)(val >> 8);
+                    cl = (byte)val;
+
+                    return "CX";
+                }
+
+                cl = (byte)val;
+
+                return "CL";
+            }
+            else if (reg == 2) {
+                if (w) {
+                    dh = (byte)(val >> 8);
+                    dl = (byte)val;
+
+                    return "DX";
+                }
+
+                dl = (byte)val;
+
+                return "DL";
+            }
+            else if (reg == 3) {
+                if (w) {
+                    bh = (byte)(val >> 8);
+                    bl = (byte)val;
+
+                    return "BX";
+                }
+
+                bl = (byte)val;
+
+                return "BL";
+            }
+            else if (reg == 4) {
+                if (w) {
+                    sp = val;
+
+                    return "SP";
+                }
+
+                ah = (byte)val;
+
+                return "AH";
+            }
+            else if (reg == 5) {
+                if (w) {
+                    bp = val;
+
+                    return "BP";
+                }
+
+                ch = (byte)val;
+
+                return "CH";
+            }
+            else if (reg == 6) {
+                if (w) {
+                    si = val;
+
+                    return "SI";
+                }
+
+                dh = (byte)val;
+
+                return "DH";
+            }
+            else if (reg == 7) {
+                if (w) {
+                    di = val;
+
+                    return "DI";
+                }
+
+                bh = (byte)val;
+
+                return "BH";
             }
 
+            Console.WriteLine($"reg {reg} w {w} not supported for put_register ({val:X})");
+
+            return "error";
+        }
+
+        string put_register_mem(int reg, int mod, bool w, ushort val)
+        {
+            if (mod == 3)
+                return put_register(reg, w, val);
+
             Console.WriteLine($"reg {reg} mod {mod} w {w} value {val} not supported for put");
+
+            return "error";
         }
 
         void clear_flag_bit(int bit)
@@ -333,14 +391,14 @@ namespace XT
                 int  reg1 = (o1 >> 3) & 7;
                 int  reg2 = o1 & 7;
 
-                ushort r1 = get_register_mem(reg1, mod, word);
-                ushort r2 = get_register_mem(reg2, mod, word);
+                (ushort r1, string name1) = get_register_mem(reg1, mod, word);
+                (ushort r2, string name2) = get_register_mem(reg2, mod, word);
 
                 ushort result = (ushort)(r1 ^ r2);
 
                 put_register_mem(reg2, mod, word, result);
 
-                Console.WriteLine($"{addr:X} XOR");
+                Console.WriteLine($"{addr:X} XOR {name1},{name2}");
             }
             else if (opcode == 0xea) {  // JMP far ptr
                 byte o0 = get_pc_byte();
@@ -403,119 +461,42 @@ namespace XT
 
                 Console.WriteLine($"{addr:X} MOV {name},${al:X}");
             }
-            else if ((opcode & 0xf8) == 0xb8) {  // MOV reg,iw
-                int  reg  = opcode & 0x0f;
+            else if (((opcode & 0b11111100) == 0b10001000) || opcode == 0b10001110 || ((opcode & 0b11111110) == 0b11000110) || ((opcode & 0b11111100) == 0b10100000) || opcode == 0x8c || opcode == 0x8e) {
+                bool dir  = (opcode & 2) == 2;  // direction
+                bool word = (opcode & 1) == 1;  // b/w
 
-                byte v1 = get_pc_byte();
-                byte v2 = get_pc_byte();
-
-                string name = "error";
-
-                if (reg == 0x08) {
-                    al = v1;
-                    ah = v2;
-                    name = "AX";
-                }
-                else if (reg == 0x09) {
-                    cl = v1;
-                    ch = v2;
-                    name = "CX";
-                }
-                else if (reg == 0x0a) {
-                    dl = v1;
-                    dh = v2;
-                    name = "DX";
-                }
-                else if (reg == 0x0b) {
-                    bl = v1;
-                    bh = v2;
-                    name = "BX";
-                }
-                else if (reg == 0x0c) {
-                    sp = (ushort)(v1 | (v2 << 8));
-                    name = "SP";
-                }
-                else if (reg == 0x0d) {
-                    bp = (ushort)(v1 | (v2 << 8));
-                    name = "BH";
-                }
-                else if (reg == 0x0e) {
-                    si = (ushort)(v1 | (v2 << 8));
-                    name = "SI";
-                }
-                else if (reg == 0x0f) {
-                    di = (ushort)(v1 | (v2 << 8));
-                    name = "DI";
-                }
-                else {
-                    Console.WriteLine("MOVW: unexpected register {reg}");
-                }
-
-                Console.WriteLine($"{addr:X} MOV {name},${al:X}");
-            }
-            else if (opcode == 0x8c) {  // MOV rmw,sr
-                bool word = true;
                 byte o1   = get_pc_byte();
+                int  mode = o1 >> 6;
+                int  reg  = (o1 >> 3) & 7;
+                int  rm   = o1 & 7;
 
-                int  mod  = o1 >> 6;
-                int  sreg = (o1 >> 3) & 7;
-                int  reg  = o1 & 7;
+                if (dir == true) {  // to 'REG' from 'rm'
+                    (ushort v, string from_name) = get_register_mem(rm, mode, word);
 
-                string name = "error";
+                    string to_name = put_register(reg, word, v);
 
-                ushort v = 0;
-
-                if (sreg == 0) {
-                    v = es;
-                    name = "ES";
+                    Console.WriteLine($"{addr:X} MOV {to_name},{from_name}");
                 }
-                else if (sreg == 1) {
-                    v = cs;
-                    name = "CS";
-                }
-                else if (sreg == 2) {
-                    v = ss;
-                    name = "SS";
-                }
-                else if (sreg == 3) {
-                    v = ds;
-                    name = "DS";
-                }
+                else {  // from 'REG' to 'rm'
+                    (ushort v, string from_name) = get_register(reg, word);
 
-                put_register_mem(reg, mod, word, v);
+                    string to_name = put_register_mem(reg, mode, word, v);
 
-                Console.WriteLine($"{addr:X} MOV {name},");
+                    Console.WriteLine($"{addr:X} MOV {to_name},{from_name}");
+                }
             }
-            else if (opcode == 0x8e) {  // MOV sr,rmw
-                bool word = true;
-                byte o1   = get_pc_byte();
+            else if ((opcode & 0xf8) == 0xb8) {  // MOV immed to reg
+                bool word = (opcode & 8) == 8;  // b/w
+                int  reg  = opcode & 7;
 
-                int  mod  = o1 >> 6;
-                int  sreg = (o1 >> 3) & 7;
-                int  reg  = o1 & 7;
+                ushort val = get_pc_byte();
 
-                ushort v  = get_register_mem(reg, mod, word);
+                if (word)
+                    val |= (ushort)(get_pc_byte() << 8);
 
-                string name = "error";
+                string to_name = put_register(reg, word, val);
 
-                if (sreg == 0) {
-                    es = v;
-                    name = "ES";
-                }
-                else if (sreg == 1) {
-                    cs = v;
-                    name = "CS";
-                }
-                else if (sreg == 2) {
-                    ss = v;
-                    name = "SS";
-                }
-                else if (sreg == 3) {
-                    ds = v;
-                    name = "DS";
-                }
-
-                Console.WriteLine($"{addr:X} MOV {name},");
+                Console.WriteLine($"{addr:X} MOV {to_name},${val:X}");
             }
             else if (opcode == 0x9e) {  // SAHF
                 ushort keep = (ushort)(flags & 0b1111111100101010);
@@ -555,15 +536,21 @@ namespace XT
                 int  mod  = o1 >> 6;
                 int  reg1 = o1 & 7;
 
-                ushort v1 = get_register_mem(reg1, mod, word);
+                (ushort v1, string v_name) = get_register_mem(reg1, mod, word);
 
                 int  count_spec = opcode & 3;
                 int  count = -1;
 
-                if (count_spec == 0 || count_spec == 1)
+                string count_name = "error";
+
+                if (count_spec == 0 || count_spec == 1) {
                     count = 1;
-                else if (count_spec == 2 || count_spec == 3)
+                    count_name = "1";
+                }
+                else if (count_spec == 2 || count_spec == 3) {
                     count = cl;
+                    count_name = "CL";
+                }
 
                 bool old_sign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
@@ -588,7 +575,7 @@ namespace XT
 
                 put_register_mem(reg1, mod, word, v1);
 
-                Console.WriteLine($"{addr:X} RCR");
+                Console.WriteLine($"{addr:X} RCR {v_name},{count_name}");
             }
             else if ((opcode & 0xf0) == 0b01110000) {  // J..., 0x70
                 byte to = get_pc_byte();
@@ -602,7 +589,7 @@ namespace XT
                 }
                 else if (opcode == 0x71) {
                     state = get_flag_o() == false;
-                    name  = "JO";
+                    name  = "JNO";
                 }
                 else if (opcode == 0x72) {
                     state = get_flag_c() == true;
@@ -614,11 +601,11 @@ namespace XT
                 }
                 else if (opcode == 0x74) {
                     state = get_flag_z() == true;
-                    name  = "JNE";
+                    name  = "JE/JZ";
                 }
                 else if (opcode == 0x75) {
                     state = get_flag_z() == false;
-                    name  = "JNE";
+                    name  = "JNE/JNZ";
                 }
                 else if (opcode == 0x76) {
                     state = get_flag_c() == true || get_flag_z() == true;
@@ -664,14 +651,12 @@ namespace XT
                     Console.WriteLine($"{addr:X} Opcode {opcode:x} not implemented");
                 }
 
-                if (state) {
-                    ip = (ushort)(ip + (sbyte)to);
+                ushort new_addr = (ushort)(ip + (sbyte)to);
 
-                    Console.WriteLine($"{addr:X} {name} {to} - TAKEN");
-                }
-                else {
-                    Console.WriteLine($"{addr:X} {name} {to}");
-                }
+                if (state)
+                    ip = new_addr;
+
+                Console.WriteLine($"{addr:X} {name} {to} ({new_addr:X})");
             }
             else if (opcode == 0xf4) {  // HLT
                 ip--;
