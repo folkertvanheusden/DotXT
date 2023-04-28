@@ -1068,6 +1068,13 @@ internal class P8086
 
             Console.WriteLine($"{prefixStr} LOOP {to} ({newAddresses:X4})");
         }
+        else if (opcode == 0xe4)
+        {
+            // IN
+            byte @from = GetPcByte();
+
+            Console.WriteLine($"{prefixStr} IN AL,${from:X2}");
+        }
         else if (opcode == 0xe6)
         {
             // OUT
