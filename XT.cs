@@ -39,10 +39,10 @@ namespace DotXT
 
         public byte read_byte(uint addr)
         {
-            if (addr >= 0x000f8000 && addr <= 0x000fffff)
+            if (addr is >= 0x000f8000 and <= 0x000fffff)
                 return _bios.read_byte(addr - 0x000f8000);
 
-            if (addr >= 0x000f0000 && addr <= 0x000f7fff)
+            if (addr is >= 0x000f0000 and <= 0x000f7fff)
                 return _basic.read_byte(addr - 0x000f0000);
 
             return _m.read_byte(addr);
@@ -529,7 +529,7 @@ namespace DotXT
 
                 Console.WriteLine($"{prefix_str} ADD {name2},{name1}");
             }
-            else if ((opcode >= 0x30 && opcode <= 0x33) || (opcode >= 0x20 && opcode <= 0x23) || (opcode >= 0x08 && opcode <= 0x0b)) {
+            else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b) {
                 bool word = (opcode & 1) == 1;
                 byte o1   = get_pc_byte();
 
@@ -700,7 +700,7 @@ namespace DotXT
 
                 Console.WriteLine($"{prefix_str} LAHF");
             }
-            else if (opcode >= 0x40 && opcode <= 0x4f) {  // INC/DECw
+            else if (opcode is >= 0x40 and <= 0x4f) {  // INC/DECw
                 int reg = (opcode - 0x40) & 7;
 
                 (ushort v, string name) = get_register(reg, true);
