@@ -164,8 +164,60 @@ namespace XT
             return (0, "error");
         }
 
+        (ushort, string) get_double_reg(int reg)
+        {
+            ushort a    = 0;
+            string name = "error";
+
+            if (reg == 0) {
+                a = (ushort)((bh << 8) + bl + si);
+                name = "[BX+SI]";
+            }
+            else if (reg == 1) {
+                a = (ushort)((bh << 8) + bl + di);
+                name = "[BX+DI]";
+            }
+            else if (reg == 2) {
+                a = (ushort)(bp + si);
+                name = "[BP+SI]";
+            }
+            else if (reg == 3) {
+                a = (ushort)(bp + di);
+                name = "[BP+DI]";
+            }
+            else if (reg == 4) {
+                a = si;
+                name = "[SI]";
+            }
+            else if (reg == 5) {
+                a = di;
+                name = "[DI]";
+            }
+            //else if (reg == 6)  TODO
+            else if (reg == 7) {
+                a = (ushort)((bh << 8) + bl);
+                name = "[BX]";
+            }
+            else {
+                Console.WriteLine($"get_double_reg {reg} not implemented");
+            }
+
+            return (a, name);
+        }
+
         (ushort, string) get_register_mem(int reg, int mod, bool w)
         {
+            if (mod == 0) {
+                (ushort a, string name) = get_double_reg(reg);
+
+                ushort v = b.read_byte(a);
+
+                if (w)
+                    v |= (ushort)(b.read_byte((ushort)(a + 1)) << 8);
+
+                return (v, name);
+            }
+
             if (mod == 3)
                 return get_register(reg, w);
 
@@ -300,6 +352,17 @@ namespace XT
 
         string put_register_mem(int reg, int mod, bool w, ushort val)
         {
+            if (mod == 0) {
+                (ushort a, string name) = get_double_reg(reg);
+
+                b.write_byte(a, (byte)val);
+
+                if (w)
+                    b.write_byte((ushort)(a + 1), (byte)(val >> 8));
+
+                return name;
+            }
+
             if (mod == 3)
                 return put_register(reg, w, val);
 
@@ -436,6 +499,29 @@ namespace XT
 
                 Console.WriteLine($"{prefix_str} JMP {ip:X}");
             }
+            else if (opcode == 0x02 || opcode == 0x03) {
+                bool word = (opcode & 1) == 1;
+                byte o1   = get_pc_byte();
+
+                int  mod  = o1 >> 6;
+                int  reg1 = (o1 >> 3) & 7;
+                int  reg2 = o1 & 7;
+
+                (ushort r1, string name1) = get_register_mem(reg1, mod, word);
+                (ushort r2, string name2) = get_register(reg2, word);
+
+                int result = r2 - r1;
+
+                put_register(reg2, word, (ushort)result);
+
+                set_flag_o(false);  // TODO
+                set_flag_s((word ? result & 0x8000 : result & 0x80) != 0);
+                set_flag_z(word ? result == 0 : (result & 0xff) == 0);
+                set_flag_a(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
+                set_flag_p((byte)result);
+
+                Console.WriteLine($"{prefix_str} ADD {name2},{name1}");
+            }
             else if ((opcode >= 0x30 && opcode <= 0x33) || (opcode >= 0x20 && opcode <= 0x23) || (opcode >= 0x08 && opcode <= 0x0b)) {
                 bool word = (opcode & 1) == 1;
                 byte o1   = get_pc_byte();
@@ -452,11 +538,11 @@ namespace XT
                 int function = opcode >> 4;
 
                 if (function == 0)
-                    result = (ushort)(r1 | r2);
+                    result = (ushort)(r2 | r1);
                 else if (function == 2)
-                    result = (ushort)(r1 & r2);
+                    result = (ushort)(r2 & r1);
                 else if (function == 3)
-                    result = (ushort)(r1 ^ r2);
+                    result = (ushort)(r2 ^ r1);
                 else
                     Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
 
@@ -466,7 +552,7 @@ namespace XT
                 put_register_mem(reg1, mod, word, result);
 
                 set_flag_o(false);
-                set_flag_s((word ? result & 0x80 : result & 0x80) != 0);
+                set_flag_s((word ? result & 0x8000 : result & 0x80) != 0);
                 set_flag_z(word ? result == 0 : (result & 0xff) == 0);
                 set_flag_a(false);
 
@@ -505,7 +591,7 @@ namespace XT
                 }
 
                 set_flag_o(false);
-                set_flag_s((word ? ah & 0x80 : al & 0x80) != 0);
+                set_flag_s((word ? ah & 0x8000 : al & 0x80) != 0);
                 set_flag_z(word ? ah == 0 && al == 0 : al == 0);
                 set_flag_a(false);
 
@@ -787,19 +873,19 @@ namespace XT
 
                 // TODO
 
-                Console.WriteLine($"{prefix_str} OUT {to:X2},AL");
+                Console.WriteLine($"{prefix_str} OUT ${to:X2},AL");
             }
             else if (opcode == 0xee) {  // OUT
                 // TODO
 
-                Console.WriteLine($"{prefix_str} OUT {dh:X2}{dl:X2},AL");
+                Console.WriteLine($"{prefix_str} OUT ${dh:X2}{dl:X2},AL");
             }
             else if (opcode == 0xeb) {  // JMP
                 byte to = get_pc_byte();
 
                 ip = (ushort)(ip + (sbyte)to);
 
-                Console.WriteLine($"{prefix_str} JP {ip:X4}");
+                Console.WriteLine($"{prefix_str} JP ${ip:X4}");
             }
             else if (opcode == 0xf4) {  // HLT
                 ip--;
