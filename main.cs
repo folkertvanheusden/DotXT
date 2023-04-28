@@ -1,4 +1,4 @@
-using XT;
+using DotXT;
 
 Console.WriteLine("DotXT, (C) 2023 by Folkert van Heusden");
 Console.WriteLine("Released in the public domain");
