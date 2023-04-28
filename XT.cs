@@ -384,6 +384,16 @@ namespace XT
             return get_flag(7);
         }
 
+        void set_flag_d(bool state)
+        {
+            set_flag(10, state);
+        }
+
+        bool get_flag_d()
+        {
+            return get_flag(10);
+        }
+
         void set_flag_o(bool state)
         {
             set_flag(11, state);
@@ -399,6 +409,7 @@ namespace XT
             string out_ = System.String.Empty;
 
             out_ += get_flag_o() ? "o" : "-";
+            out_ += get_flag_d() ? "d" : "-";
             out_ += get_flag_s() ? "s" : "-";
             out_ += get_flag_z() ? "z" : "-";
             out_ += get_flag_c() ? "c" : "-";
@@ -804,6 +815,11 @@ namespace XT
                 set_flag_c(true);
 
                 Console.WriteLine($"{prefix_str} STC");
+            }
+            else if (opcode == 0xfc) {  // CLD
+                set_flag_d(false);
+
+                Console.WriteLine($"{prefix_str} CLD");
             }
             else if (opcode == 0xfe || opcode == 0xff) {  // DEC and others
                 bool word = (opcode & 1) == 1;
