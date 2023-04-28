@@ -38,8 +38,8 @@ namespace XT
     {
         memory m = new memory();
 
-        rom bios  = new rom("roms/BIOS_5160_09MAY86_U19_62X0819_68X4370_27256_F000.BIN");
-        rom basic = new rom("roms/BIOS_5160_09MAY86_U18_59X7268_62X0890_27256_F800.BIN");
+        rom bios  = new rom("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
+        rom basic = new rom("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
 
         public bus()
         {
@@ -47,11 +47,11 @@ namespace XT
 
         public byte read_byte(uint addr)
         {
-            if (addr >= 0x000f0000 && addr <= 0x000f7fff)
-                return bios.read_byte(addr - 0x000f0000);
-
             if (addr >= 0x000f8000 && addr <= 0x000fffff)
-                return basic.read_byte(addr - 0x000f8000);
+                return bios.read_byte(addr - 0x000f8000);
+
+            if (addr >= 0x000f0000 && addr <= 0x000f7fff)
+                return basic.read_byte(addr - 0x000f0000);
 
             return m.read_byte(addr);
         }
