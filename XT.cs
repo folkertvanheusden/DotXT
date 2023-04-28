@@ -35,7 +35,7 @@ internal class Bus
     private readonly Memory _m = new();
 
     private readonly Rom _bios = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
-    private readonly Rom _basic = new("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
+    private readonly Rom _basic = new("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
 
     public byte read_byte(uint address)
     {
