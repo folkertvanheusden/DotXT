@@ -39,13 +39,12 @@ internal class Bus
 
     public byte read_byte(uint address)
     {
-        if (address is >= 0x000f8000 and <= 0x000fffff)
-            return _bios.ReadByte(address - 0x000f8000);
-
-        if (address is >= 0x000f0000 and <= 0x000f7fff)
-            return _basic.ReadByte(address - 0x000f0000);
-
-        return _m.ReadByte(address);
+        return address switch
+        {
+            >= 0x000f8000 and <= 0x000fffff => _bios.ReadByte(address - 0x000f8000),
+            >= 0x000f0000 and <= 0x000f7fff => _basic.ReadByte(address - 0x000f0000),
+            _ => _m.ReadByte(address)
+        };
     }
 
     public void write_byte(uint address, byte v)
@@ -58,17 +57,17 @@ internal class IO
 {
     private byte _RAM_refresh_counter;
 
-    public byte In(ushort addr)
+    public byte In(ushort address)
     {
-        if (addr == 0x0041)
+        if (address == 0x0041)
             return _RAM_refresh_counter++;
 
-        Console.WriteLine($"I/O port {addr:X4} not implemented");
+        Console.WriteLine($"I/O port {address:X4} not implemented");
 
         return 0;
     }
 
-    public void Out(ushort addr, byte value)
+    public void Out(ushort address, byte value)
     {
         // TODO
     }
@@ -233,7 +232,7 @@ internal class P8086
     {
         if (mod == 0)
         {
-            (ushort a, string name) = GetDoubleRegister(reg);
+            var (a, name) = GetDoubleRegister(reg);
 
             ushort v = _b.read_byte(a);
 
@@ -409,7 +408,7 @@ internal class P8086
     {
         if (mod == 0)
         {
-            (ushort a, string name) = GetDoubleRegister(reg);
+            var (a, name) = GetDoubleRegister(reg);
 
             _b.write_byte(a, (byte)val);
 
@@ -573,7 +572,7 @@ internal class P8086
             // NOP
             Console.WriteLine($"{prefixStr} NOP");
         }
-        else if (opcode == 0x80 || opcode == 0x81 || opcode == 0x83)
+        else if (opcode is 0x80 or 0x81 or 0x83)
         {
             // CMP
             byte o1 = GetPcByte();
@@ -608,7 +607,7 @@ internal class P8086
 
                     word = true;
                 }
-                else if (opcode == 0x83)
+                else if (opcode == 0x83)        // TODO expression is always  true
                 {
                     (r1, name1) = GetRegisterMem(reg, mod, true);
 
@@ -646,7 +645,7 @@ internal class P8086
 
             Console.WriteLine($"{prefixStr} RET");
         }
-        else if (opcode == 0x02 || opcode == 0x03)
+        else if (opcode is 0x02 or 0x03)
         {
             bool word = (opcode & 1) == 1;
             byte o1 = GetPcByte();
@@ -655,8 +654,8 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1) = GetRegisterMem(reg2, mod, word);
-            (ushort r2, string name2) = GetRegister(reg1, word);
+            var (r1, name1) = GetRegisterMem(reg2, mod, word);
+            var (r2, name2) = GetRegister(reg1, word);
 
             int result = r2 - r1;
 
@@ -670,7 +669,7 @@ internal class P8086
 
             Console.WriteLine($"{prefixStr} ADD {name2},{name1}");
         }
-        else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
+        else if (opcode is >= 0x30 and <= 0x33 or >= 0x20 and <= 0x23 or >= 0x08 and <= 0x0b)
         {
             bool word = (opcode & 1) == 1;
             byte o1 = GetPcByte();
@@ -679,8 +678,8 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1) = GetRegisterMem(reg1, mod, word);
-            (ushort r2, string name2) = GetRegister(reg2, word);
+            var (r1, name1) = GetRegisterMem(reg1, mod, word);
+            var (r2, name2) = GetRegister(reg2, word);
 
             ushort result = 0;
 
@@ -709,8 +708,7 @@ internal class P8086
 
             Console.WriteLine($"{prefixStr} XOR {name1},{name2}");
         }
-        else if ((opcode == 0x34 || opcode == 0x35) || (opcode == 0x24 || opcode == 0x25) ||
-                 (opcode == 0x0c || opcode == 0x0d))
+        else if (opcode is 0x34 or 0x35 or 0x24 or 0x25 or 0x0c or 0x0d)
         {
             bool word = (opcode & 1) == 1;
 
@@ -805,7 +803,7 @@ internal class P8086
             if (dir)
             {
                 // to 'REG' from 'rm'
-                (ushort v, string fromName) = GetRegisterMem(rm, mode, word);
+                var (v, fromName) = GetRegisterMem(rm, mode, word);
 
                 string toName;
 
@@ -869,7 +867,7 @@ internal class P8086
             // INC/DECw
             int reg = (opcode - 0x40) & 7;
 
-            (ushort v, string name) = GetRegister(reg, true);
+            var (v, name) = GetRegister(reg, true);
 
             bool isDec = opcode >= 0x48;
 
@@ -903,7 +901,7 @@ internal class P8086
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
 
-            (ushort v1, string vName) = GetRegisterMem(reg1, mod, word);
+            var (v1, vName) = GetRegisterMem(reg1, mod, word);
 
             int countSpec = opcode & 3;
             int count = -1;
@@ -1090,7 +1088,7 @@ internal class P8086
             // LOOP
             byte to = GetPcByte();
 
-            (ushort cx, string dummy) = GetRegister(1, true);
+            var (cx, dummy) = GetRegister(1, true);
 
             cx--;
 
@@ -1182,7 +1180,7 @@ internal class P8086
             int mod = o1 >> 6;
             int reg = o1 & 7;
 
-            (ushort v, string name) = GetRegisterMem(reg, mod, word);
+            var (v, name) = GetRegisterMem(reg, mod, word);
 
             int function = (o1 >> 3) & 7;
 
