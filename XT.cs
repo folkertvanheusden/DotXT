@@ -54,7 +54,7 @@ namespace DotXT
         }
     }
 
-    internal class p8086
+    internal class P8086
     {
         private byte _ah, _al;
         private byte _bh, _bl;
@@ -79,7 +79,7 @@ namespace DotXT
 
         private readonly Bus _b = new Bus();
 
-        public p8086()
+        public P8086()
         {
             _cs = 0xf000;
             _ip = 0xfff0;
