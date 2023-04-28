@@ -591,21 +591,22 @@ namespace XT
 
                 Console.WriteLine($"{prefix_str} LAHF");
             }
-            else if (opcode == 0x4a) {  // DEC BX
-                ushort bx = (ushort)((bh << 8) | bl);
+            else if (opcode >= 0x48 && opcode <= 0x4f) {  // DECw
+                int reg = opcode - 0x48;
 
-                bx--;
+                (ushort v, string name) = get_register(reg, true);
 
-                set_flag_o(bx == 0x7fff);
-                set_flag_s((bx & 0x8000) == 0x8000);
-                set_flag_z(bx == 0);
-                set_flag_a((bx & 15) == 0);
-                set_flag_p((byte)bx);
+                v--;
 
-                bh = (byte)(bx >> 8);
-                bl = (byte)bx;
+                set_flag_o(v == 0x7fff);
+                set_flag_s((v & 0x8000) == 0x8000);
+                set_flag_z(v == 0);
+                set_flag_a((v & 15) == 0);
+                set_flag_p((byte)v);
 
-                Console.WriteLine($"{prefix_str} DEC BX");
+                put_register(reg, true, v);
+
+                Console.WriteLine($"{prefix_str} DEC {name}");
             }
             else if ((opcode & 0xf8) == 0xd0) {  // RCR
                 bool word = (opcode & 1) == 1;
