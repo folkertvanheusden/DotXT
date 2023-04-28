@@ -538,6 +538,69 @@ internal class P8086
 
             Console.WriteLine($"{prefixStr} JMP {_ip:X}");
         }
+        else if (opcode == 0x80 || opcode == 0x81 || opcode == 0x83)
+        {
+            // CMP
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg = o1 & 7;
+
+            int function = (o1 >> 3) & 7;
+
+            if (function == 7)
+            {
+                // CMP
+                ushort r1 = 0;
+                string name1 = "error";
+
+                ushort r2 = 0;
+
+                bool word = false;
+
+                if (opcode == 0x80)
+                {
+                    (r1, name1) = GetRegisterMem(reg, mod, false);
+
+                    r2 = GetPcByte();
+                }
+                else if (opcode == 0x81)
+                {
+                    (r1, name1) = GetRegisterMem(reg, mod, true);
+
+                    r2 = GetPcByte();
+                    r2 |= (ushort)(GetPcByte() << 8);
+
+                    word = true;
+                }
+                else if (opcode == 0x83)
+                {
+                    (r1, name1) = GetRegisterMem(reg, mod, true);
+
+                    r2 = GetPcByte();
+
+                    word = true;
+                }
+                else
+                {
+                    Console.WriteLine($"{prefixStr} opcode {opcode:X2} not implemented");
+                }
+
+                int result = r1 - r2;
+
+                SetFlagO(false); // TODO
+                SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+                SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+                SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
+                SetFlagP((byte)result);
+
+                Console.WriteLine($"{prefixStr} CMP {name1},${r2:X2}");
+            }
+            else
+            {
+                    Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+            }
+        }
         else if (opcode == 0xc3)
         {
             // RET
