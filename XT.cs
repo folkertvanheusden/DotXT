@@ -85,7 +85,7 @@ namespace DotXT
             _ip = 0xfff0;
         }
 
-        public byte GetPcByte()
+        private byte GetPcByte()
         {
             uint address = (uint)(_cs * 16 + _ip++) & MemMask;
 
@@ -466,7 +466,7 @@ namespace DotXT
             return GetFlag(11);
         }
 
-        // TODO class/struct or enum flags (with [Flags]) and ToString()
+        // TODO class/struct or enum Flags (with [Flags]) and ToString()
         private string GetFlagsAsString()
         {
             string @out = String.Empty;
@@ -603,10 +603,7 @@ namespace DotXT
                 SetFlagZ(word ? _ah == 0 && _al == 0 : _al == 0);
                 SetFlagA(false);
 
-                if (word)
-                    SetFlagP(_ah);  // TODO verify
-                else
-                    SetFlagP(_al);
+                SetFlagP(word ? _ah : _al);
             }
             else if (opcode == 0xea) {  // JMP far ptr
                 byte o0 = GetPcByte();
@@ -652,7 +649,7 @@ namespace DotXT
                 if (dir) {  // to 'REG' from 'rm'
                     (ushort v, string fromName) = GetRegisterMem(rm, mode, word);
 
-                    string toName = "error";
+                    string toName;
 
                     if (sreg)
                         toName = PutSRegister(reg, v);
@@ -662,8 +659,8 @@ namespace DotXT
                     Console.WriteLine($"{prefixStr} MOV {toName},{fromName}");
                 }
                 else {  // from 'REG' to 'rm'
-                    ushort v = 0;
-                    string fromName = "error";
+                    ushort v;
+                    string fromName;
 
                     if (sreg)
                         (v, fromName) = GetSRegister(reg);
