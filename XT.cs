@@ -2,94 +2,94 @@ namespace DotXT
 {
     internal class Memory
     {
-        private readonly byte[] m = new byte[1024 * 1024];  // 1MB of RAM
+        private readonly byte[] _m = new byte[1024 * 1024];  // 1MB of RAM
 
         public byte read_byte(uint addr)
         {
-            return m[addr];
+            return _m[addr];
         }
 
         public void write_byte(uint addr, byte v)
         {
-            m[addr] = v;
+            _m[addr] = v;
         }
     }
 
     internal class Rom
     {
-        private readonly byte[] contents;
+        private readonly byte[] _contents;
 
         public Rom(string filename)
         {
-            contents = File.ReadAllBytes(filename);
+            _contents = File.ReadAllBytes(filename);
         }
 
         public byte read_byte(uint addr)
         {
-            return contents[addr];
+            return _contents[addr];
         }
     }
 
     internal class Bus
     {
-        private readonly Memory m = new Memory();
+        private readonly Memory _m = new Memory();
 
-        private readonly Rom bios  = new Rom("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
-        private readonly Rom basic = new Rom("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
+        private readonly Rom _bios  = new Rom("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
+        private readonly Rom _basic = new Rom("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
 
         public byte read_byte(uint addr)
         {
             if (addr >= 0x000f8000 && addr <= 0x000fffff)
-                return bios.read_byte(addr - 0x000f8000);
+                return _bios.read_byte(addr - 0x000f8000);
 
             if (addr >= 0x000f0000 && addr <= 0x000f7fff)
-                return basic.read_byte(addr - 0x000f0000);
+                return _basic.read_byte(addr - 0x000f0000);
 
-            return m.read_byte(addr);
+            return _m.read_byte(addr);
         }
 
         public void write_byte(uint addr, byte v)
         {
-            m.write_byte(addr, v);
+            _m.write_byte(addr, v);
         }
     }
 
     internal class p8086
     {
-        private byte ah, al;
-        private byte bh, bl;
-        private byte ch, cl;
-        private byte dh, dl;
+        private byte _ah, _al;
+        private byte _bh, _bl;
+        private byte _ch, _cl;
+        private byte _dh, _dl;
 
-        private ushort si;
-        private ushort di;
-        private ushort bp;
-        private ushort sp;
+        private ushort _si;
+        private ushort _di;
+        private ushort _bp;
+        private ushort _sp;
 
-        private ushort ip;
+        private ushort _ip;
 
-        private ushort cs;
-        private ushort ds;
-        private ushort es;
-        private ushort ss;
+        private ushort _cs;
+        private ushort _ds;
+        private ushort _es;
+        private ushort _ss;
 
-        private ushort flags;
+        private ushort _flags;
 
         private const uint mem_mask = 0x00ffffff;
 
-        private readonly Bus b = new Bus();
+        private readonly Bus _b = new Bus();
 
         public p8086()
         {
-            cs = 0xf000;
-            ip = 0xfff0;
+            _cs = 0xf000;
+            _ip = 0xfff0;
         }
 
         public byte get_pc_byte()
         {
-            uint addr = (uint)(cs * 16 + ip++) & mem_mask;
+            uint addr = (uint)(_cs * 16 + _ip++) & mem_mask;
 
-            byte val  = b.read_byte(addr);
+            byte val  = _b.read_byte(addr);
 
             // Console.WriteLine($"{addr:X} {val:X}");
 
@@ -100,39 +100,39 @@ namespace DotXT
         {
             if (w) {
                 if (reg == 0)
-                    return ((ushort)((ah << 8) | al), "AX");
+                    return ((ushort)((_ah << 8) | _al), "AX");
                 if (reg == 1)
-                    return ((ushort)((ch << 8) | cl), "CX");
+                    return ((ushort)((_ch << 8) | _cl), "CX");
                 if (reg == 2)
-                    return ((ushort)((dh << 8) | dl), "DX");
+                    return ((ushort)((_dh << 8) | _dl), "DX");
                 if (reg == 3)
-                    return ((ushort)((bh << 8) | bl), "BX");
+                    return ((ushort)((_bh << 8) | _bl), "BX");
                 if (reg == 4)
-                    return (sp, "SP");
+                    return (_sp, "SP");
                 if (reg == 5)
-                    return (bp, "BP");
+                    return (_bp, "BP");
                 if (reg == 6)
-                    return (si, "SI");
+                    return (_si, "SI");
                 if (reg == 7)
-                    return (di, "DI");
+                    return (_di, "DI");
             }
             else {
                 if (reg == 0)
-                    return (al, "AL");
+                    return (_al, "AL");
                 if (reg == 1)
-                    return (cl, "CL");
+                    return (_cl, "CL");
                 if (reg == 2)
-                    return (dl, "DL");
+                    return (_dl, "DL");
                 if (reg == 3)
-                    return (bl, "BL");
+                    return (_bl, "BL");
                 if (reg == 4)
-                    return (ah, "AH");
+                    return (_ah, "AH");
                 if (reg == 5)
-                    return (ch, "CH");
+                    return (_ch, "CH");
                 if (reg == 6)
-                    return (dh, "DH");
+                    return (_dh, "DH");
                 if (reg == 7)
-                    return (bh, "BH");
+                    return (_bh, "BH");
             }
 
             Console.WriteLine($"reg {reg} w {w} not supported for get_register");
@@ -143,13 +143,13 @@ namespace DotXT
         private (ushort, string) get_sregister(int reg)
         {
             if (reg == 0b000)
-                return (es, "ES");
+                return (_es, "ES");
             if (reg == 0b001)
-                return (cs, "CS");
+                return (_cs, "CS");
             if (reg == 0b010)
-                return (ss, "SS");
+                return (_ss, "SS");
             if (reg == 0b011)
-                return (ds, "DS");
+                return (_ds, "DS");
 
             Console.WriteLine($"reg {reg} not supported for get_sregister");
 
@@ -162,32 +162,32 @@ namespace DotXT
             string name = "error";
 
             if (reg == 0) {
-                a = (ushort)((bh << 8) + bl + si);
+                a = (ushort)((_bh << 8) + _bl + _si);
                 name = "[BX+SI]";
             }
             else if (reg == 1) {
-                a = (ushort)((bh << 8) + bl + di);
+                a = (ushort)((_bh << 8) + _bl + _di);
                 name = "[BX+DI]";
             }
             else if (reg == 2) {
-                a = (ushort)(bp + si);
+                a = (ushort)(_bp + _si);
                 name = "[BP+SI]";
             }
             else if (reg == 3) {
-                a = (ushort)(bp + di);
+                a = (ushort)(_bp + _di);
                 name = "[BP+DI]";
             }
             else if (reg == 4) {
-                a = si;
+                a = _si;
                 name = "[SI]";
             }
             else if (reg == 5) {
-                a = di;
+                a = _di;
                 name = "[DI]";
             }
             //else if (reg == 6)  TODO
             else if (reg == 7) {
-                a = (ushort)((bh << 8) + bl);
+                a = (ushort)((_bh << 8) + _bl);
                 name = "[BX]";
             }
             else {
@@ -202,10 +202,10 @@ namespace DotXT
             if (mod == 0) {
                 (ushort a, string name) = get_double_reg(reg);
 
-                ushort v = b.read_byte(a);
+                ushort v = _b.read_byte(a);
 
                 if (w)
-                    v |= (ushort)(b.read_byte((ushort)(a + 1)) << 8);
+                    v |= (ushort)(_b.read_byte((ushort)(a + 1)) << 8);
 
                 return (v, name);
             }
@@ -222,100 +222,100 @@ namespace DotXT
         {
             if (reg == 0) {
                 if (w) {
-                    ah = (byte)(val >> 8);
-                    al = (byte)val;
+                    _ah = (byte)(val >> 8);
+                    _al = (byte)val;
 
                     return "AX";
                 }
 
-                al = (byte)val;
+                _al = (byte)val;
 
                 return "AL";
             }
 
             if (reg == 1) {
                 if (w) {
-                    ch = (byte)(val >> 8);
-                    cl = (byte)val;
+                    _ch = (byte)(val >> 8);
+                    _cl = (byte)val;
 
                     return "CX";
                 }
 
-                cl = (byte)val;
+                _cl = (byte)val;
 
                 return "CL";
             }
 
             if (reg == 2) {
                 if (w) {
-                    dh = (byte)(val >> 8);
-                    dl = (byte)val;
+                    _dh = (byte)(val >> 8);
+                    _dl = (byte)val;
 
                     return "DX";
                 }
 
-                dl = (byte)val;
+                _dl = (byte)val;
 
                 return "DL";
             }
 
             if (reg == 3) {
                 if (w) {
-                    bh = (byte)(val >> 8);
-                    bl = (byte)val;
+                    _bh = (byte)(val >> 8);
+                    _bl = (byte)val;
 
                     return "BX";
                 }
 
-                bl = (byte)val;
+                _bl = (byte)val;
 
                 return "BL";
             }
 
             if (reg == 4) {
                 if (w) {
-                    sp = val;
+                    _sp = val;
 
                     return "SP";
                 }
 
-                ah = (byte)val;
+                _ah = (byte)val;
 
                 return "AH";
             }
 
             if (reg == 5) {
                 if (w) {
-                    bp = val;
+                    _bp = val;
 
                     return "BP";
                 }
 
-                ch = (byte)val;
+                _ch = (byte)val;
 
                 return "CH";
             }
 
             if (reg == 6) {
                 if (w) {
-                    si = val;
+                    _si = val;
 
                     return "SI";
                 }
 
-                dh = (byte)val;
+                _dh = (byte)val;
 
                 return "DH";
             }
 
             if (reg == 7) {
                 if (w) {
-                    di = val;
+                    _di = val;
 
                     return "DI";
                 }
 
-                bh = (byte)val;
+                _bh = (byte)val;
 
                 return "BH";
             }
@@ -328,19 +328,19 @@ namespace DotXT
         private string put_sregister(int reg, ushort v)
         {
             if (reg == 0b000) {
-                es = v;
+                _es = v;
                 return "ES";
             }
             if (reg == 0b001) {
-                cs = v;
+                _cs = v;
                 return "CS";
             }
             if (reg == 0b010) {
-                ss = v;
+                _ss = v;
                 return "SS";
             }
             if (reg == 0b011) {
-                ds = v;
+                _ds = v;
                 return "DS";
             }
 
@@ -354,10 +354,10 @@ namespace DotXT
             if (mod == 0) {
                 (ushort a, string name) = get_double_reg(reg);
 
-                b.write_byte(a, (byte)val);
+                _b.write_byte(a, (byte)val);
 
                 if (w)
-                    b.write_byte((ushort)(a + 1), (byte)(val >> 8));
+                    _b.write_byte((ushort)(a + 1), (byte)(val >> 8));
 
                 return name;
             }
@@ -372,12 +372,12 @@ namespace DotXT
 
         private void clear_flag_bit(int bit)
         {
-            flags &= (ushort)(ushort.MaxValue ^ (1 << bit));
+            _flags &= (ushort)(ushort.MaxValue ^ (1 << bit));
         }
 
         private void set_flag_bit(int bit)
         {
-            flags |= (ushort)(1 << bit);
+            _flags |= (ushort)(1 << bit);
         }
 
         private void set_flag(int bit, bool state)
@@ -390,7 +390,7 @@ namespace DotXT
 
         private bool get_flag(int bit)
         {
-            return (flags & (1 << bit)) != 0;
+            return (_flags & (1 << bit)) != 0;
         }
 
         private void set_flag_c(bool state)
@@ -481,12 +481,12 @@ namespace DotXT
 
         public void tick()
         {
-            uint addr   = (uint)(cs * 16 + ip) & mem_mask;
+            uint addr   = (uint)(_cs * 16 + _ip) & mem_mask;
             byte opcode = get_pc_byte();
 
             string flag_str = get_flags_as_str();
 
-            string prefix_str = $"{flag_str} {addr:X4} {opcode:X2} AX:{ah:X2}{al:X2} BX:{bh:X2}{bl:X2} CX:{ch:X2}{cl:X2} DX:{dh:X2}{dl:X2} SP:{sp:X4} BP:{bp:X4} SI:{si:X4} DI:{di:X4}";
+            string prefix_str = $"{flag_str} {addr:X4} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4}";
 
             if (opcode == 0xe9) {  // JMP np
                 byte o0 = get_pc_byte();
@@ -494,15 +494,15 @@ namespace DotXT
 
                 short offset = (short)((o1 << 8) | o0);
 
-                ip = (ushort)(ip + offset);
+                _ip = (ushort)(_ip + offset);
 
-                Console.WriteLine($"{prefix_str} JMP {ip:X}");
+                Console.WriteLine($"{prefix_str} JMP {_ip:X}");
             }
             else if (opcode == 0xc3) {  // RET
-                byte low  = b.read_byte((uint)(ss * 16 + sp++) & mem_mask);
-                byte high = b.read_byte((uint)(ss * 16 + sp++) & mem_mask);
+                byte low  = _b.read_byte((uint)(_ss * 16 + _sp++) & mem_mask);
+                byte high = _b.read_byte((uint)(_ss * 16 + _sp++) & mem_mask);
 
-                ip = (ushort)((high << 8) + low);
+                _ip = (ushort)((high << 8) + low);
 
                 Console.WriteLine($"{prefix_str} RET");
             }
@@ -576,36 +576,36 @@ namespace DotXT
                 int function = opcode >> 4;
 
                 if (function == 0) {
-                    al |= b_low;
+                    _al |= b_low;
 
                     if (word)
-                        ah |= b_high;
+                        _ah |= b_high;
                 }
                 else if (function == 2) {
-                    al &= b_low;
+                    _al &= b_low;
 
                     if (word)
-                        ah &= b_high;
+                        _ah &= b_high;
                 }
                 else if (function == 3) {
-                    al ^= b_low;
+                    _al ^= b_low;
 
                     if (word)
-                        ah ^= b_high;
+                        _ah ^= b_high;
                 }
                 else {
                     Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
                 }
 
                 set_flag_o(false);
-                set_flag_s((word ? ah & 0x8000 : al & 0x80) != 0);
-                set_flag_z(word ? ah == 0 && al == 0 : al == 0);
+                set_flag_s((word ? _ah & 0x8000 : _al & 0x80) != 0);
+                set_flag_z(word ? _ah == 0 && _al == 0 : _al == 0);
                 set_flag_a(false);
 
                 if (word)
-                    set_flag_p(ah);  // TODO verify
+                    set_flag_p(_ah);  // TODO verify
                 else
-                    set_flag_p(al);
+                    set_flag_p(_al);
             }
             else if (opcode == 0xea) {  // JMP far ptr
                 byte o0 = get_pc_byte();
@@ -613,10 +613,10 @@ namespace DotXT
                 byte s0 = get_pc_byte();
                 byte s1 = get_pc_byte();
 
-                cs = (ushort)((s1 << 8) | s0);
-                ip = (ushort)((o1 << 8) | o0);
+                _cs = (ushort)((s1 << 8) | s0);
+                _ip = (ushort)((o1 << 8) | o0);
 
-                Console.WriteLine($"{prefix_str} JMP ${cs:X} ${ip:X}: ${cs * 16 + ip:X}");
+                Console.WriteLine($"{prefix_str} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
             }
             else if (opcode == 0xfa) {  // CLI
                 clear_flag_bit(9);  // IF
@@ -683,20 +683,20 @@ namespace DotXT
                 if (word)
                     val |= (ushort)(get_pc_byte() << 8);
 
-                string to_name = put_register(reg, word, val);
+                string toName = put_register(reg, word, val);
 
-                Console.WriteLine($"{prefix_str} MOV {to_name},${val:X}");
+                Console.WriteLine($"{prefix_str} MOV {toName},${val:X}");
             }
             else if (opcode == 0x9e) {  // SAHF
-                ushort keep = (ushort)(flags & 0b1111111100101010);
-                ushort add_ = (ushort)(ah & 0b11010101);
+                ushort keep = (ushort)(_flags & 0b1111111100101010);
+                ushort add_ = (ushort)(_ah & 0b11010101);
 
-                flags = (ushort)(keep | add_);
+                _flags = (ushort)(keep | add_);
 
                 Console.WriteLine($"{prefix_str} SAHF (set to {get_flags_as_str()})");
             }
             else if (opcode == 0x9f) {  // LAHF
-                ah = (byte)flags;
+                _ah = (byte)_flags;
 
                 Console.WriteLine($"{prefix_str} LAHF");
             }
@@ -747,7 +747,7 @@ namespace DotXT
                     count_name = "1";
                 }
                 else if (count_spec == 2 || count_spec == 3) {
-                    count = cl;
+                    count = _cl;
                     count_name = "CL";
                 }
 
@@ -879,26 +879,26 @@ namespace DotXT
                     Console.WriteLine($"{prefix_str} Opcode {opcode:x2} not implemented");
                 }
 
-                ushort new_addr = (ushort)(ip + (sbyte)to);
+                ushort new_addr = (ushort)(_ip + (sbyte)to);
 
                 if (state)
-                    ip = new_addr;
+                    _ip = new_addr;
 
                 Console.WriteLine($"{prefix_str} {name} {to} ({new_addr:X4})");
             }
             else if (opcode == 0xe2) {  // LOOP
                 byte   to = get_pc_byte();
 
-                (ushort CX, string dummy) = get_register(1, true);
+                (ushort cx, string dummy) = get_register(1, true);
 
-                CX--;
+                cx--;
 
-                put_register(1, true, CX);
+                put_register(1, true, cx);
 
-                ushort new_addr = (ushort)(ip + (sbyte)to);
+                ushort new_addr = (ushort)(_ip + (sbyte)to);
 
-                if (CX > 0)
-                    ip = new_addr;
+                if (cx > 0)
+                    _ip = new_addr;
 
                 Console.WriteLine($"{prefix_str} LOOP {to} ({new_addr:X4})");
             }
@@ -912,17 +912,17 @@ namespace DotXT
             else if (opcode == 0xee) {  // OUT
                 // TODO
 
-                Console.WriteLine($"{prefix_str} OUT ${dh:X2}{dl:X2},AL");
+                Console.WriteLine($"{prefix_str} OUT ${_dh:X2}{_dl:X2},AL");
             }
             else if (opcode == 0xeb) {  // JMP
                 byte to = get_pc_byte();
 
-                ip = (ushort)(ip + (sbyte)to);
+                _ip = (ushort)(_ip + (sbyte)to);
 
-                Console.WriteLine($"{prefix_str} JP ${ip:X4}");
+                Console.WriteLine($"{prefix_str} JP ${_ip:X4}");
             }
             else if (opcode == 0xf4) {  // HLT
-                ip--;
+                _ip--;
 
                 Console.WriteLine($"{prefix_str} HLT");
             }
