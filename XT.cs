@@ -75,7 +75,7 @@ namespace DotXT
 
         private ushort _flags;
 
-        private const uint mem_mask = 0x00ffffff;
+        private const uint MemMask = 0x00ffffff;
 
         private readonly Bus _b = new();
 
@@ -87,7 +87,7 @@ namespace DotXT
 
         public byte get_pc_byte()
         {
-            uint addr = (uint)(_cs * 16 + _ip++) & mem_mask;
+            uint addr = (uint)(_cs * 16 + _ip++) & MemMask;
 
             byte val  = _b.read_byte(addr);
 
@@ -468,25 +468,25 @@ namespace DotXT
 
         private string get_flags_as_str()
         {
-            string out_ = String.Empty;
+            string @out = String.Empty;
 
-            out_ += get_flag_o() ? "o" : "-";
-            out_ += get_flag_d() ? "d" : "-";
-            out_ += get_flag_s() ? "s" : "-";
-            out_ += get_flag_z() ? "z" : "-";
-            out_ += get_flag_c() ? "c" : "-";
+            @out += get_flag_o() ? "o" : "-";
+            @out += get_flag_d() ? "d" : "-";
+            @out += get_flag_s() ? "s" : "-";
+            @out += get_flag_z() ? "z" : "-";
+            @out += get_flag_c() ? "c" : "-";
 
-            return out_;
+            return @out;
         }
 
-        public void tick()
+        public void Tick()
         {
-            uint addr   = (uint)(_cs * 16 + _ip) & mem_mask;
+            uint addr   = (uint)(_cs * 16 + _ip) & MemMask;
             byte opcode = get_pc_byte();
 
-            string flag_str = get_flags_as_str();
+            string flagStr = get_flags_as_str();
 
-            string prefix_str = $"{flag_str} {addr:X4} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4}";
+            string prefixStr = $"{flagStr} {addr:X4} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4}";
 
             if (opcode == 0xe9) {  // JMP np
                 byte o0 = get_pc_byte();
@@ -496,15 +496,15 @@ namespace DotXT
 
                 _ip = (ushort)(_ip + offset);
 
-                Console.WriteLine($"{prefix_str} JMP {_ip:X}");
+                Console.WriteLine($"{prefixStr} JMP {_ip:X}");
             }
             else if (opcode == 0xc3) {  // RET
-                byte low  = _b.read_byte((uint)(_ss * 16 + _sp++) & mem_mask);
-                byte high = _b.read_byte((uint)(_ss * 16 + _sp++) & mem_mask);
+                byte low  = _b.read_byte((uint)(_ss * 16 + _sp++) & MemMask);
+                byte high = _b.read_byte((uint)(_ss * 16 + _sp++) & MemMask);
 
                 _ip = (ushort)((high << 8) + low);
 
-                Console.WriteLine($"{prefix_str} RET");
+                Console.WriteLine($"{prefixStr} RET");
             }
             else if (opcode == 0x02 || opcode == 0x03) {
                 bool word = (opcode & 1) == 1;
@@ -527,7 +527,7 @@ namespace DotXT
                 set_flag_a(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
                 set_flag_p((byte)result);
 
-                Console.WriteLine($"{prefix_str} ADD {name2},{name1}");
+                Console.WriteLine($"{prefixStr} ADD {name2},{name1}");
             }
             else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b) {
                 bool word = (opcode & 1) == 1;
@@ -551,7 +551,7 @@ namespace DotXT
                 else if (function == 3)
                     result = (ushort)(r2 ^ r1);
                 else
-                    Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
+                    Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
 
                 // if (opcode == 0x0b || opcode == 0x33)
                 //     Console.WriteLine($"r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
@@ -565,36 +565,36 @@ namespace DotXT
 
                 set_flag_p((byte)result);  // TODO verify
 
-                Console.WriteLine($"{prefix_str} XOR {name1},{name2}");
+                Console.WriteLine($"{prefixStr} XOR {name1},{name2}");
             }
             else if ((opcode == 0x34 || opcode == 0x35) || (opcode == 0x24 || opcode == 0x25) || (opcode == 0x0c || opcode == 0x0d)) {
                 bool word = (opcode & 1) == 1;
 
-                byte b_low  = get_pc_byte();
-                byte b_high = word ? get_pc_byte() : (byte)0;
+                byte bLow  = get_pc_byte();
+                byte bHigh = word ? get_pc_byte() : (byte)0;
 
                 int function = opcode >> 4;
 
                 if (function == 0) {
-                    _al |= b_low;
+                    _al |= bLow;
 
                     if (word)
-                        _ah |= b_high;
+                        _ah |= bHigh;
                 }
                 else if (function == 2) {
-                    _al &= b_low;
+                    _al &= bLow;
 
                     if (word)
-                        _ah &= b_high;
+                        _ah &= bHigh;
                 }
                 else if (function == 3) {
-                    _al ^= b_low;
+                    _al ^= bLow;
 
                     if (word)
-                        _ah ^= b_high;
+                        _ah ^= bHigh;
                 }
                 else {
-                    Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
+                    Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
                 }
 
                 set_flag_o(false);
@@ -616,12 +616,12 @@ namespace DotXT
                 _cs = (ushort)((s1 << 8) | s0);
                 _ip = (ushort)((o1 << 8) | o0);
 
-                Console.WriteLine($"{prefix_str} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
+                Console.WriteLine($"{prefixStr} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
             }
             else if (opcode == 0xfa) {  // CLI
                 clear_flag_bit(9);  // IF
 
-                Console.WriteLine($"{prefix_str} CLI");
+                Console.WriteLine($"{prefixStr} CLI");
             }
             else if ((opcode & 0xf8) == 0xb0) {  // MOV reg,ib
                 int  reg  = opcode & 0x07;
@@ -630,7 +630,7 @@ namespace DotXT
 
                 string name = put_register(reg, false, v);
 
-                Console.WriteLine($"{prefix_str} MOV {name},${v:X}");
+                Console.WriteLine($"{prefixStr} MOV {name},${v:X}");
             }
             else if (((opcode & 0b11111100) == 0b10001000) || opcode == 0b10001110 || ((opcode & 0b11111110) == 0b11000110) || ((opcode & 0b11111100) == 0b10100000) || opcode == 0x8c) {
                 bool dir  = (opcode & 2) == 2;  // direction
@@ -649,29 +649,29 @@ namespace DotXT
                 // Console.WriteLine($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}");
 
                 if (dir) {  // to 'REG' from 'rm'
-                    (ushort v, string from_name) = get_register_mem(rm, mode, word);
+                    (ushort v, string fromName) = get_register_mem(rm, mode, word);
 
-                    string to_name = "error";
+                    string toName = "error";
 
                     if (sreg)
-                        to_name = put_sregister(reg, v);
+                        toName = put_sregister(reg, v);
                     else
-                        to_name = put_register(reg, word, v);
+                        toName = put_register(reg, word, v);
 
-                    Console.WriteLine($"{prefix_str} MOV {to_name},{from_name}");
+                    Console.WriteLine($"{prefixStr} MOV {toName},{fromName}");
                 }
                 else {  // from 'REG' to 'rm'
                     ushort v = 0;
-                    string from_name = "error";
+                    string fromName = "error";
 
                     if (sreg)
-                        (v, from_name) = get_sregister(reg);
+                        (v, fromName) = get_sregister(reg);
                     else
-                        (v, from_name) = get_register(reg, word);
+                        (v, fromName) = get_register(reg, word);
 
-                    string to_name = put_register_mem(rm, mode, word, v);
+                    string toName = put_register_mem(rm, mode, word, v);
 
-                    Console.WriteLine($"{prefix_str} MOV {to_name},{from_name}");
+                    Console.WriteLine($"{prefixStr} MOV {toName},{fromName}");
                 }
             }
             else if ((opcode & 0xf8) == 0xb8) {  // MOV immed to reg
@@ -685,34 +685,34 @@ namespace DotXT
 
                 string toName = put_register(reg, word, val);
 
-                Console.WriteLine($"{prefix_str} MOV {toName},${val:X}");
+                Console.WriteLine($"{prefixStr} MOV {toName},${val:X}");
             }
             else if (opcode == 0x9e) {  // SAHF
                 ushort keep = (ushort)(_flags & 0b1111111100101010);
-                ushort add_ = (ushort)(_ah & 0b11010101);
+                ushort add = (ushort)(_ah & 0b11010101);
 
-                _flags = (ushort)(keep | add_);
+                _flags = (ushort)(keep | add);
 
-                Console.WriteLine($"{prefix_str} SAHF (set to {get_flags_as_str()})");
+                Console.WriteLine($"{prefixStr} SAHF (set to {get_flags_as_str()})");
             }
             else if (opcode == 0x9f) {  // LAHF
                 _ah = (byte)_flags;
 
-                Console.WriteLine($"{prefix_str} LAHF");
+                Console.WriteLine($"{prefixStr} LAHF");
             }
             else if (opcode is >= 0x40 and <= 0x4f) {  // INC/DECw
                 int reg = (opcode - 0x40) & 7;
 
                 (ushort v, string name) = get_register(reg, true);
 
-                bool is_dec = opcode >= 0x48;
+                bool isDec = opcode >= 0x48;
 
-                if (is_dec)
+                if (isDec)
                     v--;
                 else
                     v++;
 
-                if (is_dec)
+                if (isDec)
                     set_flag_o(v == 0x7fff);
                 else
                     set_flag_o(v == 0x8000);
@@ -723,10 +723,10 @@ namespace DotXT
 
                 put_register(reg, true, v);
 
-                if (is_dec)
-                    Console.WriteLine($"{prefix_str} DEC {name}");
+                if (isDec)
+                    Console.WriteLine($"{prefixStr} DEC {name}");
                 else
-                    Console.WriteLine($"{prefix_str} INC {name}");
+                    Console.WriteLine($"{prefixStr} INC {name}");
             }
             else if ((opcode & 0xf8) == 0xd0) {  // RCR
                 bool word = (opcode & 1) == 1;
@@ -735,70 +735,70 @@ namespace DotXT
                 int  mod  = o1 >> 6;
                 int  reg1 = o1 & 7;
 
-                (ushort v1, string v_name) = get_register_mem(reg1, mod, word);
+                (ushort v1, string vName) = get_register_mem(reg1, mod, word);
 
-                int  count_spec = opcode & 3;
+                int  countSpec = opcode & 3;
                 int  count = -1;
 
-                string count_name = "error";
+                string countName = "error";
 
-                if (count_spec == 0 || count_spec == 1) {
+                if (countSpec == 0 || countSpec == 1) {
                     count = 1;
-                    count_name = "1";
+                    countName = "1";
                 }
-                else if (count_spec == 2 || count_spec == 3) {
+                else if (countSpec == 2 || countSpec == 3) {
                     count = _cl;
-                    count_name = "CL";
+                    countName = "CL";
                 }
 
-                bool old_sign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
+                bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
                 int mode = (o1 >> 3) & 7;
 
                 if (mode == 3) {  // RCR
                     for(int i=0; i<count; i++) {
-                        bool new_carry = (v1 & 1) == 1;
+                        bool newCarry = (v1 & 1) == 1;
                         v1 >>= 1;
 
-                        bool old_carry = get_flag_c();
+                        bool oldCarry = get_flag_c();
 
-                        if (old_carry)
+                        if (oldCarry)
                             v1 |= (ushort)(word ? 0x8000 : 0x80);
 
-                        set_flag_c(new_carry);
+                        set_flag_c(newCarry);
                     }
 
-                    Console.WriteLine($"{prefix_str} RCR {v_name},{count_name}");
+                    Console.WriteLine($"{prefixStr} RCR {vName},{countName}");
                 }
                 else if (mode == 4) {  // SHL
                     for(int i=0; i<count; i++) {
-                        bool new_carry = (v1 & 0x80) == 0x80;
+                        bool newCarry = (v1 & 0x80) == 0x80;
 
                         v1 <<= 1;
 
-                        set_flag_c(new_carry);
+                        set_flag_c(newCarry);
                     }
 
-                    Console.WriteLine($"{prefix_str} SHL {v_name},{count_name}");
+                    Console.WriteLine($"{prefixStr} SHL {vName},{countName}");
                 }
                 else if (mode == 5) {  // SHR
                     for(int i=0; i<count; i++) {
-                        bool new_carry = (v1 & 1) == 1;
+                        bool newCarry = (v1 & 1) == 1;
 
                         v1 >>= 1;
 
-                        set_flag_c(new_carry);
+                        set_flag_c(newCarry);
                     }
 
-                    Console.WriteLine($"{prefix_str} SHR {v_name},{count_name}");
+                    Console.WriteLine($"{prefixStr} SHR {vName},{countName}");
                 }
                 else {
-                    Console.WriteLine($"{prefix_str} RCR/SHR mode {mode} not implemented");
+                    Console.WriteLine($"{prefixStr} RCR/SHR mode {mode} not implemented");
                 }
 
-                bool new_sign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
+                bool newSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
-                set_flag_o(old_sign != new_sign);
+                set_flag_o(oldSign != newSign);
 
                 if (!word)
                     v1 &= 0xff;
@@ -876,15 +876,15 @@ namespace DotXT
                     name  = "JNLE";
                 }
                 else {
-                    Console.WriteLine($"{prefix_str} Opcode {opcode:x2} not implemented");
+                    Console.WriteLine($"{prefixStr} Opcode {opcode:x2} not implemented");
                 }
 
-                ushort new_addr = (ushort)(_ip + (sbyte)to);
+                ushort newAddr = (ushort)(_ip + (sbyte)to);
 
                 if (state)
-                    _ip = new_addr;
+                    _ip = newAddr;
 
-                Console.WriteLine($"{prefix_str} {name} {to} ({new_addr:X4})");
+                Console.WriteLine($"{prefixStr} {name} {to} ({newAddr:X4})");
             }
             else if (opcode == 0xe2) {  // LOOP
                 byte   to = get_pc_byte();
@@ -895,51 +895,51 @@ namespace DotXT
 
                 put_register(1, true, cx);
 
-                ushort new_addr = (ushort)(_ip + (sbyte)to);
+                ushort newAddr = (ushort)(_ip + (sbyte)to);
 
                 if (cx > 0)
-                    _ip = new_addr;
+                    _ip = newAddr;
 
-                Console.WriteLine($"{prefix_str} LOOP {to} ({new_addr:X4})");
+                Console.WriteLine($"{prefixStr} LOOP {to} ({newAddr:X4})");
             }
             else if (opcode == 0xe6) {  // OUT
                 byte to = get_pc_byte();
 
                 // TODO
 
-                Console.WriteLine($"{prefix_str} OUT ${to:X2},AL");
+                Console.WriteLine($"{prefixStr} OUT ${to:X2},AL");
             }
             else if (opcode == 0xee) {  // OUT
                 // TODO
 
-                Console.WriteLine($"{prefix_str} OUT ${_dh:X2}{_dl:X2},AL");
+                Console.WriteLine($"{prefixStr} OUT ${_dh:X2}{_dl:X2},AL");
             }
             else if (opcode == 0xeb) {  // JMP
                 byte to = get_pc_byte();
 
                 _ip = (ushort)(_ip + (sbyte)to);
 
-                Console.WriteLine($"{prefix_str} JP ${_ip:X4}");
+                Console.WriteLine($"{prefixStr} JP ${_ip:X4}");
             }
             else if (opcode == 0xf4) {  // HLT
                 _ip--;
 
-                Console.WriteLine($"{prefix_str} HLT");
+                Console.WriteLine($"{prefixStr} HLT");
             }
             else if (opcode == 0xf8) {  // CLC
                 set_flag_c(false);
 
-                Console.WriteLine($"{prefix_str} CLC");
+                Console.WriteLine($"{prefixStr} CLC");
             }
             else if (opcode == 0xf9) {  // STC
                 set_flag_c(true);
 
-                Console.WriteLine($"{prefix_str} STC");
+                Console.WriteLine($"{prefixStr} STC");
             }
             else if (opcode == 0xfc) {  // CLD
                 set_flag_d(false);
 
-                Console.WriteLine($"{prefix_str} CLD");
+                Console.WriteLine($"{prefixStr} CLD");
             }
             else if (opcode == 0xfe || opcode == 0xff) {  // DEC and others
                 bool word = (opcode & 1) == 1;
@@ -958,17 +958,17 @@ namespace DotXT
 
                     set_flag_o(v == 0x8000);
 
-                    Console.WriteLine($"{prefix_str} INC {name}");
+                    Console.WriteLine($"{prefixStr} INC {name}");
                 }
                 else if (function == 1) {
                     v--;
 
                     set_flag_o(v == 0x7fff);
 
-                    Console.WriteLine($"{prefix_str} DEC {name}");
+                    Console.WriteLine($"{prefixStr} DEC {name}");
                 }
                 else {
-                    Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
+                    Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
                 }
 
                 set_flag_s((v & 0x8000) == 0x8000);
@@ -979,7 +979,7 @@ namespace DotXT
                 put_register_mem(reg, mod, word, v);
             }
             else {
-                Console.WriteLine($"{prefix_str} Opcode {opcode:x} not implemented");
+                Console.WriteLine($"{prefixStr} Opcode {opcode:x} not implemented");
             }
         }
     }
