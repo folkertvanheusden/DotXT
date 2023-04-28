@@ -32,10 +32,10 @@ namespace DotXT
 
     internal class Bus
     {
-        private readonly Memory _m = new Memory();
+        private readonly Memory _m = new();
 
-        private readonly Rom _bios  = new Rom("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
-        private readonly Rom _basic = new Rom("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
+        private readonly Rom _bios  = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
+        private readonly Rom _basic = new("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
 
         public byte read_byte(uint addr)
         {
@@ -77,7 +77,7 @@ namespace DotXT
 
         private const uint mem_mask = 0x00ffffff;
 
-        private readonly Bus _b = new Bus();
+        private readonly Bus _b = new();
 
         public P8086()
         {
