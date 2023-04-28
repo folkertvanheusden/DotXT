@@ -4,14 +4,14 @@ namespace DotXT
     {
         private readonly byte[] _m = new byte[1024 * 1024];  // 1MB of RAM
 
-        public byte read_byte(uint addr)
+        public byte read_byte(uint address)
         {
-            return _m[addr];
+            return _m[address];
         }
 
-        public void write_byte(uint addr, byte v)
+        public void write_byte(uint address, byte v)
         {
-            _m[addr] = v;
+            _m[address] = v;
         }
     }
 
@@ -24,9 +24,9 @@ namespace DotXT
             _contents = File.ReadAllBytes(filename);
         }
 
-        public byte read_byte(uint addr)
+        public byte read_byte(uint address)
         {
-            return _contents[addr];
+            return _contents[address];
         }
     }
 
@@ -37,20 +37,20 @@ namespace DotXT
         private readonly Rom _bios  = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
         private readonly Rom _basic = new("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
 
-        public byte read_byte(uint addr)
+        public byte read_byte(uint address)
         {
-            if (addr is >= 0x000f8000 and <= 0x000fffff)
-                return _bios.read_byte(addr - 0x000f8000);
+            if (address is >= 0x000f8000 and <= 0x000fffff)
+                return _bios.read_byte(address - 0x000f8000);
 
-            if (addr is >= 0x000f0000 and <= 0x000f7fff)
-                return _basic.read_byte(addr - 0x000f0000);
+            if (address is >= 0x000f0000 and <= 0x000f7fff)
+                return _basic.read_byte(address - 0x000f0000);
 
-            return _m.read_byte(addr);
+            return _m.read_byte(address);
         }
 
-        public void write_byte(uint addr, byte v)
+        public void write_byte(uint address, byte v)
         {
-            _m.write_byte(addr, v);
+            _m.write_byte(address, v);
         }
     }
 
@@ -87,11 +87,11 @@ namespace DotXT
 
         public byte get_pc_byte()
         {
-            uint addr = (uint)(_cs * 16 + _ip++) & MemMask;
+            uint address = (uint)(_cs * 16 + _ip++) & MemMask;
 
-            byte val  = _b.read_byte(addr);
+            byte val  = _b.read_byte(address);
 
-            // Console.WriteLine($"{addr:X} {val:X}");
+            // Console.WriteLine($"{address:X} {val:X}");
 
             return val;
         }
@@ -481,12 +481,12 @@ namespace DotXT
 
         public void Tick()
         {
-            uint addr   = (uint)(_cs * 16 + _ip) & MemMask;
+            uint address   = (uint)(_cs * 16 + _ip) & MemMask;
             byte opcode = get_pc_byte();
 
             string flagStr = get_flags_as_str();
 
-            string prefixStr = $"{flagStr} {addr:X4} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4}";
+            string prefixStr = $"{flagStr} {address:X4} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4}";
 
             if (opcode == 0xe9) {  // JMP np
                 byte o0 = get_pc_byte();
@@ -879,12 +879,12 @@ namespace DotXT
                     Console.WriteLine($"{prefixStr} Opcode {opcode:x2} not implemented");
                 }
 
-                ushort newAddr = (ushort)(_ip + (sbyte)to);
+                ushort newaddressess = (ushort)(_ip + (sbyte)to);
 
                 if (state)
-                    _ip = newAddr;
+                    _ip = newaddressess;
 
-                Console.WriteLine($"{prefixStr} {name} {to} ({newAddr:X4})");
+                Console.WriteLine($"{prefixStr} {name} {to} ({newaddressess:X4})");
             }
             else if (opcode == 0xe2) {  // LOOP
                 byte   to = get_pc_byte();
@@ -895,12 +895,12 @@ namespace DotXT
 
                 put_register(1, true, cx);
 
-                ushort newAddr = (ushort)(_ip + (sbyte)to);
+                ushort newaddressess = (ushort)(_ip + (sbyte)to);
 
                 if (cx > 0)
-                    _ip = newAddr;
+                    _ip = newaddressess;
 
-                Console.WriteLine($"{prefixStr} LOOP {to} ({newAddr:X4})");
+                Console.WriteLine($"{prefixStr} LOOP {to} ({newaddressess:X4})");
             }
             else if (opcode == 0xe6) {  // OUT
                 byte to = get_pc_byte();
