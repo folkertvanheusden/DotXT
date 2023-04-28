@@ -1,8 +1,8 @@
 namespace DotXT
 {
-    class Memory
+    internal class Memory
     {
-        byte[] m = new byte[1024 * 1024];  // 1MB of RAM
+        private readonly byte[] m = new byte[1024 * 1024];  // 1MB of RAM
 
         public byte read_byte(uint addr)
         {
@@ -15,9 +15,9 @@ namespace DotXT
         }
     }
 
-    class Rom
+    internal class Rom
     {
-        byte[] contents;
+        private readonly byte[] contents;
 
         public Rom(string filename)
         {
@@ -30,12 +30,12 @@ namespace DotXT
         }
     }
 
-    class Bus
+    internal class Bus
     {
-        Memory m = new Memory();
+        private readonly Memory m = new Memory();
 
-        Rom bios  = new Rom("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
-        Rom basic = new Rom("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
+        private readonly Rom bios  = new Rom("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
+        private readonly Rom basic = new Rom("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
 
         public byte read_byte(uint addr)
         {
@@ -54,30 +54,30 @@ namespace DotXT
         }
     }
 
-    class p8086
+    internal class p8086
     {
-        byte ah, al;
-        byte bh, bl;
-        byte ch, cl;
-        byte dh, dl;
+        private byte ah, al;
+        private byte bh, bl;
+        private byte ch, cl;
+        private byte dh, dl;
 
-        ushort si;
-        ushort di;
-        ushort bp;
-        ushort sp;
+        private ushort si;
+        private ushort di;
+        private ushort bp;
+        private ushort sp;
 
-        ushort ip;
+        private ushort ip;
 
-        ushort cs;
-        ushort ds;
-        ushort es;
-        ushort ss;
+        private ushort cs;
+        private ushort ds;
+        private ushort es;
+        private ushort ss;
 
-        ushort flags;
+        private ushort flags;
 
-        const uint mem_mask = 0x00ffffff;
+        private const uint mem_mask = 0x00ffffff;
 
-        Bus b = new Bus();
+        private readonly Bus b = new Bus();
 
         public p8086()
         {
@@ -95,8 +95,8 @@ namespace DotXT
 
             return val;
         }
-  
-        (ushort, string) get_register(int reg, bool w)
+
+        private (ushort, string) get_register(int reg, bool w)
         {
             if (w) {
                 if (reg == 0)
@@ -139,8 +139,8 @@ namespace DotXT
 
             return (0, "error");
         }
-  
-        (ushort, string) get_sregister(int reg)
+
+        private (ushort, string) get_sregister(int reg)
         {
             if (reg == 0b000)
                 return (es, "ES");
@@ -156,7 +156,7 @@ namespace DotXT
             return (0, "error");
         }
 
-        (ushort, string) get_double_reg(int reg)
+        private (ushort, string) get_double_reg(int reg)
         {
             ushort a    = 0;
             string name = "error";
@@ -197,7 +197,7 @@ namespace DotXT
             return (a, name);
         }
 
-        (ushort, string) get_register_mem(int reg, int mod, bool w)
+        private (ushort, string) get_register_mem(int reg, int mod, bool w)
         {
             if (mod == 0) {
                 (ushort a, string name) = get_double_reg(reg);
@@ -218,7 +218,7 @@ namespace DotXT
             return (0, "error");
         }
 
-        string put_register(int reg, bool w, ushort val)
+        private string put_register(int reg, bool w, ushort val)
         {
             if (reg == 0) {
                 if (w) {
@@ -324,8 +324,8 @@ namespace DotXT
 
             return "error";
         }
-  
-        string put_sregister(int reg, ushort v)
+
+        private string put_sregister(int reg, ushort v)
         {
             if (reg == 0b000) {
                 es = v;
@@ -349,7 +349,7 @@ namespace DotXT
             return "error";
         }
 
-        string put_register_mem(int reg, int mod, bool w, ushort val)
+        private string put_register_mem(int reg, int mod, bool w, ushort val)
         {
             if (mod == 0) {
                 (ushort a, string name) = get_double_reg(reg);
@@ -370,17 +370,17 @@ namespace DotXT
             return "error";
         }
 
-        void clear_flag_bit(int bit)
+        private void clear_flag_bit(int bit)
         {
             flags &= (ushort)(ushort.MaxValue ^ (1 << bit));
         }
 
-        void set_flag_bit(int bit)
+        private void set_flag_bit(int bit)
         {
             flags |= (ushort)(1 << bit);
         }
 
-        void set_flag(int bit, bool state)
+        private void set_flag(int bit, bool state)
         {
             if (state)
                 set_flag_bit(bit);
@@ -388,22 +388,22 @@ namespace DotXT
                 clear_flag_bit(bit);
         }
 
-        bool get_flag(int bit)
+        private bool get_flag(int bit)
         {
             return (flags & (1 << bit)) != 0;
         }
 
-        void set_flag_c(bool state)
+        private void set_flag_c(bool state)
         {
             set_flag(0, state);
         }
 
-        bool get_flag_c()
+        private bool get_flag_c()
         {
             return get_flag(0);
         }
 
-        void set_flag_p(byte v)
+        private void set_flag_p(byte v)
         {
             int count = 0;
 
@@ -416,57 +416,57 @@ namespace DotXT
             set_flag(2, (count & 1) == 0);
         }
 
-        bool get_flag_p()
+        private bool get_flag_p()
         {
             return get_flag(2);
         }
 
-        void set_flag_a(bool state)
+        private void set_flag_a(bool state)
         {
             set_flag(4, state);
         }
 
-        void set_flag_z(bool state)
+        private void set_flag_z(bool state)
         {
             set_flag(6, state);
         }
 
-        bool get_flag_z()
+        private bool get_flag_z()
         {
             return get_flag(6);
         }
 
-        void set_flag_s(bool state)
+        private void set_flag_s(bool state)
         {
             set_flag(7, state);
         }
 
-        bool get_flag_s()
+        private bool get_flag_s()
         {
             return get_flag(7);
         }
 
-        void set_flag_d(bool state)
+        private void set_flag_d(bool state)
         {
             set_flag(10, state);
         }
 
-        bool get_flag_d()
+        private bool get_flag_d()
         {
             return get_flag(10);
         }
 
-        void set_flag_o(bool state)
+        private void set_flag_o(bool state)
         {
             set_flag(11, state);
         }
 
-        bool get_flag_o()
+        private bool get_flag_o()
         {
             return get_flag(11);
         }
 
-        string get_flags_as_str()
+        private string get_flags_as_str()
         {
             string out_ = String.Empty;
 
