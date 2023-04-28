@@ -1,10 +1,10 @@
 namespace DotXT
 {
-    class memory
+    class Memory
     {
         byte[] m = new byte[1024 * 1024];  // 1MB of RAM
 
-        public memory()
+        public Memory()
         {
         }
 
@@ -19,11 +19,11 @@ namespace DotXT
         }
     }
 
-    class rom
+    class Rom
     {
         byte[] contents;
 
-        public rom(string filename)
+        public Rom(string filename)
         {
             contents = File.ReadAllBytes(filename);
         }
@@ -34,14 +34,14 @@ namespace DotXT
         }
     }
 
-    class bus
+    class Bus
     {
-        memory m = new memory();
+        Memory m = new Memory();
 
-        rom bios  = new rom("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
-        rom basic = new rom("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
+        Rom bios  = new Rom("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
+        Rom basic = new Rom("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
 
-        public bus()
+        public Bus()
         {
         }
 
@@ -85,7 +85,7 @@ namespace DotXT
 
         const uint mem_mask = (uint)0x00ffffff;
 
-        bus b = new bus();
+        Bus b = new Bus();
 
         public p8086()
         {
