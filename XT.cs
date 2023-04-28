@@ -500,8 +500,8 @@ namespace XT
                 Console.WriteLine($"{prefix_str} JMP {ip:X}");
             }
             else if (opcode == 0xc3) {  // RET
-                byte low  = b.read_byte(sp++);
-                byte high = b.read_byte(sp++);
+                byte low  = b.read_byte((uint)(ss * 16 + sp++) & mem_mask);
+                byte high = b.read_byte((uint)(ss * 16 + sp++) & mem_mask);
 
                 ip = (ushort)((high << 8) + low);
 
