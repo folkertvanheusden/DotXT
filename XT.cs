@@ -446,6 +446,8 @@ namespace XT
                     result = (ushort)(r1 & r2);
                 else if (function == 3)
                     result = (ushort)(r1 ^ r2);
+                else
+                    Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
 
                 // if (opcode == 0x0b || opcode == 0x33)
                 //     Console.WriteLine($"r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
@@ -486,6 +488,9 @@ namespace XT
 
                     if (word)
                         ah ^= b_high;
+                }
+                else {
+                    Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
                 }
 
                 set_flag_o(false);
@@ -799,6 +804,43 @@ namespace XT
                 set_flag_c(true);
 
                 Console.WriteLine($"{prefix_str} STC");
+            }
+            else if (opcode == 0xfe || opcode == 0xff) {  // DEC and others
+                bool word = (opcode & 1) == 1;
+
+                byte o1   = get_pc_byte();
+
+                int  mod  = o1 >> 6;
+                int  reg  = o1 & 7;
+
+                (ushort v, string name) = get_register_mem(reg, mod, word);
+
+                int function = (o1 >> 3) & 7;
+
+                if (function == 0) {
+                    v++;
+
+                    set_flag_o(v == 0x8000);
+
+                    Console.WriteLine($"{prefix_str} INC {name}");
+                }
+                else if (function == 1) {
+                    v--;
+
+                    set_flag_o(v == 0x7fff);
+
+                    Console.WriteLine($"{prefix_str} DEC {name}");
+                }
+                else {
+                    Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
+                }
+
+                set_flag_s((v & 0x8000) == 0x8000);
+                set_flag_z(v == 0);
+                set_flag_a((v & 15) == 0);
+                set_flag_p((byte)v);
+
+                put_register_mem(reg, mod, word, v);
             }
             else {
                 Console.WriteLine($"{prefix_str} Opcode {opcode:x} not implemented");
