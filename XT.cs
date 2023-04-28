@@ -1,987 +1,1108 @@
-namespace XT
+namespace DotXT;
+
+internal class Memory
 {
-    class memory
+    private readonly byte[] _m = new byte[1024 * 1024]; // 1MB of RAM
+
+    public byte ReadByte(uint address)
     {
-        byte[] m = new byte[1024 * 1024];  // 1MB of RAM
-
-        public memory()
-        {
-        }
-
-        public byte read_byte(uint addr)
-        {
-            return m[addr];
-        }
-
-        public void write_byte(uint addr, byte v)
-        {
-            m[addr] = v;
-        }
+        return _m[address];
     }
 
-    class rom
+    public void WriteByte(uint address, byte v)
     {
-        byte[] contents;
+        _m[address] = v;
+    }
+}
 
-        public rom(string filename)
-        {
-            contents = File.ReadAllBytes(filename);
-        }
+internal class Rom
+{
+    private readonly byte[] _contents;
 
-        public byte read_byte(uint addr)
-        {
-            return contents[addr];
-        }
+    public Rom(string filename)
+    {
+        _contents = File.ReadAllBytes(filename);
     }
 
-    class bus
+    public byte ReadByte(uint address)
     {
-        memory m = new memory();
+        return _contents[address];
+    }
+}
 
-        rom bios  = new rom("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
-        rom basic = new rom("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
+internal class Bus
+{
+    private readonly Memory _m = new();
 
-        public bus()
-        {
-        }
+    private readonly Rom _bios = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
+    private readonly Rom _basic = new("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
 
-        public byte read_byte(uint addr)
-        {
-            if (addr >= 0x000f8000 && addr <= 0x000fffff)
-                return bios.read_byte(addr - 0x000f8000);
+    public byte read_byte(uint address)
+    {
+        if (address is >= 0x000f8000 and <= 0x000fffff)
+            return _bios.ReadByte(address - 0x000f8000);
 
-            if (addr >= 0x000f0000 && addr <= 0x000f7fff)
-                return basic.read_byte(addr - 0x000f0000);
+        if (address is >= 0x000f0000 and <= 0x000f7fff)
+            return _basic.ReadByte(address - 0x000f0000);
 
-            return m.read_byte(addr);
-        }
-
-        public void write_byte(uint addr, byte v)
-        {
-            m.write_byte(addr, v);
-        }
+        return _m.ReadByte(address);
     }
 
-    class p8086
+    public void write_byte(uint address, byte v)
     {
-        byte ah = 0, al = 0;
-        byte bh = 0, bl = 0;
-        byte ch = 0, cl = 0;
-        byte dh = 0, dl = 0;
+        _m.WriteByte(address, v);
+    }
+}
 
-        ushort si = 0;
-        ushort di = 0;
-        ushort bp = 0;
-        ushort sp = 0;
+internal class P8086
+{
+    private byte _ah, _al;
+    private byte _bh, _bl;
+    private byte _ch, _cl;
+    private byte _dh, _dl;
 
-        ushort ip = 0;
+    private ushort _si;
+    private ushort _di;
+    private ushort _bp;
+    private ushort _sp;
 
-        ushort cs = 0;
-        ushort ds = 0;
-        ushort es = 0;
-        ushort ss = 0;
+    private ushort _ip;
 
-        ushort flags = 0;
+    private ushort _cs;
+    private ushort _ds;
+    private ushort _es;
+    private ushort _ss;
 
-        const uint mem_mask = (uint)0x00ffffff;
+    private ushort _flags;
 
-        bus b = new bus();
+    private const uint MemMask = 0x00ffffff;
 
-        public p8086()
+    private readonly Bus _b = new();
+
+    public P8086()
+    {
+        _cs = 0xf000;
+        _ip = 0xfff0;
+    }
+
+    private byte GetPcByte()
+    {
+        uint address = (uint)(_cs * 16 + _ip++) & MemMask;
+
+        byte val = _b.read_byte(address);
+
+        // Console.WriteLine($"{address:X} {val:X}");
+
+        return val;
+    }
+
+    private (ushort, string) GetRegister(int reg, bool w)
+    {
+        if (w)
         {
-            cs = 0xf000;
-            ip = 0xfff0;
+            if (reg == 0)
+                return ((ushort)((_ah << 8) | _al), "AX");
+            if (reg == 1)
+                return ((ushort)((_ch << 8) | _cl), "CX");
+            if (reg == 2)
+                return ((ushort)((_dh << 8) | _dl), "DX");
+            if (reg == 3)
+                return ((ushort)((_bh << 8) | _bl), "BX");
+            if (reg == 4)
+                return (_sp, "SP");
+            if (reg == 5)
+                return (_bp, "BP");
+            if (reg == 6)
+                return (_si, "SI");
+            if (reg == 7)
+                return (_di, "DI");
+        }
+        else
+        {
+            if (reg == 0)
+                return (_al, "AL");
+            if (reg == 1)
+                return (_cl, "CL");
+            if (reg == 2)
+                return (_dl, "DL");
+            if (reg == 3)
+                return (_bl, "BL");
+            if (reg == 4)
+                return (_ah, "AH");
+            if (reg == 5)
+                return (_ch, "CH");
+            if (reg == 6)
+                return (_dh, "DH");
+            if (reg == 7)
+                return (_bh, "BH");
         }
 
-        public byte get_pc_byte()
+        Console.WriteLine($"reg {reg} w {w} not supported for {nameof(GetRegister)}");
+
+        return (0, "error");
+    }
+
+    private (ushort, string) GetSRegister(int reg)
+    {
+        if (reg == 0b000)
+            return (_es, "ES");
+        if (reg == 0b001)
+            return (_cs, "CS");
+        if (reg == 0b010)
+            return (_ss, "SS");
+        if (reg == 0b011)
+            return (_ds, "DS");
+
+        Console.WriteLine($"reg {reg} not supported for {nameof(GetSRegister)}");
+
+        return (0, "error");
+    }
+
+    private (ushort, string) GetDoubleRegister(int reg)
+    {
+        ushort a = 0;
+        string name = "error";
+
+        if (reg == 0)
         {
-            uint addr = (uint)(cs * 16 + ip++) & mem_mask;
-
-            byte val  = b.read_byte(addr);
-
-            // Console.WriteLine($"{addr:X} {val:X}");
-
-            return val;
+            a = (ushort)((_bh << 8) + _bl + _si);
+            name = "[BX+SI]";
         }
-  
-        (ushort, string) get_register(int reg, bool w)
+        else if (reg == 1)
         {
-            if (w) {
-                if (reg == 0)
-                    return ((ushort)((ah << 8) | al), "AX");
-                if (reg == 1)
-                    return ((ushort)((ch << 8) | cl), "CX");
-                if (reg == 2)
-                    return ((ushort)((dh << 8) | dl), "DX");
-                if (reg == 3)
-                    return ((ushort)((bh << 8) | bl), "BX");
-                if (reg == 4)
-                    return (sp, "SP");
-                if (reg == 5)
-                    return (bp, "BP");
-                if (reg == 6)
-                    return (si, "SI");
-                if (reg == 7)
-                    return (di, "DI");
-            }
-            else {
-                if (reg == 0)
-                    return (al, "AL");
-                if (reg == 1)
-                    return (cl, "CL");
-                if (reg == 2)
-                    return (dl, "DL");
-                if (reg == 3)
-                    return (bl, "BL");
-                if (reg == 4)
-                    return (ah, "AH");
-                if (reg == 5)
-                    return (ch, "CH");
-                if (reg == 6)
-                    return (dh, "DH");
-                if (reg == 7)
-                    return (bh, "BH");
-            }
-
-            Console.WriteLine($"reg {reg} w {w} not supported for get_register");
-
-            return (0, "error");
+            a = (ushort)((_bh << 8) + _bl + _di);
+            name = "[BX+DI]";
         }
-  
-        (ushort, string) get_sregister(int reg)
+        else if (reg == 2)
         {
-            if (reg == 0b000)
-                return (es, "ES");
-            if (reg == 0b001)
-                return (cs, "CS");
-            if (reg == 0b010)
-                return (ss, "SS");
-            if (reg == 0b011)
-                return (ds, "DS");
-
-            Console.WriteLine($"reg {reg} not supported for get_sregister");
-
-            return (0, "error");
+            a = (ushort)(_bp + _si);
+            name = "[BP+SI]";
+        }
+        else if (reg == 3)
+        {
+            a = (ushort)(_bp + _di);
+            name = "[BP+DI]";
+        }
+        else if (reg == 4)
+        {
+            a = _si;
+            name = "[SI]";
+        }
+        else if (reg == 5)
+        {
+            a = _di;
+            name = "[DI]";
+        }
+        //else if (reg == 6)  TODO
+        else if (reg == 7)
+        {
+            a = (ushort)((_bh << 8) + _bl);
+            name = "[BX]";
+        }
+        else
+        {
+            Console.WriteLine($"{nameof(GetDoubleRegister)} {reg} not implemented");
         }
 
-        (ushort, string) get_double_reg(int reg)
+        return (a, name);
+    }
+
+    private (ushort, string) GetRegisterMem(int reg, int mod, bool w)
+    {
+        if (mod == 0)
         {
-            ushort a    = 0;
-            string name = "error";
+            (ushort a, string name) = GetDoubleRegister(reg);
 
-            if (reg == 0) {
-                a = (ushort)((bh << 8) + bl + si);
-                name = "[BX+SI]";
-            }
-            else if (reg == 1) {
-                a = (ushort)((bh << 8) + bl + di);
-                name = "[BX+DI]";
-            }
-            else if (reg == 2) {
-                a = (ushort)(bp + si);
-                name = "[BP+SI]";
-            }
-            else if (reg == 3) {
-                a = (ushort)(bp + di);
-                name = "[BP+DI]";
-            }
-            else if (reg == 4) {
-                a = si;
-                name = "[SI]";
-            }
-            else if (reg == 5) {
-                a = di;
-                name = "[DI]";
-            }
-            //else if (reg == 6)  TODO
-            else if (reg == 7) {
-                a = (ushort)((bh << 8) + bl);
-                name = "[BX]";
-            }
-            else {
-                Console.WriteLine($"get_double_reg {reg} not implemented");
-            }
+            ushort v = _b.read_byte(a);
 
-            return (a, name);
+            if (w)
+                v |= (ushort)(_b.read_byte((ushort)(a + 1)) << 8);
+
+            return (v, name);
         }
 
-        (ushort, string) get_register_mem(int reg, int mod, bool w)
+        if (mod == 3)
+            return GetRegister(reg, w);
+
+        Console.WriteLine($"reg {reg} mod {mod} w {w} not supported for {nameof(GetRegisterMem)}");
+
+        return (0, "error");
+    }
+
+    private string PutRegister(int reg, bool w, ushort val)
+    {
+        if (reg == 0)
         {
-            if (mod == 0) {
-                (ushort a, string name) = get_double_reg(reg);
+            if (w)
+            {
+                _ah = (byte)(val >> 8);
+                _al = (byte)val;
 
-                ushort v = b.read_byte(a);
-
-                if (w)
-                    v |= (ushort)(b.read_byte((ushort)(a + 1)) << 8);
-
-                return (v, name);
+                return "AX";
             }
 
-            if (mod == 3)
-                return get_register(reg, w);
+            _al = (byte)val;
 
-            Console.WriteLine($"reg {reg} mod {mod} w {w} not supported for get");
-
-            return (0, "error");
+            return "AL";
         }
 
-        string put_register(int reg, bool w, ushort val)
+        if (reg == 1)
         {
-            if (reg == 0) {
-                if (w) {
-                    ah = (byte)(val >> 8);
-                    al = (byte)val;
+            if (w)
+            {
+                _ch = (byte)(val >> 8);
+                _cl = (byte)val;
 
-                    return "AX";
-                }
-
-                al = (byte)val;
-
-                return "AL";
-            }
-            else if (reg == 1) {
-                if (w) {
-                    ch = (byte)(val >> 8);
-                    cl = (byte)val;
-
-                    return "CX";
-                }
-
-                cl = (byte)val;
-
-                return "CL";
-            }
-            else if (reg == 2) {
-                if (w) {
-                    dh = (byte)(val >> 8);
-                    dl = (byte)val;
-
-                    return "DX";
-                }
-
-                dl = (byte)val;
-
-                return "DL";
-            }
-            else if (reg == 3) {
-                if (w) {
-                    bh = (byte)(val >> 8);
-                    bl = (byte)val;
-
-                    return "BX";
-                }
-
-                bl = (byte)val;
-
-                return "BL";
-            }
-            else if (reg == 4) {
-                if (w) {
-                    sp = val;
-
-                    return "SP";
-                }
-
-                ah = (byte)val;
-
-                return "AH";
-            }
-            else if (reg == 5) {
-                if (w) {
-                    bp = val;
-
-                    return "BP";
-                }
-
-                ch = (byte)val;
-
-                return "CH";
-            }
-            else if (reg == 6) {
-                if (w) {
-                    si = val;
-
-                    return "SI";
-                }
-
-                dh = (byte)val;
-
-                return "DH";
-            }
-            else if (reg == 7) {
-                if (w) {
-                    di = val;
-
-                    return "DI";
-                }
-
-                bh = (byte)val;
-
-                return "BH";
+                return "CX";
             }
 
-            Console.WriteLine($"reg {reg} w {w} not supported for put_register ({val:X})");
+            _cl = (byte)val;
 
-            return "error";
-        }
-  
-        string put_sregister(int reg, ushort v)
-        {
-            if (reg == 0b000) {
-                es = v;
-                return "ES";
-            }
-            if (reg == 0b001) {
-                cs = v;
-                return "CS";
-            }
-            if (reg == 0b010) {
-                ss = v;
-                return "SS";
-            }
-            if (reg == 0b011) {
-                ds = v;
-                return "DS";
-            }
-
-            Console.WriteLine($"reg {reg} not supported for get_sregister");
-
-            return "error";
+            return "CL";
         }
 
-        string put_register_mem(int reg, int mod, bool w, ushort val)
+        if (reg == 2)
         {
-            if (mod == 0) {
-                (ushort a, string name) = get_double_reg(reg);
+            if (w)
+            {
+                _dh = (byte)(val >> 8);
+                _dl = (byte)val;
 
-                b.write_byte(a, (byte)val);
-
-                if (w)
-                    b.write_byte((ushort)(a + 1), (byte)(val >> 8));
-
-                return name;
+                return "DX";
             }
 
-            if (mod == 3)
-                return put_register(reg, w, val);
+            _dl = (byte)val;
 
-            Console.WriteLine($"reg {reg} mod {mod} w {w} value {val} not supported for put");
-
-            return "error";
+            return "DL";
         }
 
-        void clear_flag_bit(int bit)
+        if (reg == 3)
         {
-            flags &= (ushort)(ushort.MaxValue ^ (1 << bit));
+            if (w)
+            {
+                _bh = (byte)(val >> 8);
+                _bl = (byte)val;
+
+                return "BX";
+            }
+
+            _bl = (byte)val;
+
+            return "BL";
         }
 
-        void set_flag_bit(int bit)
+        if (reg == 4)
         {
-            flags |= (ushort)(1 << bit);
+            if (w)
+            {
+                _sp = val;
+
+                return "SP";
+            }
+
+            _ah = (byte)val;
+
+            return "AH";
         }
 
-        void set_flag(int bit, bool state)
+        if (reg == 5)
         {
-            if (state)
-                set_flag_bit(bit);
+            if (w)
+            {
+                _bp = val;
+
+                return "BP";
+            }
+
+            _ch = (byte)val;
+
+            return "CH";
+        }
+
+        if (reg == 6)
+        {
+            if (w)
+            {
+                _si = val;
+
+                return "SI";
+            }
+
+            _dh = (byte)val;
+
+            return "DH";
+        }
+
+        if (reg == 7)
+        {
+            if (w)
+            {
+                _di = val;
+
+                return "DI";
+            }
+
+            _bh = (byte)val;
+
+            return "BH";
+        }
+
+        Console.WriteLine($"reg {reg} w {w} not supported for {nameof(PutRegister)} ({val:X})");
+
+        return "error";
+    }
+
+    private string PutSRegister(int reg, ushort v)
+    {
+        if (reg == 0b000)
+        {
+            _es = v;
+            return "ES";
+        }
+
+        if (reg == 0b001)
+        {
+            _cs = v;
+            return "CS";
+        }
+
+        if (reg == 0b010)
+        {
+            _ss = v;
+            return "SS";
+        }
+
+        if (reg == 0b011)
+        {
+            _ds = v;
+            return "DS";
+        }
+
+        Console.WriteLine($"reg {reg} not supported for {nameof(PutSRegister)}");
+
+        return "error";
+    }
+
+    private string put_register_mem(int reg, int mod, bool w, ushort val)
+    {
+        if (mod == 0)
+        {
+            (ushort a, string name) = GetDoubleRegister(reg);
+
+            _b.write_byte(a, (byte)val);
+
+            if (w)
+                _b.write_byte((ushort)(a + 1), (byte)(val >> 8));
+
+            return name;
+        }
+
+        if (mod == 3)
+            return PutRegister(reg, w, val);
+
+        Console.WriteLine($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(put_register_mem)}");
+
+        return "error";
+    }
+
+    private void ClearFlagBit(int bit)
+    {
+        _flags &= (ushort)(ushort.MaxValue ^ (1 << bit));
+    }
+
+    private void SetFlagBit(int bit)
+    {
+        _flags |= (ushort)(1 << bit);
+    }
+
+    private void SetFlag(int bit, bool state)
+    {
+        if (state)
+            SetFlagBit(bit);
+        else
+            ClearFlagBit(bit);
+    }
+
+    private bool GetFlag(int bit)
+    {
+        return (_flags & (1 << bit)) != 0;
+    }
+
+    private void SetFlagC(bool state)
+    {
+        SetFlag(0, state);
+    }
+
+    private bool GetFlagC()
+    {
+        return GetFlag(0);
+    }
+
+    private void SetFlagP(byte v)
+    {
+        int count = 0;
+
+        while (v != 0)
+        {
+            count++;
+
+            v &= (byte)(v - 1);
+        }
+
+        SetFlag(2, (count & 1) == 0);
+    }
+
+    private bool GetFlagP()
+    {
+        return GetFlag(2);
+    }
+
+    private void SetFlagA(bool state)
+    {
+        SetFlag(4, state);
+    }
+
+    private void SetFlagZ(bool state)
+    {
+        SetFlag(6, state);
+    }
+
+    private bool GetFlagZ()
+    {
+        return GetFlag(6);
+    }
+
+    private void SetFlagS(bool state)
+    {
+        SetFlag(7, state);
+    }
+
+    private bool GetFlagS()
+    {
+        return GetFlag(7);
+    }
+
+    private void SetFlagD(bool state)
+    {
+        SetFlag(10, state);
+    }
+
+    private bool GetFlagD()
+    {
+        return GetFlag(10);
+    }
+
+    private void SetFlagO(bool state)
+    {
+        SetFlag(11, state);
+    }
+
+    private bool GetFlagO()
+    {
+        return GetFlag(11);
+    }
+
+    // TODO class/struct or enum Flags (with [Flags]) and ToString()
+    private string GetFlagsAsString()
+    {
+        string @out = String.Empty;
+
+        @out += GetFlagO() ? "o" : "-";
+        @out += GetFlagD() ? "d" : "-";
+        @out += GetFlagS() ? "s" : "-";
+        @out += GetFlagZ() ? "z" : "-";
+        @out += GetFlagC() ? "c" : "-";
+
+        return @out;
+    }
+
+    public void Tick()
+    {
+        uint address = (uint)(_cs * 16 + _ip) & MemMask;
+        byte opcode = GetPcByte();
+
+        string flagStr = GetFlagsAsString();
+
+        string prefixStr =
+            $"{flagStr} {address:X4} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4}";
+
+        if (opcode == 0xe9)
+        {
+            // JMP np
+            byte o0 = GetPcByte();
+            byte o1 = GetPcByte();
+
+            short offset = (short)((o1 << 8) | o0);
+
+            _ip = (ushort)(_ip + offset);
+
+            Console.WriteLine($"{prefixStr} JMP {_ip:X}");
+        }
+        else if (opcode == 0xc3)
+        {
+            // RET
+            byte low = _b.read_byte((uint)(_ss * 16 + _sp++) & MemMask);
+            byte high = _b.read_byte((uint)(_ss * 16 + _sp++) & MemMask);
+
+            _ip = (ushort)((high << 8) + low);
+
+            Console.WriteLine($"{prefixStr} RET");
+        }
+        else if (opcode == 0x02 || opcode == 0x03)
+        {
+            bool word = (opcode & 1) == 1;
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, string name1) = GetRegisterMem(reg2, mod, word);
+            (ushort r2, string name2) = GetRegister(reg1, word);
+
+            int result = r2 - r1;
+
+            PutRegister(reg1, word, (ushort)result);
+
+            SetFlagO(false); // TODO
+            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+            SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
+            SetFlagP((byte)result);
+
+            Console.WriteLine($"{prefixStr} ADD {name2},{name1}");
+        }
+        else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
+        {
+            bool word = (opcode & 1) == 1;
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, string name1) = GetRegisterMem(reg1, mod, word);
+            (ushort r2, string name2) = GetRegister(reg2, word);
+
+            ushort result = 0;
+
+            int function = opcode >> 4;
+
+            if (function == 0)
+                result = (ushort)(r2 | r1);
+            else if (function == 2)
+                result = (ushort)(r2 & r1);
+            else if (function == 3) // TODO always true here?
+                result = (ushort)(r2 ^ r1);
             else
-                clear_flag_bit(bit);
+                Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+
+            // if (opcode == 0x0b || opcode == 0x33)
+            //     Console.WriteLine($"r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
+
+            put_register_mem(reg1, mod, word, result);
+
+            SetFlagO(false);
+            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+            SetFlagA(false);
+
+            SetFlagP((byte)result); // TODO verify
+
+            Console.WriteLine($"{prefixStr} XOR {name1},{name2}");
         }
-
-        bool get_flag(int bit)
+        else if ((opcode == 0x34 || opcode == 0x35) || (opcode == 0x24 || opcode == 0x25) ||
+                 (opcode == 0x0c || opcode == 0x0d))
         {
-            return (flags & (1 << bit)) != 0;
-        }
+            bool word = (opcode & 1) == 1;
 
-        void set_flag_c(bool state)
-        {
-            set_flag(0, state);
-        }
+            byte bLow = GetPcByte();
+            byte bHigh = word ? GetPcByte() : (byte)0;
 
-        bool get_flag_c()
-        {
-            return get_flag(0);
-        }
+            int function = opcode >> 4;
 
-        void set_flag_p(byte v)
-        {
-            int count = 0;
-
-            while(v != 0) {
-                count++;
-
-                v &= (byte)(v - 1);
-            }
-
-            set_flag(2, (count & 1) == 0);
-        }
-
-        bool get_flag_p()
-        {
-            return get_flag(2);
-        }
-
-        void set_flag_a(bool state)
-        {
-            set_flag(4, state);
-        }
-
-        void set_flag_z(bool state)
-        {
-            set_flag(6, state);
-        }
-
-        bool get_flag_z()
-        {
-            return get_flag(6);
-        }
-
-        void set_flag_s(bool state)
-        {
-            set_flag(7, state);
-        }
-
-        bool get_flag_s()
-        {
-            return get_flag(7);
-        }
-
-        void set_flag_d(bool state)
-        {
-            set_flag(10, state);
-        }
-
-        bool get_flag_d()
-        {
-            return get_flag(10);
-        }
-
-        void set_flag_o(bool state)
-        {
-            set_flag(11, state);
-        }
-
-        bool get_flag_o()
-        {
-            return get_flag(11);
-        }
-
-        string get_flags_as_str()
-        {
-            string out_ = System.String.Empty;
-
-            out_ += get_flag_o() ? "o" : "-";
-            out_ += get_flag_d() ? "d" : "-";
-            out_ += get_flag_s() ? "s" : "-";
-            out_ += get_flag_z() ? "z" : "-";
-            out_ += get_flag_c() ? "c" : "-";
-
-            return out_;
-        }
-
-        public void tick()
-        {
-            uint addr   = (uint)(cs * 16 + ip) & mem_mask;
-            byte opcode = get_pc_byte();
-
-            string flag_str = get_flags_as_str();
-
-            string prefix_str = $"{flag_str} {addr:X4} {opcode:X2} AX:{ah:X2}{al:X2} BX:{bh:X2}{bl:X2} CX:{ch:X2}{cl:X2} DX:{dh:X2}{dl:X2} SP:{sp:X4} BP:{bp:X4} SI:{si:X4} DI:{di:X4}";
-
-            if (opcode == 0xe9) {  // JMP np
-                byte o0 = get_pc_byte();
-                byte o1 = get_pc_byte();
-
-                short offset = (short)((o1 << 8) | o0);
-
-                ip = (ushort)(ip + offset);
-
-                Console.WriteLine($"{prefix_str} JMP {ip:X}");
-            }
-            else if (opcode == 0xc3) {  // RET
-                byte low  = b.read_byte((uint)(ss * 16 + sp++) & mem_mask);
-                byte high = b.read_byte((uint)(ss * 16 + sp++) & mem_mask);
-
-                ip = (ushort)((high << 8) + low);
-
-                Console.WriteLine($"{prefix_str} RET");
-            }
-            else if (opcode == 0x02 || opcode == 0x03) {
-                bool word = (opcode & 1) == 1;
-                byte o1   = get_pc_byte();
-
-                int  mod  = o1 >> 6;
-                int  reg1 = (o1 >> 3) & 7;
-                int  reg2 = o1 & 7;
-
-                (ushort r1, string name1) = get_register_mem(reg2, mod, word);
-                (ushort r2, string name2) = get_register(reg1, word);
-
-                int result = r2 - r1;
-
-                put_register(reg1, word, (ushort)result);
-
-                set_flag_o(false);  // TODO
-                set_flag_s((word ? result & 0x8000 : result & 0x80) != 0);
-                set_flag_z(word ? result == 0 : (result & 0xff) == 0);
-                set_flag_a(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
-                set_flag_p((byte)result);
-
-                Console.WriteLine($"{prefix_str} ADD {name2},{name1}");
-            }
-            else if ((opcode >= 0x30 && opcode <= 0x33) || (opcode >= 0x20 && opcode <= 0x23) || (opcode >= 0x08 && opcode <= 0x0b)) {
-                bool word = (opcode & 1) == 1;
-                byte o1   = get_pc_byte();
-
-                int  mod  = o1 >> 6;
-                int  reg1 = (o1 >> 3) & 7;
-                int  reg2 = o1 & 7;
-
-                (ushort r1, string name1) = get_register_mem(reg1, mod, word);
-                (ushort r2, string name2) = get_register(reg2, word);
-
-                ushort result = 0;
-
-                int function = opcode >> 4;
-
-                if (function == 0)
-                    result = (ushort)(r2 | r1);
-                else if (function == 2)
-                    result = (ushort)(r2 & r1);
-                else if (function == 3)
-                    result = (ushort)(r2 ^ r1);
-                else
-                    Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
-
-                // if (opcode == 0x0b || opcode == 0x33)
-                //     Console.WriteLine($"r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
-
-                put_register_mem(reg1, mod, word, result);
-
-                set_flag_o(false);
-                set_flag_s((word ? result & 0x8000 : result & 0x80) != 0);
-                set_flag_z(word ? result == 0 : (result & 0xff) == 0);
-                set_flag_a(false);
-
-                set_flag_p((byte)result);  // TODO verify
-
-                Console.WriteLine($"{prefix_str} XOR {name1},{name2}");
-            }
-            else if ((opcode == 0x34 || opcode == 0x35) || (opcode == 0x24 || opcode == 0x25) || (opcode == 0x0c || opcode == 0x0d)) {
-                bool word = (opcode & 1) == 1;
-
-                byte b_low  = get_pc_byte();
-                byte b_high = word ? get_pc_byte() : (byte)0;
-
-                int function = opcode >> 4;
-
-                if (function == 0) {
-                    al |= b_low;
-
-                    if (word)
-                        ah |= b_high;
-                }
-                else if (function == 2) {
-                    al &= b_low;
-
-                    if (word)
-                        ah &= b_high;
-                }
-                else if (function == 3) {
-                    al ^= b_low;
-
-                    if (word)
-                        ah ^= b_high;
-                }
-                else {
-                    Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
-                }
-
-                set_flag_o(false);
-                set_flag_s((word ? ah & 0x8000 : al & 0x80) != 0);
-                set_flag_z(word ? ah == 0 && al == 0 : al == 0);
-                set_flag_a(false);
+            if (function == 0)
+            {
+                _al |= bLow;
 
                 if (word)
-                    set_flag_p(ah);  // TODO verify
-                else
-                    set_flag_p(al);
+                    _ah |= bHigh;
             }
-            else if (opcode == 0xea) {  // JMP far ptr
-                byte o0 = get_pc_byte();
-                byte o1 = get_pc_byte();
-                byte s0 = get_pc_byte();
-                byte s1 = get_pc_byte();
+            else if (function == 2)
+            {
+                _al &= bLow;
 
-                cs = (ushort)((s1 << 8) | s0);
-                ip = (ushort)((o1 << 8) | o0);
-
-                Console.WriteLine($"{prefix_str} JMP ${cs:X} ${ip:X}: ${cs * 16 + ip:X}");
+                if (word)
+                    _ah &= bHigh;
             }
-            else if (opcode == 0xfa) {  // CLI
-                clear_flag_bit(9);  // IF
+            else if (function == 3)
+            {
+                // TODO always true here
+                _al ^= bLow;
 
-                Console.WriteLine($"{prefix_str} CLI");
+                if (word)
+                    _ah ^= bHigh;
             }
-            else if ((opcode & 0xf8) == 0xb0) {  // MOV reg,ib
-                int  reg  = opcode & 0x07;
-
-                ushort v  = get_pc_byte();
-
-                string name = put_register(reg, false, v);
-
-                Console.WriteLine($"{prefix_str} MOV {name},${v:X}");
+            else
+            {
+                Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
-            else if (((opcode & 0b11111100) == 0b10001000) || opcode == 0b10001110 || ((opcode & 0b11111110) == 0b11000110) || ((opcode & 0b11111100) == 0b10100000) || opcode == 0x8c) {
-                bool dir  = (opcode & 2) == 2;  // direction
-                bool word = (opcode & 1) == 1;  // b/w
 
-                byte o1   = get_pc_byte();
-                int  mode = o1 >> 6;
-                int  reg  = (o1 >> 3) & 7;
-                int  rm   = o1 & 7;
+            SetFlagO(false);
+            SetFlagS((word ? _ah & 0x8000 : _al & 0x80) != 0);
+            SetFlagZ(word ? _ah == 0 && _al == 0 : _al == 0);
+            SetFlagA(false);
 
-                bool sreg = opcode == 0x8e || opcode == 0x8c;
+            SetFlagP(word ? _ah : _al);
+        }
+        else if (opcode == 0xea)
+        {
+            // JMP far ptr
+            byte o0 = GetPcByte();
+            byte o1 = GetPcByte();
+            byte s0 = GetPcByte();
+            byte s1 = GetPcByte();
+
+            _cs = (ushort)((s1 << 8) | s0);
+            _ip = (ushort)((o1 << 8) | o0);
+
+            Console.WriteLine($"{prefixStr} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
+        }
+        else if (opcode == 0xfa)
+        {
+            // CLI
+            ClearFlagBit(9); // IF
+
+            Console.WriteLine($"{prefixStr} CLI");
+        }
+        else if ((opcode & 0xf8) == 0xb0)
+        {
+            // MOV reg,ib
+            int reg = opcode & 0x07;
+
+            ushort v = GetPcByte();
+
+            string name = PutRegister(reg, false, v);
+
+            Console.WriteLine($"{prefixStr} MOV {name},${v:X}");
+        }
+        else if (((opcode & 0b11111100) == 0b10001000) || opcode == 0b10001110 ||
+                 ((opcode & 0b11111110) == 0b11000110) || ((opcode & 0b11111100) == 0b10100000) || opcode == 0x8c)
+        {
+            bool dir = (opcode & 2) == 2; // direction
+            bool word = (opcode & 1) == 1; // b/w
+
+            byte o1 = GetPcByte();
+            int mode = o1 >> 6;
+            int reg = (o1 >> 3) & 7;
+            int rm = o1 & 7;
+
+            bool sreg = opcode == 0x8e || opcode == 0x8c;
+
+            if (sreg)
+                word = true;
+
+            // Console.WriteLine($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}");
+
+            if (dir)
+            {
+                // to 'REG' from 'rm'
+                (ushort v, string fromName) = GetRegisterMem(rm, mode, word);
+
+                string toName;
 
                 if (sreg)
-                    word = true;
-
-                // Console.WriteLine($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}");
-
-                if (dir == true) {  // to 'REG' from 'rm'
-                    (ushort v, string from_name) = get_register_mem(rm, mode, word);
-
-                    string to_name = "error";
-
-                    if (sreg)
-                        to_name = put_sregister(reg, v);
-                    else
-                        to_name = put_register(reg, word, v);
-
-                    Console.WriteLine($"{prefix_str} MOV {to_name},{from_name}");
-                }
-                else {  // from 'REG' to 'rm'
-                    ushort v = 0;
-                    string from_name = "error";
-
-                    if (sreg)
-                        (v, from_name) = get_sregister(reg);
-                    else
-                        (v, from_name) = get_register(reg, word);
-
-                    string to_name = put_register_mem(rm, mode, word, v);
-
-                    Console.WriteLine($"{prefix_str} MOV {to_name},{from_name}");
-                }
-            }
-            else if ((opcode & 0xf8) == 0xb8) {  // MOV immed to reg
-                bool word = (opcode & 8) == 8;  // b/w
-                int  reg  = opcode & 7;
-
-                ushort val = get_pc_byte();
-
-                if (word)
-                    val |= (ushort)(get_pc_byte() << 8);
-
-                string to_name = put_register(reg, word, val);
-
-                Console.WriteLine($"{prefix_str} MOV {to_name},${val:X}");
-            }
-            else if (opcode == 0x9e) {  // SAHF
-                ushort keep = (ushort)(flags & 0b1111111100101010);
-                ushort add_ = (ushort)(ah & 0b11010101);
-
-                flags = (ushort)(keep | add_);
-
-                Console.WriteLine($"{prefix_str} SAHF (set to {get_flags_as_str()})");
-            }
-            else if (opcode == 0x9f) {  // LAHF
-                ah = (byte)flags;
-
-                Console.WriteLine($"{prefix_str} LAHF");
-            }
-            else if (opcode >= 0x40 && opcode <= 0x4f) {  // INC/DECw
-                int reg = (opcode - 0x40) & 7;
-
-                (ushort v, string name) = get_register(reg, true);
-
-                bool is_dec = opcode >= 0x48;
-
-                if (is_dec)
-                    v--;
+                    toName = PutSRegister(reg, v);
                 else
-                    v++;
+                    toName = PutRegister(reg, word, v);
 
-                if (is_dec)
-                    set_flag_o(v == 0x7fff);
+                Console.WriteLine($"{prefixStr} MOV {toName},{fromName}");
+            }
+            else
+            {
+                // from 'REG' to 'rm'
+                ushort v;
+                string fromName;
+
+                if (sreg)
+                    (v, fromName) = GetSRegister(reg);
                 else
-                    set_flag_o(v == 0x8000);
-                set_flag_s((v & 0x8000) == 0x8000);
-                set_flag_z(v == 0);
-                set_flag_a((v & 15) == 0);
-                set_flag_p((byte)v);
+                    (v, fromName) = GetRegister(reg, word);
 
-                put_register(reg, true, v);
+                string toName = put_register_mem(rm, mode, word, v);
 
-                if (is_dec)
-                    Console.WriteLine($"{prefix_str} DEC {name}");
-                else
-                    Console.WriteLine($"{prefix_str} INC {name}");
+                Console.WriteLine($"{prefixStr} MOV {toName},{fromName}");
             }
-            else if ((opcode & 0xf8) == 0xd0) {  // RCR
-                bool word = (opcode & 1) == 1;
-                byte o1   = get_pc_byte();
+        }
+        else if ((opcode & 0xf8) == 0xb8)
+        {
+            // MOV immed to reg
+            bool word = (opcode & 8) == 8; // b/w
+            int reg = opcode & 7;
 
-                int  mod  = o1 >> 6;
-                int  reg1 = o1 & 7;
+            ushort val = GetPcByte();
 
-                (ushort v1, string v_name) = get_register_mem(reg1, mod, word);
+            if (word)
+                val |= (ushort)(GetPcByte() << 8);
 
-                int  count_spec = opcode & 3;
-                int  count = -1;
+            string toName = PutRegister(reg, word, val);
 
-                string count_name = "error";
+            Console.WriteLine($"{prefixStr} MOV {toName},${val:X}");
+        }
+        else if (opcode == 0x9e)
+        {
+            // SAHF
+            ushort keep = (ushort)(_flags & 0b1111111100101010);
+            ushort add = (ushort)(_ah & 0b11010101);
 
-                if (count_spec == 0 || count_spec == 1) {
-                    count = 1;
-                    count_name = "1";
-                }
-                else if (count_spec == 2 || count_spec == 3) {
-                    count = cl;
-                    count_name = "CL";
-                }
+            _flags = (ushort)(keep | add);
 
-                bool old_sign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
+            Console.WriteLine($"{prefixStr} SAHF (set to {GetFlagsAsString()})");
+        }
+        else if (opcode == 0x9f)
+        {
+            // LAHF
+            _ah = (byte)_flags;
 
-                int mode = (o1 >> 3) & 7;
+            Console.WriteLine($"{prefixStr} LAHF");
+        }
+        else if (opcode is >= 0x40 and <= 0x4f)
+        {
+            // INC/DECw
+            int reg = (opcode - 0x40) & 7;
 
-                if (mode == 3) {  // RCR
-                    for(int i=0; i<count; i++) {
-                        bool new_carry = (v1 & 1) == 1;
-                        v1 >>= 1;
+            (ushort v, string name) = GetRegister(reg, true);
 
-                        bool old_carry = get_flag_c();
+            bool isDec = opcode >= 0x48;
 
-                        if (old_carry)
-                            v1 |= (ushort)(word ? 0x8000 : 0x80);
+            if (isDec)
+                v--;
+            else
+                v++;
 
-                        set_flag_c(new_carry);
-                    }
+            if (isDec)
+                SetFlagO(v == 0x7fff);
+            else
+                SetFlagO(v == 0x8000);
+            SetFlagS((v & 0x8000) == 0x8000);
+            SetFlagZ(v == 0);
+            SetFlagA((v & 15) == 0);
+            SetFlagP((byte)v);
 
-                    Console.WriteLine($"{prefix_str} RCR {v_name},{count_name}");
-                }
-                else if (mode == 4) {  // SHL
-                    for(int i=0; i<count; i++) {
-                        bool new_carry = (v1 & 0x80) == 0x80;
+            PutRegister(reg, true, v);
 
-                        v1 <<= 1;
+            if (isDec)
+                Console.WriteLine($"{prefixStr} DEC {name}");
+            else
+                Console.WriteLine($"{prefixStr} INC {name}");
+        }
+        else if ((opcode & 0xf8) == 0xd0)
+        {
+            // RCR
+            bool word = (opcode & 1) == 1;
+            byte o1 = GetPcByte();
 
-                        set_flag_c(new_carry);
-                    }
+            int mod = o1 >> 6;
+            int reg1 = o1 & 7;
 
-                    Console.WriteLine($"{prefix_str} SHL {v_name},{count_name}");
-                }
-                else if (mode == 5) {  // SHR
-                    for(int i=0; i<count; i++) {
-                        bool new_carry = (v1 & 1) == 1;
+            (ushort v1, string vName) = GetRegisterMem(reg1, mod, word);
 
-                        v1 >>= 1;
+            int countSpec = opcode & 3;
+            int count = -1;
 
-                        set_flag_c(new_carry);
-                    }
+            string countName = "error";
 
-                    Console.WriteLine($"{prefix_str} SHR {v_name},{count_name}");
-                }
-                else {
-                    Console.WriteLine($"{prefix_str} RCR/SHR mode {mode} not implemented");
-                }
-
-                bool new_sign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
-
-                set_flag_o(old_sign != new_sign);
-
-                if (!word)
-                    v1 &= 0xff;
-
-                put_register_mem(reg1, mod, word, v1);
+            if (countSpec == 0 || countSpec == 1)
+            {
+                count = 1;
+                countName = "1";
             }
-            else if ((opcode & 0xf0) == 0b01110000) {  // J..., 0x70
-                byte   to    = get_pc_byte();
-
-                bool   state = false;
-                string name  = System.String.Empty;
-
-                if (opcode == 0x70) {
-                    state = get_flag_o() == true;
-                    name  = "JO";
-                }
-                else if (opcode == 0x71) {
-                    state = get_flag_o() == false;
-                    name  = "JNO";
-                }
-                else if (opcode == 0x72) {
-                    state = get_flag_c() == true;
-                    name  = "JC";
-                }
-                else if (opcode == 0x73) {
-                    state = get_flag_c() == false;
-                    name  = "JNC";
-                }
-                else if (opcode == 0x74) {
-                    state = get_flag_z() == true;
-                    name  = "JE/JZ";
-                }
-                else if (opcode == 0x75) {
-                    state = get_flag_z() == false;
-                    name  = "JNE/JNZ";
-                }
-                else if (opcode == 0x76) {
-                    state = get_flag_c() == true || get_flag_z() == true;
-                    name  = "JBE/JNA";
-                }
-                else if (opcode == 0x77) {
-                    state = get_flag_c() == false && get_flag_z() == false;
-                    name  = "JA/JNBE";
-                }
-                else if (opcode == 0x78) {
-                    state = get_flag_s() == true;
-                    name  = "JS";
-                }
-                else if (opcode == 0x79) {
-                    state = get_flag_s() == false;
-                    name  = "JNS";
-                }
-                else if (opcode == 0x7a) {
-                    state = get_flag_p() == true;
-                    name  = "JNP/JPO";
-                }
-                else if (opcode == 0x7b) {
-                    state = get_flag_p() == false;
-                    name  = "JNP/JPO";
-                }
-                else if (opcode == 0x7c) {
-                    state = get_flag_s() != get_flag_o();
-                    name  = "JNGE";
-                }
-                else if (opcode == 0x7d) {
-                    state = get_flag_s() == get_flag_o();
-                    name  = "JNL";
-                }
-                else if (opcode == 0x7e) {
-                    state = get_flag_z() || get_flag_s() != get_flag_o();
-                    name  = "JLE";
-                }
-                else if (opcode == 0x7f) {
-                    state = get_flag_z() && get_flag_s() == get_flag_o();
-                    name  = "JNLE";
-                }
-                else {
-                    Console.WriteLine($"{prefix_str} Opcode {opcode:x2} not implemented");
-                }
-
-                ushort new_addr = (ushort)(ip + (sbyte)to);
-
-                if (state)
-                    ip = new_addr;
-
-                Console.WriteLine($"{prefix_str} {name} {to} ({new_addr:X4})");
+            else if (countSpec == 2 || countSpec == 3)
+            {
+                count = _cl;
+                countName = "CL";
             }
-            else if (opcode == 0xe2) {  // LOOP
-                byte   to = get_pc_byte();
 
-                (ushort CX, string dummy) = get_register(1, true);
+            bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
-                CX--;
+            int mode = (o1 >> 3) & 7;
 
-                put_register(1, true, CX);
+            if (mode == 3)
+            {
+                // RCR
+                for (int i = 0; i < count; i++)
+                {
+                    bool newCarry = (v1 & 1) == 1;
+                    v1 >>= 1;
 
-                ushort new_addr = (ushort)(ip + (sbyte)to);
+                    bool oldCarry = GetFlagC();
 
-                if (CX > 0)
-                    ip = new_addr;
+                    if (oldCarry)
+                        v1 |= (ushort)(word ? 0x8000 : 0x80);
 
-                Console.WriteLine($"{prefix_str} LOOP {to} ({new_addr:X4})");
-            }
-            else if (opcode == 0xe6) {  // OUT
-                byte to = get_pc_byte();
-
-                // TODO
-
-                Console.WriteLine($"{prefix_str} OUT ${to:X2},AL");
-            }
-            else if (opcode == 0xee) {  // OUT
-                // TODO
-
-                Console.WriteLine($"{prefix_str} OUT ${dh:X2}{dl:X2},AL");
-            }
-            else if (opcode == 0xeb) {  // JMP
-                byte to = get_pc_byte();
-
-                ip = (ushort)(ip + (sbyte)to);
-
-                Console.WriteLine($"{prefix_str} JP ${ip:X4}");
-            }
-            else if (opcode == 0xf4) {  // HLT
-                ip--;
-
-                Console.WriteLine($"{prefix_str} HLT");
-            }
-            else if (opcode == 0xf8) {  // CLC
-                set_flag_c(false);
-
-                Console.WriteLine($"{prefix_str} CLC");
-            }
-            else if (opcode == 0xf9) {  // STC
-                set_flag_c(true);
-
-                Console.WriteLine($"{prefix_str} STC");
-            }
-            else if (opcode == 0xfc) {  // CLD
-                set_flag_d(false);
-
-                Console.WriteLine($"{prefix_str} CLD");
-            }
-            else if (opcode == 0xfe || opcode == 0xff) {  // DEC and others
-                bool word = (opcode & 1) == 1;
-
-                byte o1   = get_pc_byte();
-
-                int  mod  = o1 >> 6;
-                int  reg  = o1 & 7;
-
-                (ushort v, string name) = get_register_mem(reg, mod, word);
-
-                int function = (o1 >> 3) & 7;
-
-                if (function == 0) {
-                    v++;
-
-                    set_flag_o(v == 0x8000);
-
-                    Console.WriteLine($"{prefix_str} INC {name}");
-                }
-                else if (function == 1) {
-                    v--;
-
-                    set_flag_o(v == 0x7fff);
-
-                    Console.WriteLine($"{prefix_str} DEC {name}");
-                }
-                else {
-                    Console.WriteLine($"{prefix_str} opcode {opcode:X2} function {function} not implemented");
+                    SetFlagC(newCarry);
                 }
 
-                set_flag_s((v & 0x8000) == 0x8000);
-                set_flag_z(v == 0);
-                set_flag_a((v & 15) == 0);
-                set_flag_p((byte)v);
+                Console.WriteLine($"{prefixStr} RCR {vName},{countName}");
+            }
+            else if (mode == 4)
+            {
+                // SHL
+                for (int i = 0; i < count; i++)
+                {
+                    bool newCarry = (v1 & 0x80) == 0x80;
 
-                put_register_mem(reg, mod, word, v);
+                    v1 <<= 1;
+
+                    SetFlagC(newCarry);
+                }
+
+                Console.WriteLine($"{prefixStr} SHL {vName},{countName}");
             }
-            else {
-                Console.WriteLine($"{prefix_str} Opcode {opcode:x} not implemented");
+            else if (mode == 5)
+            {
+                // SHR
+                for (int i = 0; i < count; i++)
+                {
+                    bool newCarry = (v1 & 1) == 1;
+
+                    v1 >>= 1;
+
+                    SetFlagC(newCarry);
+                }
+
+                Console.WriteLine($"{prefixStr} SHR {vName},{countName}");
             }
+            else
+            {
+                Console.WriteLine($"{prefixStr} RCR/SHR mode {mode} not implemented");
+            }
+
+            bool newSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
+
+            SetFlagO(oldSign != newSign);
+
+            if (!word)
+                v1 &= 0xff;
+
+            put_register_mem(reg1, mod, word, v1);
+        }
+        else if ((opcode & 0xf0) == 0b01110000)
+        {
+            // J..., 0x70
+            byte to = GetPcByte();
+
+            bool state = false;
+            string name = String.Empty;
+
+            if (opcode == 0x70)
+            {
+                state = GetFlagO();
+                name = "JO";
+            }
+            else if (opcode == 0x71)
+            {
+                state = GetFlagO() == false;
+                name = "JNO";
+            }
+            else if (opcode == 0x72)
+            {
+                state = GetFlagC();
+                name = "JC";
+            }
+            else if (opcode == 0x73)
+            {
+                state = GetFlagC() == false;
+                name = "JNC";
+            }
+            else if (opcode == 0x74)
+            {
+                state = GetFlagZ();
+                name = "JE/JZ";
+            }
+            else if (opcode == 0x75)
+            {
+                state = GetFlagZ() == false;
+                name = "JNE/JNZ";
+            }
+            else if (opcode == 0x76)
+            {
+                state = GetFlagC() || GetFlagZ();
+                name = "JBE/JNA";
+            }
+            else if (opcode == 0x77)
+            {
+                state = GetFlagC() == false && GetFlagZ() == false;
+                name = "JA/JNBE";
+            }
+            else if (opcode == 0x78)
+            {
+                state = GetFlagS();
+                name = "JS";
+            }
+            else if (opcode == 0x79)
+            {
+                state = GetFlagS() == false;
+                name = "JNS";
+            }
+            else if (opcode == 0x7a)
+            {
+                state = GetFlagP();
+                name = "JNP/JPO";
+            }
+            else if (opcode == 0x7b)
+            {
+                state = GetFlagP() == false;
+                name = "JNP/JPO";
+            }
+            else if (opcode == 0x7c)
+            {
+                state = GetFlagS() != GetFlagO();
+                name = "JNGE";
+            }
+            else if (opcode == 0x7d)
+            {
+                state = GetFlagS() == GetFlagO();
+                name = "JNL";
+            }
+            else if (opcode == 0x7e)
+            {
+                state = GetFlagZ() || GetFlagS() != GetFlagO();
+                name = "JLE";
+            }
+            else if (opcode == 0x7f)
+            {
+                state = GetFlagZ() && GetFlagS() == GetFlagO();
+                name = "JNLE";
+            }
+            else
+            {
+                Console.WriteLine($"{prefixStr} Opcode {opcode:x2} not implemented");
+            }
+
+            ushort newAddresses = (ushort)(_ip + (sbyte)to);
+
+            if (state)
+                _ip = newAddresses;
+
+            Console.WriteLine($"{prefixStr} {name} {to} ({newAddresses:X4})");
+        }
+        else if (opcode == 0xe2)
+        {
+            // LOOP
+            byte to = GetPcByte();
+
+            (ushort cx, string dummy) = GetRegister(1, true);
+
+            cx--;
+
+            PutRegister(1, true, cx);
+
+            ushort newAddresses = (ushort)(_ip + (sbyte)to);
+
+            if (cx > 0)
+                _ip = newAddresses;
+
+            Console.WriteLine($"{prefixStr} LOOP {to} ({newAddresses:X4})");
+        }
+        else if (opcode == 0xe6)
+        {
+            // OUT
+            byte to = GetPcByte();
+
+            // TODO
+
+            Console.WriteLine($"{prefixStr} OUT ${to:X2},AL");
+        }
+        else if (opcode == 0xee)
+        {
+            // OUT
+            //  TODO
+
+            Console.WriteLine($"{prefixStr} OUT ${_dh:X2}{_dl:X2},AL");
+        }
+        else if (opcode == 0xeb)
+        {
+            // JMP
+            byte to = GetPcByte();
+
+            _ip = (ushort)(_ip + (sbyte)to);
+
+            Console.WriteLine($"{prefixStr} JP ${_ip:X4}");
+        }
+        else if (opcode == 0xf4)
+        {
+            // HLT
+            _ip--;
+
+            Console.WriteLine($"{prefixStr} HLT");
+        }
+        else if (opcode == 0xf8)
+        {
+            // CLC
+            SetFlagC(false);
+
+            Console.WriteLine($"{prefixStr} CLC");
+        }
+        else if (opcode == 0xf9)
+        {
+            // STC
+            SetFlagC(true);
+
+            Console.WriteLine($"{prefixStr} STC");
+        }
+        else if (opcode == 0xfc)
+        {
+            // CLD
+            SetFlagD(false);
+
+            Console.WriteLine($"{prefixStr} CLD");
+        }
+        else if (opcode == 0xfe || opcode == 0xff)
+        {
+            // DEC and others
+            bool word = (opcode & 1) == 1;
+
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg = o1 & 7;
+
+            (ushort v, string name) = GetRegisterMem(reg, mod, word);
+
+            int function = (o1 >> 3) & 7;
+
+            if (function == 0)
+            {
+                v++;
+
+                SetFlagO(v == 0x8000);
+
+                Console.WriteLine($"{prefixStr} INC {name}");
+            }
+            else if (function == 1)
+            {
+                v--;
+
+                SetFlagO(v == 0x7fff);
+
+                Console.WriteLine($"{prefixStr} DEC {name}");
+            }
+            else
+            {
+                Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+            }
+
+            SetFlagS((v & 0x8000) == 0x8000);
+            SetFlagZ(v == 0);
+            SetFlagA((v & 15) == 0);
+            SetFlagP((byte)v);
+
+            put_register_mem(reg, mod, word, v);
+        }
+        else
+        {
+            Console.WriteLine($"{prefixStr} Opcode {opcode:x} not implemented");
         }
     }
 }
