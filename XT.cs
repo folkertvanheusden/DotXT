@@ -693,14 +693,22 @@ namespace XT
 
                 Console.WriteLine($"{prefix_str} LAHF");
             }
-            else if (opcode >= 0x48 && opcode <= 0x4f) {  // DECw
-                int reg = opcode - 0x48;
+            else if (opcode >= 0x40 && opcode <= 0x4f) {  // INC/DECw
+                int reg = (opcode - 0x40) & 7;
 
                 (ushort v, string name) = get_register(reg, true);
 
-                v--;
+                bool is_dec = opcode >= 0x48;
 
-                set_flag_o(v == 0x7fff);
+                if (is_dec)
+                    v--;
+                else
+                    v++;
+
+                if (is_dec)
+                    set_flag_o(v == 0x7fff);
+                else
+                    set_flag_o(v == 0x8000);
                 set_flag_s((v & 0x8000) == 0x8000);
                 set_flag_z(v == 0);
                 set_flag_a((v & 15) == 0);
@@ -708,7 +716,10 @@ namespace XT
 
                 put_register(reg, true, v);
 
-                Console.WriteLine($"{prefix_str} DEC {name}");
+                if (is_dec)
+                    Console.WriteLine($"{prefix_str} DEC {name}");
+                else
+                    Console.WriteLine($"{prefix_str} INC {name}");
             }
             else if ((opcode & 0xf8) == 0xd0) {  // RCR
                 bool word = (opcode & 1) == 1;
