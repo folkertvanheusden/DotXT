@@ -135,7 +135,7 @@ namespace DotXT
                     return (_bh, "BH");
             }
 
-            Console.WriteLine($"reg {reg} w {w} not supported for get_register");
+            Console.WriteLine($"reg {reg} w {w} not supported for {nameof(get_register)}");
 
             return (0, "error");
         }
@@ -151,7 +151,7 @@ namespace DotXT
             if (reg == 0b011)
                 return (_ds, "DS");
 
-            Console.WriteLine($"reg {reg} not supported for get_sregister");
+            Console.WriteLine($"reg {reg} not supported for {nameof(get_sregister)}");
 
             return (0, "error");
         }
@@ -213,7 +213,7 @@ namespace DotXT
             if (mod == 3)
                 return get_register(reg, w);
 
-            Console.WriteLine($"reg {reg} mod {mod} w {w} not supported for get");
+            Console.WriteLine($"reg {reg} mod {mod} w {w} not supported for {nameof(get_register_mem)}");
 
             return (0, "error");
         }
@@ -320,7 +320,7 @@ namespace DotXT
                 return "BH";
             }
 
-            Console.WriteLine($"reg {reg} w {w} not supported for put_register ({val:X})");
+            Console.WriteLine($"reg {reg} w {w} not supported for {nameof(put_register)} ({val:X})");
 
             return "error";
         }
@@ -344,7 +344,7 @@ namespace DotXT
                 return "DS";
             }
 
-            Console.WriteLine($"reg {reg} not supported for get_sregister");
+            Console.WriteLine($"reg {reg} not supported for {nameof(put_sregister)}");
 
             return "error";
         }
@@ -365,7 +365,7 @@ namespace DotXT
             if (mod == 3)
                 return put_register(reg, w, val);
 
-            Console.WriteLine($"reg {reg} mod {mod} w {w} value {val} not supported for put");
+            Console.WriteLine($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(put_register_mem)}");
 
             return "error";
         }
