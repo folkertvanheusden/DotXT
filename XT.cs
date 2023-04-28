@@ -515,12 +515,12 @@ namespace XT
                 int  reg1 = (o1 >> 3) & 7;
                 int  reg2 = o1 & 7;
 
-                (ushort r1, string name1) = get_register_mem(reg1, mod, word);
-                (ushort r2, string name2) = get_register(reg2, word);
+                (ushort r1, string name1) = get_register_mem(reg2, mod, word);
+                (ushort r2, string name2) = get_register(reg1, word);
 
                 int result = r2 - r1;
 
-                put_register(reg2, word, (ushort)result);
+                put_register(reg1, word, (ushort)result);
 
                 set_flag_o(false);  // TODO
                 set_flag_s((word ? result & 0x8000 : result & 0x80) != 0);
