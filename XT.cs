@@ -499,6 +499,14 @@ namespace XT
 
                 Console.WriteLine($"{prefix_str} JMP {ip:X}");
             }
+            else if (opcode == 0xc3) {  // RET
+                byte low  = b.read_byte(sp++);
+                byte high = b.read_byte(sp++);
+
+                ip = (ushort)((high << 8) + low);
+
+                Console.WriteLine($"{prefix_str} RET");
+            }
             else if (opcode == 0x02 || opcode == 0x03) {
                 bool word = (opcode & 1) == 1;
                 byte o1   = get_pc_byte();
@@ -878,6 +886,22 @@ namespace XT
                     ip = new_addr;
 
                 Console.WriteLine($"{prefix_str} {name} {to} ({new_addr:X4})");
+            }
+            else if (opcode == 0xe2) {  // LOOP
+                byte   to = get_pc_byte();
+
+                (ushort CX, string dummy) = get_register(1, true);
+
+                CX--;
+
+                put_register(1, true, CX);
+
+                ushort new_addr = (ushort)(ip + (sbyte)to);
+
+                if (CX > 0)
+                    ip = new_addr;
+
+                Console.WriteLine($"{prefix_str} LOOP {to} ({new_addr:X4})");
             }
             else if (opcode == 0xe6) {  // OUT
                 byte to = get_pc_byte();
