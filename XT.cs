@@ -4,10 +4,6 @@ namespace DotXT
     {
         byte[] m = new byte[1024 * 1024];  // 1MB of RAM
 
-        public Memory()
-        {
-        }
-
         public byte read_byte(uint addr)
         {
             return m[addr];
@@ -41,10 +37,6 @@ namespace DotXT
         Rom bios  = new Rom("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
         Rom basic = new Rom("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
 
-        public Bus()
-        {
-        }
-
         public byte read_byte(uint addr)
         {
             if (addr >= 0x000f8000 && addr <= 0x000fffff)
@@ -64,26 +56,26 @@ namespace DotXT
 
     class p8086
     {
-        byte ah = 0, al = 0;
-        byte bh = 0, bl = 0;
-        byte ch = 0, cl = 0;
-        byte dh = 0, dl = 0;
+        byte ah, al;
+        byte bh, bl;
+        byte ch, cl;
+        byte dh, dl;
 
-        ushort si = 0;
-        ushort di = 0;
-        ushort bp = 0;
-        ushort sp = 0;
+        ushort si;
+        ushort di;
+        ushort bp;
+        ushort sp;
 
-        ushort ip = 0;
+        ushort ip;
 
-        ushort cs = 0;
-        ushort ds = 0;
-        ushort es = 0;
-        ushort ss = 0;
+        ushort cs;
+        ushort ds;
+        ushort es;
+        ushort ss;
 
-        ushort flags = 0;
+        ushort flags;
 
-        const uint mem_mask = (uint)0x00ffffff;
+        const uint mem_mask = 0x00ffffff;
 
         Bus b = new Bus();
 
@@ -240,7 +232,8 @@ namespace DotXT
 
                 return "AL";
             }
-            else if (reg == 1) {
+
+            if (reg == 1) {
                 if (w) {
                     ch = (byte)(val >> 8);
                     cl = (byte)val;
@@ -252,7 +245,8 @@ namespace DotXT
 
                 return "CL";
             }
-            else if (reg == 2) {
+
+            if (reg == 2) {
                 if (w) {
                     dh = (byte)(val >> 8);
                     dl = (byte)val;
@@ -264,7 +258,8 @@ namespace DotXT
 
                 return "DL";
             }
-            else if (reg == 3) {
+
+            if (reg == 3) {
                 if (w) {
                     bh = (byte)(val >> 8);
                     bl = (byte)val;
@@ -276,7 +271,8 @@ namespace DotXT
 
                 return "BL";
             }
-            else if (reg == 4) {
+
+            if (reg == 4) {
                 if (w) {
                     sp = val;
 
@@ -287,7 +283,8 @@ namespace DotXT
 
                 return "AH";
             }
-            else if (reg == 5) {
+
+            if (reg == 5) {
                 if (w) {
                     bp = val;
 
@@ -298,7 +295,8 @@ namespace DotXT
 
                 return "CH";
             }
-            else if (reg == 6) {
+
+            if (reg == 6) {
                 if (w) {
                     si = val;
 
@@ -309,7 +307,8 @@ namespace DotXT
 
                 return "DH";
             }
-            else if (reg == 7) {
+
+            if (reg == 7) {
                 if (w) {
                     di = val;
 
@@ -469,7 +468,7 @@ namespace DotXT
 
         string get_flags_as_str()
         {
-            string out_ = System.String.Empty;
+            string out_ = String.Empty;
 
             out_ += get_flag_o() ? "o" : "-";
             out_ += get_flag_d() ? "d" : "-";
@@ -649,7 +648,7 @@ namespace DotXT
 
                 // Console.WriteLine($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}");
 
-                if (dir == true) {  // to 'REG' from 'rm'
+                if (dir) {  // to 'REG' from 'rm'
                     (ushort v, string from_name) = get_register_mem(rm, mode, word);
 
                     string to_name = "error";
@@ -810,10 +809,10 @@ namespace DotXT
                 byte   to    = get_pc_byte();
 
                 bool   state = false;
-                string name  = System.String.Empty;
+                string name  = String.Empty;
 
                 if (opcode == 0x70) {
-                    state = get_flag_o() == true;
+                    state = get_flag_o();
                     name  = "JO";
                 }
                 else if (opcode == 0x71) {
@@ -821,7 +820,7 @@ namespace DotXT
                     name  = "JNO";
                 }
                 else if (opcode == 0x72) {
-                    state = get_flag_c() == true;
+                    state = get_flag_c();
                     name  = "JC";
                 }
                 else if (opcode == 0x73) {
@@ -829,7 +828,7 @@ namespace DotXT
                     name  = "JNC";
                 }
                 else if (opcode == 0x74) {
-                    state = get_flag_z() == true;
+                    state = get_flag_z();
                     name  = "JE/JZ";
                 }
                 else if (opcode == 0x75) {
@@ -837,7 +836,7 @@ namespace DotXT
                     name  = "JNE/JNZ";
                 }
                 else if (opcode == 0x76) {
-                    state = get_flag_c() == true || get_flag_z() == true;
+                    state = get_flag_c() || get_flag_z();
                     name  = "JBE/JNA";
                 }
                 else if (opcode == 0x77) {
@@ -845,7 +844,7 @@ namespace DotXT
                     name  = "JA/JNBE";
                 }
                 else if (opcode == 0x78) {
-                    state = get_flag_s() == true;
+                    state = get_flag_s();
                     name  = "JS";
                 }
                 else if (opcode == 0x79) {
@@ -853,7 +852,7 @@ namespace DotXT
                     name  = "JNS";
                 }
                 else if (opcode == 0x7a) {
-                    state = get_flag_p() == true;
+                    state = get_flag_p();
                     name  = "JNP/JPO";
                 }
                 else if (opcode == 0x7b) {
