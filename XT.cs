@@ -54,6 +54,26 @@ internal class Bus
     }
 }
 
+internal class IO
+{
+    private byte _RAM_refresh_counter;
+
+    public byte In(ushort addr)
+    {
+        if (addr == 0x0041)
+            return _RAM_refresh_counter++;
+
+        Console.WriteLine($"I/O port {addr:X4} not implemented");
+
+        return 0;
+    }
+
+    public void Out(ushort addr, byte value)
+    {
+        // TODO
+    }
+}
+
 internal class P8086
 {
     private byte _ah, _al;
@@ -78,6 +98,8 @@ internal class P8086
     private const uint MemMask = 0x00ffffff;
 
     private readonly Bus _b = new();
+
+    private readonly IO _io = new();
 
     public P8086()
     {
@@ -537,6 +559,19 @@ internal class P8086
             _ip = (ushort)(_ip + offset);
 
             Console.WriteLine($"{prefixStr} JMP {_ip:X}");
+        }
+        else if (opcode == 0x50)
+        {
+            // PUSH AX
+            _b.write_byte((uint)(_ss * 16 + _sp++) & MemMask, _ah);
+            _b.write_byte((uint)(_ss * 16 + _sp++) & MemMask, _al);
+
+            Console.WriteLine($"{prefixStr} PUSH AX");
+        }
+        else if (opcode == 0x90)
+        {
+            // NOP
+            Console.WriteLine($"{prefixStr} NOP");
         }
         else if (opcode == 0x80 || opcode == 0x81 || opcode == 0x83)
         {
@@ -1070,24 +1105,33 @@ internal class P8086
         }
         else if (opcode == 0xe4)
         {
-            // IN
+            // IN AL,ib
             byte @from = GetPcByte();
 
+            _al = _io.In(@from);
+
             Console.WriteLine($"{prefixStr} IN AL,${from:X2}");
+        }
+        else if (opcode == 0xec)
+        {
+            // IN AL,DX
+            _al = _io.In((ushort)((_dh << 8) | _dl));
+
+            Console.WriteLine($"{prefixStr} IN AL,DX");
         }
         else if (opcode == 0xe6)
         {
             // OUT
             byte to = GetPcByte();
 
-            // TODO
+            _io.Out(@to, _al);
 
             Console.WriteLine($"{prefixStr} OUT ${to:X2},AL");
         }
         else if (opcode == 0xee)
         {
             // OUT
-            //  TODO
+            _io.Out((ushort)((_dh << 8) | _dl), _al);
 
             Console.WriteLine($"{prefixStr} OUT ${_dh:X2}{_dl:X2},AL");
         }
