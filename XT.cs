@@ -646,7 +646,7 @@ internal class P8086
 
             Console.WriteLine($"{prefixStr} RET");
         }
-        else if (opcode == 0x02 || opcode == 0x03)
+        else if (opcode == 0x02 || opcode == 0x03 || opcode == 0x2a || opcode == 0x2b || opcode == 0x3b)
         {
             bool word = (opcode & 1) == 1;
             byte o1 = GetPcByte();
@@ -658,17 +658,30 @@ internal class P8086
             (ushort r1, string name1) = GetRegisterMem(reg2, mod, word);
             (ushort r2, string name2) = GetRegister(reg1, word);
 
-            int result = r2 - r1;
+            int result = 0;
+           
+            if (opcode == 0x02 || opcode == 0x03)
+            {
+                result = r2 + r1;
 
-            PutRegister(reg1, word, (ushort)result);
+                Console.WriteLine($"{prefixStr} ADD {name2},{name1}");
+            }
+            else
+            {
+                result = r2 - r1;
+
+                Console.WriteLine($"{prefixStr} SUB {name2},{name1}");
+            }
+
+            // 0x3b is CMP
+            if (opcode != 0x3b)
+                PutRegister(reg1, word, (ushort)result);
 
             SetFlagO(false); // TODO
             SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
             SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
             SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
             SetFlagP((byte)result);
-
-            Console.WriteLine($"{prefixStr} ADD {name2},{name1}");
         }
         else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
         {
