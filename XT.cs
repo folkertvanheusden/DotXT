@@ -235,7 +235,14 @@ internal class P8086
             a = _di;
             name = "[DI]";
         }
-        //else if (reg == 6)  TODO
+        else if (reg == 6)
+        {
+            ushort temp_a = GetPcByte();
+            temp_a |= (ushort)(GetPcByte() << 8);
+
+            a = temp_a;
+            name = $"[{a}]";
+        }
         else if (reg == 7)
         {
             a = (ushort)((_bh << 8) + _bl);
