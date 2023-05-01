@@ -1141,7 +1141,18 @@ internal class P8086
 
             int mode = (o1 >> 3) & 7;
 
-            if (mode == 3)
+            if (mode == 0)
+            {
+                // ROL
+                for (int i = 0; i < count; i++)
+                {
+                    SetFlagC((v1 & 128) == 128);
+                    v1 <<= 1;
+                }
+
+                Log.DoLog($"{prefixStr} ROL {vName},{countName}");
+            }
+            else if (mode == 3)
             {
                 // RCR
                 for (int i = 0; i < count; i++)
