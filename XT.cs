@@ -611,6 +611,14 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} PUSH SS");
         }
+        else if (opcode == 0x1e)
+        {
+            // PUSH DS
+            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)(_ds >> 8));
+            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)_ds);
+
+            Log.DoLog($"{prefixStr} PUSH DS");
+        }
         else if (opcode == 0xe9)
         {
             // JMP np
