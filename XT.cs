@@ -646,6 +646,25 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} POP DS");
         }
+        else if (opcode == 0xa5)
+        {
+            // MOVSW
+            _b.WriteByte((uint)(_es * 16 + _di) & MemMask, _b.ReadByte((uint)(_ds * 16 + _si) & MemMask));
+            _b.WriteByte((uint)(_es * 16 + _di + 1) & MemMask, _b.ReadByte((uint)(_ds * 16 + _si + 1) & MemMask));  // TODO: handle segment wrapping
+
+            if (GetFlagD())
+            {
+                _si -= 2;
+                _di -= 2;
+            }
+            else
+            {
+                _si += 2;
+                _di += 2;
+            }
+
+            Log.DoLog($"{prefixStr} MOVSW");
+        }
         else if (opcode == 0xe9)
         {
             // JMP np
