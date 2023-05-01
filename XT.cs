@@ -1028,8 +1028,11 @@ internal class P8086
         else if (opcode == 0xea)
         {
             // JMP far ptr
-            _ip = GetPcWord();
-            _cs = GetPcWord();
+            ushort temp_ip = GetPcWord();
+            ushort temp_cs = GetPcWord();
+
+            _ip = temp_ip;
+            _cs = temp_cs;
 
             Log.DoLog($"{prefixStr} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
         }
