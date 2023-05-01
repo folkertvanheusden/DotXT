@@ -1040,6 +1040,21 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} STOSB");
         }
+        else if (opcode == 0xab)
+        {
+            // STOSW
+            ushort inc = (ushort)(GetFlagD() ? -1 : 1);
+
+            uint a1 = (uint)((_es * 16 + _di) & MemMask);
+            _di += inc;
+            _b.WriteByte(a1, _al);
+
+            uint a2 = (uint)((_es * 16 + _di) & MemMask);
+            _di += inc;
+            _b.WriteByte(a2, _al);
+
+            Log.DoLog($"{prefixStr} STOSW");
+        }
         else if ((opcode & 0xf8) == 0xd0)
         {
             // RCR
