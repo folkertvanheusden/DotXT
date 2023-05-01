@@ -256,7 +256,7 @@ internal class P8086
             temp_a |= (ushort)(GetPcByte() << 8);
 
             a = temp_a;
-            name = $"[{a}]";
+            name = $"[${a:X4}]";
         }
         else if (reg == 7)
         {
@@ -277,10 +277,14 @@ internal class P8086
         {
             (uint a, string name) = GetDoubleRegister(reg);
 
-            if (segment_override_set) {
+            if (segment_override_set)
                 a += (uint)segment_override * 16;
-                a &= MemMask;
-            }
+            else
+                a += (uint)_ds * 16;
+
+            a &= MemMask;
+
+            name += $" (${a:X6})";
 
             ushort v = _b.ReadByte(a);
 
