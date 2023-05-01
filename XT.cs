@@ -618,7 +618,16 @@ internal class P8086
         }
 
         // main instruction handling
-        if (opcode == 0x0e)
+        if (opcode == 0x04)
+        {
+            // ADD AL,xx
+            byte v = GetPcByte();
+
+            _al += v;
+
+            Log.DoLog($"{prefixStr} ADD AL,${v:X2}");
+        }
+        else if (opcode == 0x0e)
         {
             // PUSH CS
             push(_cs);
