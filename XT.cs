@@ -928,6 +928,20 @@ internal class P8086
             else
                 Console.WriteLine($"{prefixStr} INC {name}");
         }
+        else if (opcode == 0xaa)
+        {
+            // STOSB
+            uint a = (uint)((_es * 16 + _di) & MemMask);
+
+            _b.write_byte(a, _al);
+
+            if (GetFlagD())
+                _di--;
+            else
+                _di++;
+
+            Console.WriteLine($"{prefixStr} STOSB");
+        }
         else if ((opcode & 0xf8) == 0xd0)
         {
             // RCR
