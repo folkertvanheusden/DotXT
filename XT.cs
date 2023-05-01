@@ -648,7 +648,7 @@ internal class P8086
         else if (opcode == 0xac)
         {
             // LODSB
-            _al = _b.read_byte((uint)(_ds * 16 + _si++) & MemMask);
+            _al = _b.read_byte((uint)(_ds * 16 + _si) & MemMask);
 
             if (GetFlagD())
                 _si--;
@@ -1177,6 +1177,48 @@ internal class P8086
             _ip = (ushort)(_ip + (sbyte)to);
 
             Console.WriteLine($"{prefixStr} JP ${_ip:X4}");
+        }
+        else if (opcode == 0xf3)
+        {
+            // REP
+
+            // it looks like f3 can only used with a specific set of
+            // instructions according to
+            // https://www.felixcloutier.com/x86/rep:repe:repz:repne:repnz
+
+            byte next_opcode = GetPcByte();
+
+            if (next_opcode == 0xab)
+            {
+                Console.WriteLine($"{prefixStr} REP STOSW");
+
+                ushort cx = (ushort)((_ch << 8) | _cl);
+
+                while(cx > 0)
+                {
+                    uint a_low = (uint)((_es * 16 + _di) & MemMask);
+
+                    _b.write_byte(a_low, _al);
+
+                    uint a_high = (uint)((_es * 16 + (ushort)(_di + 1)) & MemMask);
+
+                    _b.write_byte(a_high, _ah);
+
+                    if (GetFlagD())
+                        _di -= 2;
+                    else
+                        _di += 2;
+
+                    cx--;
+                }
+
+                _ch = 0;
+                _cl = 0;
+            }
+            else
+            {
+                Console.WriteLine($"{prefixStr} opcode {opcode:X2} next_opcode {next_opcode:X2} not implemented");
+            }
         }
         else if (opcode == 0xf4)
         {
