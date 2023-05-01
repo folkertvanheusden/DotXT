@@ -574,6 +574,12 @@ internal class P8086
         return @out;
     }
 
+    public void push(ushort v)
+    {
+        _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)(v >> 8));
+        _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)v);
+    }
+
     public void Tick()
     {
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
@@ -603,19 +609,24 @@ internal class P8086
         }
 
         // main instruction handling
-        if (opcode == 0x16)
+        if (opcode == 0x0e)
+        {
+            // PUSH CS
+            push(_cs);
+
+            Log.DoLog($"{prefixStr} PUSH CS");
+        }
+        else if (opcode == 0x16)
         {
             // PUSH SS
-            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)(_ss >> 8));
-            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)_ss);
+            push(_ss);
 
             Log.DoLog($"{prefixStr} PUSH SS");
         }
         else if (opcode == 0x1e)
         {
             // PUSH DS
-            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)(_ds >> 8));
-            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)_ds);
+            push(_ds);
 
             Log.DoLog($"{prefixStr} PUSH DS");
         }
