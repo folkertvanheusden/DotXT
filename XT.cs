@@ -927,6 +927,22 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} RET");
         }
+        else if (opcode == 0xcd)
+        {
+            // INT 0x..
+            byte @int = GetPcByte();
+
+            push(_flags);
+            push(_cs);
+            push(_ip);
+
+            uint addr = (uint)(@int * 4);
+
+            _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
+            _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
+
+            Log.DoLog($"{prefixStr} INT {@int:X2}");
+        }
         else if (opcode == 0x02 || opcode == 0x03 || opcode == 0x2a || opcode == 0x2b || opcode == 0x3b)
         {
             bool word = (opcode & 1) == 1;
