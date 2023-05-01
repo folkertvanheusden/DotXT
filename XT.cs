@@ -1212,7 +1212,7 @@ internal class P8086
             {
                 v++;
 
-                SetFlagO(v == 0x8000);
+                SetFlagO(word ? v == 0x8000 : v == 0x80);
 
                 Console.WriteLine($"{prefixStr} INC {name}");
             }
@@ -1220,7 +1220,7 @@ internal class P8086
             {
                 v--;
 
-                SetFlagO(v == 0x7fff);
+                SetFlagO(word ? v == 0x7fff : v == 0x7f);
 
                 Console.WriteLine($"{prefixStr} DEC {name}");
             }
@@ -1228,6 +1228,9 @@ internal class P8086
             {
                 Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
+
+            if (!word)
+                v &= 0xff;
 
             SetFlagS((v & 0x8000) == 0x8000);
             SetFlagZ(v == 0);
