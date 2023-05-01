@@ -200,60 +200,58 @@ internal class P8086
         return (0, "error");
     }
 
-    private (uint, string) GetDoubleRegister(int reg)
+    private (ushort, string) GetDoubleRegister(int reg)
     {
-        uint a = 0;
+        ushort a = 0;
         string name = "error";
 
         if (reg == 0)
         {
-            a = (uint)((_bh << 8) + _bl + _si * 16);
+            a = (ushort)((_bh << 8) + _bl + _si);
             name = "[BX+SI]";
         }
         else if (reg == 1)
         {
-            a = (uint)((_bh << 8) + _bl + _di * 16);
+            a = (ushort)((_bh << 8) + _bl + _di);
             name = "[BX+DI]";
         }
         else if (reg == 2)
         {
-            a = (uint)(_bp + _si * 16);
+            a = (ushort)(_bp + _si);
             name = "[BP+SI]";
         }
         else if (reg == 3)
         {
-            a = (uint)(_bp + _di * 16);
+            a = (ushort)(_bp + _di);
             name = "[BP+DI]";
         }
         else if (reg == 4)
         {
-            a = (uint)(_si * 16);
+            a = _si;
             name = "[SI]";
         }
         else if (reg == 5)
         {
-            a = (uint)(_di * 16);
+            a = _di;
             name = "[DI]";
         }
         else if (reg == 6)
         {
-            uint temp_a = GetPcByte();
-            temp_a |= (uint)(GetPcByte() << 8);
+            ushort temp_a = GetPcByte();
+            temp_a |= (ushort)(GetPcByte() << 8);
 
             a = temp_a;
             name = $"[{a}]";
         }
         else if (reg == 7)
         {
-            a = (uint)((_bh << 8) + _bl);
+            a = (ushort)((_bh << 8) + _bl);
             name = "[BX]";
         }
         else
         {
             Log.DoLog($"{nameof(GetDoubleRegister)} {reg} not implemented");
         }
-
-        a &= MemMask;
 
         return (a, name);
     }
@@ -262,12 +260,12 @@ internal class P8086
     {
         if (mod == 0)
         {
-            (uint a, string name) = GetDoubleRegister(reg);
+            (ushort a, string name) = GetDoubleRegister(reg);
 
             ushort v = _b.ReadByte(a);
 
             if (w)
-                v |= (ushort)(_b.ReadByte((uint)((a + 1) & MemMask)) << 8);
+                v |= (ushort)(_b.ReadByte((ushort)(a + 1)) << 8);
 
             return (v, name);
         }
@@ -438,12 +436,12 @@ internal class P8086
     {
         if (mod == 0)
         {
-            (uint a, string name) = GetDoubleRegister(reg);
+            (ushort a, string name) = GetDoubleRegister(reg);
 
             _b.WriteByte(a, (byte)val);
 
             if (w)
-                _b.WriteByte((uint)((a + 1) & MemMask), (byte)(val >> 8));
+                _b.WriteByte((ushort)(a + 1), (byte)(val >> 8));
 
             return name;
         }
