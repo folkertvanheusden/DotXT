@@ -142,6 +142,27 @@ internal class P8086
         return val;
     }
 
+    private ushort GetPcWord()
+    {
+        ushort v = 0;
+
+        v |= GetPcByte();
+        v |= (ushort)(GetPcByte() << 8);
+
+        return v;
+    }
+
+    private ushort GetAX()
+    {
+        return (ushort)((_ah << 8) | _al);
+    }
+
+    private void SetAX(ushort v)
+    {
+        _ah = (byte)(v >> 8);
+        _al = (byte)v;
+    }
+
     private ushort GetBX()
     {
         return (ushort)((_bh << 8) | _bl);
@@ -153,16 +174,69 @@ internal class P8086
         _bl = (byte)v;
     }
 
+    private ushort GetCX()
+    {
+        return (ushort)((_ch << 8) | _cl);
+    }
+
+    private void SetCX(ushort v)
+    {
+        _ch = (byte)(v >> 8);
+        _cl = (byte)v;
+    }
+
+    private ushort GetDX()
+    {
+        return (ushort)((_dh << 8) | _dl);
+    }
+
+    private void SetDX(ushort v)
+    {
+        _dh = (byte)(v >> 8);
+        _dl = (byte)v;
+    }
+
+    private void WriteMemByte(ushort segment, ushort offset, byte v)
+    {
+        uint a = (uint)(((segment << 4) + offset) & MemMask);
+
+       _b.WriteByte(a, v);
+    }
+
+    private void WriteMemWord(ushort segment, ushort offset, ushort v)
+    {
+        uint a1 = (uint)(((segment << 4) + offset) & MemMask);
+        uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
+
+       _b.WriteByte(a1, (byte)v);
+       _b.WriteByte(a2, (byte)(v >> 8));
+    }
+
+    private byte ReadMemByte(ushort segment, ushort offset)
+    {
+        uint a = (uint)(((segment << 4) + offset) & MemMask);
+
+        return _b.ReadByte(a);
+    } 
+
+    private ushort ReadMemWord(ushort segment, ushort offset)
+    {
+        uint a1 = (uint)(((segment << 4) + offset) & MemMask);
+        uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
+
+        return (ushort)(_b.ReadByte(a1) | (_b.ReadByte(a2) << 8));
+    } 
+
     private (ushort, string) GetRegister(int reg, bool w)
     {
         if (w)
         {
             if (reg == 0)
-                return ((ushort)((_ah << 8) | _al), "AX");
+                return (GetAX(), "AX");
             if (reg == 1)
-                return ((ushort)((_ch << 8) | _cl), "CX");
+                return (GetCX(), "CX");
             if (reg == 2)
-                return ((ushort)((_dh << 8) | _dl), "DX");
+                return (GetDX(), "DX");
             if (reg == 3)
                 return (GetBX(), "BX");
             if (reg == 4)
@@ -252,15 +326,13 @@ internal class P8086
         }
         else if (reg == 6)
         {
-            ushort temp_a = GetPcByte();
-            temp_a |= (ushort)(GetPcByte() << 8);
+            a = GetPcWord();
 
-            a = temp_a;
             name = $"[${a:X4}]";
         }
         else if (reg == 7)
         {
-            a = (ushort)GetBX();
+            a = GetBX();
             name = "[BX]";
         }
         else
@@ -275,21 +347,13 @@ internal class P8086
     {
         if (mod == 0)
         {
-            (uint a, string name) = GetDoubleRegister(reg);
-
-            if (segment_override_set)
-                a += (uint)segment_override * 16;
-            else
-                a += (uint)_ds * 16;
-
-            a &= MemMask;
+            (ushort a, string name) = GetDoubleRegister(reg);
 
             name += $" (${a:X6})";
 
-            ushort v = _b.ReadByte(a);
+            ushort segment = segment_override_set ? segment_override : _ds;
 
-            if (w)
-                v |= (ushort)(_b.ReadByte((ushort)(a + 1)) << 8);
+            ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
             return (v, name);
         }
@@ -308,8 +372,7 @@ internal class P8086
         {
             if (w)
             {
-                _ah = (byte)(val >> 8);
-                _al = (byte)val;
+                SetAX(val);
 
                 return "AX";
             }
@@ -323,8 +386,7 @@ internal class P8086
         {
             if (w)
             {
-                _ch = (byte)(val >> 8);
-                _cl = (byte)val;
+                SetCX(val);
 
                 return "CX";
             }
@@ -338,8 +400,7 @@ internal class P8086
         {
             if (w)
             {
-                _dh = (byte)(val >> 8);
-                _dl = (byte)val;
+                SetDX(val);
 
                 return "DX";
             }
@@ -461,10 +522,9 @@ internal class P8086
         {
             (ushort a, string name) = GetDoubleRegister(reg);
 
-            _b.WriteByte(a, (byte)val);
+            ushort segment = segment_override_set ? segment_override : _ds;
 
-            if (w)
-                _b.WriteByte((ushort)(a + 1), (byte)(val >> 8));
+            WriteMemWord(segment, a, val);
 
             return name;
         }
@@ -590,15 +650,16 @@ internal class P8086
 
     public void push(ushort v)
     {
-        _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)(v >> 8));
-        _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)v);
+        _sp -= 2;
+
+        WriteMemWord(_ss, _sp, v);
     }
 
     public ushort pop()
     {
-        ushort v = (ushort)(_b.ReadByte((uint)(_ss * 16 + _sp++) & MemMask) << 8);
+        ushort v = ReadMemWord(_ss, _sp);
 
-        v |= _b.ReadByte((uint)(_ss * 16 + _sp++) & MemMask);
+        _sp += 2;
 
         return v;
     }
@@ -691,10 +752,7 @@ internal class P8086
         else if (opcode == 0xe9)
         {
             // JMP np
-            byte o0 = GetPcByte();
-            byte o1 = GetPcByte();
-
-            short offset = (short)((o1 << 8) | o0);
+            short offset = (short)GetPcWord();
 
             _ip = (ushort)(_ip + offset);
 
@@ -703,16 +761,14 @@ internal class P8086
         else if (opcode == 0x50)
         {
             // PUSH AX
-            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, _ah);
-            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, _al);
+            push(GetAX());
 
             Log.DoLog($"{prefixStr} PUSH AX");
         }
         else if (opcode == 0x53)
         {
             // PUSH BX
-            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, _bh);
-            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, _bl);
+            push(GetBX());
 
             Log.DoLog($"{prefixStr} PUSH BX");
         }
@@ -745,8 +801,7 @@ internal class P8086
             {
                 (r1, name1) = GetRegisterMem(reg, mod, true);
 
-                r2 = GetPcByte();
-                r2 |= (ushort)(GetPcByte() << 8);
+                r2 = GetPcWord();
 
                 word = true;
             }
@@ -823,7 +878,7 @@ internal class P8086
         else if (opcode == 0xac)
         {
             // LODSB
-            _al = _b.ReadByte((uint)(_ds * 16 + _si) & MemMask);
+            _al = ReadMemByte(_ds, _si);
 
             if (GetFlagD())
                 _si--;
@@ -964,8 +1019,7 @@ internal class P8086
             // CALL
             push(_ip);
 
-            short a = GetPcByte();
-            a |= (short)(GetPcByte() << 8);
+            short a = (short)GetPcWord();
 
             _ip = (ushort)(a + _ip);
 
@@ -974,13 +1028,8 @@ internal class P8086
         else if (opcode == 0xea)
         {
             // JMP far ptr
-            byte o0 = GetPcByte();
-            byte o1 = GetPcByte();
-            byte s0 = GetPcByte();
-            byte s1 = GetPcByte();
-
-            _cs = (ushort)((s1 << 8) | s0);
-            _ip = (ushort)((o1 << 8) | o0);
+            _ip = GetPcWord();
+            _cs = GetPcWord();
 
             Log.DoLog($"{prefixStr} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
         }
@@ -1042,13 +1091,9 @@ internal class P8086
         else if (opcode == 0xa3)
         {
             // MOV [...],AX
-            ushort a = GetPcByte();
-            a |= (ushort)(GetPcByte() << 8);
+            ushort a = GetPcWord();
 
-            uint complete_address = (uint)((_ds + a) & MemMask);
-
-            _b.WriteByte(complete_address, _al);
-            _b.WriteByte(complete_address + 1, _ah);  // TODO segment wrapping
+            WriteMemWord(_ds, a, GetAX());
 
             Log.DoLog($"{prefixStr} MOV {a:X4},AX");
         }
@@ -1165,9 +1210,7 @@ internal class P8086
         else if (opcode == 0xaa)
         {
             // STOSB
-            uint a = (uint)((_es * 16 + _di) & MemMask);
-
-            _b.WriteByte(a, _al);
+            WriteMemByte(_es, _di, _al);
 
             if (GetFlagD())
                 _di--;
@@ -1423,7 +1466,7 @@ internal class P8086
         else if (opcode == 0xec)
         {
             // IN AL,DX
-            _al = _io.In((ushort)((_dh << 8) | _dl));
+            _al = _io.In(GetDX());
 
             Log.DoLog($"{prefixStr} IN AL,DX");
         }
@@ -1439,7 +1482,7 @@ internal class P8086
         else if (opcode == 0xee)
         {
             // OUT
-            _io.Out((ushort)((_dh << 8) | _dl), _al);
+            _io.Out(GetDX(), _al);
 
             Log.DoLog($"{prefixStr} OUT ${_dh:X2}{_dl:X2},AL");
         }
@@ -1466,17 +1509,12 @@ internal class P8086
             {
                 Log.DoLog($"{prefixStr} REP STOSW");
 
-                ushort cx = (ushort)((_ch << 8) | _cl);
+                ushort ax = GetAX();
+                ushort cx = GetCX();
 
                 while(cx > 0)
                 {
-                    uint a_low = (uint)((_es * 16 + _di) & MemMask);
-
-                    _b.WriteByte(a_low, _al);
-
-                    uint a_high = (uint)((_es * 16 + (ushort)(_di + 1)) & MemMask);
-
-                    _b.WriteByte(a_high, _ah);
+                    WriteMemWord(_es, _di, ax);
 
                     if (GetFlagD())
                         _di -= 2;
@@ -1486,8 +1524,7 @@ internal class P8086
                     cx--;
                 }
 
-                _ch = 0;
-                _cl = 0;
+                SetCX(0);
             }
             else
             {
