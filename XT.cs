@@ -2,7 +2,7 @@ namespace DotXT;
 
 internal class Log
 {
-    public static void doLog(String what)
+    public static void DoLog(String what)
     {
         File.AppendAllText(@"logfile.txt", what + Environment.NewLine);
     }
@@ -45,7 +45,7 @@ internal class Bus
     private readonly Rom _bios = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
     private readonly Rom _basic = new("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
 
-    public byte read_byte(uint address)
+    public byte ReadByte(uint address)
     {
         if (address is >= 0x000f8000 and <= 0x000fffff)
             return _bios.ReadByte(address - 0x000f8000);
@@ -56,8 +56,11 @@ internal class Bus
         return _m.ReadByte(address);
     }
 
-    public void write_byte(uint address, byte v)
+    public void WriteByte(uint address, byte v)
     {
+        if (address >= 0x0009fc00)
+            Console.WriteLine($"{address:X6} {v:X2}");
+
         _m.WriteByte(address, v);
     }
 }
@@ -73,7 +76,7 @@ internal class IO
         if (addr == 0x0041)
             return _RAM_refresh_counter++;
 
-        Log.doLog($"IN: I/O port {addr:X4} not implemented");
+        Log.DoLog($"IN: I/O port {addr:X4} not implemented");
 
         if (values.ContainsKey(addr))
             return values[addr];
@@ -85,7 +88,7 @@ internal class IO
     {
         // TODO
 
-        Log.doLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
+        Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
 
         values[addr] = value;
     }
@@ -128,9 +131,9 @@ internal class P8086
     {
         uint address = (uint)(_cs * 16 + _ip++) & MemMask;
 
-        byte val = _b.read_byte(address);
+        byte val = _b.ReadByte(address);
 
-        // Log.doLog($"{address:X} {val:X}");
+        // Log.DoLog($"{address:X} {val:X}");
 
         return val;
     }
@@ -176,7 +179,7 @@ internal class P8086
                 return (_bh, "BH");
         }
 
-        Log.doLog($"reg {reg} w {w} not supported for {nameof(GetRegister)}");
+        Log.DoLog($"reg {reg} w {w} not supported for {nameof(GetRegister)}");
 
         return (0, "error");
     }
@@ -192,7 +195,7 @@ internal class P8086
         if (reg == 0b011)
             return (_ds, "DS");
 
-        Log.doLog($"reg {reg} not supported for {nameof(GetSRegister)}");
+        Log.DoLog($"reg {reg} not supported for {nameof(GetSRegister)}");
 
         return (0, "error");
     }
@@ -240,7 +243,7 @@ internal class P8086
         }
         else
         {
-            Log.doLog($"{nameof(GetDoubleRegister)} {reg} not implemented");
+            Log.DoLog($"{nameof(GetDoubleRegister)} {reg} not implemented");
         }
 
         return (a, name);
@@ -252,10 +255,10 @@ internal class P8086
         {
             (ushort a, string name) = GetDoubleRegister(reg);
 
-            ushort v = _b.read_byte(a);
+            ushort v = _b.ReadByte(a);
 
             if (w)
-                v |= (ushort)(_b.read_byte((ushort)(a + 1)) << 8);
+                v |= (ushort)(_b.ReadByte((ushort)(a + 1)) << 8);
 
             return (v, name);
         }
@@ -263,7 +266,7 @@ internal class P8086
         if (mod == 3)
             return GetRegister(reg, w);
 
-        Log.doLog($"reg {reg} mod {mod} w {w} not supported for {nameof(GetRegisterMem)}");
+        Log.DoLog($"reg {reg} mod {mod} w {w} not supported for {nameof(GetRegisterMem)}");
 
         return (0, "error");
     }
@@ -386,7 +389,7 @@ internal class P8086
             return "BH";
         }
 
-        Log.doLog($"reg {reg} w {w} not supported for {nameof(PutRegister)} ({val:X})");
+        Log.DoLog($"reg {reg} w {w} not supported for {nameof(PutRegister)} ({val:X})");
 
         return "error";
     }
@@ -417,7 +420,7 @@ internal class P8086
             return "DS";
         }
 
-        Log.doLog($"reg {reg} not supported for {nameof(PutSRegister)}");
+        Log.DoLog($"reg {reg} not supported for {nameof(PutSRegister)}");
 
         return "error";
     }
@@ -428,10 +431,10 @@ internal class P8086
         {
             (ushort a, string name) = GetDoubleRegister(reg);
 
-            _b.write_byte(a, (byte)val);
+            _b.WriteByte(a, (byte)val);
 
             if (w)
-                _b.write_byte((ushort)(a + 1), (byte)(val >> 8));
+                _b.WriteByte((ushort)(a + 1), (byte)(val >> 8));
 
             return name;
         }
@@ -439,7 +442,7 @@ internal class P8086
         if (mod == 3)
             return PutRegister(reg, w, val);
 
-        Log.doLog($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(PutRegisterMem)}");
+        Log.DoLog($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(PutRegisterMem)}");
 
         return "error";
     }
@@ -575,15 +578,15 @@ internal class P8086
 
             _ip = (ushort)(_ip + offset);
 
-            Log.doLog($"{prefixStr} JMP {_ip:X}");
+            Log.DoLog($"{prefixStr} JMP {_ip:X}");
         }
         else if (opcode == 0x50)
         {
             // PUSH AX
-            _b.write_byte((uint)(_ss * 16 + _sp++) & MemMask, _ah);
-            _b.write_byte((uint)(_ss * 16 + _sp++) & MemMask, _al);
+            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, _ah);
+            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, _al);
 
-            Log.doLog($"{prefixStr} PUSH AX");
+            Log.DoLog($"{prefixStr} PUSH AX");
         }
         else if (opcode == 0x80 || opcode == 0x81 || opcode == 0x83)
         {
@@ -630,7 +633,7 @@ internal class P8086
                 }
                 else
                 {
-                    Log.doLog($"{prefixStr} opcode {opcode:X2} not implemented");
+                    Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
                 }
 
                 int result = r1 - r2;
@@ -641,11 +644,11 @@ internal class P8086
                 SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
                 SetFlagP((byte)result);
 
-                Log.doLog($"{prefixStr} CMP {name1},${r2:X2}");
+                Log.DoLog($"{prefixStr} CMP {name1},${r2:X2}");
             }
             else
             {
-                Log.doLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
         }
         else if (opcode == 0x86)
@@ -668,34 +671,34 @@ internal class P8086
             PutRegisterMem(reg2, mod, word, r1);
             PutRegister(reg1, word, r2);
 
-            Log.doLog($"{prefixStr} XCHG {name1},{name2}");
+            Log.DoLog($"{prefixStr} XCHG {name1},{name2}");
         }
         else if (opcode == 0x90)
         {
             // NOP
-            Log.doLog($"{prefixStr} NOP");
+            Log.DoLog($"{prefixStr} NOP");
         }
         else if (opcode == 0xac)
         {
             // LODSB
-            _al = _b.read_byte((uint)(_ds * 16 + _si) & MemMask);
+            _al = _b.ReadByte((uint)(_ds * 16 + _si) & MemMask);
 
             if (GetFlagD())
                 _si--;
             else
                 _si++;
 
-            Log.doLog($"{prefixStr} LODSB");
+            Log.DoLog($"{prefixStr} LODSB");
         }
         else if (opcode == 0xc3)
         {
             // RET
-            byte low = _b.read_byte((uint)(_ss * 16 + _sp++) & MemMask);
-            byte high = _b.read_byte((uint)(_ss * 16 + _sp++) & MemMask);
+            byte low = _b.ReadByte((uint)(_ss * 16 + _sp++) & MemMask);
+            byte high = _b.ReadByte((uint)(_ss * 16 + _sp++) & MemMask);
 
             _ip = (ushort)((high << 8) + low);
 
-            Log.doLog($"{prefixStr} RET");
+            Log.DoLog($"{prefixStr} RET");
         }
         else if (opcode == 0x02 || opcode == 0x03 || opcode == 0x2a || opcode == 0x2b || opcode == 0x3b)
         {
@@ -715,13 +718,13 @@ internal class P8086
             {
                 result = r2 + r1;
 
-                Log.doLog($"{prefixStr} ADD {name2},{name1}");
+                Log.DoLog($"{prefixStr} ADD {name2},{name1}");
             }
             else
             {
                 result = r2 - r1;
 
-                Log.doLog($"{prefixStr} SUB {name2},{name1}");
+                Log.DoLog($"{prefixStr} SUB {name2},{name1}");
             }
 
             // 0x3b is CMP
@@ -757,10 +760,10 @@ internal class P8086
             else if (function == 3) // TODO always true here?
                 result = (ushort)(r2 ^ r1);
             else
-                Log.doLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
 
             // if (opcode == 0x0b || opcode == 0x33)
-            //     Log.doLog($"r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
+            //     Log.DoLog($"r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
 
             PutRegisterMem(reg1, mod, word, result);
 
@@ -771,7 +774,7 @@ internal class P8086
 
             SetFlagP((byte)result); // TODO verify
 
-            Log.doLog($"{prefixStr} XOR {name1},{name2}");
+            Log.DoLog($"{prefixStr} XOR {name1},{name2}");
         }
         else if ((opcode == 0x34 || opcode == 0x35) || (opcode == 0x24 || opcode == 0x25) ||
                  (opcode == 0x0c || opcode == 0x0d))
@@ -807,7 +810,7 @@ internal class P8086
             }
             else
             {
-                Log.doLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
 
             SetFlagO(false);
@@ -828,14 +831,14 @@ internal class P8086
             _cs = (ushort)((s1 << 8) | s0);
             _ip = (ushort)((o1 << 8) | o0);
 
-            Log.doLog($"{prefixStr} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
+            Log.DoLog($"{prefixStr} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
         }
         else if (opcode == 0xfa)
         {
             // CLI
             ClearFlagBit(9); // IF
 
-            Log.doLog($"{prefixStr} CLI");
+            Log.DoLog($"{prefixStr} CLI");
         }
         else if ((opcode & 0xf8) == 0xb0)
         {
@@ -846,7 +849,7 @@ internal class P8086
 
             string name = PutRegister(reg, false, v);
 
-            Log.doLog($"{prefixStr} MOV {name},${v:X}");
+            Log.DoLog($"{prefixStr} MOV {name},${v:X}");
         }
         else if (((opcode & 0b11111100) == 0b10001000) || opcode == 0b10001110 ||
                  ((opcode & 0b11111110) == 0b11000110) || ((opcode & 0b11111100) == 0b10100000) || opcode == 0x8c)
@@ -864,7 +867,7 @@ internal class P8086
             if (sreg)
                 word = true;
 
-            // Log.doLog($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}");
+            // Log.DoLog($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}");
 
             if (dir)
             {
@@ -878,7 +881,7 @@ internal class P8086
                 else
                     toName = PutRegister(reg, word, v);
 
-                Log.doLog($"{prefixStr} MOV {toName},{fromName}");
+                Log.DoLog($"{prefixStr} MOV {toName},{fromName}");
             }
             else
             {
@@ -893,7 +896,7 @@ internal class P8086
 
                 string toName = PutRegisterMem(rm, mode, word, v);
 
-                Log.doLog($"{prefixStr} MOV {toName},{fromName}");
+                Log.DoLog($"{prefixStr} MOV {toName},{fromName}");
             }
         }
         else if ((opcode & 0xf8) == 0xb8)
@@ -909,7 +912,7 @@ internal class P8086
 
             string toName = PutRegister(reg, word, val);
 
-            Log.doLog($"{prefixStr} MOV {toName},${val:X}");
+            Log.DoLog($"{prefixStr} MOV {toName},${val:X}");
         }
         else if (opcode == 0x9e)
         {
@@ -919,14 +922,14 @@ internal class P8086
 
             _flags = (ushort)(keep | add);
 
-            Log.doLog($"{prefixStr} SAHF (set to {GetFlagsAsString()})");
+            Log.DoLog($"{prefixStr} SAHF (set to {GetFlagsAsString()})");
         }
         else if (opcode == 0x9f)
         {
             // LAHF
             _ah = (byte)_flags;
 
-            Log.doLog($"{prefixStr} LAHF");
+            Log.DoLog($"{prefixStr} LAHF");
         }
         else if (opcode is >= 0x40 and <= 0x4f)
         {
@@ -954,23 +957,23 @@ internal class P8086
             PutRegister(reg, true, v);
 
             if (isDec)
-                Log.doLog($"{prefixStr} DEC {name}");
+                Log.DoLog($"{prefixStr} DEC {name}");
             else
-                Log.doLog($"{prefixStr} INC {name}");
+                Log.DoLog($"{prefixStr} INC {name}");
         }
         else if (opcode == 0xaa)
         {
             // STOSB
             uint a = (uint)((_es * 16 + _di) & MemMask);
 
-            _b.write_byte(a, _al);
+            _b.WriteByte(a, _al);
 
             if (GetFlagD())
                 _di--;
             else
                 _di++;
 
-            Log.doLog($"{prefixStr} STOSB");
+            Log.DoLog($"{prefixStr} STOSB");
         }
         else if ((opcode & 0xf8) == 0xd0)
         {
@@ -1019,7 +1022,7 @@ internal class P8086
                     SetFlagC(newCarry);
                 }
 
-                Log.doLog($"{prefixStr} RCR {vName},{countName}");
+                Log.DoLog($"{prefixStr} RCR {vName},{countName}");
             }
             else if (mode == 4)
             {
@@ -1033,7 +1036,7 @@ internal class P8086
                     SetFlagC(newCarry);
                 }
 
-                Log.doLog($"{prefixStr} SHL {vName},{countName}");
+                Log.DoLog($"{prefixStr} SHL {vName},{countName}");
             }
             else if (mode == 5)
             {
@@ -1047,11 +1050,11 @@ internal class P8086
                     SetFlagC(newCarry);
                 }
 
-                Log.doLog($"{prefixStr} SHR {vName},{countName}");
+                Log.DoLog($"{prefixStr} SHR {vName},{countName}");
             }
             else
             {
-                Log.doLog($"{prefixStr} RCR/SHR mode {mode} not implemented");
+                Log.DoLog($"{prefixStr} RCR/SHR mode {mode} not implemented");
             }
 
             bool newSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
@@ -1153,7 +1156,7 @@ internal class P8086
             }
             else
             {
-                Log.doLog($"{prefixStr} Opcode {opcode:x2} not implemented");
+                Log.DoLog($"{prefixStr} Opcode {opcode:x2} not implemented");
             }
 
             ushort newAddresses = (ushort)(_ip + (sbyte)to);
@@ -1161,7 +1164,7 @@ internal class P8086
             if (state)
                 _ip = newAddresses;
 
-            Log.doLog($"{prefixStr} {name} {to} ({newAddresses:X4})");
+            Log.DoLog($"{prefixStr} {name} {to} ({newAddresses:X4})");
         }
         else if (opcode == 0xe2)
         {
@@ -1179,7 +1182,7 @@ internal class P8086
             if (cx > 0)
                 _ip = newAddresses;
 
-            Log.doLog($"{prefixStr} LOOP {to} ({newAddresses:X4})");
+            Log.DoLog($"{prefixStr} LOOP {to} ({newAddresses:X4})");
         }
         else if (opcode == 0xe4)
         {
@@ -1188,14 +1191,14 @@ internal class P8086
 
             _al = _io.In(@from);
 
-            Log.doLog($"{prefixStr} IN AL,${from:X2}");
+            Log.DoLog($"{prefixStr} IN AL,${from:X2}");
         }
         else if (opcode == 0xec)
         {
             // IN AL,DX
             _al = _io.In((ushort)((_dh << 8) | _dl));
 
-            Log.doLog($"{prefixStr} IN AL,DX");
+            Log.DoLog($"{prefixStr} IN AL,DX");
         }
         else if (opcode == 0xe6)
         {
@@ -1204,14 +1207,14 @@ internal class P8086
 
             _io.Out(@to, _al);
 
-            Log.doLog($"{prefixStr} OUT ${to:X2},AL");
+            Log.DoLog($"{prefixStr} OUT ${to:X2},AL");
         }
         else if (opcode == 0xee)
         {
             // OUT
             _io.Out((ushort)((_dh << 8) | _dl), _al);
 
-            Log.doLog($"{prefixStr} OUT ${_dh:X2}{_dl:X2},AL");
+            Log.DoLog($"{prefixStr} OUT ${_dh:X2}{_dl:X2},AL");
         }
         else if (opcode == 0xeb)
         {
@@ -1220,7 +1223,7 @@ internal class P8086
 
             _ip = (ushort)(_ip + (sbyte)to);
 
-            Log.doLog($"{prefixStr} JP ${_ip:X4}");
+            Log.DoLog($"{prefixStr} JP ${_ip:X4}");
         }
         else if (opcode == 0xf3)
         {
@@ -1234,7 +1237,7 @@ internal class P8086
 
             if (next_opcode == 0xab)
             {
-                Log.doLog($"{prefixStr} REP STOSW");
+                Log.DoLog($"{prefixStr} REP STOSW");
 
                 ushort cx = (ushort)((_ch << 8) | _cl);
 
@@ -1242,11 +1245,11 @@ internal class P8086
                 {
                     uint a_low = (uint)((_es * 16 + _di) & MemMask);
 
-                    _b.write_byte(a_low, _al);
+                    _b.WriteByte(a_low, _al);
 
                     uint a_high = (uint)((_es * 16 + (ushort)(_di + 1)) & MemMask);
 
-                    _b.write_byte(a_high, _ah);
+                    _b.WriteByte(a_high, _ah);
 
                     if (GetFlagD())
                         _di -= 2;
@@ -1261,7 +1264,7 @@ internal class P8086
             }
             else
             {
-                Log.doLog($"{prefixStr} opcode {opcode:X2} next_opcode {next_opcode:X2} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} next_opcode {next_opcode:X2} not implemented");
             }
         }
         else if (opcode == 0xf4)
@@ -1269,35 +1272,35 @@ internal class P8086
             // HLT
             _ip--;
 
-            Log.doLog($"{prefixStr} HLT");
+            Log.DoLog($"{prefixStr} HLT");
         }
         else if (opcode == 0xf8)
         {
             // CLC
             SetFlagC(false);
 
-            Log.doLog($"{prefixStr} CLC");
+            Log.DoLog($"{prefixStr} CLC");
         }
         else if (opcode == 0xf9)
         {
             // STC
             SetFlagC(true);
 
-            Log.doLog($"{prefixStr} STC");
+            Log.DoLog($"{prefixStr} STC");
         }
         else if (opcode == 0xfc)
         {
             // CLD
             SetFlagD(false);
 
-            Log.doLog($"{prefixStr} CLD");
+            Log.DoLog($"{prefixStr} CLD");
         }
         else if (opcode == 0xfd)
         {
             // STD
             SetFlagD(true);
 
-            Log.doLog($"{prefixStr} STD");
+            Log.DoLog($"{prefixStr} STD");
         }
         else if (opcode == 0xfe || opcode == 0xff)
         {
@@ -1319,7 +1322,7 @@ internal class P8086
 
                 SetFlagO(word ? v == 0x8000 : v == 0x80);
 
-                Log.doLog($"{prefixStr} INC {name}");
+                Log.DoLog($"{prefixStr} INC {name}");
             }
             else if (function == 1)
             {
@@ -1327,11 +1330,11 @@ internal class P8086
 
                 SetFlagO(word ? v == 0x7fff : v == 0x7f);
 
-                Log.doLog($"{prefixStr} DEC {name}");
+                Log.DoLog($"{prefixStr} DEC {name}");
             }
             else
             {
-                Log.doLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
 
             if (!word)
@@ -1346,7 +1349,7 @@ internal class P8086
         }
         else
         {
-            Log.doLog($"{prefixStr} Opcode {opcode:x} not implemented");
+            Log.DoLog($"{prefixStr} Opcode {opcode:x} not implemented");
         }
     }
 }
