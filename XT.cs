@@ -960,12 +960,12 @@ internal class P8086
             // CALL
             push(_ip);
 
-            ushort a = GetPcByte();
-            a |= (ushort)(GetPcByte() << 8);
+            short a = GetPcByte();
+            a |= (short)(GetPcByte() << 8);
 
-            _ip = a;
+            _ip = (ushort)(a + _ip);
 
-            Log.DoLog($"{prefixStr} CALL {a:X4} (${_cs * 16 + _ip:X})");
+            Log.DoLog($"{prefixStr} CALL {a:X4} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
         }
         else if (opcode == 0xea)
         {
