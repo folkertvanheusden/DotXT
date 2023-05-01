@@ -585,8 +585,17 @@ internal class P8086
             $"{flagStr} {address:X4} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4}";
 
         // handle prefixes
-        if (opcode == 0x26) {
-            segment_override = _es;
+        if (opcode == 0x26 || opcode == 0x2e || opcode == 0x36 || opcode == 0x3e)
+        {
+            if (opcode == 026)
+                segment_override = _es;
+            else if (opcode == 0x2e)
+                segment_override = _cs;
+            else if (opcode == 0x36)
+                segment_override = _ss;
+            else if (opcode == 0x3e)
+                segment_override = _ds;
+
             segment_override_set = true;
 
             address = (uint)(_cs * 16 + _ip) & MemMask;
@@ -594,7 +603,15 @@ internal class P8086
         }
 
         // main instruction handling
-        if (opcode == 0xe9)
+        if (opcode == 0x16)
+        {
+            // PUSH SS
+            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)(_ss >> 8));
+            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)_ss);
+
+            Log.DoLog($"{prefixStr} PUSH SS");
+        }
+        else if (opcode == 0xe9)
         {
             // JMP np
             byte o0 = GetPcByte();
