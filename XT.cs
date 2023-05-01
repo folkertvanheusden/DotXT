@@ -813,10 +813,7 @@ internal class P8086
         else if (opcode == 0xc3)
         {
             // RET
-            byte low = _b.ReadByte((uint)(_ss * 16 + _sp++) & MemMask);
-            byte high = _b.ReadByte((uint)(_ss * 16 + _sp++) & MemMask);
-
-            _ip = (ushort)((high << 8) + low);
+            _ip = pop();
 
             Log.DoLog($"{prefixStr} RET");
         }
@@ -940,6 +937,18 @@ internal class P8086
 
             SetFlagP(word ? _ah : _al);
         }
+        else if (opcode == 0xe8)
+        {
+            // CALL
+            push(_ip);
+
+            ushort a = GetPcByte();
+            a |= (ushort)(GetPcByte() << 8);
+
+            _ip = a;
+
+            Log.DoLog($"{prefixStr} CALL {a:X4} (${_cs * 16 + _ip:X})");
+        }
         else if (opcode == 0xea)
         {
             // JMP far ptr
@@ -981,6 +990,8 @@ internal class P8086
 
             _b.WriteByte(complete_address, _al);
             _b.WriteByte(complete_address + 1, _ah);  // TODO segment wrapping
+
+            Log.DoLog($"{prefixStr} MOV {a:X4},AX");
         }
         else if (((opcode & 0b11111100) == 0b10001000 /* 0x88 */) || opcode == 0b10001110 /* 0x8e */||
                  ((opcode & 0b11111110) == 0b11000110 /* 0xc6 */) || ((opcode & 0b11111100) == 0b10100000 /* 0xa0 */) || opcode == 0x8c)
