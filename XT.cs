@@ -980,6 +980,43 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
         }
+        else if (opcode == 0xf6)
+        {
+            // TEST and others
+            bool word = (opcode & 1) == 1;
+
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg1 = o1 & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, string name1) = GetRegisterMem(reg1, mod, word);
+            (ushort r2, string name2) = GetRegister(reg2, word);
+
+            string cmd_name = "error";
+            ushort result = 0;
+
+            int function = (o1 >> 3) & 7;
+
+            if (function == 0)
+            {
+                // TEST
+                result = (ushort)(r1 & r2);
+                cmd_name = "AND";
+            }
+            else
+            {
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented");
+            }
+
+            SetFlagO(false);
+            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+            SetFlagA(false);
+
+            Log.DoLog($"{prefixStr} {cmd_name} {name1},{name2}");
+        }
         else if (opcode == 0xfa)
         {
             // CLI
