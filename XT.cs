@@ -1050,9 +1050,9 @@ internal class P8086
         else if (opcode == 0xe8)
         {
             // CALL
-            push(_ip);
-
             short a = (short)GetPcWord();
+
+            push(_ip);
 
             _ip = (ushort)(a + _ip);
 
