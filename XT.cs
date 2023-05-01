@@ -113,6 +113,10 @@ internal class P8086
     private ushort _es;
     private ushort _ss;
 
+    // replace by an Optional-type when available
+    private ushort segment_override;
+    private bool segment_override_set;
+
     private ushort _flags;
 
     private const uint MemMask = 0x00ffffff;
@@ -260,7 +264,12 @@ internal class P8086
     {
         if (mod == 0)
         {
-            (ushort a, string name) = GetDoubleRegister(reg);
+            (uint a, string name) = GetDoubleRegister(reg);
+
+            if (segment_override_set) {
+                a += (uint)segment_override * 16;
+                a &= MemMask;
+            }
 
             ushort v = _b.ReadByte(a);
 
@@ -575,6 +584,16 @@ internal class P8086
         string prefixStr =
             $"{flagStr} {address:X4} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4}";
 
+        // handle prefixes
+        if (opcode == 0x26) {
+            segment_override = _es;
+            segment_override_set = true;
+
+            address = (uint)(_cs * 16 + _ip) & MemMask;
+            opcode = GetPcByte();
+        }
+
+        // main instruction handling
         if (opcode == 0xe9)
         {
             // JMP np
@@ -1358,5 +1377,7 @@ internal class P8086
         {
             Log.DoLog($"{prefixStr} Opcode {opcode:x} not implemented");
         }
+
+        segment_override_set = false;
     }
 }
