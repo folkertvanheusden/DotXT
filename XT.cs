@@ -1101,7 +1101,7 @@ internal class P8086
             Log.DoLog($"{prefixStr} MOV {a:X4},AX");
         }
         else if (((opcode & 0b11111100) == 0b10001000 /* 0x88 */) || opcode == 0b10001110 /* 0x8e */||
-                 ((opcode & 0b11111110) == 0b11000110 /* 0xc6 */) || ((opcode & 0b11111100) == 0b10100000 /* 0xa0 */) || opcode == 0x8c)
+                  ((opcode & 0b11111100) == 0b10100000 /* 0xa0 */) || opcode == 0x8c)
         {
             bool dir = (opcode & 2) == 2; // direction
             bool word = (opcode & 1) == 1; // b/w
@@ -1236,6 +1236,53 @@ internal class P8086
             _b.WriteByte(a2, _al);
 
             Log.DoLog($"{prefixStr} STOSW");
+        }
+        else if (opcode == 0xc6)
+        {
+            // MOV
+            bool word = (opcode & 1) == 1;
+
+            byte o1 = GetPcByte();
+
+            // 000FFA3F  C6 06 6B04 00        mov byte [0x46b],0x0
+            // 00 000 110
+
+            int mod = o1 >> 6;
+
+            int mreg = o1 & 7;
+
+            if (mod == 0)
+            {
+                if (mreg == 6)
+                {
+                    ushort a = GetPcWord();
+
+                    if (word)
+                    {
+                        ushort v = GetPcWord();
+
+                        WriteMemWord(_ds, a, v);
+
+                        Log.DoLog($"{prefixStr} MOV word [${a:X4}],${v:X4}");
+                    }
+                    else
+                    {
+                        byte v = GetPcByte();
+
+                        WriteMemByte(_ds, a, v);
+
+                        Log.DoLog($"{prefixStr} MOV byte [${a:X4}],${v:X2}");
+                    }
+                }
+                else
+                {
+                    Log.DoLog($"{prefixStr} MOV opcode {opcode:X2} o1 {o1:X2} not implemented");
+                }
+            }
+            else
+            {
+                Log.DoLog($"{prefixStr} MOV opcode {opcode:X2} o1 {o1:X2} not implemented");
+            }
         }
         else if ((opcode & 0xf8) == 0xd0)
         {
