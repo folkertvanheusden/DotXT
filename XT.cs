@@ -142,6 +142,17 @@ internal class P8086
         return val;
     }
 
+    private ushort GetBX()
+    {
+        return (ushort)((_bh << 8) | _bl);
+    }
+
+    private void SetBX(ushort v)
+    {
+        _bh = (byte)(v >> 8);
+        _bl = (byte)v;
+    }
+
     private (ushort, string) GetRegister(int reg, bool w)
     {
         if (w)
@@ -153,7 +164,7 @@ internal class P8086
             if (reg == 2)
                 return ((ushort)((_dh << 8) | _dl), "DX");
             if (reg == 3)
-                return ((ushort)((_bh << 8) | _bl), "BX");
+                return (GetBX(), "BX");
             if (reg == 4)
                 return (_sp, "SP");
             if (reg == 5)
@@ -211,12 +222,12 @@ internal class P8086
 
         if (reg == 0)
         {
-            a = (ushort)((_bh << 8) + _bl + _si);
+            a = (ushort)(GetBX() + _si);
             name = "[BX+SI]";
         }
         else if (reg == 1)
         {
-            a = (ushort)((_bh << 8) + _bl + _di);
+            a = (ushort)(GetBX() + _di);
             name = "[BX+DI]";
         }
         else if (reg == 2)
@@ -249,7 +260,7 @@ internal class P8086
         }
         else if (reg == 7)
         {
-            a = (ushort)((_bh << 8) + _bl);
+            a = (ushort)GetBX();
             name = "[BX]";
         }
         else
@@ -338,8 +349,7 @@ internal class P8086
         {
             if (w)
             {
-                _bh = (byte)(val >> 8);
-                _bl = (byte)val;
+                SetBX(val);
 
                 return "BX";
             }
@@ -693,6 +703,14 @@ internal class P8086
             _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, _al);
 
             Log.DoLog($"{prefixStr} PUSH AX");
+        }
+        else if (opcode == 0x53)
+        {
+            // PUSH BX
+            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, _bh);
+            _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, _bl);
+
+            Log.DoLog($"{prefixStr} PUSH BX");
         }
         else if (opcode == 0x80 || opcode == 0x81 || opcode == 0x83)
         {
