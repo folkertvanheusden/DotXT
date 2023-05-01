@@ -735,6 +735,13 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} ADD AL,${v:X2}");
         }
+        else if (opcode == 0x06)
+        {
+            // PUSH ES
+            push(_es);
+
+            Log.DoLog($"{prefixStr} PUSH ES");
+        }
         else if (opcode == 0x0e)
         {
             // PUSH CS
@@ -798,12 +805,40 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} PUSH AX");
         }
+        else if (opcode == 0x51)
+        {
+            // PUSH CX
+            push(GetCX());
+
+            Log.DoLog($"{prefixStr} PUSH CX");
+        }
+        else if (opcode == 0x52)
+        {
+            // PUSH DX
+            push(GetDX());
+
+            Log.DoLog($"{prefixStr} PUSH DX");
+        }
         else if (opcode == 0x53)
         {
             // PUSH BX
             push(GetBX());
 
             Log.DoLog($"{prefixStr} PUSH BX");
+        }
+        else if (opcode == 0x56)
+        {
+            // PUSH SI
+            push(_si);
+
+            Log.DoLog($"{prefixStr} PUSH SI");
+        }
+        else if (opcode == 0x57)
+        {
+            // PUSH DI
+            push(_di);
+
+            Log.DoLog($"{prefixStr} PUSH DI");
         }
         else if (opcode == 0x80 || opcode == 0x81 || opcode == 0x83)
         {
