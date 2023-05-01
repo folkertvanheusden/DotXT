@@ -35,7 +35,7 @@ internal class Bus
     private readonly Memory _m = new();
 
     private readonly Rom _bios = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
-    private readonly Rom _basic = new("roms/BIOS_5160_08NOV82_U19_5000027_27256.BIN");
+    private readonly Rom _basic = new("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
 
     public byte read_byte(uint address)
     {
@@ -645,6 +645,18 @@ internal class P8086
                     Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
         }
+        else if (opcode == 0xac)
+        {
+            // LODSB
+            _al = _b.read_byte((uint)(_ds * 16 + _si++) & MemMask);
+
+            if (GetFlagD())
+                _si--;
+            else
+                _si++;
+
+            Console.WriteLine($"{prefixStr} LODSB");
+        }
         else if (opcode == 0xc3)
         {
             // RET
@@ -1193,6 +1205,13 @@ internal class P8086
             SetFlagD(false);
 
             Console.WriteLine($"{prefixStr} CLD");
+        }
+        else if (opcode == 0xfd)
+        {
+            // STD
+            SetFlagD(true);
+
+            Console.WriteLine($"{prefixStr} STD");
         }
         else if (opcode == 0xfe || opcode == 0xff)
         {
