@@ -2,7 +2,7 @@ namespace DotXT;
 
 internal class Log
 {
-    public static void DoLog(String what)
+    public static void DoLog(string what)
     {
         File.AppendAllText(@"logfile.txt", what + Environment.NewLine);
     }
@@ -1601,6 +1601,13 @@ internal class P8086
             SetFlagC(true);
 
             Log.DoLog($"{prefixStr} STC");
+        }
+        else if (opcode == 0xfb)
+        {
+            // STI
+            SetFlagBit(9); // IF
+
+            Log.DoLog($"{prefixStr} STI");
         }
         else if (opcode == 0xfc)
         {
