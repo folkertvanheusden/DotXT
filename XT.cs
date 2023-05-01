@@ -633,7 +633,7 @@ internal class P8086
         }
         else if (opcode == 0x80 || opcode == 0x81 || opcode == 0x83)
         {
-            // CMP
+            // CMP and others
             byte o1 = GetPcByte();
 
             int mod = o1 >> 6;
@@ -641,58 +641,72 @@ internal class P8086
 
             int function = (o1 >> 3) & 7;
 
-            if (function == 7)
+            ushort r1 = 0;
+            string name1 = "error";
+
+            ushort r2 = 0;
+
+            bool word = false;
+
+            int result = 0;
+
+            if (opcode == 0x80)
             {
-                // CMP
-                ushort r1 = 0;
-                string name1 = "error";
+                (r1, name1) = GetRegisterMem(reg, mod, false);
 
-                ushort r2 = 0;
+                r2 = GetPcByte();
+            }
+            else if (opcode == 0x81)
+            {
+                (r1, name1) = GetRegisterMem(reg, mod, true);
 
-                bool word = false;
+                r2 = GetPcByte();
+                r2 |= (ushort)(GetPcByte() << 8);
 
-                if (opcode == 0x80)
-                {
-                    (r1, name1) = GetRegisterMem(reg, mod, false);
+                word = true;
+            }
+            else if (opcode == 0x83)
+            {
+                (r1, name1) = GetRegisterMem(reg, mod, true);
 
-                    r2 = GetPcByte();
-                }
-                else if (opcode == 0x81)
-                {
-                    (r1, name1) = GetRegisterMem(reg, mod, true);
+                r2 = GetPcByte();
 
-                    r2 = GetPcByte();
-                    r2 |= (ushort)(GetPcByte() << 8);
+                word = true;
+            }
+            else
+            {
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
+            }
 
-                    word = true;
-                }
-                else if (opcode == 0x83)
-                {
-                    (r1, name1) = GetRegisterMem(reg, mod, true);
+            string iname = "error";
+            bool apply = true;
 
-                    r2 = GetPcByte();
-
-                    word = true;
-                }
-                else
-                {
-                    Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
-                }
-
-                int result = r1 - r2;
-
-                SetFlagO(false); // TODO
-                SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
-                SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
-                SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
-                SetFlagP((byte)result);
-
-                Log.DoLog($"{prefixStr} CMP {name1},${r2:X2}");
+            if (function == 0)
+            {
+                result = r1 + r2;
+                iname = "ADD";
+            }
+            else if (function == 7)
+            {
+                result = r1 - r2;
+                apply = false;
+                iname = "CMP";
             }
             else
             {
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
+
+            SetFlagO(false); // TODO
+            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+            SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
+            SetFlagP((byte)result);
+
+            if (apply)
+                PutRegisterMem(reg, mod, word, (ushort)result);
+
+            Log.DoLog($"{prefixStr} {iname} {name1},${r2:X2}");
         }
         else if (opcode == 0x86)
         {
@@ -1199,7 +1213,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} Opcode {opcode:x2} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:x2} not implemented");
             }
 
             ushort newAddresses = (ushort)(_ip + (sbyte)to);
@@ -1392,7 +1406,7 @@ internal class P8086
         }
         else
         {
-            Log.DoLog($"{prefixStr} Opcode {opcode:x} not implemented");
+            Log.DoLog($"{prefixStr} opcode {opcode:x} not implemented");
         }
 
         segment_override_set = false;
