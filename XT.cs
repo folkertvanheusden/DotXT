@@ -607,7 +607,7 @@ internal class P8086
         string flagStr = GetFlagsAsString();
 
         string prefixStr =
-            $"{flagStr} {address:X4} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4}";
+            $"{flagStr} {address:X4} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} | ";
 
         // handle prefixes
         if (opcode == 0x26 || opcode == 0x2e || opcode == 0x36 || opcode == 0x3e)
