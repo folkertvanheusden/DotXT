@@ -360,7 +360,7 @@ internal class P8086
 
         ushort disp = GetPcWord();
 
-        return ((ushort)(a + disp), name);
+        return ((ushort)(a + disp), name + $" disp {disp:X4}");
     }
 
     private (ushort, string) GetRegisterMem(int reg, int mod, bool w)
@@ -1078,10 +1078,12 @@ internal class P8086
 
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
-            int reg2 = o1 & 7;
 
             (ushort r1, string name1) = GetRegisterMem(reg1, mod, word);
-            (ushort r2, string name2) = GetRegister(reg2, word);
+
+            byte r2 = GetPcByte();
+
+            string name2 = $"{r2:X2}";
 
             string cmd_name = "error";
             ushort result = 0;
@@ -1092,7 +1094,7 @@ internal class P8086
             {
                 // TEST
                 result = (ushort)(r1 & r2);
-                cmd_name = "AND";
+                cmd_name = "TEST";
             }
             else
             {
