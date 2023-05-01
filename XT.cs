@@ -58,12 +58,17 @@ internal class IO
 {
     private byte _RAM_refresh_counter;
 
+    private Dictionary <ushort, byte> values = new Dictionary <ushort, byte>();
+
     public byte In(ushort addr)
     {
         if (addr == 0x0041)
             return _RAM_refresh_counter++;
 
-        Console.WriteLine($"I/O port {addr:X4} not implemented");
+        Console.WriteLine($"IN: I/O port {addr:X4} not implemented");
+
+        if (values.ContainsKey(addr))
+            return values[addr];
 
         return 0;
     }
@@ -71,6 +76,10 @@ internal class IO
     public void Out(ushort addr, byte value)
     {
         // TODO
+
+        Console.WriteLine($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
+
+        values[addr] = value;
     }
 }
 
