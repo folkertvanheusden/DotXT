@@ -971,8 +971,19 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} MOV {name},${v:X}");
         }
-        else if (((opcode & 0b11111100) == 0b10001000) || opcode == 0b10001110 ||
-                 ((opcode & 0b11111110) == 0b11000110) || ((opcode & 0b11111100) == 0b10100000) || opcode == 0x8c)
+        else if (opcode == 0xa3)
+        {
+            // MOV [...],AX
+            ushort a = GetPcByte();
+            a |= (ushort)(GetPcByte() << 8);
+
+            uint complete_address = (uint)((_ds + a) & MemMask);
+
+            _b.WriteByte(complete_address, _al);
+            _b.WriteByte(complete_address + 1, _ah);  // TODO segment wrapping
+        }
+        else if (((opcode & 0b11111100) == 0b10001000 /* 0x88 */) || opcode == 0b10001110 /* 0x8e */||
+                 ((opcode & 0b11111110) == 0b11000110 /* 0xc6 */) || ((opcode & 0b11111100) == 0b10100000 /* 0xa0 */) || opcode == 0x8c)
         {
             bool dir = (opcode & 2) == 2; // direction
             bool word = (opcode & 1) == 1; // b/w
@@ -987,7 +998,7 @@ internal class P8086
             if (sreg)
                 word = true;
 
-            // Log.DoLog($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}");
+            // Log.DoLog($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}, sreg {sreg}");
 
             if (dir)
             {
