@@ -580,6 +580,15 @@ internal class P8086
         _b.WriteByte((uint)(_ss * 16 + _sp++) & MemMask, (byte)v);
     }
 
+    public ushort pop()
+    {
+        ushort v = (ushort)(_b.ReadByte((uint)(_ss * 16 + _sp++) & MemMask) << 8);
+
+        v |= _b.ReadByte((uint)(_ss * 16 + _sp++) & MemMask);
+
+        return v;
+    }
+
     public void Tick()
     {
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
@@ -629,6 +638,13 @@ internal class P8086
             push(_ds);
 
             Log.DoLog($"{prefixStr} PUSH DS");
+        }
+        else if (opcode == 0x1f)
+        {
+            // POP DS
+            _ds = pop();
+
+            Log.DoLog($"{prefixStr} POP DS");
         }
         else if (opcode == 0xe9)
         {
