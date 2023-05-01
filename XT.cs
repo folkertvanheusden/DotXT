@@ -289,7 +289,7 @@ internal class P8086
         return (0, "error");
     }
 
-    private (ushort, string) GetDoubleRegister(int reg)
+    private (ushort, string) GetDoubleRegisterMod00(int reg)
     {
         ushort a = 0;
         string name = "error";
@@ -337,19 +337,52 @@ internal class P8086
         }
         else
         {
-            Log.DoLog($"{nameof(GetDoubleRegister)} {reg} not implemented");
+            Log.DoLog($"{nameof(GetDoubleRegisterMod00)} {reg} not implemented");
         }
 
         return (a, name);
+    }
+
+    private (ushort, string) GetDoubleRegisterMod01(int reg)
+    {
+        ushort a = 0;
+        string name = "error";
+
+        if (reg == 6)
+        {
+            a = _bp;
+            name = "[BP]";
+        }
+        else
+        {
+            (a, name) = GetDoubleRegisterMod00(reg);
+        }
+
+        ushort disp = GetPcWord();
+
+        return ((ushort)(a + disp), name);
     }
 
     private (ushort, string) GetRegisterMem(int reg, int mod, bool w)
     {
         if (mod == 0)
         {
-            (ushort a, string name) = GetDoubleRegister(reg);
+            (ushort a, string name) = GetDoubleRegisterMod00(reg);
 
-            name += $" (${a:X6})";
+            name += $" (${a:X4})";
+
+            ushort segment = segment_override_set ? segment_override : _ds;
+
+            ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
+
+            return (v, name);
+        }
+
+        if (mod == 1)
+        {
+            (ushort a, string name) = GetDoubleRegisterMod01(reg);
+
+            name += $" (${a:X4})";
 
             ushort segment = segment_override_set ? segment_override : _ds;
 
@@ -520,7 +553,7 @@ internal class P8086
     {
         if (mod == 0)
         {
-            (ushort a, string name) = GetDoubleRegister(reg);
+            (ushort a, string name) = GetDoubleRegisterMod00(reg);
 
             ushort segment = segment_override_set ? segment_override : _ds;
 
