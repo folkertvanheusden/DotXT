@@ -414,7 +414,7 @@ internal class P8086
         return "error";
     }
 
-    private string put_register_mem(int reg, int mod, bool w, ushort val)
+    private string PutRegisterMem(int reg, int mod, bool w, ushort val)
     {
         if (mod == 0)
         {
@@ -431,7 +431,7 @@ internal class P8086
         if (mod == 3)
             return PutRegister(reg, w, val);
 
-        Console.WriteLine($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(put_register_mem)}");
+        Console.WriteLine($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(PutRegisterMem)}");
 
         return "error";
     }
@@ -577,11 +577,6 @@ internal class P8086
 
             Console.WriteLine($"{prefixStr} PUSH AX");
         }
-        else if (opcode == 0x90)
-        {
-            // NOP
-            Console.WriteLine($"{prefixStr} NOP");
-        }
         else if (opcode == 0x80 || opcode == 0x81 || opcode == 0x83)
         {
             // CMP
@@ -642,8 +637,35 @@ internal class P8086
             }
             else
             {
-                    Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+                Console.WriteLine($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
+        }
+        else if (opcode == 0x86)
+        {
+            // XCHG
+            bool word = (opcode & 1) == 1;
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, string name1) = GetRegisterMem(reg2, mod, word);
+            (ushort r2, string name2) = GetRegister(reg1, word);
+
+            ushort temp = r1;
+            r1 = r2;
+            r2 = temp;
+
+            PutRegisterMem(reg2, mod, word, r1);
+            PutRegister(reg1, word, r2);
+
+            Console.WriteLine($"{prefixStr} XCHG {name1},{name2}");
+        }
+        else if (opcode == 0x90)
+        {
+            // NOP
+            Console.WriteLine($"{prefixStr} NOP");
         }
         else if (opcode == 0xac)
         {
@@ -732,7 +754,7 @@ internal class P8086
             // if (opcode == 0x0b || opcode == 0x33)
             //     Console.WriteLine($"r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
 
-            put_register_mem(reg1, mod, word, result);
+            PutRegisterMem(reg1, mod, word, result);
 
             SetFlagO(false);
             SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
@@ -861,7 +883,7 @@ internal class P8086
                 else
                     (v, fromName) = GetRegister(reg, word);
 
-                string toName = put_register_mem(rm, mode, word, v);
+                string toName = PutRegisterMem(rm, mode, word, v);
 
                 Console.WriteLine($"{prefixStr} MOV {toName},{fromName}");
             }
@@ -1031,7 +1053,7 @@ internal class P8086
             if (!word)
                 v1 &= 0xff;
 
-            put_register_mem(reg1, mod, word, v1);
+            PutRegisterMem(reg1, mod, word, v1);
         }
         else if ((opcode & 0xf0) == 0b01110000)
         {
@@ -1312,7 +1334,7 @@ internal class P8086
             SetFlagA((v & 15) == 0);
             SetFlagP((byte)v);
 
-            put_register_mem(reg, mod, word, v);
+            PutRegisterMem(reg, mod, word, v);
         }
         else
         {
