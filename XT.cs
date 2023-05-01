@@ -1276,15 +1276,9 @@ internal class P8086
         else if (opcode == 0xab)
         {
             // STOSW
-            ushort inc = (ushort)(GetFlagD() ? -1 : 1);
+            WriteMemWord(_es, _di, GetAX());
 
-            uint a1 = (uint)((_es * 16 + _di) & MemMask);
-            _di += inc;
-            _b.WriteByte(a1, _al);
-
-            uint a2 = (uint)((_es * 16 + _di) & MemMask);
-            _di += inc;
-            _b.WriteByte(a2, _al);
+            _di += (ushort)(GetFlagD() ? -2 : 2);
 
             Log.DoLog($"{prefixStr} STOSW");
         }
@@ -1294,9 +1288,6 @@ internal class P8086
             bool word = (opcode & 1) == 1;
 
             byte o1 = GetPcByte();
-
-            // 000FFA3F  C6 06 6B04 00        mov byte [0x46b],0x0
-            // 00 000 110
 
             int mod = o1 >> 6;
 
