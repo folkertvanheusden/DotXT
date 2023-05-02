@@ -1408,25 +1408,55 @@ internal class P8086
 
             int mod = o1 >> 6;
 
+            int mreg = o1 & 7;
+
             if (mod == 0)
             {
-                ushort a = GetPcWord();
+                // TODO: PutDoubleRegisterMod00
 
-                if (word)
+                if (mreg == 5)
                 {
-                    ushort v = GetPcWord();
+                    if (word)
+                    {
+                        ushort v = GetPcWord();
 
-                    WriteMemWord(_ds, a, v);
+                        WriteMemWord(_ds, _di, v);
 
-                    Log.DoLog($"{prefixStr} MOV word [${a:X4}],${v:X4}");
+                        Log.DoLog($"{prefixStr} MOV word [DI],${v:X4}");
+                    }
+                    else
+                    {
+                        byte v = GetPcByte();
+
+                        WriteMemByte(_ds, _di, v);
+
+                        Log.DoLog($"{prefixStr} MOV byte [DI],${v:X2}");
+                    }
+                }
+                else if (mreg == 6)
+                {
+                    ushort a = GetPcWord();
+
+                    if (word)
+                    {
+                        ushort v = GetPcWord();
+
+                        WriteMemWord(_ds, a, v);
+
+                        Log.DoLog($"{prefixStr} MOV word [${a:X4}],${v:X4}");
+                    }
+                    else
+                    {
+                        byte v = GetPcByte();
+
+                        WriteMemByte(_ds, a, v);
+
+                        Log.DoLog($"{prefixStr} MOV byte [${a:X4}],${v:X2}");
+                    }
                 }
                 else
                 {
-                    byte v = GetPcByte();
-
-                    WriteMemByte(_ds, a, v);
-
-                    Log.DoLog($"{prefixStr} MOV byte [${a:X4}],${v:X2}");
+                    Log.DoLog($"{prefixStr} MOV opcode {opcode:X2} o1 {o1:X2} not implemented");
                 }
             }
             else
