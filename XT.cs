@@ -1282,6 +1282,15 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} MOV {name},${v:X}");
         }
+        else if (opcode == 0xa0)
+        {
+            // MOV AL,[...]
+            ushort a = GetPcWord();
+
+            _al = _b.ReadByte((uint)(a + (_ds << 4)));
+
+            Log.DoLog($"{prefixStr} MOV AL,{a:X4}");
+        }
         else if (opcode == 0xa3)
         {
             // MOV [...],AX
