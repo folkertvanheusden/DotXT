@@ -1399,7 +1399,7 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} STOSW");
         }
-        else if (opcode == 0xc6)
+        else if (opcode == 0xc6 || opcode == 0xc7)
         {
             // MOV
             bool word = (opcode & 1) == 1;
@@ -1408,34 +1408,25 @@ internal class P8086
 
             int mod = o1 >> 6;
 
-            int mreg = o1 & 7;
-
             if (mod == 0)
             {
-                if (mreg == 6)
+                ushort a = GetPcWord();
+
+                if (word)
                 {
-                    ushort a = GetPcWord();
+                    ushort v = GetPcWord();
 
-                    if (word)
-                    {
-                        ushort v = GetPcWord();
+                    WriteMemWord(_ds, a, v);
 
-                        WriteMemWord(_ds, a, v);
-
-                        Log.DoLog($"{prefixStr} MOV word [${a:X4}],${v:X4}");
-                    }
-                    else
-                    {
-                        byte v = GetPcByte();
-
-                        WriteMemByte(_ds, a, v);
-
-                        Log.DoLog($"{prefixStr} MOV byte [${a:X4}],${v:X2}");
-                    }
+                    Log.DoLog($"{prefixStr} MOV word [${a:X4}],${v:X4}");
                 }
                 else
                 {
-                    Log.DoLog($"{prefixStr} MOV opcode {opcode:X2} o1 {o1:X2} not implemented");
+                    byte v = GetPcByte();
+
+                    WriteMemByte(_ds, a, v);
+
+                    Log.DoLog($"{prefixStr} MOV byte [${a:X4}],${v:X2}");
                 }
             }
             else
