@@ -1079,23 +1079,46 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} {name} {name2},{name1}");
         }
-        else if (opcode == 0x3d)
+        else if (opcode == 0x3c || opcode == 0x3d)
         {
             // CMP
             bool word = true;
 
-            ushort r1 = GetAX();
-            ushort r2 = GetPcWord();
+            int result = 0;
 
-            int result = r1 - r2;
+            ushort r1 = 0;
+            ushort r2 = 0;
+
+            if (opcode == 0x3d)
+            {
+                r1 = GetAX();
+                r2 = GetPcWord();
+
+                result = r1 - r2;
+
+                Log.DoLog($"{prefixStr} CMP AX,{r2:X4}");
+            }
+            else if (opcode == 0x3c)
+            {
+                r1 = _al;
+                r2 = GetPcByte();
+
+                word = false;
+
+                result = r1 - r2;
+
+                Log.DoLog($"{prefixStr} CMP AL,{r2:X2}");
+            }
+            else
+            {
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
+            }
 
             SetFlagO(false); // TODO
             SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
             SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
             SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
             SetFlagP((byte)result);
-
-            Log.DoLog($"{prefixStr} CMP AX,{r2:X4}");
         }
         else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
         {
