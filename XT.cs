@@ -742,6 +742,13 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} PUSH ES");
         }
+        else if (opcode == 0x07)
+        {
+            // POP ES
+            _es = pop();
+
+            Log.DoLog($"{prefixStr} POP ES");
+        }
         else if (opcode == 0x0e)
         {
             // PUSH CS
@@ -769,6 +776,48 @@ internal class P8086
             _ds = pop();
 
             Log.DoLog($"{prefixStr} POP DS");
+        }
+        else if (opcode == 0x58)
+        {
+            // POP AX
+            SetAX(pop());
+
+            Log.DoLog($"{prefixStr} POP AX");
+        }
+        else if (opcode == 0x59)
+        {
+            // POP CX
+            SetCX(pop());
+
+            Log.DoLog($"{prefixStr} POP CX");
+        }
+        else if (opcode == 0x5a)
+        {
+            // POP DX
+            SetDX(pop());
+
+            Log.DoLog($"{prefixStr} POP DX");
+        }
+        else if (opcode == 0x5b)
+        {
+            // POP BX
+            SetBX(pop());
+
+            Log.DoLog($"{prefixStr} POP BX");
+        }
+        else if (opcode == 0x5e)
+        {
+            // POP SI
+            _si = pop();
+
+            Log.DoLog($"{prefixStr} POP SI");
+        }
+        else if (opcode == 0x5f)
+        {
+            // POP DI
+            _di = pop();
+
+            Log.DoLog($"{prefixStr} POP DI");
         }
         else if (opcode == 0xa5)
         {
@@ -977,6 +1026,15 @@ internal class P8086
             _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
 
             Log.DoLog($"{prefixStr} INT {@int:X2}");
+        }
+        else if (opcode == 0xcf)
+        {
+            // IRET
+            _ip = pop();
+            _cs = pop();
+            _flags = pop();
+
+            Log.DoLog($"{prefixStr} IRET");
         }
         else if (opcode == 0x02 || opcode == 0x03 || opcode == 0x2a || opcode == 0x2b || opcode == 0x3b)
         {
