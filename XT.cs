@@ -990,19 +990,23 @@ internal class P8086
             (ushort r1, string name1) = GetRegisterMem(reg2, mod, word);
             (ushort r2, string name2) = GetRegister(reg1, word);
 
+            string name = "error";
             int result = 0;
            
             if (opcode == 0x02 || opcode == 0x03)
             {
                 result = r2 + r1;
 
-                Log.DoLog($"{prefixStr} ADD {name2},{name1}");
+                name = "ADD";
             }
             else
             {
                 result = r2 - r1;
 
-                Log.DoLog($"{prefixStr} SUB {name2},{name1}");
+                if (opcode == 0x3b)
+                    name = "CMP";
+                else
+                    name = "SUB";
             }
 
             // 0x3b is CMP
@@ -1014,6 +1018,26 @@ internal class P8086
             SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
             SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
             SetFlagP((byte)result);
+
+            Log.DoLog($"{prefixStr} {name} {name2},{name1}");
+        }
+        else if (opcode == 0x3d)
+        {
+            // CMP
+            bool word = true;
+
+            ushort r1 = GetAX();
+            ushort r2 = GetPcWord();
+
+            int result = r1 - r2;
+
+            SetFlagO(false); // TODO
+            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+            SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
+            SetFlagP((byte)result);
+
+            Log.DoLog($"{prefixStr} CMP AX,{r2:X4}");
         }
         else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
         {
