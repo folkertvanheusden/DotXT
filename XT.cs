@@ -67,14 +67,32 @@ internal class Bus
 
 internal class IO
 {
-    private byte _RAM_refresh_counter;
+    private ushort _counter;
+    private int    _counter_mode;
+    private bool   _counter_setup;
+    private int    _counter_latch;
+    private bool   _counter_running;
+
+    private ushort _RAM_refresh_counter;
+    private ushort _speaker_counter;
+
+    private Random random = new Random();
 
     private Dictionary <ushort, byte> values = new Dictionary <ushort, byte>();
 
     public byte In(ushort addr)
     {
+        if (addr == 0x0008)  // DMA status register
+            return 0x0f;  // 'transfer complete'
+
+        if (addr == 0x0040)
+            return (byte)_counter;
+
         if (addr == 0x0041)
-            return _RAM_refresh_counter++;
+            return (byte)_RAM_refresh_counter;
+
+        if (addr == 0x0042)
+            return (byte)_speaker_counter;
 
         Log.DoLog($"IN: I/O port {addr:X4} not implemented");
 
@@ -84,11 +102,62 @@ internal class IO
         return 0;
     }
 
+    public int Tick()
+    {
+        // this trickery is to (hopefully) trigger code that expects
+        // some kind of cycle-count versus interrupt-count locking
+        if (random.Next(2) == 1)
+            _RAM_refresh_counter--;
+
+        _counter--;
+       
+        if (_counter == 0 && _counter_mode == 0 && _counter_running == true)
+        {
+            _counter_running = false;
+
+            // interrupt
+            return 8;
+        }
+
+        _speaker_counter--;
+
+        return -1;
+    }
+
     public void Out(ushort addr, byte value)
     {
         // TODO
 
         Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
+
+        if (addr == 0x0040) {
+            _counter = value;
+            _counter_setup = false;
+            _counter_running = true;
+        }
+
+        else if (addr == 0x0041)
+            _RAM_refresh_counter = value;
+
+        else if (addr == 0x0042)
+            _speaker_counter = value;
+
+        else if (addr == 0x0043)
+        {
+            int counter = value >> 6;
+            int latch   = (value >> 4) & 3;
+            int mode    = (value >> 1) & 7;
+            int type    = value & 1;
+
+            Log.DoLog($"OUT 8253: counter {counter}, latch {latch}, mode {mode}, type {type}");
+
+            if (counter == 0) {
+                _counter_mode = mode;
+                _counter_setup = true;
+                _counter_latch = latch;
+                _counter_running = false;
+            }
+        }
 
         values[addr] = value;
     }
@@ -699,10 +768,27 @@ internal class P8086
 
     public void Tick()
     {
+        string flagStr = GetFlagsAsString();
+
+        // tick I/O, check for interrupt
+        int interrupt_nr = _io.Tick();
+
+        if (interrupt_nr != -1 && GetFlag(9) == true)
+        {
+            push(_flags);
+            push(_cs);
+            push(_ip);
+
+            uint addr = (uint)(interrupt_nr * 4);
+
+            _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
+            _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
+
+            Log.DoLog($"{flagStr} ------ INT {interrupt_nr:X2}");
+        }
+
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
         byte opcode = GetPcByte();
-
-        string flagStr = GetFlagsAsString();
 
         string prefixStr =
             $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} | ";
