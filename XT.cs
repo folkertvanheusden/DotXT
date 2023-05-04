@@ -65,18 +65,118 @@ internal class Bus
     }
 }
 
+internal struct Timer
+{
+    public ushort counter    { get; set; }
+    public int    mode       { get; set; }
+    public bool   in_setup   { get; set; }
+    public int    latch_type { get; set; }
+    public int    latch_n    { get; set; }
+    public bool   is_running { get; set; }
+}
+
+internal class i8253
+{
+    Timer [] _timers = new Timer[3];
+
+    private Random _random = new Random();
+
+    public i8253()
+    {
+        for(int i=0; i<_timers.Length; i++)
+            _timers[i] = new Timer();
+    }
+
+    public void latch_counter(int nr, byte v)
+    {
+        Log.DoLog($"OUT 8253: latch_counter {nr} to {v}");
+
+        if (_timers[nr].latch_n > 0)
+        {
+            if (_timers[nr].latch_n == 2)
+            {
+                _timers[nr].counter &= 0xff00;
+                _timers[nr].counter |= v;
+            }
+            else if (_timers[nr].latch_n == 1 && _timers[nr].latch_type == 3)
+            {
+                _timers[nr].counter &= 0xff00;
+                _timers[nr].counter |= v;
+            }
+            else if (_timers[nr].latch_type == 1)
+            {
+                _timers[nr].counter = v;
+            }
+            else if (_timers[nr].latch_type == 2)
+            {
+                _timers[nr].counter = (ushort)(v << 8);
+            }
+
+            _timers[nr].latch_n--;
+
+            if (_timers[nr].latch_n == 0)
+            {
+                _timers[nr].is_running = true;
+                _timers[nr].in_setup   = false;
+            }
+        }
+    }
+
+    public byte get_counter(int nr)
+    {
+        Log.DoLog($"OUT 8253: get_counter {nr}");
+
+        return (byte)_timers[nr].counter;
+    }
+
+    public void command(byte v)
+    {
+        int counter = v >> 6;
+        int latch   = (v >> 4) & 3;
+        int mode    = (v >> 1) & 7;
+        int type    = v & 1;
+
+        Log.DoLog($"OUT 8253: command counter {counter}, latch {latch}, mode {mode}, type {type}");
+
+        _timers[counter].mode       = mode;
+        _timers[counter].in_setup   = true;
+        _timers[counter].latch_type = latch;
+        _timers[counter].is_running = false;
+
+        _timers[counter].counter = 0;
+
+        if (_timers[counter].latch_type == 1 || _timers[counter].latch_type == 2)
+            _timers[counter].latch_n = 1;
+        else if (_timers[counter].latch_type == 3)
+            _timers[counter].latch_n = 2;
+    }
+
+    public bool Tick()
+    {
+        // this trickery is to (hopefully) trigger code that expects
+        // some kind of cycle-count versus interrupt-count locking
+        if (_random.Next(2) == 1)
+            _timers[1].counter--;  // RAM refresh
+
+        _timers[0].counter--;  // counter
+       
+        if (_timers[0].counter == 0 && _timers[0].mode == 0 && _timers[0].is_running == true)
+        {
+            _timers[0].is_running = false;
+
+            // interrupt
+            return true;
+        }
+
+        _timers[2].counter--;  // speaker
+
+        return false;
+    }
+}
+
 internal class IO
 {
-    private ushort _counter;
-    private int    _counter_mode;
-    private bool   _counter_setup;
-    private int    _counter_latch;
-    private bool   _counter_running;
-
-    private ushort _RAM_refresh_counter;
-    private ushort _speaker_counter;
-
-    private Random random = new Random();
+    private i8253 _i8253 = new i8253();
 
     private Dictionary <ushort, byte> values = new Dictionary <ushort, byte>();
 
@@ -86,13 +186,13 @@ internal class IO
             return 0x0f;  // 'transfer complete'
 
         if (addr == 0x0040)
-            return (byte)_counter;
+            return (byte)_i8253.get_counter(0);
 
         if (addr == 0x0041)
-            return (byte)_RAM_refresh_counter;
+            return (byte)_i8253.get_counter(1);
 
         if (addr == 0x0042)
-            return (byte)_speaker_counter;
+            return (byte)_i8253.get_counter(2);
 
         Log.DoLog($"IN: I/O port {addr:X4} not implemented");
 
@@ -104,22 +204,8 @@ internal class IO
 
     public int Tick()
     {
-        // this trickery is to (hopefully) trigger code that expects
-        // some kind of cycle-count versus interrupt-count locking
-        if (random.Next(2) == 1)
-            _RAM_refresh_counter--;
-
-        _counter--;
-       
-        if (_counter == 0 && _counter_mode == 0 && _counter_running == true)
-        {
-            _counter_running = false;
-
-            // interrupt
+        if (_i8253.Tick())
             return 8;
-        }
-
-        _speaker_counter--;
 
         return -1;
     }
@@ -130,34 +216,17 @@ internal class IO
 
         Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
 
-        if (addr == 0x0040) {
-            _counter = value;
-            _counter_setup = false;
-            _counter_running = true;
-        }
+        if (addr == 0x0040)
+            _i8253.latch_counter(0, value);
 
         else if (addr == 0x0041)
-            _RAM_refresh_counter = value;
+            _i8253.latch_counter(1, value);
 
         else if (addr == 0x0042)
-            _speaker_counter = value;
+            _i8253.latch_counter(2, value);
 
         else if (addr == 0x0043)
-        {
-            int counter = value >> 6;
-            int latch   = (value >> 4) & 3;
-            int mode    = (value >> 1) & 7;
-            int type    = value & 1;
-
-            Log.DoLog($"OUT 8253: counter {counter}, latch {latch}, mode {mode}, type {type}");
-
-            if (counter == 0) {
-                _counter_mode = mode;
-                _counter_setup = true;
-                _counter_latch = latch;
-                _counter_running = false;
-            }
-        }
+            _i8253.command(value);
 
         values[addr] = value;
     }
