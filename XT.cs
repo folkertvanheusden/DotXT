@@ -10,11 +10,13 @@ internal class Log
 
 internal class Memory
 {
-    private readonly byte[] _m = new byte[1024 * 1024]; // 1MB of RAM
+    private const uint size = 32 * 1024;
+
+    private readonly byte[] _m = new byte[size]; // 1MB of RAM
 
     public byte ReadByte(uint address)
     {
-        if (address >= 32768)  // TODO temporarily
+        if (address >= size)
             return 0xee;
 
         return _m[address];
@@ -22,7 +24,7 @@ internal class Memory
 
     public void WriteByte(uint address, byte v)
     {
-        if (address < 256 * 1024)
+        if (address < size)
             _m[address] = v;
     }
 }
@@ -54,7 +56,7 @@ internal class Bus
         if (address is >= 0x000f8000 and <= 0x000fffff)
             return _bios.ReadByte(address - 0x000f8000);
 
-        if (address is >= 0x000f0000 and <= 0x000f7fff)
+        if (address is >= 0x000f0000 and <= 0x000f1fff)
             return _basic.ReadByte(address - 0x000f0000);
 
         return _m.ReadByte(address);
