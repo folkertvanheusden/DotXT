@@ -194,6 +194,9 @@ internal class IO
         if (addr == 0x0042)
             return (byte)_i8253.get_counter(2);
 
+        if (addr == 0x0062)  // PPI (XT only)
+            return 0xff;  // no errors
+
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
 
@@ -1310,21 +1313,34 @@ internal class P8086
             (ushort r1, string name1) = GetRegisterMem(reg1, mod, word);
             (ushort r2, string name2) = GetRegister(reg2, word);
 
+            string name = "error";
+
             ushort result = 0;
 
             int function = opcode >> 4;
 
             if (function == 0)
+            {
                 result = (ushort)(r2 | r1);
+                name = "OR";
+            }
             else if (function == 2)
+            {
                 result = (ushort)(r2 & r1);
+                name = "AND";
+            }
             else if (function == 3) // TODO always true here?
+            {
                 result = (ushort)(r2 ^ r1);
+                name = "XOR";
+            }
             else
+            {
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+            }
 
-            // if (opcode == 0x0b || opcode == 0x33)
-            //     Log.DoLog($"r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
+            if (opcode == 0x22)
+                Log.DoLog($"{name}, r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
 
             PutRegisterMem(reg1, mod, word, result);
 
@@ -1335,7 +1351,7 @@ internal class P8086
 
             SetFlagP((byte)result); // TODO verify
 
-            Log.DoLog($"{prefixStr} XOR {name1},{name2}");
+            Log.DoLog($"{prefixStr} {name} {name1},{name2}");
         }
         else if ((opcode == 0x34 || opcode == 0x35) || (opcode == 0x24 || opcode == 0x25) ||
                  (opcode == 0x0c || opcode == 0x0d))
