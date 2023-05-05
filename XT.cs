@@ -1445,7 +1445,18 @@ internal class P8086
             {
                 // TEST
                 result = (ushort)~result;
+
                 cmd_name = "NOT";
+            }
+            else if (function == 6)
+            {
+                // DIV
+                uint dx_ax = (uint)((GetDX() << 16) | GetAX());
+
+                SetAX((ushort)(dx_ax / r1));
+                SetDX((ushort)(dx_ax % r1));
+
+                cmd_name = "DIV";
             }
             else
             {
