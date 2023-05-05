@@ -1704,6 +1704,18 @@ internal class P8086
                 Log.DoLog($"{prefixStr} MOV opcode {opcode:X2} o1 {o1:X2} not implemented");
             }
         }
+        else if (opcode == 0xca)
+        {
+            // RETF
+            ushort nToRelease = GetPcWord();
+
+            _ip = pop();
+            _cs = pop();
+
+            _ss += nToRelease;
+
+            Log.DoLog($"{prefixStr} RETF ${nToRelease:X4}");
+        }
         else if ((opcode & 0xf8) == 0xd0)
         {
             // RCR
