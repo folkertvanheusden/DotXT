@@ -1571,6 +1571,15 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} MOV AL,{a:X4}");
         }
+        else if (opcode == 0xa2)
+        {
+            // MOV AL,[...]
+            ushort a = GetPcWord();
+
+            _b.WriteByte((uint)(a + (_ds << 4)), _al);
+
+            Log.DoLog($"{prefixStr} MOV [${a:X4}],AL");
+        }
         else if (opcode == 0xa3)
         {
             // MOV [...],AX
@@ -1578,10 +1587,9 @@ internal class P8086
 
             WriteMemWord(_ds, a, GetAX());
 
-            Log.DoLog($"{prefixStr} MOV {a:X4},AX");
+            Log.DoLog($"{prefixStr} MOV [${a:X4}],AX");
         }
-        else if (((opcode & 0b11111100) == 0b10001000 /* 0x88 */) || opcode == 0b10001110 /* 0x8e */||
-                  ((opcode & 0b11111100) == 0b10100000 /* 0xa0 */) || opcode == 0x8c)
+        else if (((opcode & 0b11111100) == 0b10001000 /* 0x88 */) || opcode == 0b10001110 /* 0x8e */|| opcode == 0x8c)
         {
             bool dir = (opcode & 2) == 2; // direction
             bool word = (opcode & 1) == 1; // b/w
