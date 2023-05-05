@@ -1444,6 +1444,7 @@ internal class P8086
 
             string cmd_name = "error";
             ushort result = 0;
+            bool put = false;
 
             int function = (o1 >> 3) & 7;
 
@@ -1451,6 +1452,8 @@ internal class P8086
             {
                 // TEST
                 result = (ushort)~result;
+
+                put = true;
 
                 cmd_name = "NOT";
             }
@@ -1469,7 +1472,8 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented");
             }
 
-            PutRegisterMem(reg1, mod, word, result);
+            if (put)
+                PutRegisterMem(reg1, mod, word, result);
 
             SetFlagO(false);
             SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
