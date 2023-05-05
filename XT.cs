@@ -2006,7 +2006,7 @@ internal class P8086
             // OUT
             _io.Out(GetDX(), _al);
 
-            Log.DoLog($"{prefixStr} OUT ${_dh:X2}{_dl:X2},AL");
+            Log.DoLog($"{prefixStr} OUT DX,AL");
         }
         else if (opcode == 0xeb)
         {
