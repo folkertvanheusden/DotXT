@@ -14,6 +14,9 @@ internal class Memory
 
     public byte ReadByte(uint address)
     {
+        if (address >= 32768)  // TODO temporarily
+            return 0xee;
+
         return _m[address];
     }
 
@@ -282,7 +285,7 @@ internal class P8086
     private bool intercept_int(int nr)
     {
         if (nr == 0x10 && _ah == 0x0e)
-            Console.Write($"{_al:C}");
+            Console.Write((char)_al);
         else
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
 
