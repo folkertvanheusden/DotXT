@@ -908,14 +908,22 @@ internal class P8086
         }
 
         // main instruction handling
-        if (opcode == 0x04)
+        if (opcode == 0x04 || opcode == 0x14)
         {
             // ADD AL,xx
             byte v = GetPcByte();
 
+            string name = "ADD";
+
             _al += v;
 
-            Log.DoLog($"{prefixStr} ADD AL,${v:X2}");
+            if (opcode == 0x14 && GetFlagC())
+            {
+                _al++;
+                name = "ADC";
+            }
+
+            Log.DoLog($"{prefixStr} {name} AL,${v:X2}");
         }
         else if (opcode == 0x05)
         {
