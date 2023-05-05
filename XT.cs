@@ -1251,6 +1251,20 @@ internal class P8086
             // NOP
             Log.DoLog($"{prefixStr} NOP");
         }
+        else if (opcode == 0x9c)
+        {
+            // PUSHF
+            push(_flags);
+
+            Log.DoLog($"{prefixStr} PUSHF");
+        }
+        else if (opcode == 0x9d)
+        {
+            // POPF
+            _flags = pop();
+
+            Log.DoLog($"{prefixStr} POPF");
+        }
         else if (opcode == 0xac)
         {
             // LODSB
