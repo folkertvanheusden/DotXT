@@ -1336,7 +1336,7 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} IRET");
         }
-        else if (opcode == 0x02 || opcode == 0x03 || opcode == 0x2a || opcode == 0x2b || opcode == 0x3a || opcode == 0x3b)
+        else if (opcode == 0x00 || opcode == 0x01 || opcode == 0x02 || opcode == 0x03 || opcode == 0x2a || opcode == 0x2b || opcode == 0x3a || opcode == 0x3b)
         {
             bool word = (opcode & 1) == 1;
             byte o1 = GetPcByte();
@@ -1351,7 +1351,7 @@ internal class P8086
             string name = "error";
             int result = 0;
            
-            if (opcode == 0x02 || opcode == 0x03)
+            if (opcode == 0x00 || opcode == 0x01 || opcode == 0x02 || opcode == 0x03)
             {
                 result = r2 + r1;
 
