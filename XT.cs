@@ -1339,8 +1339,8 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
 
-            if (opcode == 0x22)
-                Log.DoLog($"{name}, r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
+//            if (opcode == 0x22)
+//                Log.DoLog($"{name}, r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
 
             PutRegisterMem(reg1, mod, word, result);
 
@@ -1361,6 +1361,9 @@ internal class P8086
             byte bLow = GetPcByte();
             byte bHigh = word ? GetPcByte() : (byte)0;
 
+            string tgt_name = word ? "AX" : "AL";
+            string name = "error";
+
             int function = opcode >> 4;
 
             if (function == 0)
@@ -1369,6 +1372,8 @@ internal class P8086
 
                 if (word)
                     _ah |= bHigh;
+
+                name = "OR";
             }
             else if (function == 2)
             {
@@ -1376,6 +1381,8 @@ internal class P8086
 
                 if (word)
                     _ah &= bHigh;
+
+                name = "AND";
             }
             else if (function == 3)
             {
@@ -1384,6 +1391,8 @@ internal class P8086
 
                 if (word)
                     _ah ^= bHigh;
+
+                name = "XOR";
             }
             else
             {
@@ -1396,6 +1405,8 @@ internal class P8086
             SetFlagA(false);
 
             SetFlagP(word ? _ah : _al);
+
+            Log.DoLog($"{prefixStr} {name} {tgt_name},${bHigh:X2}{bLow:X2}");
         }
         else if (opcode == 0xe8)
         {
