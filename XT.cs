@@ -19,6 +19,9 @@ internal class Memory
 
     public void WriteByte(uint address, byte v)
     {
+        if (address >= 0x0040 && address <= 0x0044)
+            Log.DoLog($"{address:X4} <- {v:X2}");
+
         _m[address] = v;
     }
 }
@@ -58,8 +61,8 @@ internal class Bus
 
     public void WriteByte(uint address, byte v)
     {
-        if (address >= 0x0009fc00)
-            Console.WriteLine($"{address:X6} {v:X2}");
+//        if (address >= 0x0009fc00)
+//            Console.WriteLine($"{address:X6} {v:X2}");
 
         _m.WriteByte(address, v);
     }
@@ -274,6 +277,16 @@ internal class P8086
     {
         _cs = 0xf000;
         _ip = 0xfff0;
+    }
+
+    private bool intercept_int(int nr)
+    {
+        if (nr == 0x10 && _ah == 0x0e)
+            Console.Write($"{_al:C}");
+        else
+            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+
+        return false;
     }
 
     private byte GetPcByte()
@@ -1197,16 +1210,19 @@ internal class P8086
             // INT 0x..
             byte @int = GetPcByte();
 
-            push(_flags);
-            push(_cs);
-            push(_ip);
-
             uint addr = (uint)(@int * 4);
 
-            _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
-            _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
+            if (intercept_int(@int) == false)
+            {
+                push(_flags);
+                push(_cs);
+                push(_ip);
 
-            Log.DoLog($"{prefixStr} INT {@int:X2}");
+                _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
+                _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
+            }
+
+            Log.DoLog($"{prefixStr} INT {@int:X2} -> ${_cs * 16 + _ip:X6} (from {addr:X4})");
         }
         else if (opcode == 0xcf)
         {
