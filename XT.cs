@@ -195,7 +195,7 @@ internal class IO
             return (byte)_i8253.get_counter(2);
 
         if (addr == 0x0062)  // PPI (XT only)
-            return 0xff;  // no errors
+            return 0x00;  // no errors
 
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
