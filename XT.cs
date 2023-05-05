@@ -214,8 +214,6 @@ internal class IO
     {
         // TODO
 
-        Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
-
         if (addr == 0x0040)
             _i8253.latch_counter(0, value);
 
@@ -227,6 +225,9 @@ internal class IO
 
         else if (addr == 0x0043)
             _i8253.command(value);
+
+        else
+            Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
 
         values[addr] = value;
     }
