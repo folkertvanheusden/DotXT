@@ -1546,14 +1546,19 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} CLI");
         }
-        else if ((opcode & 0xf8) == 0xb0)
+        else if ((opcode & 0xf0) == 0xb0)
         {
             // MOV reg,ib
             int reg = opcode & 0x07;
 
+            bool word = (opcode & 0x08) == 0x08;
+
             ushort v = GetPcByte();
 
-            string name = PutRegister(reg, false, v);
+            if (word)
+                v |= (ushort)(GetPcByte() << 8);
+
+            string name = PutRegister(reg, word, v);
 
             Log.DoLog($"{prefixStr} MOV {name},${v:X}");
         }
