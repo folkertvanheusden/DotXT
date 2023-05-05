@@ -201,7 +201,7 @@ internal class IO
             return (byte)_i8253.get_counter(2);
 
         if (addr == 0x0062)  // PPI (XT only)
-            return 0x01;  // LOOP IN POST
+            return 0x03;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
 
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
@@ -510,7 +510,7 @@ internal class P8086
         return (a, name);
     }
 
-    private (ushort, string) GetDoubleRegisterMod01(int reg)
+    private (ushort, string) GetDoubleRegisterMod01_02(int reg, bool word)
     {
         ushort a = 0;
         string name = "error";
@@ -525,7 +525,7 @@ internal class P8086
             (a, name) = GetDoubleRegisterMod00(reg);
         }
 
-        ushort disp = GetPcWord();
+        ushort disp = word ? GetPcWord() : GetPcByte();
 
         return ((ushort)(a + disp), name + $" disp {disp:X4}");
     }
@@ -545,9 +545,11 @@ internal class P8086
             return (v, name);
         }
 
-        if (mod == 1)
+        if (mod == 1 || mod == 2)
         {
-            (ushort a, string name) = GetDoubleRegisterMod01(reg);
+            bool word = mod == 2;
+
+            (ushort a, string name) = GetDoubleRegisterMod01_02(reg, word);
 
             ushort segment = segment_override_set ? segment_override : _ds;
 
