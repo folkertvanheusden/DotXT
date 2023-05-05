@@ -22,9 +22,6 @@ internal class Memory
 
     public void WriteByte(uint address, byte v)
     {
-        if (address >= 0x0040 && address <= 0x0044)
-            Log.DoLog($"{address:X4} <- {v:X2}");
-
         _m[address] = v;
     }
 }
@@ -530,9 +527,9 @@ internal class P8086
         {
             (ushort a, string name) = GetDoubleRegisterMod00(reg);
 
-            name += $" (${a:X4})";
-
             ushort segment = segment_override_set ? segment_override : _ds;
+
+            name += $" (${segment * 16 + a:X6})";
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
@@ -543,9 +540,9 @@ internal class P8086
         {
             (ushort a, string name) = GetDoubleRegisterMod01(reg);
 
-            name += $" (${a:X4})";
-
             ushort segment = segment_override_set ? segment_override : _ds;
+
+            name += $" (${segment * 16 + a:X6})";
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
@@ -717,6 +714,8 @@ internal class P8086
             (ushort a, string name) = GetDoubleRegisterMod00(reg);
 
             ushort segment = segment_override_set ? segment_override : _ds;
+
+            name += $" (${segment * 16 + a:X6})";
 
             WriteMemWord(segment, a, val);
 
@@ -1571,6 +1570,15 @@ internal class P8086
             ushort a = GetPcWord();
 
             _al = _b.ReadByte((uint)(a + (_ds << 4)));
+
+            Log.DoLog($"{prefixStr} MOV AL,{a:X4}");
+        }
+        else if (opcode == 0xa1)
+        {
+            // MOV AX,[...]
+            ushort a = GetPcWord();
+
+            SetAX(ReadMemWord(_ds, a));
 
             Log.DoLog($"{prefixStr} MOV AL,{a:X4}");
         }
