@@ -4,7 +4,7 @@ internal class Log
 {
     public static void DoLog(string what)
     {
-        File.AppendAllText(@"/home/folkert/temp/ramdisk/logfile.txt", what + Environment.NewLine);
+        File.AppendAllText(@"logfile.txt", what + Environment.NewLine);
     }
 }
 
@@ -22,7 +22,8 @@ internal class Memory
 
     public void WriteByte(uint address, byte v)
     {
-        _m[address] = v;
+        if (address < 256 * 1024)
+            _m[address] = v;
     }
 }
 
@@ -358,6 +359,8 @@ internal class P8086
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
 
+        // Log.DoLog($"WriteMemByte {segment:X4}:{offset:X4}: a:{a:X6}, v:{v:X2}");
+
        _b.WriteByte(a, v);
     }
 
@@ -366,6 +369,8 @@ internal class P8086
         uint a1 = (uint)(((segment << 4) + offset) & MemMask);
         uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
 
+        // Log.DoLog($"WriteMemWord {segment:X4}:{offset:X4}: a1:{a1:X6}, v:{v:X2}");
+
        _b.WriteByte(a1, (byte)v);
        _b.WriteByte(a2, (byte)(v >> 8));
     }
@@ -373,6 +378,8 @@ internal class P8086
     private byte ReadMemByte(ushort segment, ushort offset)
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
+
+        // Log.DoLog($"ReadMemByte {segment:X4}:{offset:X4}: {a:X6}");
 
         return _b.ReadByte(a);
     } 
@@ -886,13 +893,10 @@ internal class P8086
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
         byte opcode = GetPcByte();
 
-        string prefixStr =
-            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} | ";
-
         // handle prefixes
         if (opcode == 0x26 || opcode == 0x2e || opcode == 0x36 || opcode == 0x3e)
         {
-            if (opcode == 026)
+            if (opcode == 0x26)
                 segment_override = _es;
             else if (opcode == 0x2e)
                 segment_override = _cs;
@@ -900,12 +904,17 @@ internal class P8086
                 segment_override = _ss;
             else if (opcode == 0x3e)
                 segment_override = _ds;
+	    else
+                Log.DoLog($"------ {address:X6} segment override {opcode:X2} not implemented");
 
             segment_override_set = true;
 
             address = (uint)(_cs * 16 + _ip) & MemMask;
             opcode = GetPcByte();
         }
+
+        string prefixStr =
+            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} ES:{_es:X4} | ";
 
         // main instruction handling
         if (opcode == 0x04 || opcode == 0x14)
