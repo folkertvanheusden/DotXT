@@ -194,6 +194,9 @@ internal class IO
         if (addr == 0x0042)
             return (byte)_i8253.get_counter(2);
 
+        if (addr == 0x0210)  // verify expansion bus data
+            return 0xa5;
+
         Log.DoLog($"IN: I/O port {addr:X4} not implemented");
 
         if (values.ContainsKey(addr))
@@ -1098,6 +1101,11 @@ internal class P8086
             {
                 result = r1 + r2;
                 iname = "ADD";
+            }
+            else if (function == 1)
+            {
+                result = r1 | r2;
+                iname = "OR";
             }
             else if (function == 7)
             {
@@ -2017,6 +2025,8 @@ internal class P8086
             _ip--;
 
             Log.DoLog($"{prefixStr} HLT");
+
+            Console.WriteLine($"{address:X6} HLT");
         }
         else if (opcode == 0xf8)
         {
