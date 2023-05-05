@@ -1087,6 +1087,18 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} MOVSW");
         }
+        else if (opcode == 0xe3)
+	{
+            // JCXZ np
+            sbyte offset = (sbyte)GetPcByte();
+
+	    ushort addr = (ushort)(_ip + offset);
+
+	    if (GetCX() == 0)
+		    _ip = addr;
+
+            Log.DoLog($"{prefixStr} JCXZ {addr:X}");
+	}
         else if (opcode == 0xe9)
         {
             // JMP np
