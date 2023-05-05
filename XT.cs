@@ -4,7 +4,7 @@ internal class Log
 {
     public static void DoLog(string what)
     {
-        File.AppendAllText(@"logfile.txt", what + Environment.NewLine);
+        File.AppendAllText(@"/home/folkert/temp/ramdisk/logfile.txt", what + Environment.NewLine);
     }
 }
 
@@ -1106,6 +1106,11 @@ internal class P8086
             {
                 result = r1 | r2;
                 iname = "OR";
+            }
+            else if (function == 5)
+            {
+                result = r1 - r2;
+                iname = "SUB";
             }
             else if (function == 7)
             {
