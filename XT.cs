@@ -894,6 +894,15 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} ADD AL,${v:X2}");
         }
+        else if (opcode == 0x05)
+        {
+            // ADD AX,xxxx
+            ushort v = GetPcWord();
+
+            SetAX((ushort)(GetAX() + v));
+
+            Log.DoLog($"{prefixStr} ADD AX,${v:X4}");
+        }
         else if (opcode == 0x06)
         {
             // PUSH ES
