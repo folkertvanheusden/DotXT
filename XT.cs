@@ -1420,6 +1420,47 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} {cmd_name} {name1},{name2}");
         }
+        else if (opcode == 0xf7)
+        {
+            // MUL and others
+            bool word = (opcode & 1) == 1;
+
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg1 = o1 & 7;
+
+            (ushort r1, string name1) = GetRegisterMem(reg1, mod, word);
+
+            byte r2 = GetPcByte();
+
+            string name2 = $"{r2:X2}";
+
+            string cmd_name = "error";
+            ushort result = 0;
+
+            int function = (o1 >> 3) & 7;
+
+            if (function == 2)
+            {
+                // TEST
+                result = (ushort)~result;
+                cmd_name = "NOT";
+            }
+            else
+            {
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented");
+            }
+
+            PutRegisterMem(reg1, mod, word, result);
+
+            SetFlagO(false);
+            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+            SetFlagA(false);
+
+            Log.DoLog($"{prefixStr} {cmd_name} {name1},{name2}");
+        }
         else if (opcode == 0xfa)
         {
             // CLI
