@@ -2230,6 +2230,13 @@ internal class P8086
 
             System.Environment.Exit(1);
         }
+        else if (opcode == 0xf5)
+        {
+            // CMC
+	    SetFlagC(! GetFlagC());
+
+            Log.DoLog($"{prefixStr} CMC");
+        }
         else if (opcode == 0xf8)
         {
             // CLC
