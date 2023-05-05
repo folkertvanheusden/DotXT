@@ -1136,6 +1136,13 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} PUSH BX");
         }
+        else if (opcode == 0x55)
+        {
+            // PUSH BP
+            push(_bp);
+
+            Log.DoLog($"{prefixStr} PUSH BP");
+        }
         else if (opcode == 0x56)
         {
             // PUSH SI
