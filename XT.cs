@@ -1216,6 +1216,11 @@ internal class P8086
                 result = r1 | r2;
                 iname = "OR";
             }
+            else if (function == 4)
+            {
+                result = r1 & r2;
+                iname = "AND";
+            }
             else if (function == 5)
             {
                 result = r1 - r2;
@@ -1695,6 +1700,20 @@ internal class P8086
             WriteMemWord(_ds, a, GetAX());
 
             Log.DoLog($"{prefixStr} MOV [${a:X4}],AX");
+        }
+        else if (opcode == 0xa8)
+        {
+            // TEST AL,..
+            byte v = GetPcByte();
+
+	    byte result = (byte)(_al & v);
+
+            SetFlagO(false);
+            SetFlagS((result & 0x80) != 0);
+            SetFlagZ(result == 0);
+            SetFlagA(false);
+
+            Log.DoLog($"{prefixStr} TEST AL,${v:X2}");
         }
         else if (((opcode & 0b11111100) == 0b10001000 /* 0x88 */) || opcode == 0b10001110 /* 0x8e */|| opcode == 0x8c)
         {
