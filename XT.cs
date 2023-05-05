@@ -787,6 +787,11 @@ internal class P8086
         SetFlag(4, state);
     }
 
+    private bool GetFlagA()
+    {
+        return GetFlag(4);
+    }
+
     private void SetFlagZ(bool state)
     {
         SetFlag(6, state);
@@ -962,6 +967,45 @@ internal class P8086
             _ds = pop();
 
             Log.DoLog($"{prefixStr} POP DS");
+        }
+        else if (opcode == 0x27)
+        {
+            // DAA
+            // from https://stackoverflow.com/questions/8119577/z80-daa-instruction/8119836
+            int t = 0;
+
+            t += GetFlagA() || (_al & 0x0f) > 9 ? 1 : 0;
+
+            if (GetFlagC() || _al > 0x99)
+            {
+                t += 2;
+                SetFlagC(true);
+            }
+
+            if (GetFlagS() && !GetFlagA())
+                SetFlagA(false);
+            else
+            {
+                if (GetFlagS() && GetFlagA())
+                    SetFlagA((_al & 0x0F) < 6);
+                else
+                    SetFlagA((_al & 0x0F) >= 0x0A);
+            }
+
+            bool n = GetFlagS();
+    
+            if (t == 1)
+                _al += (byte)(n ? 0xFA:0x06); // -6:6
+            else if (t == 2)
+                _al += (byte)(n ? 0xA0:0x60); // -0x60:0x60
+            else if (t == 3)
+                _al += (byte)(n ? 0x9A:0x66); // -0x66:0x66
+
+            SetFlagS((_al & 0x80) == 0x80);
+            SetFlagZ(_al != 0);
+            SetFlagP(_al);
+
+            Log.DoLog($"{prefixStr} DAA");
         }
         else if (opcode == 0x58)
         {
@@ -2112,6 +2156,8 @@ internal class P8086
             Log.DoLog($"{prefixStr} HLT");
 
             Console.WriteLine($"{address:X6} HLT");
+
+            System.Environment.Exit(1);
         }
         else if (opcode == 0xf8)
         {
