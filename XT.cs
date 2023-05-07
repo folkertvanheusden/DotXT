@@ -10,7 +10,7 @@ internal class Log
 
 internal class Memory
 {
-    private const uint size = 64 * 1024;  // BIOS expects at least 64kB ram
+    private const uint size = 16 * 1024;  // BIOS expects at least 64kB ram
 
     private readonly byte[] _m = new byte[size]; // 1MB of RAM
 
@@ -305,9 +305,27 @@ internal class P8086
     private bool intercept_int(int nr)
     {
         if (nr == 0x10 && _ah == 0x0e)
+	{
             Console.Write((char)_al);
-        else
+	}
+	else if (nr == 0x13)
+	{
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+
+            if (_ah == 0x00)  // reset disk system
+            {
+                Log.DoLog("INT $13: reset disk system");
+
+                SetFlagC(false);
+                _al = 0x00;  // no error
+
+                return true;
+            }
+	}
+        else
+	{
+            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+	}
 
         return false;
     }
