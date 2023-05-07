@@ -1292,6 +1292,21 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} {iname} {name1},${r2:X2}");
         }
+        else if (opcode == 0x84)
+        {
+            // TEST ...,...
+            byte v1 = GetPcByte();
+            byte v2 = GetPcByte();
+
+	    byte result = (byte)(v1 & v2);
+
+            SetFlagO(false);
+            SetFlagS((result & 0x80) != 0);
+            SetFlagZ(result == 0);
+            SetFlagA(false);
+
+            Log.DoLog($"{prefixStr} TEST ${v1:X2},${v2:X2}");
+        }
         else if (opcode == 0x86)
         {
             // XCHG
