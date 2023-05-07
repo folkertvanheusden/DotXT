@@ -1310,6 +1310,20 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} RET");
         }
+        else if (opcode == 0xc5)
+        {
+            // LDS
+            byte o1 = GetPcByte();
+            int reg = o1 & 7;
+
+	    ushort v = GetPcWord();
+	    _ds = (ushort)(v + 2);
+
+	    string name = PutRegister(reg, true, v);
+
+            Log.DoLog($"{prefixStr} LDS {name},${v:X4}");
+            Console.WriteLine($"{address:X6} LDS");
+        }
         else if (opcode == 0xcd)
         {
             // INT 0x..
