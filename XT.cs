@@ -10,7 +10,7 @@ internal class Log
 
 internal class Memory
 {
-    private const uint size = 16 * 1024;  // BIOS expects at least 64kB ram
+    private const uint size = 64 * 1024;  // BIOS expects at least 64kB ram
 
     private readonly byte[] _m = new byte[size]; // 1MB of RAM
 
@@ -317,7 +317,7 @@ internal class P8086
                 Log.DoLog("INT $13: reset disk system");
 
                 SetFlagC(false);
-                _al = 0x00;  // no error
+                _ah = 0x00;  // no error
 
                 return true;
             }
