@@ -1507,8 +1507,8 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1) = GetRegisterMem(reg1, mod, word);
-            (ushort r2, string name2) = GetRegister(reg2, word);
+            (ushort r1, string name1) = GetRegisterMem(reg2, mod, word);
+            (ushort r2, string name2) = GetRegister(reg1, word);
 
             string name = "error";
 
