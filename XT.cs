@@ -183,6 +183,7 @@ internal class i8253
 internal class IO
 {
     private i8253 _i8253 = new i8253();
+    private int _floppy_reset;
 
     private Dictionary <ushort, byte> values = new Dictionary <ushort, byte>();
 
@@ -217,7 +218,18 @@ internal class IO
     public int Tick()
     {
         if (_i8253.Tick())
-            return 8;
+            return 0x08;
+
+	if (_floppy_reset == 1)
+	{
+		_floppy_reset = 0;
+
+		return 0x0e;
+	}
+	else if (_floppy_reset > 0)
+	{
+		_floppy_reset--;
+	}
 
         return -1;
     }
@@ -238,8 +250,16 @@ internal class IO
         else if (addr == 0x0043)
             _i8253.command(value);
 
+        else if (addr == 0x03f2)
+	{
+		if ((value & 4) == 4) {  // FDC enable (controller reset)
+			_floppy_reset = 10;
+		}
+	}
         else
+	{
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
+	}
 
         values[addr] = value;
     }
@@ -1326,7 +1346,6 @@ internal class P8086
 	    string name = PutRegister(reg, true, v);
 
             Log.DoLog($"{prefixStr} LDS {name},${v:X4}");
-            Console.WriteLine($"{address:X6} LDS");
         }
         else if (opcode == 0xcd)
         {
