@@ -1295,17 +1295,23 @@ internal class P8086
         else if (opcode == 0x84)
         {
             // TEST ...,...
-            byte v1 = GetPcByte();
-            byte v2 = GetPcByte();
+            byte o1 = GetPcByte();
 
-	    byte result = (byte)(v1 & v2);
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, string name1) = GetRegisterMem(reg2, mod, false);
+            (ushort r2, string name2) = GetRegister(reg1, false);
+
+            byte result = (byte)(r1 & r2);
 
             SetFlagO(false);
             SetFlagS((result & 0x80) != 0);
             SetFlagZ(result == 0);
             SetFlagA(false);
 
-            Log.DoLog($"{prefixStr} TEST ${v1:X2},${v2:X2}");
+            Log.DoLog($"{prefixStr} TEST {name1},{name2}");
         }
         else if (opcode == 0x86)
         {
@@ -1778,7 +1784,7 @@ internal class P8086
             // TEST AL,..
             byte v = GetPcByte();
 
-	    byte result = (byte)(_al & v);
+            byte result = (byte)(_al & v);
 
             SetFlagO(false);
             SetFlagS((result & 0x80) != 0);
