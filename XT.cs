@@ -10,7 +10,7 @@ internal class Log
 
 internal class Memory
 {
-    private const uint size = 32 * 1024;
+    private const uint size = 64 * 1024;  // BIOS expects at least 64kB ram
 
     private readonly byte[] _m = new byte[size]; // 1MB of RAM
 
@@ -861,12 +861,16 @@ internal class P8086
     {
         _sp -= 2;
 
+        // Log.DoLog($"push({v:X4}) write @ {_ss:X4}:{_sp:X4}");
+
         WriteMemWord(_ss, _sp, v);
     }
 
     public ushort pop()
     {
         ushort v = ReadMemWord(_ss, _sp);
+
+        // Log.DoLog($"pop({v:X4}) read @ {_ss:X4}:{_sp:X4}");
 
         _sp += 2;
 
