@@ -895,6 +895,24 @@ internal class P8086
         return @out;
     }
 
+    private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result)
+    {
+        SetFlagO(false); // TODO
+        SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+        SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+        SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
+        SetFlagP((byte)result);
+    }
+
+    private void SetLogicFuncFlags(bool word, ushort result)
+    {
+        SetFlagO(false);
+        SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+        SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+        SetFlagA(false);
+        SetFlagP((byte)result); // TODO verify
+    }
+
     public void push(ushort v)
     {
         _sp -= 2;
@@ -970,13 +988,17 @@ internal class P8086
 
             string name = "ADD";
 
-            _al += v;
-
             if (opcode == 0x14 && GetFlagC())
             {
-                _al++;
+                v++;
                 name = "ADC";
             }
+
+	    int result = _al + v;
+
+            SetAddSubFlags(false, _al, v, result);
+
+            _al = (byte)result;
 
             Log.DoLog($"{prefixStr} {name} AL,${v:X2}");
         }
@@ -1281,11 +1303,7 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
 
-            SetFlagO(false); // TODO
-            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
-            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
-            SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
-            SetFlagP((byte)result);
+            SetAddSubFlags(word, r1, r2, result);
 
             if (apply)
                 PutRegisterMem(reg, mod, word, (ushort)result);
@@ -1306,10 +1324,7 @@ internal class P8086
 
             byte result = (byte)(r1 & r2);
 
-            SetFlagO(false);
-            SetFlagS((result & 0x80) != 0);
-            SetFlagZ(result == 0);
-            SetFlagA(false);
+            SetLogicFuncFlags(false, result);
 
             Log.DoLog($"{prefixStr} TEST {name1},{name2}");
         }
@@ -1449,11 +1464,7 @@ internal class P8086
             if (opcode != 0x3a && opcode != 0x3b)
                 PutRegister(reg1, word, (ushort)result);
 
-            SetFlagO(false); // TODO
-            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
-            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
-            SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
-            SetFlagP((byte)result);
+            SetAddSubFlags(word, r1, r2, result);
 
             Log.DoLog($"{prefixStr} {name} {name2},{name1}");
         }
@@ -1492,11 +1503,7 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
             }
 
-            SetFlagO(false); // TODO
-            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
-            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
-            SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
-            SetFlagP((byte)result);
+            SetAddSubFlags(word, r1, r2, result);
         }
         else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
         {
@@ -1541,12 +1548,7 @@ internal class P8086
 
             PutRegisterMem(reg1, mod, word, result);
 
-            SetFlagO(false);
-            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
-            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
-            SetFlagA(false);
-
-            SetFlagP((byte)result); // TODO verify
+            SetLogicFuncFlags(word, result);
 
             Log.DoLog($"{prefixStr} {name} {name1},{name2}");
         }
@@ -1596,10 +1598,7 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
 
-            SetFlagO(false);
-            SetFlagS((word ? _ah & 0x8000 : _al & 0x80) != 0);
-            SetFlagZ(word ? _ah == 0 && _al == 0 : _al == 0);
-            SetFlagA(false);
+            SetLogicFuncFlags(word, word ? GetAX() : _al);
 
             SetFlagP(word ? _ah : _al);
 
@@ -1652,17 +1651,13 @@ internal class P8086
             {
                 // TEST
                 result = (ushort)(r1 & r2);
+                SetLogicFuncFlags(word, result);
                 cmd_name = "TEST";
             }
             else
             {
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented");
             }
-
-            SetFlagO(false);
-            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
-            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
-            SetFlagA(false);
 
             Log.DoLog($"{prefixStr} {cmd_name} {name1},{name2}");
         }
@@ -1688,7 +1683,7 @@ internal class P8086
 
             if (function == 2)
             {
-                // TEST
+                // NOT
                 result = (ushort)~result;
 
                 put = true;
@@ -1712,11 +1707,6 @@ internal class P8086
 
             if (put)
                 PutRegisterMem(reg1, mod, word, result);
-
-            SetFlagO(false);
-            SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
-            SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
-            SetFlagA(false);
 
             Log.DoLog($"{prefixStr} {cmd_name} {name1},{name2}");
         }
@@ -1786,10 +1776,7 @@ internal class P8086
 
             byte result = (byte)(_al & v);
 
-            SetFlagO(false);
-            SetFlagS((result & 0x80) != 0);
-            SetFlagZ(result == 0);
-            SetFlagA(false);
+            SetLogicFuncFlags(false, result);
 
             Log.DoLog($"{prefixStr} TEST AL,${v:X2}");
         }
@@ -2099,6 +2086,11 @@ internal class P8086
 
             if (!word)
                 v1 &= 0xff;
+
+            SetFlagS((v1 & (word ? 0x8000 : 0x80)) != 0);
+            SetFlagZ(v1 == 0);
+            SetFlagA((v1 & 15) == 0);  // TODO ?
+            SetFlagP((byte)v1);
 
             PutRegisterMem(reg1, mod, word, v1);
         }
