@@ -994,7 +994,7 @@ internal class P8086
                 name = "ADC";
             }
 
-	    int result = _al + v;
+            int result = _al + v;
 
             SetAddSubFlags(false, _al, v, result);
 
@@ -1007,7 +1007,13 @@ internal class P8086
             // ADD AX,xxxx
             ushort v = GetPcWord();
 
-            SetAX((ushort)(GetAX() + v));
+            ushort before = GetAX();
+
+            ushort resukt = (ushort)(before + v);
+
+            SetAddSubFlags(false, before, v, result);
+
+            SetAX(result);
 
             Log.DoLog($"{prefixStr} ADD AX,${v:X4}");
         }
@@ -1154,17 +1160,17 @@ internal class P8086
             Log.DoLog($"{prefixStr} MOVSW");
         }
         else if (opcode == 0xe3)
-	{
+        {
             // JCXZ np
             sbyte offset = (sbyte)GetPcByte();
 
-	    ushort addr = (ushort)(_ip + offset);
+            ushort addr = (ushort)(_ip + offset);
 
-	    if (GetCX() == 0)
-		    _ip = addr;
+            if (GetCX() == 0)
+                _ip = addr;
 
             Log.DoLog($"{prefixStr} JCXZ {addr:X}");
-	}
+        }
         else if (opcode == 0xe9)
         {
             // JMP np
@@ -1394,10 +1400,10 @@ internal class P8086
             byte o1 = GetPcByte();
             int reg = o1 & 7;
 
-	    ushort v = GetPcWord();
-	    _ds = (ushort)(v + 2);
+            ushort v = GetPcWord();
+            _ds = (ushort)(v + 2);
 
-	    string name = PutRegister(reg, true, v);
+            string name = PutRegister(reg, true, v);
 
             Log.DoLog($"{prefixStr} LDS {name},${v:X4}");
         }
@@ -2303,7 +2309,7 @@ internal class P8086
         else if (opcode == 0xf5)
         {
             // CMC
-	    SetFlagC(! GetFlagC());
+            SetFlagC(! GetFlagC());
 
             Log.DoLog($"{prefixStr} CMC");
         }
