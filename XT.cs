@@ -895,9 +895,10 @@ internal class P8086
         return @out;
     }
 
-    private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result)
+    private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub)
     {
-        SetFlagO(false); // TODO
+        SetFlagC(word ? result >= 0x1000 : result >= 0x100);
+        SetFlagO(issub ? (word ? result == 0x7fff : result == 0x7f) : (word ? result == 0x8000 : result == 0x80));
         SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
         SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
         SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
@@ -910,7 +911,7 @@ internal class P8086
         SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
         SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
         SetFlagA(false);
-        SetFlagP((byte)result); // TODO verify
+        SetFlagP((byte)result); // TODO verify: byte? word?
     }
 
     public void push(ushort v)
@@ -996,7 +997,7 @@ internal class P8086
 
             int result = _al + v;
 
-            SetAddSubFlags(false, _al, v, result);
+            SetAddSubFlags(false, _al, v, result, false);
 
             _al = (byte)result;
 
@@ -1011,7 +1012,7 @@ internal class P8086
 
             ushort result = (ushort)(before + v);
 
-            SetAddSubFlags(false, before, v, result);
+            SetAddSubFlags(false, before, v, result, false);
 
             SetAX(result);
 
@@ -1246,6 +1247,9 @@ internal class P8086
 
             bool word = false;
 
+            bool is_logic = false;
+            bool is_sub = false;
+
             int result = 0;
 
             if (opcode == 0x80)
@@ -1286,21 +1290,25 @@ internal class P8086
             else if (function == 1)
             {
                 result = r1 | r2;
+                is_logic = true;
                 iname = "OR";
             }
             else if (function == 4)
             {
                 result = r1 & r2;
+                is_logic = true;
                 iname = "AND";
             }
             else if (function == 5)
             {
                 result = r1 - r2;
+                is_sub = true;
                 iname = "SUB";
             }
             else if (function == 7)
             {
                 result = r1 - r2;
+                is_sub = true;
                 apply = false;
                 iname = "CMP";
             }
@@ -1309,7 +1317,10 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
 
-            SetAddSubFlags(word, r1, r2, result);
+            if (is_logic)
+                SetLogicFuncFlags(word, (ushort)result);
+            else
+                SetAddSubFlags(word, r1, r2, result, is_sub);
 
             if (apply)
                 PutRegisterMem(reg, mod, word, (ushort)result);
@@ -1449,6 +1460,7 @@ internal class P8086
 
             string name = "error";
             int result = 0;
+            bool is_sub = false;
            
             if (opcode == 0x00 || opcode == 0x01 || opcode == 0x02 || opcode == 0x03)
             {
@@ -1459,6 +1471,7 @@ internal class P8086
             else
             {
                 result = r2 - r1;
+                is_sub = true;
 
                 if (opcode == 0x3a || opcode == 0x3b)
                     name = "CMP";
@@ -1470,7 +1483,7 @@ internal class P8086
             if (opcode != 0x3a && opcode != 0x3b)
                 PutRegister(reg1, word, (ushort)result);
 
-            SetAddSubFlags(word, r1, r2, result);
+            SetAddSubFlags(word, r1, r2, result, is_sub);
 
             Log.DoLog($"{prefixStr} {name} {name2},{name1}");
         }
@@ -1509,7 +1522,7 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
             }
 
-            SetAddSubFlags(word, r1, r2, result);
+            SetAddSubFlags(word, r1, r2, result, true);
         }
         else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
         {
