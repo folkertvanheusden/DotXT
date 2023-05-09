@@ -1009,7 +1009,7 @@ internal class P8086
 
             ushort before = GetAX();
 
-            ushort resukt = (ushort)(before + v);
+            ushort result = (ushort)(before + v);
 
             SetAddSubFlags(false, before, v, result);
 
