@@ -2463,6 +2463,7 @@ internal class P8086
 
             if (function == 0)
             {
+                // INC
                 v++;
 
                 SetFlagO(word ? v == 0x8000 : v == 0x80);
@@ -2471,11 +2472,22 @@ internal class P8086
             }
             else if (function == 1)
             {
+                // DEC
                 v--;
 
                 SetFlagO(word ? v == 0x7fff : v == 0x7f);
 
                 Log.DoLog($"{prefixStr} DEC {name}");
+            }
+            else if (function == 2)
+            {
+                ushort a = GetPcWord();
+
+                push(_ip);
+
+                _ip = (ushort)(a + _ip);
+
+                Log.DoLog($"{prefixStr} CALL {a:X4} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
             }
             else
             {
