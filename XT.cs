@@ -897,15 +897,22 @@ internal class P8086
 
     private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub)
     {
-        if (issub)
-            SetFlagC(result < 0);
-        else
+//        if (issub)
+ //           SetFlagC(result < 0);
+  //      else
             SetFlagC(word ? result >= 0x10000 : result >= 0x100);
 
-        SetFlagO(issub ? (word ? result == 0x7fff : result == 0x7f) : (word ? result == 0x8000 : result == 0x80));
+        ushort compare1 = (ushort)(word ? r1 & 0x8000 : r1 & 0x80);
+        ushort compare2 = (ushort)(word ? r2 & 0x8000 : r2 & 0x80);
+        ushort compare3 = (ushort)(word ? result & 0x8000 : result & 0x80);
+        SetFlagO(compare1 == compare2 && compare1 != compare3);
+
         SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+
         SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+
         SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
+
         SetFlagP((ushort)result);
     }
 
