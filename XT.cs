@@ -1509,7 +1509,7 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} IRET");
         }
-        else if (opcode == 0x00 || opcode == 0x01 || opcode == 0x02 || opcode == 0x03 || opcode == 0x2a || opcode == 0x2b || opcode == 0x3a || opcode == 0x3b)
+        else if (opcode == 0x00 || opcode == 0x01 || opcode == 0x02 || opcode == 0x03 || opcode == 0x2a || opcode == 0x2b || opcode == 0x38 || opcode == 0x39 || opcode == 0x3a || opcode == 0x3b)
         {
             bool word = (opcode & 1) == 1;
             byte o1 = GetPcByte();
@@ -1524,6 +1524,7 @@ internal class P8086
             string name = "error";
             int result = 0;
             bool is_sub = false;
+            bool apply = true;
            
             if (opcode == 0x00 || opcode == 0x01 || opcode == 0x02 || opcode == 0x03)
             {
@@ -1536,14 +1537,19 @@ internal class P8086
                 result = r2 - r1;
                 is_sub = true;
 
-                if (opcode == 0x3a || opcode == 0x3b)
+                if (opcode >= 0x38 && opcode <= 0x3b)
+                {
+                    apply = false;
                     name = "CMP";
+                }
                 else
+                {
                     name = "SUB";
+                }
             }
 
             // 0x3a/0x3b are CMP
-            if (opcode != 0x3a && opcode != 0x3b)
+            if (apply)
                 PutRegister(reg1, word, (ushort)result);
 
             SetAddSubFlags(word, r1, r2, result, is_sub);
