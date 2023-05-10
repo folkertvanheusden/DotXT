@@ -875,7 +875,7 @@ internal class P8086
         return GetFlag(0);
     }
 
-    private void SetFlagP(byte v)
+    private void SetFlagP(ushort v)
     {
         int count = 0;
 
@@ -883,7 +883,7 @@ internal class P8086
         {
             count++;
 
-            v &= (byte)(v - 1);
+            v &= (ushort)(v - 1);
         }
 
         SetFlag(2, (count & 1) == 0);
@@ -965,7 +965,7 @@ internal class P8086
         SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
         SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
         SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
-        SetFlagP((byte)result);
+        SetFlagP((ushort)result);
     }
 
     private void SetLogicFuncFlags(bool word, ushort result)
@@ -974,7 +974,7 @@ internal class P8086
         SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
         SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
         SetFlagA(false);
-        SetFlagP((byte)result); // TODO verify: byte? word?
+        SetFlagP((ushort)result); // TODO verify: byte? word?
     }
 
     public void push(ushort v)
@@ -2027,7 +2027,7 @@ internal class P8086
             SetFlagS((v & 0x8000) == 0x8000);
             SetFlagZ(v == 0);
             SetFlagA((v & 15) == 0);
-            SetFlagP((byte)v);
+            SetFlagP(v);
 
             PutRegister(reg, true, v);
 
@@ -2237,7 +2237,7 @@ internal class P8086
             SetFlagS((v1 & (word ? 0x8000 : 0x80)) != 0);
             SetFlagZ(v1 == 0);
             SetFlagA((v1 & 15) == 0);  // TODO ?
-            SetFlagP((byte)v1);
+            SetFlagP(v1);
 
             PutRegisterMem(reg1, mod, word, v1);
         }
@@ -2542,7 +2542,7 @@ internal class P8086
             SetFlagS((v & 0x8000) == 0x8000);
             SetFlagZ(v == 0);
             SetFlagA((v & 15) == 0);
-            SetFlagP((byte)v);
+            SetFlagP(v);
 
             PutRegisterMem(reg, mod, word, v);
         }
