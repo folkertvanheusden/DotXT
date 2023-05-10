@@ -1469,6 +1469,20 @@ internal class P8086
             // NOP
             Log.DoLog($"{prefixStr} NOP");
         }
+        else if (opcode >= 0x91 && opcode <= 0x97)
+        {
+            // XCHG AX,...
+            int reg_nr = opcode - 0x90;
+
+            (ushort v, string name_other) = GetRegister(reg_nr, true);
+
+            ushort old_ax = GetAX();
+            SetAX(v);
+
+            PutRegister(reg_nr, true, old_ax);
+
+            Log.DoLog($"{prefixStr} XCHG AX,{name_other}");
+        }
         else if (opcode == 0x9c)
         {
             // PUSHF
