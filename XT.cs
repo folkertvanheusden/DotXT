@@ -1874,6 +1874,17 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} TEST AL,${v:X2}");
         }
+        else if (opcode == 0xa9)
+        {
+            // TEST AL,..
+            ushort v = GetPcWord();
+
+            ushort result = (byte)(GetAX() & v);
+
+            SetLogicFuncFlags(false, result);
+
+            Log.DoLog($"{prefixStr} TEST AX,${v:X4}");
+        }
         else if (((opcode & 0b11111100) == 0b10001000 /* 0x88 */) || opcode == 0b10001110 /* 0x8e */|| opcode == 0x8c)
         {
             bool dir = (opcode & 2) == 2; // direction
