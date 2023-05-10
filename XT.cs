@@ -1368,6 +1368,12 @@ internal class P8086
                 is_sub = true;
                 iname = "SUB";
             }
+            else if (function == 6)
+            {
+                result = r1 ^ r2;
+                is_logic = true;
+                iname = "XOR";
+            }
             else if (function == 7)
             {
                 result = r1 - r2;
