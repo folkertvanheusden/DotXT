@@ -1109,6 +1109,29 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} PUSH SS");
         }
+        else if (opcode == 0x1d)
+        {
+            // SBB AX,iw
+            ushort v = GetPcWord();
+
+            ushort AX = GetAX();
+
+            int sub = v;
+
+            if (GetFlagC())
+            {
+                sub++;
+                AX--;
+            }
+
+            int result = AX - v;
+
+            SetAddSubFlags(true, AX, (ushort)sub, result, true);
+
+            SetAX((ushort)result);
+
+            Log.DoLog($"{prefixStr} SBB ${v:X4}");
+        }
         else if (opcode == 0x1e)
         {
             // PUSH DS
@@ -1355,6 +1378,11 @@ internal class P8086
                 result = r1 | r2;
                 is_logic = true;
                 iname = "OR";
+            }
+            else if (function == 3)
+            {
+                result = r1 - r2 - (GetFlagC() ? 1 : 0);
+                iname = "SBB";
             }
             else if (function == 4)
             {
