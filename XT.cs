@@ -960,7 +960,11 @@ internal class P8086
 
     private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub)
     {
-        SetFlagC(word ? result >= 0x1000 : result >= 0x100);
+        if (issub)
+            SetFlagC(result < 0);
+        else
+            SetFlagC(word ? result >= 0x10000 : result >= 0x100);
+
         SetFlagO(issub ? (word ? result == 0x7fff : result == 0x7f) : (word ? result == 0x8000 : result == 0x80));
         SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
         SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
@@ -1119,12 +1123,9 @@ internal class P8086
             int sub = v;
 
             if (GetFlagC())
-            {
                 sub++;
-                AX--;
-            }
 
-            int result = AX - v;
+            int result = AX - sub;
 
             SetAddSubFlags(true, AX, (ushort)sub, result, true);
 
