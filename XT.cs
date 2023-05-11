@@ -10,13 +10,16 @@ internal class Log
 
 internal class Memory
 {
-    private const uint size = 64 * 1024;  // BIOS expects at least 64kB ram
+    private readonly byte[] _m;
 
-    private readonly byte[] _m = new byte[size]; // 1MB of RAM
+    public Memory(uint size)
+    {
+        _m = new byte[size];
+    }
 
     public byte ReadByte(uint address)
     {
-        if (address >= size)
+        if (address >= _m.Length)
             return 0xee;
 
         return _m[address];
@@ -24,7 +27,7 @@ internal class Memory
 
     public void WriteByte(uint address, byte v)
     {
-        if (address < size)
+        if (address < _m.Length)
             _m[address] = v;
     }
 }
@@ -46,10 +49,15 @@ internal class Rom
 
 internal class Bus
 {
-    private readonly Memory _m = new();
+    private Memory _m;
 
     private readonly Rom _bios = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
     private readonly Rom _basic = new("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
+
+    public Bus(uint size)
+    {
+        _m = new Memory(size);
+    }
 
     public byte ReadByte(uint address)
     {
@@ -292,14 +300,42 @@ internal class P8086
 
     private const uint MemMask = 0x00ffffff;
 
-    private readonly Bus _b = new();
+    private readonly Bus _b;
 
     private readonly IO _io = new();
 
-    public P8086()
+    private readonly List<byte> floppy = new();
+
+    public P8086(bool do_test)
     {
-        _cs = 0xf000;
-        _ip = 0xfff0;
+        if (do_test)
+        {
+            _b = new Bus(1024 * 1024);
+
+            _cs = 0;
+            _ip = 0x7c00;
+
+            using(Stream source = File.OpenRead("cpu_test"))
+            {
+                byte[] buffer = new byte[512];
+
+                while(source.Read(buffer, 0, 512) == 512)
+                {
+                    for(int i=0; i<512; i++)
+                        floppy.Add(buffer[i]);
+                }
+            }
+
+            for(int i=0; i<512; i++)
+                _b.WriteByte((ushort)(_ip + i), floppy[i]);
+        }
+        else
+        {
+            _b = new Bus(64 * 1024);
+
+            _cs = 0xf000;
+            _ip = 0xfff0;
+        }
     }
 
     private bool intercept_int(int nr)
@@ -321,11 +357,33 @@ internal class P8086
 
                 return true;
             }
-	}
+            else if (_ah == 0x02)
+            {
+                // read sector
+                const byte tracks_per_side = 80;
+                const byte sectors_per_track = 9;
+                int disk_offset = (_dh * tracks_per_side * sectors_per_track + _ch * sectors_per_track + (_cl - 1)) * 512;
+
+                ushort _bx = GetBX();
+
+                Log.DoLog($"INT $13, read sector(s): {_al} sectors, track {_ch}, sector {_cl}, head {_dh}, drive {_dl}, offset {disk_offset} to ${_es:X4}:{_bx:X4}");
+
+                if (disk_offset + 512 <= floppy.Count)
+                {
+                    for(int i=0; i<512 * _al; i++)
+                        WriteMemByte(_es, (ushort)(_bx + i), floppy[disk_offset + i]);
+
+                    SetFlagC(false);
+                    _ah = 0x00;  // no error
+
+                    return true;
+                }
+            }
+        }
         else
-	{
+        {
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
-	}
+        }
 
         return false;
     }
