@@ -985,11 +985,7 @@ internal class P8086
         ushort in_reg_result = word ? (ushort)result : (byte)result;
 
         uint u_result = (uint)result;
-
-//        if (issub)
- //           SetFlagC(result < 0);
-  //      else
-            SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
+        SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
 
         ushort compare1 = (ushort)(word ? r1 & 0x8000 : r1 & 0x80);
         ushort compare2 = (ushort)(word ? r2 & 0x8000 : r2 & 0x80);
@@ -1079,7 +1075,7 @@ internal class P8086
         }
 
         string prefixStr =
-            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} ES:{_es:X4} | ";
+            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4} | ";
 
         // main instruction handling
         if (opcode == 0x04 || opcode == 0x14)
