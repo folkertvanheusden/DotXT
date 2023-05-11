@@ -1416,6 +1416,7 @@ internal class P8086
             else if (function == 3)
             {
                 result = r1 - r2 - (GetFlagC() ? 1 : 0);
+                is_sub = true;
                 iname = "SBB";
             }
             else if (function == 4)
@@ -1641,7 +1642,7 @@ internal class P8086
         else if (opcode == 0x3c || opcode == 0x3d)
         {
             // CMP
-            bool word = true;
+            bool word = (opcode & 1) == 1;
 
             int result = 0;
 
@@ -1661,8 +1662,6 @@ internal class P8086
             {
                 r1 = _al;
                 r2 = GetPcByte();
-
-                word = false;
 
                 result = r1 - r2;
 
