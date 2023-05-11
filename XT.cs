@@ -1683,7 +1683,7 @@ internal class P8086
 //            if (opcode == 0x22)
 //                Log.DoLog($"{name}, r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
 
-            PutRegisterMem(reg2, mod, word, result);
+            PutRegister(reg1, word, result);
 
             SetLogicFuncFlags(word, result);
 
