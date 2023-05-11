@@ -895,7 +895,7 @@ internal class P8086
         return GetFlag(0);
     }
 
-    private void SetFlagP(ushort v)
+    private void SetFlagP(byte v)
     {
         int count = 0;
 
@@ -903,7 +903,7 @@ internal class P8086
         {
             count++;
 
-            v &= (ushort)(v - 1);
+            v &= (byte)(v - 1);
         }
 
         SetFlag(2, (count & 1) == 0);
@@ -1002,7 +1002,7 @@ internal class P8086
 
         SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
 
-        SetFlagP(in_reg_result);
+        SetFlagP((byte)in_reg_result);
     }
 
     private void SetLogicFuncFlags(bool word, ushort result)
@@ -1011,7 +1011,7 @@ internal class P8086
         SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
         SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
         SetFlagA(false);
-        SetFlagP((ushort)result); // TODO verify: byte? word?
+        SetFlagP((byte)result); // TODO verify: byte? word?
     }
 
     public void push(ushort v)
@@ -1770,7 +1770,7 @@ internal class P8086
 
             SetLogicFuncFlags(word, word ? GetAX() : _al);
 
-            SetFlagP(word ? _ah : _al);
+            SetFlagP(_al);
 
             Log.DoLog($"{prefixStr} {name} {tgt_name},${bHigh:X2}{bLow:X2}");
         }
@@ -2061,7 +2061,7 @@ internal class P8086
             SetFlagS((v & 0x8000) == 0x8000);
             SetFlagZ(v == 0);
             SetFlagA((v & 15) == 0);
-            SetFlagP(v);
+            SetFlagP((byte)v);
 
             PutRegister(reg, true, v);
 
@@ -2271,7 +2271,7 @@ internal class P8086
             SetFlagS((v1 & (word ? 0x8000 : 0x80)) != 0);
             SetFlagZ(v1 == 0);
             SetFlagA((v1 & 15) == 0);  // TODO ?
-            SetFlagP(v1);
+            SetFlagP((byte)v1);
 
             PutRegisterMem(reg1, mod, word, v1);
         }
@@ -2576,7 +2576,7 @@ internal class P8086
             SetFlagS((v & 0x8000) == 0x8000);
             SetFlagZ(v == 0);
             SetFlagA((v & 15) == 0);
-            SetFlagP(v);
+            SetFlagP((byte)v);
 
             PutRegisterMem(reg, mod, word, v);
         }
