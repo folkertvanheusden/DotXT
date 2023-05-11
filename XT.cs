@@ -980,23 +980,29 @@ internal class P8086
 
     private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub)
     {
+        Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result}, issub {issub}");
+
+        ushort in_reg_result = word ? (ushort)result : (byte)result;
+
+        uint u_result = (uint)result;
+
 //        if (issub)
  //           SetFlagC(result < 0);
   //      else
-            SetFlagC(word ? result >= 0x10000 : result >= 0x100);
+            SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
 
         ushort compare1 = (ushort)(word ? r1 & 0x8000 : r1 & 0x80);
         ushort compare2 = (ushort)(word ? r2 & 0x8000 : r2 & 0x80);
         ushort compare3 = (ushort)(word ? result & 0x8000 : result & 0x80);
         SetFlagO(compare1 == compare2 && compare1 != compare3);
 
-        SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+        SetFlagS((word ? in_reg_result & 0x8000 : in_reg_result & 0x80) != 0);
 
-        SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+        SetFlagZ(in_reg_result == 0);
 
         SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
 
-        SetFlagP((ushort)result);
+        SetFlagP(in_reg_result);
     }
 
     private void SetLogicFuncFlags(bool word, ushort result)
@@ -1104,11 +1110,11 @@ internal class P8086
 
             ushort before = GetAX();
 
-            ushort result = (ushort)(before + v);
+            int result = before + v;
 
-            SetAddSubFlags(false, before, v, result, false);
+            SetAddSubFlags(true, before, v, result, false);
 
-            SetAX(result);
+            SetAX((ushort)result);
 
             Log.DoLog($"{prefixStr} ADD AX,${v:X4}");
         }
