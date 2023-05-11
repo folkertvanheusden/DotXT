@@ -2368,12 +2368,12 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:x2} not implemented");
             }
 
-            ushort newAddresses = (ushort)(_ip + (sbyte)to);
+            ushort newAddress = (ushort)(_ip + (sbyte)to);
 
             if (state)
-                _ip = newAddresses;
+                _ip = newAddress;
 
-            Log.DoLog($"{prefixStr} {name} {to} ({newAddresses:X4})");
+            Log.DoLog($"{prefixStr} {name} {to} ({_cs:X4}:{newAddress:X4} -> {_cs * 16 + newAddress:X6})");
         }
         else if (opcode == 0xe2)
         {
