@@ -341,11 +341,13 @@ internal class P8086
     private bool intercept_int(int nr)
     {
         if (nr == 0x10 && _ah == 0x0e)
-	{
+        {
             Console.Write((char)_al);
-	}
-	else if (nr == 0x13)
-	{
+
+            return true;
+        }
+        else if (nr == 0x13)
+        {
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
 
             if (_ah == 0x00)  // reset disk system
