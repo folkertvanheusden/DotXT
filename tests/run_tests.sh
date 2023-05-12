@@ -1,9 +1,14 @@
 #! /bin/sh
 
-python3 adc.py
+TEMP='test'
+
+python3 adc.py $TEMP
 
 #LF=logfile.txt
-LF=/home/folkert/temp/ramdisk/logfile.txt
+#LF=/home/folkert/temp/ramdisk/logfile.txt
+LF=/dev/null
+
+cd $TEMP
 
 for i in adc*asm
 do
@@ -15,7 +20,7 @@ do
 
 	TEST_BIN=`pwd`/$BASE.bin
 
-	(cd ../ ; rm -f $LF ; dotnet build -c Debug && dotnet run -l $LF -t $TEST_BIN)
+	(cd ../../ ; rm -f $LF ; dotnet build -c Release && dotnet run -l $LF -t $TEST_BIN)
 
 	if [ $? -eq 1 ] ; then
 		echo Test $i failed

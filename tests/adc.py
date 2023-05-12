@@ -1,5 +1,9 @@
 #! /usr/bin/python3
 
+import sys
+
+p = sys.argv[1]
+
 prev_file_name = None
 fh = None
 
@@ -49,7 +53,7 @@ def flags_add_sub_cp(is_sub: bool, carry: bool, val1: int, val2: int) -> int:
     return (result, flags)
 
 for al in range(0, 256):
-    file_name = f'adc_{al & 0xf0:02x}.asm'
+    file_name = f'adc_{al & 0xfe:02x}.asm'
 
     if file_name != prev_file_name:
 
@@ -57,13 +61,13 @@ for al in range(0, 256):
 
         if fh != None:
             # to let emulator know all was fine
-            fh.write('\tmov ax,$a5ee\n')
+            fh.write('\tmov ax,#$a5ee\n')
             fh.write('\tmov si,ax\n')
             fh.write('\thlt\n')
 
             fh.close()
 
-        fh = open(file_name, 'w')
+        fh = open(p + '/' + file_name, 'w')
 
         fh.write('\torg $800\n')
         fh.write('\n')
@@ -122,7 +126,7 @@ for al in range(0, 256):
             fh.write(f'next_{label}:\n')
             fh.write('\n')
 
-fh.write('\tmov ax,$a5ee\n')
+fh.write('\tmov ax,#$a5ee\n')
 fh.write('\tmov si,ax\n')
 fh.write('\thlt\n')
 fh.close()
