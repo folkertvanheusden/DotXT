@@ -3,18 +3,12 @@ using DotXT;
 Console.WriteLine("DotXT, (C) 2023 by Folkert van Heusden");
 Console.WriteLine("Released in the public domain");
 
-bool do_test = false;
+string test = "";
 
-foreach(var s in args)
-{
-    if (s == "test")
-    {
-        do_test = true;
-        break;
-    }
-}
+if (args.Length > 0)
+    test = args[0];
 
-var p = new P8086(do_test);
+var p = new P8086(test);
 
 for (;;)
     p.Tick();

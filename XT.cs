@@ -304,30 +304,40 @@ internal class P8086
 
     private readonly IO _io = new();
 
-    private readonly List<byte> floppy = new();
+    private bool is_test;
 
-    public P8086(bool do_test)
+    public P8086(string test)
     {
-        if (do_test)
+        if (test != "")
         {
+            is_test = true;
+
             _b = new Bus(1024 * 1024);
 
             _cs = 0;
-            _ip = 0x7c00;
+            _ip = 0x0400;
 
-            using(Stream source = File.OpenRead("cpu_test"))
+            uint addr = 0;
+
+            using(Stream source = File.OpenRead(test))
             {
                 byte[] buffer = new byte[512];
 
-                while(source.Read(buffer, 0, 512) == 512)
+                for(;;)
                 {
-                    for(int i=0; i<512; i++)
-                        floppy.Add(buffer[i]);
+                    int n = source.Read(buffer, 0, 512);
+
+                    for(int i=0; i<n; i++)
+                    {
+                        _b.WriteByte((uint)addr, buffer[i]);
+                        addr++;
+                    }
+
+                    if (n < 512)
+                        break;
                 }
             }
 
-            for(int i=0; i<512; i++)
-                _b.WriteByte((ushort)(_ip + i), floppy[i]);
         }
         else
         {
@@ -370,40 +380,6 @@ internal class P8086
             SetAX(640); // 640kB
             SetFlagC(false);
             return true;
-        }
-        else if (nr == 0x13)
-        {
-            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
-
-            if (_ah == 0x00)  // reset disk system
-            {
-                Log.DoLog("INT $13: reset disk system");
-
-                SetFlagC(false);
-                _ah = 0x00;  // no error
-
-                return true;
-            }
-            else if (_ah == 0x02) {  // read sector
-                const byte tracks_per_side = 80;
-                const byte sectors_per_track = 9;
-                int disk_offset = (_dh * tracks_per_side * sectors_per_track + _ch * sectors_per_track + (_cl - 1)) * 512;
-
-                ushort _bx = GetBX();
-
-                Log.DoLog($"INT $13, read sector(s): {_al} sectors, track {_ch}, sector {_cl}, head {_dh}, drive {_dl}, offset {disk_offset} to ${_es:X4}:{_bx:X4}");
-
-                if (disk_offset + 512 <= floppy.Count)
-                {
-                    for(int i=0; i<512 * _al; i++)
-                        WriteMemByte(_es, (ushort)(_bx + i), floppy[disk_offset + i]);
-
-                    SetFlagC(false);
-                    _ah = 0x00;  // no error
-
-                    return true;
-                }
-            }
         }
         else
         {
@@ -2474,7 +2450,10 @@ internal class P8086
 
             Console.WriteLine($"{address:X6} HLT");
 
-            System.Environment.Exit(1);
+            if (is_test)
+                System.Environment.Exit(_si == 0xa5ee ? 0 : 1);
+
+            System.Environment.Exit(0);
         }
         else if (opcode == 0xf5)
         {
