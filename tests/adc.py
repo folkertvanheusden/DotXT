@@ -17,7 +17,7 @@ def parity(v):
     return parity_lookup[v]
 
 def flags_add_sub_cp(is_sub: bool, carry: bool, val1: int, val2: int) -> int:
-    org_value = val1
+    org_value = val2
 
     val2 += 1 if carry else 0
 

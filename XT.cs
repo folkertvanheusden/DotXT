@@ -954,9 +954,9 @@ internal class P8086
         return @out;
     }
 
-    private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub)
+    private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub, bool flag_c)
     {
-        // Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result}, issub {issub}");
+        Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result}, issub {issub}");
 
         ushort in_reg_result = word ? (ushort)result : (byte)result;
 
@@ -972,7 +972,7 @@ internal class P8086
 
         SetFlagZ(in_reg_result == 0);
 
-        SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (u_result & 0x10)) == 0x10);
+        SetFlagA((((r1 & 0x0f) + (r2 & 0x0f) + (flag_c ? 1 : 0)) & 0x10) > 0);
 
         SetFlagP((byte)in_reg_result);
     }
@@ -990,7 +990,7 @@ internal class P8086
     {
         _sp -= 2;
 
-        // Log.DoLog($"push({v:X4}) write @ {_ss:X4}:{_sp:X4}");
+        Log.DoLog($"push({v:X4}) write @ {_ss:X4}:{_sp:X4}");
 
         WriteMemWord(_ss, _sp, v);
     }
@@ -999,7 +999,7 @@ internal class P8086
     {
         ushort v = ReadMemWord(_ss, _sp);
 
-        // Log.DoLog($"pop({v:X4}) read @ {_ss:X4}:{_sp:X4}");
+        Log.DoLog($"pop({v:X4}) read @ {_ss:X4}:{_sp:X4}");
 
         _sp += 2;
 
@@ -1061,7 +1061,9 @@ internal class P8086
 
             string name = "ADD";
 
-            if (opcode == 0x14 && GetFlagC())
+            bool flag_c = GetFlagC();
+
+            if (opcode == 0x14 && flag_c)
             {
                 v++;
                 name = "ADC";
@@ -1069,7 +1071,7 @@ internal class P8086
 
             int result = _al + v;
 
-            SetAddSubFlags(false, _al, v, result, false);
+            SetAddSubFlags(false, _al, v, result, false, flag_c);
 
             _al = (byte)result;
 
@@ -1084,7 +1086,7 @@ internal class P8086
 
             int result = before + v;
 
-            SetAddSubFlags(true, before, v, result, false);
+            SetAddSubFlags(true, before, v, result, false, false);
 
             SetAX((ushort)result);
 
@@ -1127,12 +1129,14 @@ internal class P8086
 
             int sub = v;
 
-            if (GetFlagC())
+            bool flag_c = GetFlagC();
+
+            if (flag_c)
                 sub++;
 
             int result = AX - sub;
 
-            SetAddSubFlags(true, AX, (ushort)sub, result, true);
+            SetAddSubFlags(true, AX, (ushort)sub, result, true, flag_c);
 
             SetAX((ushort)result);
 
@@ -1373,6 +1377,7 @@ internal class P8086
 
             string iname = "error";
             bool apply = true;
+            bool use_flag_c = false;
 
             if (function == 0)
             {
@@ -1389,6 +1394,7 @@ internal class P8086
             {
                 result = r1 - r2 - (GetFlagC() ? 1 : 0);
                 is_sub = true;
+                use_flag_c = true;
                 iname = "SBB";
             }
             else if (function == 4)
@@ -1424,7 +1430,7 @@ internal class P8086
             if (is_logic)
                 SetLogicFuncFlags(word, (ushort)result);
             else
-                SetAddSubFlags(word, r1, r2, result, is_sub);
+                SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? GetFlagC() : false);
 
             if (apply)
                 PutRegisterMem(reg, mod, word, (ushort)result);
@@ -1580,6 +1586,7 @@ internal class P8086
             int result = 0;
             bool is_sub = false;
             bool apply = true;
+            bool use_flag_c = false;
            
             if (opcode <= 0x03)
             {
@@ -1589,6 +1596,8 @@ internal class P8086
             }
             else if (opcode >= 0x10 && opcode <= 0x13)
             {
+                use_flag_c = true;
+
                 result = r2 + r1 + (GetFlagC() ? 1 : 0);
 
                 name = "ADC";
@@ -1613,7 +1622,7 @@ internal class P8086
             if (apply)
                 PutRegisterMem(reg2, mod, word, (ushort)result);
 
-            SetAddSubFlags(word, r1, r2, result, is_sub);
+            SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? GetFlagC() : false);
 
             Log.DoLog($"{prefixStr} {name} {name2},{name1}");
         }
@@ -1650,7 +1659,7 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
             }
 
-            SetAddSubFlags(word, r1, r2, result, true);
+            SetAddSubFlags(word, r1, r2, result, true, false);
         }
         else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
         {
