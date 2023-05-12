@@ -5,8 +5,13 @@ Console.WriteLine("Released in the public domain");
 
 string test = "";
 
-if (args.Length > 0)
-    test = args[0];
+for(int i=0; i<args.Length; i++)
+{
+    if (args[i] == "-t")
+        test = args[++i];
+    else if (args[i] == "-l")
+        Log.SetLogFile(args[++i]);
+}
 
 var p = new P8086(test);
 

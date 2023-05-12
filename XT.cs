@@ -2,9 +2,16 @@ namespace DotXT;
 
 internal class Log
 {
+    private static string logfile = "logfile.txt";
+
+    public static void SetLogFile(string file)
+    {
+        logfile = file;
+    }
+
     public static void DoLog(string what)
     {
-        File.AppendAllText(@"logfile.txt", what + Environment.NewLine);
+        File.AppendAllText(logfile, what + Environment.NewLine);
     }
 }
 

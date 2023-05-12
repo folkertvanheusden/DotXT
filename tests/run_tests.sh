@@ -2,17 +2,20 @@
 
 python3 adc.py
 
+#LF=logfile.txt
+LF=/home/folkert/temp/ramdisk/logfile.txt
+
 for i in adc*asm
 do
-	base=`basename $i .asm`
+	BASE=`basename $i .asm`
 
-	echo Working on $base
+	echo Working on $BASE
 
-	as86 -0 -O -l $base.list -m -b $base.bin $i
+	as86 -0 -O -l $BASE.list -m -b $BASE.bin $i
 
-	test_bin=`pwd`/$base.bin
+	TEST_BIN=`pwd`/$BASE.bin
 
-	(cd ../ ; rm -f logfile.txt ; dotnet build -c Debug && dotnet run $test_bin)
+	(cd ../ ; rm -f $LF ; dotnet build -c Debug && dotnet run -l $LF -t $TEST_BIN)
 
 	if [ $? -eq 1 ] ; then
 		echo Test $i failed
