@@ -2,12 +2,14 @@
 
 TEMP='test'
 
-#python3 adc_add.py $TEMP
-python3 adc16_add16.py $TEMP
+python3 adc_add_sbb_sub.py $TEMP
+#python3 adc16_add16.py $TEMP
 
 #LF=logfile.txt
-#LF=/home/folkert/temp/ramdisk/logfile.txt
-LF=/dev/null
+LF=/home/folkert/temp/ramdisk/logfile.txt
+#LF=/dev/null
+
+echo Logfile: $LF
 
 cd $TEMP
 

@@ -963,25 +963,25 @@ internal class P8086
 
     private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub, bool flag_c)
     {
-        Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result}, issub {issub}");
+        Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result:X}, issub {issub}");
 
         ushort in_reg_result = word ? (ushort)result : (byte)result;
 
         uint u_result = (uint)result;
         SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
 
-        ushort compare1 = (ushort)(word ? r1 & 0x8000 : r1 & 0x80);
-        ushort compare2 = (ushort)(word ? r2 & 0x8000 : r2 & 0x80);
-        ushort compare3 = (ushort)(word ? result & 0x8000 : result & 0x80);
-        SetFlagO(compare1 == compare2 && compare1 != compare3);
+        SetFlagO(word ? result < -32768 || result > 32767 : result < -128 || result > 127);
 
         SetFlagS((word ? in_reg_result & 0x8000 : in_reg_result & 0x80) != 0);
 
         SetFlagZ(in_reg_result == 0);
 
-        SetFlagA((((r1 & 0x0f) + (r2 & 0x0f) + (flag_c ? 1 : 0)) & 0x10) > 0);
+        if (issub)
+            SetFlagA((((r1 & 0x0f) - (r2 & 0x0f) - (flag_c ? 1 : 0)) & 0x10) > 0);
+        else
+            SetFlagA((((r1 & 0x0f) + (r2 & 0x0f) + (flag_c ? 1 : 0)) & 0x10) > 0);
 
-        SetFlagP((byte)in_reg_result);
+        SetFlagP((byte)result);
     }
 
     private void SetLogicFuncFlags(bool word, ushort result)
@@ -997,7 +997,7 @@ internal class P8086
     {
         _sp -= 2;
 
-        Log.DoLog($"push({v:X4}) write @ {_ss:X4}:{_sp:X4}");
+        // Log.DoLog($"push({v:X4}) write @ {_ss:X4}:{_sp:X4}");
 
         WriteMemWord(_ss, _sp, v);
     }
@@ -1006,7 +1006,7 @@ internal class P8086
     {
         ushort v = ReadMemWord(_ss, _sp);
 
-        Log.DoLog($"pop({v:X4}) read @ {_ss:X4}:{_sp:X4}");
+        // Log.DoLog($"pop({v:X4}) read @ {_ss:X4}:{_sp:X4}");
 
         _sp += 2;
 
@@ -1577,7 +1577,7 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} IRET");
         }
-        else if ((opcode >= 0x00 && opcode <= 0x03) || (opcode >= 0x10 && opcode <= 0x13) || opcode == 0x2a || opcode == 0x2b || (opcode >= 0x38 && opcode <= 0x3b))
+        else if ((opcode >= 0x00 && opcode <= 0x03) || (opcode >= 0x10 && opcode <= 0x13) || (opcode >= 0x28 && opcode <= 0x2b) || (opcode >= 0x18 && opcode <= 0x1b) || (opcode >= 0x38 && opcode <= 0x3b))
         {
             bool word = (opcode & 1) == 1;
             byte o1 = GetPcByte();
@@ -1597,7 +1597,7 @@ internal class P8086
            
             if (opcode <= 0x03)
             {
-                result = r2 + r1;
+                result = r1 + r2;
 
                 name = "ADD";
             }
@@ -1605,13 +1605,13 @@ internal class P8086
             {
                 use_flag_c = true;
 
-                result = r2 + r1 + (GetFlagC() ? 1 : 0);
+                result = r1 + r2 + (GetFlagC() ? 1 : 0);
 
                 name = "ADC";
             }
             else
             {
-                result = r2 - r1;
+                result = r1 - r2;
                 is_sub = true;
 
                 if (opcode >= 0x38 && opcode <= 0x3b)
@@ -1619,19 +1619,27 @@ internal class P8086
                     apply = false;
                     name = "CMP";
                 }
-                else
+                else if (opcode >= 0x28 && opcode <= 0x2b)
                 {
                     name = "SUB";
                 }
+                else  // 0x18...0x1b
+                {
+                    use_flag_c = true;
+
+                    result -= (GetFlagC() ? 1 : 0);
+
+                    name = "SBB";
+                }
             }
 
-            // 0x3a/0x3b are CMP
+            // 0x38...0x3b are CMP
             if (apply)
                 PutRegisterMem(reg2, mod, word, (ushort)result);
 
             SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? GetFlagC() : false);
 
-            Log.DoLog($"{prefixStr} {name} {name2},{name1}");
+            Log.DoLog($"{prefixStr} {name} {name1},{name2}");
         }
         else if (opcode == 0x3c || opcode == 0x3d)
         {
