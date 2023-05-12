@@ -956,7 +956,7 @@ internal class P8086
 
     private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub)
     {
-        Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result}, issub {issub}");
+        // Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result}, issub {issub}");
 
         ushort in_reg_result = word ? (ushort)result : (byte)result;
 
