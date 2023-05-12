@@ -3,6 +3,19 @@
 prev_file_name = None
 fh = None
 
+parity_lookup = [ False ] * 256
+
+for v in range(0, 256):
+    count = 0
+
+    for i in range(0, 8):
+        count += (v & (1 << i)) != 0
+
+    parity_lookup[v] = (count & 1) == 0
+
+def parity(v):
+    return parity_lookup[v]
+
 def flags_add_sub_cp(is_sub: bool, carry: bool, val1: int, val2: int) -> int:
     org_value = val1
 
@@ -28,7 +41,10 @@ def flags_add_sub_cp(is_sub: bool, carry: bool, val1: int, val2: int) -> int:
     flag_z = result == 0
     flag_s = after_sign == 0x80
 
-    flags = (1 if flag_c else 0) + (4 if flag_h else 0) + (256 if flag_o else 0) + (8 if flag_z else 0) + (16 if flag_s else 0)
+    flags = (1 if flag_c else 0) + (16 if flag_h else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0)
+
+    if parity(result):
+        flags += 4
 
     return (result, flags)
 
@@ -67,8 +83,12 @@ for al in range(0, 256):
             fh.write(f'\tpush ax\n')
             fh.write(f'\tpopf\n')
 
+            (check_val, flags) = flags_add_sub_cp(False, True if carry > 0 else False, al, val)
+
             # verify value
-            fh.write(f'\tmov al,${al:02x}\n')
+            fh.write(f'\tmov al,#${al:02x}\n')
+            fh.write(f'\tmov bl,#${val:02x}\n')
+            fh.write(f'\tmov cl,#${check_val:02x}\n')
             
             if carry:
                 fh.write('\tstc\n')
@@ -76,11 +96,13 @@ for al in range(0, 256):
             else:
                 fh.write('\tclc\n')
 
-            fh.write(f'\tadc al,{val}\n')
+            # do test
+            fh.write(f'\tadc al,bl\n')
 
-            (check_val, flags) = flags_add_sub_cp(False, True if carry > 0 else False, al, val)
+            # keep flags
+            fh.write(f'\tpushf\n')
 
-            fh.write(f'\tcmp al,{check_val}\n')
+            fh.write(f'\tcmp al,cl\n')
             fh.write(f'\tjz ok_{label}\n')
 
             fh.write(f'\thlt\n')
@@ -88,9 +110,8 @@ for al in range(0, 256):
             fh.write(f'ok_{label}:\n')
 
             # verify flags
-            fh.write(f'\tpushf\n')
             fh.write(f'\tpop ax\n')
-            fh.write(f'\tcmp ax,${flags:04x}\n')
+            fh.write(f'\tcmp ax,#${flags:04x}\n')
             fh.write(f'\tjz next_{label}\n')
             fh.write(f'\thlt\n')
 
