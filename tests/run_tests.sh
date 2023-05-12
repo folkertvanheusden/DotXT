@@ -2,7 +2,8 @@
 
 TEMP='test'
 
-python3 adc.py $TEMP
+#python3 adc.py $TEMP
+python3 adc16.py $TEMP
 
 #LF=logfile.txt
 #LF=/home/folkert/temp/ramdisk/logfile.txt
@@ -10,7 +11,7 @@ LF=/dev/null
 
 cd $TEMP
 
-for i in adc*asm
+for i in *.asm
 do
 	BASE=`basename $i .asm`
 
@@ -28,4 +29,7 @@ do
 	fi
 done
 
-rm -f adc*asm* adc*list* adc*bin*
+rm -f *.asm *.list *.bin
+
+echo All fine
+exit 0
