@@ -972,7 +972,7 @@ internal class P8086
 
         SetFlagZ(in_reg_result == 0);
 
-        SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (result & 0x10)) == 0x10);
+        SetFlagA(((r1 & 0x10) ^ (r2 & 0x10) ^ (u_result & 0x10)) == 0x10);
 
         SetFlagP((byte)in_reg_result);
     }
