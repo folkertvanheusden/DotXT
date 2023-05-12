@@ -315,7 +315,7 @@ internal class P8086
             _b = new Bus(1024 * 1024);
 
             _cs = 0;
-            _ip = 0x0400;
+            _ip = 0x0800;
 
             uint addr = 0;
 
@@ -1611,7 +1611,7 @@ internal class P8086
 
             // 0x3a/0x3b are CMP
             if (apply)
-                PutRegister(reg1, word, (ushort)result);
+                PutRegisterMem(reg2, mod, word, (ushort)result);
 
             SetAddSubFlags(word, r1, r2, result, is_sub);
 
