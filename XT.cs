@@ -967,12 +967,19 @@ internal class P8086
 
         ushort in_reg_result = word ? (ushort)result : (byte)result;
 
+        ushort mask = (ushort)(word ? 0x8000 : 0x80);
+
+        ushort temp_r2 = (ushort)(issub ? (r2 - (flag_c ? 1 : 0)) : (r2 + (flag_c ? 1 : 0)));
+
+        if (issub)
+            SetFlagO(((r1 ^ r2) & mask) == mask && ((result ^ r2) & mask) != mask);
+        else
+            SetFlagO(((r1 ^ r2) & mask) != mask && ((result ^ r1) & mask) == mask);
+
         uint u_result = (uint)result;
         SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
 
-        SetFlagO(word ? result < -32768 || result > 32767 : result < -128 || result > 127);
-
-        SetFlagS((word ? in_reg_result & 0x8000 : in_reg_result & 0x80) != 0);
+        SetFlagS((word ? in_reg_result & mask : in_reg_result & mask) != 0);
 
         SetFlagZ(in_reg_result == 0);
 
