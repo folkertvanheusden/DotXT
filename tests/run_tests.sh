@@ -12,14 +12,12 @@ do
 
 	test_bin=`pwd`/$base.bin
 
-	(cd ../ ; dotnet build -c Debug && dotnet run $test_bin)
+	(cd ../ ; rm -f logfile.txt ; dotnet build -c Debug && dotnet run $test_bin)
 
 	if [ $? -eq 1 ] ; then
 		echo Test $i failed
-		break
+		exit 1
 	fi
-
-	rm -f logfile.txt
 done
 
 rm -f adc*asm* adc*list* adc*bin*
