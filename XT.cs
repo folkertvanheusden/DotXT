@@ -1564,7 +1564,7 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} IRET");
         }
-        else if (opcode == 0x00 || opcode == 0x01 || opcode == 0x02 || opcode == 0x03 || opcode == 0x12 || opcode == 0x13 || opcode == 0x2a || opcode == 0x2b || opcode == 0x38 || opcode == 0x39 || opcode == 0x3a || opcode == 0x3b)
+        else if ((opcode >= 0x00 && opcode <= 0x03) || (opcode >= 0x10 && opcode <= 0x13) || opcode == 0x2a || opcode == 0x2b || (opcode >= 0x38 && opcode <= 0x3b))
         {
             bool word = (opcode & 1) == 1;
             byte o1 = GetPcByte();
@@ -1581,13 +1581,13 @@ internal class P8086
             bool is_sub = false;
             bool apply = true;
            
-            if (opcode == 0x00 || opcode == 0x01 || opcode == 0x02 || opcode == 0x03)
+            if (opcode <= 0x03)
             {
                 result = r2 + r1;
 
                 name = "ADD";
             }
-            else if (opcode == 0x12 || opcode == 0x13)
+            else if (opcode >= 0x10 && opcode <= 0x13)
             {
                 result = r2 + r1 + (GetFlagC() ? 1 : 0);
 
