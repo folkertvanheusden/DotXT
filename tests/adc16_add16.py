@@ -16,12 +16,12 @@ def emit_tail():
     fh.write('\tmov si,ax\n')
     fh.write('\thlt\n')
 
-def emit_test(v1, v2, carry):
+def emit_test(instr, v1, v2, carry):
     global fh
     global n_tests
 
     if fh == None:
-        file_name = f'adc16_{n_tests}.asm'
+        file_name = f'adc16_add16_{n_tests}.asm'
         fh = open(p + '/' + file_name, 'w')
 
         fh.write('\torg $800\n')
@@ -36,7 +36,7 @@ def emit_test(v1, v2, carry):
 
     # test itself
 
-    label = f'test_{v1:02x}_{v2:02x}_{carry}'
+    label = f'test_{instr}_{v1:02x}_{v2:02x}_{carry}'
 
     fh.write(f'{label}:\n')
 
@@ -59,7 +59,11 @@ def emit_test(v1, v2, carry):
         fh.write('\tclc\n')
 
     # do test
-    fh.write(f'\tadc ax,bx\n')
+    if instr == 0:
+        fh.write(f'\tadc ax,bx\n')
+
+    else:
+        fh.write(f'\tadd ax,bx\n')
 
     # keep flags
     fh.write(f'\tpushf\n')
@@ -89,14 +93,18 @@ def emit_test(v1, v2, carry):
         fh.close()
         fh = None
 
-for carry in range(0, 2):
-    emit_test(256, 256, carry)
-    emit_test(255, 256, carry)
-    emit_test(256, 255, carry)
-    emit_test(256 + 15, 256 + 15, carry)
-    emit_test(256 + 15, 256 + 16, carry)
-    emit_test(256 + 16, 256 + 16, carry)
-    emit_test(65535, 65535, carry)
+for instr in range(0, 2):
+    for carry in range(0, 2):
+        if instr == 1 and carry == 1:
+            break
+
+        emit_test(instr, 256, 256, carry)
+        emit_test(instr, 255, 256, carry)
+        emit_test(instr, 256, 255, carry)
+        emit_test(instr, 256 + 15, 256 + 15, carry)
+        emit_test(instr, 256 + 15, 256 + 16, carry)
+        emit_test(instr, 256 + 16, 256 + 16, carry)
+        emit_test(instr, 65535, 65535, carry)
 
 emit_tail()
 fh.close()
