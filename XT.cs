@@ -946,9 +946,9 @@ internal class P8086
         string @out = String.Empty;
 
         @out += GetFlagO() ? "o" : "-";
-        @out += GetFlagD() ? "d" : "-";
         @out += GetFlagS() ? "s" : "-";
         @out += GetFlagZ() ? "z" : "-";
+        @out += GetFlagA() ? "a" : "-";
         @out += GetFlagC() ? "c" : "-";
 
         return @out;
