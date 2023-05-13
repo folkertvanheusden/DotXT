@@ -305,6 +305,9 @@ internal class P8086
 
     private Dictionary<int, int> _scheduled_interrupts = new Dictionary<int, int>();
 
+    private bool _rep;
+    private ushort _rep_addr;
+
     private bool _is_test;
 
     private readonly List<byte> floppy = new();
@@ -1119,7 +1122,7 @@ internal class P8086
         byte opcode = GetPcByte();
 
         // handle prefixes
-        if (opcode == 0x26 || opcode == 0x2e || opcode == 0x36 || opcode == 0x3e)
+        if (opcode == 0x26 || opcode == 0x2e || opcode == 0x36 || opcode == 0x3e || opcode == 0xf3)
         {
             if (opcode == 0x26)
                 segment_override = _es;
@@ -1129,10 +1132,20 @@ internal class P8086
                 segment_override = _ss;
             else if (opcode == 0x3e)
                 segment_override = _ds;
-	    else
-                Log.DoLog($"------ {address:X6} segment override {opcode:X2} not implemented");
+            else if (opcode == 0xf3)
+            {
+                _rep = true;
+                _rep_addr = _ip;
 
-            segment_override_set = true;
+                Log.DoLog($"REP {_rep_addr:X4}");
+            }
+            else
+            {
+                Log.DoLog($"------ {address:X6} segment override {opcode:X2} not implemented");
+            }
+
+            if (opcode != 0xf3)
+                segment_override_set = true;
 
             address = (uint)(_cs * 16 + _ip) & MemMask;
             opcode = GetPcByte();
@@ -2516,42 +2529,6 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} JP ${_ip:X4}");
         }
-        else if (opcode == 0xf3)
-        {
-            // REP
-
-            // it looks like f3 can only used with a specific set of
-            // instructions according to
-            // https://www.felixcloutier.com/x86/rep:repe:repz:repne:repnz
-
-            byte next_opcode = GetPcByte();
-
-            if (next_opcode == 0xab)
-            {
-                Log.DoLog($"{prefixStr} REP STOSW");
-
-                ushort ax = GetAX();
-                ushort cx = GetCX();
-
-                while(cx > 0)
-                {
-                    WriteMemWord(_es, _di, ax);
-
-                    if (GetFlagD())
-                        _di -= 2;
-                    else
-                        _di += 2;
-
-                    cx--;
-                }
-
-                SetCX(0);
-            }
-            else
-            {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} next_opcode {next_opcode:X2} not implemented");
-            }
-        }
         else if (opcode == 0xf4)
         {
             // HLT
@@ -2671,5 +2648,23 @@ internal class P8086
         }
 
         segment_override_set = false;
+
+        if (_rep)
+        {
+            ushort cx = GetCX();
+            cx--;
+            SetCX(cx);
+
+            if (cx > 0)
+            {
+                _ip = _rep_addr;
+                SetFlagZ(false);
+            }
+            else
+            {
+                _rep = false;
+                SetFlagZ(true);
+            }
+        }
     }
 }
