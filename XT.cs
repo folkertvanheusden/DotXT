@@ -307,9 +307,11 @@ internal class P8086
 
     private bool _is_test;
 
-    public P8086(string test)
+    private readonly List<byte> floppy = new();
+
+    public P8086(string test, bool is_floppy)
     {
-        if (test != "")
+        if (test != "" && is_floppy == false)
         {
             _is_test = true;
 
@@ -339,6 +341,27 @@ internal class P8086
                 }
             }
 
+        }
+        else if (test != "" && is_floppy == true)
+        {
+            _b = new Bus(1024 * 1024);
+
+            _cs = 0;
+            _ip = 0x7c00;
+
+            using(Stream source = File.OpenRead(test))
+            {
+                byte[] buffer = new byte[512];
+
+                while(source.Read(buffer, 0, 512) == 512)
+                {
+                    for(int i=0; i<512; i++)
+                        floppy.Add(buffer[i]);
+                }
+            }
+
+            for(int i=0; i<512; i++)
+                _b.WriteByte((ushort)(_ip + i), floppy[i]);
         }
         else
         {
@@ -381,6 +404,43 @@ internal class P8086
             SetAX(640); // 640kB
             SetFlagC(false);
             return true;
+        }
+        else if (nr == 0x13 && floppy.Count > 0)
+        {
+            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+
+            if (_ah == 0x00)
+            {
+                // reset disk system
+                Log.DoLog("INT $13: reset disk system");
+
+                SetFlagC(false);
+                _ah = 0x00;  // no error
+
+                return true;
+            }
+            else if (_ah == 0x02)
+            {
+                // read sector
+                const byte tracks_per_side = 80;
+                const byte sectors_per_track = 9;
+                int disk_offset = (_dh * tracks_per_side * sectors_per_track + _ch * sectors_per_track + (_cl - 1)) * 512;
+
+                ushort _bx = GetBX();
+
+                Log.DoLog($"INT $13, read sector(s): {_al} sectors, track {_ch}, sector {_cl}, head {_dh}, drive {_dl}, offset {disk_offset} to ${_es:X4}:{_bx:X4}");
+
+                if (disk_offset + 512 <= floppy.Count)
+                {
+                    for(int i=0; i<512 * _al; i++)
+                        WriteMemByte(_es, (ushort)(_bx + i), floppy[disk_offset + i]);
+
+                    SetFlagC(false);
+                    _ah = 0x00;  // no error
+
+                    return true;
+                }
+            }
         }
         else
         {
