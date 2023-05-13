@@ -2103,6 +2103,24 @@ internal class P8086
                 Log.DoLog($"{prefixStr} MOV {toName},{fromName}");
             }
         }
+        else if (opcode == 0x8d)
+        {
+            // LEA
+            byte o1 = GetPcByte();
+            int mode = o1 >> 6;
+            int reg = (o1 >> 3) & 7;
+            int rm = o1 & 7;
+
+            (ushort val, string name_from) = GetRegister(reg, true);
+
+            sbyte displacement = (sbyte)GetPcByte();
+
+            val = (ushort)(val + displacement);
+
+            string name_to = PutRegister(rm, true, val);
+
+            Log.DoLog($"{prefixStr} LEA {name_from},[{name_to} + {displacement:X2}]");
+        }
         else if ((opcode & 0xf8) == 0xb8)
         {
             // MOV immed to reg
