@@ -256,13 +256,17 @@ internal class IO
             _i8253.command(value);
 
         else if (addr == 0x0322)
-            scheduled_interrupts[0x0d] = 3;  // generate (XT disk-)controller select pulse (IRQ 5)
-
+        {
+            if (scheduled_interrupts.ContainsKey(0x0d) == false)
+                scheduled_interrupts[0x0d] = 3;  // generate (XT disk-)controller select pulse (IRQ 5)
+        }
         else if (addr == 0x03f2)
             scheduled_interrupts[0x0e] = 10;  // FDC enable (controller reset) (IRQ 6)
 
         else
+        {
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
+        }
 
         values[addr] = value;
     }
