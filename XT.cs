@@ -198,11 +198,10 @@ internal class i8253
 internal class IO
 {
     private i8253 _i8253 = new i8253();
-    private int _floppy_reset;
 
     private Dictionary <ushort, byte> values = new Dictionary <ushort, byte>();
 
-    public byte In(ushort addr)
+    public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
     {
         if (addr == 0x0008)  // DMA status register
             return 0x0f;  // 'transfer complete'
@@ -230,26 +229,17 @@ internal class IO
         return 0;
     }
 
-    public int Tick()
+    public (int, int) Tick()
     {
         if (_i8253.Tick())
-            return 0x08;
+            return (0x08, 10);
 
-	if (_floppy_reset == 1)
-	{
-		_floppy_reset = 0;
-
-		return 0x0e;
-	}
-	else if (_floppy_reset > 0)
-	{
-		_floppy_reset--;
-	}
-
-        return -1;
+        return (-1, -1);
     }
 
-    public void Out(ushort addr, byte value)
+    // TODO: out should also be able to schedule
+    // an interrupt
+    public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
     {
         // TODO
 
@@ -265,16 +255,14 @@ internal class IO
         else if (addr == 0x0043)
             _i8253.command(value);
 
+        else if (addr == 0x0322)
+            scheduled_interrupts[0x0d] = 3;  // generate (XT disk-)controller select pulse (IRQ 5)
+
         else if (addr == 0x03f2)
-	{
-		if ((value & 4) == 4) {  // FDC enable (controller reset)
-			_floppy_reset = 10;
-		}
-	}
+            scheduled_interrupts[0x0e] = 10;  // FDC enable (controller reset) (IRQ 6)
+
         else
-	{
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
-	}
 
         values[addr] = value;
     }
@@ -311,13 +299,15 @@ internal class P8086
 
     private readonly IO _io = new();
 
-    private bool is_test;
+    private Dictionary<int, int> _scheduled_interrupts = new Dictionary<int, int>();
+
+    private bool _is_test;
 
     public P8086(string test)
     {
         if (test != "")
         {
-            is_test = true;
+            _is_test = true;
 
             _b = new Bus(1024 * 1024);
 
@@ -880,7 +870,7 @@ internal class P8086
 
     private void SetFlagP(byte v)
     {
-        int count = 0;
+        int count = 1;
 
         while (v != 0)
         {
@@ -1020,25 +1010,45 @@ internal class P8086
         return v;
     }
 
+    void invoke_interrupt(int interrupt_nr)
+    {
+        push(_flags);
+        push(_cs);
+        push(_ip);
+
+        uint addr = (uint)(interrupt_nr * 4);
+
+        _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
+        _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
+
+        Log.DoLog($"----- ------ INT {interrupt_nr:X2}");
+    }
+
     public void Tick()
     {
         string flagStr = GetFlagsAsString();
 
         // tick I/O, check for interrupt
-        int interrupt_nr = _io.Tick();
+        (int interrupt_countdown_nr, int interrupt_countdown) = _io.Tick();
 
-        if (interrupt_nr != -1 && GetFlag(9) == true)
+        if (interrupt_countdown_nr != -1)
+            _scheduled_interrupts[interrupt_countdown_nr] = interrupt_countdown;
+
+        if (GetFlag(9) == true)
         {
-            push(_flags);
-            push(_cs);
-            push(_ip);
+            foreach (var pair in _scheduled_interrupts)
+            {
+                int new_count = _scheduled_interrupts[pair.Key] = pair.Value - 1;
 
-            uint addr = (uint)(interrupt_nr * 4);
+                if (new_count == 0)
+                {
+                    invoke_interrupt(pair.Key);
 
-            _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
-            _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
+                    _scheduled_interrupts.Remove(pair.Key);
 
-            Log.DoLog($"{flagStr} ------ INT {interrupt_nr:X2}");
+                    break;
+                }
+            }
         }
 
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
@@ -2406,14 +2416,14 @@ internal class P8086
             // IN AL,ib
             byte @from = GetPcByte();
 
-            _al = _io.In(@from);
+            _al = _io.In(_scheduled_interrupts, @from);
 
             Log.DoLog($"{prefixStr} IN AL,${from:X2}");
         }
         else if (opcode == 0xec)
         {
             // IN AL,DX
-            _al = _io.In(GetDX());
+            _al = _io.In(_scheduled_interrupts, GetDX());
 
             Log.DoLog($"{prefixStr} IN AL,DX");
         }
@@ -2422,14 +2432,14 @@ internal class P8086
             // OUT
             byte to = GetPcByte();
 
-            _io.Out(@to, _al);
+            _io.Out(_scheduled_interrupts, @to, _al);
 
             Log.DoLog($"{prefixStr} OUT ${to:X2},AL");
         }
         else if (opcode == 0xee)
         {
             // OUT
-            _io.Out(GetDX(), _al);
+            _io.Out(_scheduled_interrupts, GetDX(), _al);
 
             Log.DoLog($"{prefixStr} OUT DX,AL");
         }
@@ -2487,7 +2497,7 @@ internal class P8086
 
             Console.WriteLine($"{address:X6} HLT");
 
-            if (is_test)
+            if (_is_test)
                 System.Environment.Exit(_si == 0xa5ee ? 0 : 1);
 
             System.Environment.Exit(0);
