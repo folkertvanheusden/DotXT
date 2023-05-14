@@ -1522,6 +1522,12 @@ internal class P8086
                 is_logic = true;
                 iname = "OR";
             }
+            else if (function == 2)
+            {
+                result = r1 + r2 + (GetFlagC() ? 1 : 0);
+                use_flag_c = true;
+                iname = "ADC";
+            }
             else if (function == 3)
             {
                 result = r1 - r2 - (GetFlagC() ? 1 : 0);
