@@ -1973,6 +1973,26 @@ internal class P8086
                 SetLogicFuncFlags(word, result);
                 cmd_name = "TEST";
             }
+            else if (function == 4)
+            {
+                SetAX((ushort)(_al * r1));
+
+                // TODO: flags
+
+                cmd_name = "MUL";
+            }
+            else if (function == 6)
+            {
+                // DIV
+                ushort ax = GetAX();
+
+                _al = (byte)(ax / r1);
+                _ah = (byte)(ax % r1);
+
+                // TODO: flags
+
+                cmd_name = "DIV";
+            }
             else
             {
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented");
@@ -2021,6 +2041,8 @@ internal class P8086
 
                 SetAX((ushort)dx_ax);
                 SetDX((ushort)(dx_ax >> 16));
+
+                // TODO: flags
 
                 use_name1 = "DX:AX";
                 use_name2 = name1;
