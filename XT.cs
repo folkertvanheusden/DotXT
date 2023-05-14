@@ -894,6 +894,25 @@ internal class P8086
             return name;
         }
 
+        if (mod == 1 || mod == 2)
+        {
+            Log.DoLog($"mod = {mod}");
+            bool word = mod == 2;
+
+            (ushort a, string name) = GetDoubleRegisterMod01_02(reg, word);
+
+            ushort segment = segment_override_set ? segment_override : _ds;
+
+            name += $" (${segment * 16 + a:X6})";
+
+            if (word)
+                WriteMemWord(segment, a, val);
+            else
+                WriteMemByte(segment, a, (byte)val);
+
+            return name;
+        }
+
         if (mod == 3)
             return PutRegister(reg, w, val);
 
@@ -1091,6 +1110,16 @@ internal class P8086
         Log.DoLog($"----- ------ INT {interrupt_nr:X2}");
     }
 
+    private void HexDump(uint addr)
+    {
+        string s = "";
+
+        for(uint o=0; o<16; o++)
+            s += $" {_b.ReadByte(addr + o):X2}";
+
+        Log.DoLog($"{addr:X6}: {s}");
+    }
+
     public void Tick()
     {
         string flagStr = GetFlagsAsString();
@@ -1150,6 +1179,8 @@ internal class P8086
             address = (uint)(_cs * 16 + _ip) & MemMask;
             opcode = GetPcByte();
         }
+
+        HexDump(address);
 
         string prefixStr =
             $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4} | ";
@@ -2111,15 +2142,15 @@ internal class P8086
             int reg = (o1 >> 3) & 7;
             int rm = o1 & 7;
 
-            (ushort val, string name_from) = GetRegister(reg, true);
+            (ushort val, string name_from) = GetRegister(rm, true);
 
-            sbyte displacement = (sbyte)GetPcByte();
+            short displacement = (short)GetPcWord();
 
             val = (ushort)(val + displacement);
 
-            string name_to = PutRegister(rm, true, val);
+            string name_to = PutRegister(reg, true, val);
 
-            Log.DoLog($"{prefixStr} LEA {name_from},[{name_to} + {displacement:X2}]");
+            Log.DoLog($"{prefixStr} LEA {name_to},[{name_from} + {displacement:X2}]");
         }
         else if ((opcode & 0xf8) == 0xb8)
         {
@@ -2215,58 +2246,19 @@ internal class P8086
 
             int mreg = o1 & 7;
 
-            if (mod == 0)
+            if (word)
             {
-                // TODO: PutDoubleRegisterMod00
+                ushort v = GetPcWord();
+                string temp = PutRegisterMem(mreg, mod, word, v);
 
-                if (mreg == 5)
-                {
-                    if (word)
-                    {
-                        ushort v = GetPcWord();
-
-                        WriteMemWord(_ds, _di, v);
-
-                        Log.DoLog($"{prefixStr} MOV word [DI],${v:X4}");
-                    }
-                    else
-                    {
-                        byte v = GetPcByte();
-
-                        WriteMemByte(_ds, _di, v);
-
-                        Log.DoLog($"{prefixStr} MOV byte [DI],${v:X2}");
-                    }
-                }
-                else if (mreg == 6)
-                {
-                    ushort a = GetPcWord();
-
-                    if (word)
-                    {
-                        ushort v = GetPcWord();
-
-                        WriteMemWord(_ds, a, v);
-
-                        Log.DoLog($"{prefixStr} MOV word [${a:X4}],${v:X4}");
-                    }
-                    else
-                    {
-                        byte v = GetPcByte();
-
-                        WriteMemByte(_ds, a, v);
-
-                        Log.DoLog($"{prefixStr} MOV byte [${a:X4}],${v:X2}");
-                    }
-                }
-                else
-                {
-                    Log.DoLog($"{prefixStr} MOV opcode {opcode:X2} o1 {o1:X2} not implemented");
-                }
+                Log.DoLog($"{prefixStr} MOV word {temp},${v:X4}");
             }
             else
             {
-                Log.DoLog($"{prefixStr} MOV opcode {opcode:X2} o1 {o1:X2} not implemented");
+                byte v = GetPcByte();
+                string temp = PutRegisterMem(mreg, mod, word, v);
+
+                Log.DoLog($"{prefixStr} MOV byte {temp},${v:X2}");
             }
         }
         else if (opcode == 0xca)
@@ -2557,7 +2549,7 @@ internal class P8086
             Console.WriteLine($"{address:X6} HLT");
 
             if (_is_test)
-                System.Environment.Exit(_si == 0xa5ee ? 0 : 1);
+                System.Environment.Exit(_si == 0xa5ee ? 123 : 0);
 
             System.Environment.Exit(0);
         }
