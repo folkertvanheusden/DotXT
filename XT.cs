@@ -693,7 +693,7 @@ internal class P8086
         return ((ushort)(a + disp), name + $" disp {disp:X4}");
     }
 
-    private (ushort, string) GetRegisterMem(int reg, int mod, bool w)
+    private (ushort, string, ushort, ushort) GetRegisterMem(int reg, int mod, bool w)
     {
         if (mod == 0)
         {
@@ -705,7 +705,7 @@ internal class P8086
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
-            return (v, name);
+            return (v, name, segment, a);
         }
 
         if (mod == 1 || mod == 2)
@@ -720,15 +720,19 @@ internal class P8086
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
-            return (v, name);
+            return (v, name, segment, a);
         }
 
         if (mod == 3)
-            return GetRegister(reg, w);
+        {
+            (ushort v, string name) = GetRegister(reg, w);
+
+            return (v, name, 0, 0);
+        }
 
         Log.DoLog($"reg {reg} mod {mod} w {w} not supported for {nameof(GetRegisterMem)}");
 
-        return (0, "error");
+        return (0, "error", 0, 0);
     }
 
     private string PutRegister(int reg, bool w, ushort val)
@@ -1470,6 +1474,8 @@ internal class P8086
 
             ushort r1 = 0;
             string name1 = "error";
+            ushort seg = 0;
+            ushort addr = 0;
 
             ushort r2 = 0;
 
@@ -1482,13 +1488,13 @@ internal class P8086
 
             if (opcode == 0x80)
             {
-                (r1, name1) = GetRegisterMem(reg, mod, false);
+                (r1, name1, seg, addr) = GetRegisterMem(reg, mod, false);
 
                 r2 = GetPcByte();
             }
             else if (opcode == 0x81)
             {
-                (r1, name1) = GetRegisterMem(reg, mod, true);
+                (r1, name1, seg, addr) = GetRegisterMem(reg, mod, true);
 
                 r2 = GetPcWord();
 
@@ -1496,7 +1502,7 @@ internal class P8086
             }
             else if (opcode == 0x83)
             {
-                (r1, name1) = GetRegisterMem(reg, mod, true);
+                (r1, name1, seg, addr) = GetRegisterMem(reg, mod, true);
 
                 r2 = GetPcByte();
 
@@ -1584,7 +1590,7 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1) = GetRegisterMem(reg2, mod, false);
+            (ushort r1, string name1, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, false);
             (ushort r2, string name2) = GetRegister(reg1, false);
 
             byte result = (byte)(r1 & r2);
@@ -1603,7 +1609,7 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1) = GetRegisterMem(reg2, mod, word);
+            (ushort r1, string name1, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, word);
             (ushort r2, string name2) = GetRegister(reg1, word);
 
             ushort temp = r1;
@@ -1728,7 +1734,7 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1) = GetRegisterMem(reg2, mod, word);
+            (ushort r1, string name1, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, word);
             (ushort r2, string name2) = GetRegister(reg1, word);
 
             string name = "error";
@@ -1827,7 +1833,7 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1) = GetRegisterMem(reg2, mod, word);
+            (ushort r1, string name1, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, word);
             (ushort r2, string name2) = GetRegister(reg1, word);
 
             string name = "error";
@@ -1949,7 +1955,7 @@ internal class P8086
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
 
-            (ushort r1, string name1) = GetRegisterMem(reg1, mod, word);
+            (ushort r1, string name1, ushort seg, ushort addr) = GetRegisterMem(reg1, mod, word);
 
             byte r2 = GetPcByte();
 
@@ -1985,7 +1991,7 @@ internal class P8086
             int reg1 = o1 & 7;
             int reg2 = (o1 >> 3) & 7;
 
-            (ushort r1, string name1) = GetRegisterMem(reg1, mod, word);
+            (ushort r1, string name1, ushort seg, ushort addr) = GetRegisterMem(reg1, mod, word);
             (ushort r2, string name2) = GetRegister(reg2, word);
 
             string use_name1 = "";
@@ -2145,7 +2151,7 @@ internal class P8086
             if (dir)
             {
                 // to 'REG' from 'rm'
-                (ushort v, string fromName) = GetRegisterMem(rm, mode, word);
+                (ushort v, string fromName, ushort seg, ushort addr) = GetRegisterMem(rm, mode, word);
 
                 string toName;
 
@@ -2273,6 +2279,21 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} STOSW");
         }
+        else if (opcode == 0xc4)
+        {
+            // LES
+            byte o1 = GetPcByte();
+            int mod = o1 >> 6;
+            int reg = (o1 >> 3) & 7;
+            int rm = o1 & 7;
+
+            (ushort val, string name_from, ushort seg, ushort addr) = GetRegisterMem(rm, mod, true);
+
+            SetBX(ReadMemWord(seg, (ushort)(addr + 0)));
+            _es = ReadMemWord(seg, (ushort)(addr + 2));
+
+            Log.DoLog($"{prefixStr} LES {name_from},{val:X4}");
+        }
         else if (opcode == 0xc6 || opcode == 0xc7)
         {
             // MOV
@@ -2326,7 +2347,7 @@ internal class P8086
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
 
-            (ushort v1, string vName) = GetRegisterMem(reg1, mod, word);
+            (ushort v1, string vName, ushort seg, ushort addr) = GetRegisterMem(reg1, mod, word);
 
             int countSpec = opcode & 3;
             int count = -1;
@@ -2649,7 +2670,7 @@ internal class P8086
             int mod = o1 >> 6;
             int reg = o1 & 7;
 
-            (ushort v, string name) = GetRegisterMem(reg, mod, word);
+            (ushort v, string name, ushort seg, ushort addr) = GetRegisterMem(reg, mod, word);
 
             int function = (o1 >> 3) & 7;
 
