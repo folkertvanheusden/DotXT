@@ -686,7 +686,7 @@ internal class P8086
             (a, name) = GetDoubleRegisterMod00(reg);
         }
 
-        ushort disp = word ? GetPcWord() : GetPcByte();
+        short disp = word ? (short)GetPcWord() : (sbyte)GetPcByte();
 
         return ((ushort)(a + disp), name + $" disp {disp:X4}");
     }
@@ -2248,15 +2248,21 @@ internal class P8086
 
             if (word)
             {
-                ushort v = GetPcWord();
+                ushort v = ReadMemWord(_cs, (ushort)(_ip + 1));
+
                 string temp = PutRegisterMem(mreg, mod, word, v);
+
+                _ip += 2;
 
                 Log.DoLog($"{prefixStr} MOV word {temp},${v:X4}");
             }
             else
             {
-                byte v = GetPcByte();
+                byte v = ReadMemByte(_cs, (ushort)(_ip + 1));
+
                 string temp = PutRegisterMem(mreg, mod, word, v);
+
+                _ip++;
 
                 Log.DoLog($"{prefixStr} MOV byte {temp},${v:X2}");
             }
