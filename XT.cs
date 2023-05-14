@@ -2045,7 +2045,7 @@ internal class P8086
 
             SetAX(ReadMemWord(_ds, a));
 
-            Log.DoLog($"{prefixStr} MOV AL,{a:X4}");
+            Log.DoLog($"{prefixStr} MOV AX,{a:X4}");
         }
         else if (opcode == 0xa2)
         {
