@@ -532,7 +532,7 @@ internal class P8086
         uint a1 = (uint)(((segment << 4) + offset) & MemMask);
         uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
 
-        // Log.DoLog($"WriteMemWord {segment:X4}:{offset:X4}: a1:{a1:X6}, v:{v:X2}");
+        Log.DoLog($"WriteMemWord {segment:X4}:{offset:X4}: a1:{a1:X6}/a2:{a2:X6}, v:{v:X4}");
 
        _b.WriteByte(a1, (byte)v);
        _b.WriteByte(a2, (byte)(v >> 8));
@@ -551,6 +551,8 @@ internal class P8086
     {
         uint a1 = (uint)(((segment << 4) + offset) & MemMask);
         uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
+
+        Log.DoLog($"ReadMemWord {segment:X4}:{offset:X4}: {a1:X6}/{a2:X6}");
 
         return (ushort)(_b.ReadByte(a1) | (_b.ReadByte(a2) << 8));
     } 
@@ -896,16 +898,14 @@ internal class P8086
 
         if (mod == 1 || mod == 2)
         {
-            Log.DoLog($"mod = {mod}");
-            bool word = mod == 2;
-
-            (ushort a, string name) = GetDoubleRegisterMod01_02(reg, word);
+            Log.DoLog($"mod = {mod}, word {w}, val {val:X4}");
+            (ushort a, string name) = GetDoubleRegisterMod01_02(reg, mod == 2);
 
             ushort segment = segment_override_set ? segment_override : _ds;
 
             name += $" (${segment * 16 + a:X6})";
 
-            if (word)
+            if (w)
                 WriteMemWord(segment, a, val);
             else
                 WriteMemByte(segment, a, (byte)val);
