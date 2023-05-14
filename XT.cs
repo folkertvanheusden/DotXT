@@ -1982,6 +1982,9 @@ internal class P8086
             (ushort r1, string name1) = GetRegisterMem(reg1, mod, word);
             (ushort r2, string name2) = GetRegister(reg2, word);
 
+            string use_name1 = "";
+            string use_name2 = "";
+
             string cmd_name = "error";
             ushort result = 0;
             bool put = false;
@@ -1991,11 +1994,26 @@ internal class P8086
             if (function == 2)
             {
                 // NOT
-                result = (ushort)~result;
+                result = (ushort)~r1;
 
                 put = true;
 
                 cmd_name = "NOT";
+
+                use_name1 = name1;
+            }
+            else if (function == 4)
+            {
+                // MUL
+                uint dx_ax = (uint)(GetAX() * r1);
+
+                SetAX((ushort)dx_ax);
+                SetDX((ushort)(dx_ax >> 16));
+
+                use_name1 = "DX:AX";
+                use_name2 = name1;
+
+                cmd_name = "MUL";
             }
             else if (function == 6)
             {
@@ -2004,6 +2022,9 @@ internal class P8086
 
                 SetAX((ushort)(dx_ax / r1));
                 SetDX((ushort)(dx_ax % r1));
+
+                use_name1 = "DX:AX";
+                use_name2 = name1;
 
                 cmd_name = "DIV";
             }
@@ -2015,7 +2036,7 @@ internal class P8086
             if (put)
                 PutRegisterMem(reg1, mod, word, result);
 
-            Log.DoLog($"{prefixStr} {cmd_name} {name1},{name2}");
+            Log.DoLog($"{prefixStr} {cmd_name} {use_name1},{use_name2}");
         }
         else if (opcode == 0xfa)
         {
