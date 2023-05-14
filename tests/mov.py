@@ -46,6 +46,17 @@ test_003:
 
 test_003_ok:
 
+test_004:
+    lea bx,[word_write_001b]
+    mov bp,bx
+    mov word [bp - $02],#$4455
+    mov ax,[word_write_001]
+    cmp ax,#$4455
+    jz test_004_ok
+    hlt
+
+test_004_ok:
+
     jmp finish
 
 word_read_001:
@@ -55,6 +66,10 @@ word_read_001:
 word_read_002:
     dw $3141
     dw $5926
+
+word_write_001:
+    dw $1111
+word_write_001b:
 
 finish:
 ''')
