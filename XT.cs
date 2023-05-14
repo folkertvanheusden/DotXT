@@ -79,9 +79,6 @@ internal class Bus
 
     public void WriteByte(uint address, byte v)
     {
-//        if (address >= 0x0009fc00)
-//            Console.WriteLine($"{address:X6} {v:X2}");
-
         _m.WriteByte(address, v);
     }
 }
@@ -237,8 +234,6 @@ internal class IO
         return (-1, -1);
     }
 
-    // TODO: out should also be able to schedule
-    // an interrupt
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
     {
         // TODO
@@ -257,12 +252,17 @@ internal class IO
 
         else if (addr == 0x0322)
         {
+            Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) generate controller select pulse");
+
             if (scheduled_interrupts.ContainsKey(0x0d) == false)
-                scheduled_interrupts[0x0d] = 3;  // generate (XT disk-)controller select pulse (IRQ 5)
+                scheduled_interrupts[0x0d] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
         }
         else if (addr == 0x03f2)
-            scheduled_interrupts[0x0e] = 10;  // FDC enable (controller reset) (IRQ 6)
+        {
+            Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) FDC enable");
 
+            scheduled_interrupts[0x0e] = 10;  // FDC enable (controller reset) (IRQ 6)
+        }
         else
         {
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
