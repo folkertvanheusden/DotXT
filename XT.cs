@@ -1628,6 +1628,17 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} XCHG AX,{name_other}");
         }
+        else if (opcode == 0x98)
+        {
+            ushort new_value = _al;
+
+            if ((_al & 128) == 128)
+                new_value |= 0xff00;
+
+            SetAX(new_value);
+
+            Log.DoLog($"{prefixStr} CBW");
+        }
         else if (opcode == 0x9c)
         {
             // PUSHF
