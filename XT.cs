@@ -2396,11 +2396,33 @@ internal class P8086
                 // ROL
                 for (int i = 0; i < count; i++)
                 {
-                    SetFlagC((v1 & 128) == 128);
+                    bool b7 = (v1 & 128) == 128;
+
+                    SetFlagC(b7);
+
                     v1 <<= 1;
+
+                    if (b7)
+                        v1 |= 1;
                 }
 
                 Log.DoLog($"{prefixStr} ROL {vName},{countName}");
+            }
+            else if (mode == 1)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    bool b0 = (v1 & 1) == 1;
+
+                    SetFlagC(b0);
+
+                    v1 >>= 1;
+
+                    if (b0)
+                        v1 |= 128;
+                }
+
+                Log.DoLog($"{prefixStr} ROR {vName},{countName}");
             }
             else if (mode == 3)
             {
