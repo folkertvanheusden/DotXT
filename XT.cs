@@ -1001,7 +1001,7 @@ internal class P8086
 
     private void SetFlagP(byte v)
     {
-        int count = 1;
+        int count = 0;
 
         while (v != 0)
         {
