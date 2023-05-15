@@ -1753,6 +1753,7 @@ internal class P8086
         else if ((opcode >= 0x00 && opcode <= 0x03) || (opcode >= 0x10 && opcode <= 0x13) || (opcode >= 0x28 && opcode <= 0x2b) || (opcode >= 0x18 && opcode <= 0x1b) || (opcode >= 0x38 && opcode <= 0x3b))
         {
             bool word = (opcode & 1) == 1;
+            bool direction = (opcode & 2) == 2;
             byte o1 = GetPcByte();
 
             int mod = o1 >> 6;
@@ -1784,7 +1785,11 @@ internal class P8086
             }
             else
             {
-                result = r1 - r2;
+                if (direction)
+                    result = r2 - r1;
+                else
+                    result = r1 - r2;
+
                 is_sub = true;
 
                 if (opcode >= 0x38 && opcode <= 0x3b)
@@ -1806,13 +1811,24 @@ internal class P8086
                 }
             }
 
-            // 0x38...0x3b are CMP
-            if (apply)
-                UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result);
-
             SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? GetFlagC() : false);
 
-            Log.DoLog($"{prefixStr} {name} {name1},{name2}");
+            // 0x38...0x3b are CMP
+            if (apply)
+            {
+                if (direction)
+                {
+                    PutRegister(reg1, word, (ushort)result);
+
+                    Log.DoLog($"{prefixStr} {name} {name2},{name1}");
+                }
+                else
+                {
+                    UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result);
+
+                    Log.DoLog($"{prefixStr} {name} {name1},{name2}");
+                }
+            }
         }
         else if (opcode == 0x3c || opcode == 0x3d)
         {
@@ -1852,6 +1868,7 @@ internal class P8086
         else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
         {
             bool word = (opcode & 1) == 1;
+            bool direction = (opcode & 2) == 2;
             byte o1 = GetPcByte();
 
             int mod = o1 >> 6;
@@ -1891,7 +1908,7 @@ internal class P8086
 
             string affected;
 
-            if (function >= 2)
+            if (direction)
             {
                 affected = PutRegister(reg1, word, result);
 
