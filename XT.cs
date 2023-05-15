@@ -2000,8 +2000,6 @@ internal class P8086
 
                 Log.DoLog($"{prefixStr} {name} {name2},{name1}");
             }
-
-            // Log.DoLog($"{name}, r1 {r1:X} ({reg2} | {name1} => {affected}, {a_valid}, {a_valid}/{seg:X4}:{addr:X4}), r2 {r2:X} ({reg1} | {name2}), result {result:X}");
         }
         else if ((opcode == 0x34 || opcode == 0x35) || (opcode == 0x24 || opcode == 0x25) ||
                  (opcode == 0x0c || opcode == 0x0d))
