@@ -2614,7 +2614,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} RCR/SHR mode {mode} not implemented");
+                Log.DoLog($"{prefixStr} RCR/SHR/{opcode:X2} mode {mode} not implemented");
             }
 
             bool newSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
