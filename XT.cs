@@ -1418,6 +1418,24 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} POP DI");
         }
+        else if (opcode == 0xa4)
+        {
+            // MOVSB
+            WriteMemByte(_es, _di, ReadMemByte(_ds, _si));
+
+            if (GetFlagD())
+            {
+                _si--;
+                _di--;
+            }
+            else
+            {
+                _si++;
+                _di++;
+            }
+
+            Log.DoLog($"{prefixStr} MOVSB");
+        }
         else if (opcode == 0xa5)
         {
             // MOVSW
