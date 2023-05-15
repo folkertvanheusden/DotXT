@@ -1869,7 +1869,7 @@ internal class P8086
 
             if (function == 0)
             {
-                result = (ushort)(r2 | r1);
+                result = (ushort)(r1 | r2);
                 name = "OR";
             }
             else if (function == 2)
@@ -1887,14 +1887,24 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
             }
 
-//            if (opcode == 0x22)
-//                Log.DoLog($"{name}, r1 {r1:X} ({reg1} | {name1}), r2 {r2:X} ({reg2} | {name2}), result {result:X}");
-
-            PutRegister(reg1, word, result);
-
             SetLogicFuncFlags(word, result);
 
-            Log.DoLog($"{prefixStr} {name} {name1},{name2}");
+            string affected;
+
+            if (function >= 2)
+            {
+                affected = PutRegister(reg1, word, result);
+
+                Log.DoLog($"{prefixStr} {name} {name1},{name2}");
+            }
+            else
+            {
+                affected = PutRegister(reg2, word, result);
+
+                Log.DoLog($"{prefixStr} {name} {name2},{name1}");
+            }
+
+            // Log.DoLog($"{name}, r1 {r1:X} ({reg2} | {name1} => {affected}, {a_valid}, {a_valid}/{seg:X4}:{addr:X4}), r2 {r2:X} ({reg1} | {name2}), result {result:X}");
         }
         else if ((opcode == 0x34 || opcode == 0x35) || (opcode == 0x24 || opcode == 0x25) ||
                  (opcode == 0x0c || opcode == 0x0d))
