@@ -1846,6 +1846,10 @@ internal class P8086
                     Log.DoLog($"{prefixStr} {name} {name1},{name2}");
                 }
             }
+            else
+            {
+                    Log.DoLog($"{prefixStr} {name} {name1},{name2}");
+            }
         }
         else if (opcode == 0x3c || opcode == 0x3d)
         {
