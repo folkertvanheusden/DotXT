@@ -1376,8 +1376,7 @@ internal class P8086
         else if (opcode == 0xa5)
         {
             // MOVSW
-            _b.WriteByte((uint)(_es * 16 + _di) & MemMask, _b.ReadByte((uint)(_ds * 16 + _si) & MemMask));
-            _b.WriteByte((uint)(_es * 16 + _di + 1) & MemMask, _b.ReadByte((uint)(_ds * 16 + _si + 1) & MemMask));  // TODO: handle segment wrapping
+            WriteMemWord(_es, _di, ReadMemWord(_ds, _si));
 
             if (GetFlagD())
             {
@@ -2285,10 +2284,7 @@ internal class P8086
             // STOSB
             WriteMemByte(_es, _di, _al);
 
-            if (GetFlagD())
-                _di--;
-            else
-                _di++;
+            _di += (ushort)(GetFlagD() ? -1 : 1);
 
             Log.DoLog($"{prefixStr} STOSB");
         }
