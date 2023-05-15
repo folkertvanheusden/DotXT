@@ -449,7 +449,7 @@ internal class P8086
 
                 ushort _bx = GetBX();
 
-                string base_str = $"INT $13, read sector(s): {_al} sectors, track {_ch}, sector {_cl}, head {_dh}, drive {_dl}, offset {disk_offset} to ${_es:X4}:{_bx:X4}";
+                string base_str = $"INT $13, read sector(s): {_al} sectors, track {_ch}/{tracks_per_side}, sector {_cl}, head {_dh}, drive {_dl}, offset {disk_offset}/{floppy.Count} to ${_es:X4}:{_bx:X4}";
 
                 if (disk_offset + bytes_per_sector <= floppy.Count)
                 {
@@ -1217,7 +1217,7 @@ internal class P8086
                 _rep_mode = opcode;
                 _rep_addr = _ip;
 
-                Log.DoLog($"REP {_rep_addr:X4}");
+                Log.DoLog($"REP[{_rep_mode:X2}] {_cs:X4}:{_rep_addr:X4}");
             }
             else
             {
