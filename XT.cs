@@ -448,7 +448,7 @@ internal class P8086
 
                 ushort _bx = GetBX();
 
-                Log.DoLog($"INT $13, read sector(s): {_al} sectors, track {_ch}, sector {_cl}, head {_dh}, drive {_dl}, offset {disk_offset} to ${_es:X4}:{_bx:X4}");
+                string base_str = $"INT $13, read sector(s): {_al} sectors, track {_ch}, sector {_cl}, head {_dh}, drive {_dl}, offset {disk_offset} to ${_es:X4}:{_bx:X4}";
 
                 if (disk_offset + bytes_per_sector <= floppy.Count)
                 {
@@ -458,8 +458,12 @@ internal class P8086
                     SetFlagC(false);
                     _ah = 0x00;  // no error
 
+                    Log.DoLog(base_str);
+
                     return true;
                 }
+
+                Log.DoLog(base_str + " FAILED");
             }
             else if (_ah == 0x41)
             {
