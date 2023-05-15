@@ -1432,6 +1432,29 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} MOVSW");
         }
+        else if (opcode == 0xa6)
+        {
+            // CMPSB
+            byte v1 = ReadMemByte(_es, _si);
+            byte v2 = ReadMemByte(_es, _di);
+
+            int result = v1 - v2;
+
+            if (GetFlagD())
+            {
+                _si--;
+                _di--;
+            }
+            else
+            {
+                _si++;
+                _di++;
+            }
+
+            SetAddSubFlags(false, v1, v2, result, true, false);
+
+            Log.DoLog($"{prefixStr} CMPSB");
+        }
         else if (opcode == 0xe3)
         {
             // JCXZ np
@@ -1718,6 +1741,18 @@ internal class P8086
                 _si++;
 
             Log.DoLog($"{prefixStr} LODSB");
+        }
+        else if (opcode == 0xad)
+        {
+            // LODSW
+            SetAX(ReadMemWord(_ds, _si));
+
+            if (GetFlagD())
+                _si -= 2;
+            else
+                _si += 2;
+
+            Log.DoLog($"{prefixStr} LODSW");
         }
         else if (opcode == 0xc3)
         {
