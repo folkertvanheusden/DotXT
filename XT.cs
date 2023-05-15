@@ -306,6 +306,7 @@ internal class P8086
     private Dictionary<int, int> _scheduled_interrupts = new Dictionary<int, int>();
 
     private bool _rep;
+    private byte _rep_mode;
     private ushort _rep_addr;
 
     private bool _is_test;
@@ -1200,7 +1201,7 @@ internal class P8086
         byte opcode = GetPcByte();
 
         // handle prefixes
-        if (opcode == 0x26 || opcode == 0x2e || opcode == 0x36 || opcode == 0x3e || opcode == 0xf3)
+        if (opcode == 0x26 || opcode == 0x2e || opcode == 0x36 || opcode == 0x3e || opcode == 0xf2 || opcode == 0xf3)
         {
             if (opcode == 0x26)
                 segment_override = _es;
@@ -1210,9 +1211,10 @@ internal class P8086
                 segment_override = _ss;
             else if (opcode == 0x3e)
                 segment_override = _ds;
-            else if (opcode == 0xf3)
+            else if (opcode == 0xf2 || opcode == 0xf3)
             {
                 _rep = true;
+                _rep_mode = opcode;
                 _rep_addr = _ip;
 
                 Log.DoLog($"REP {_rep_addr:X4}");
@@ -2923,15 +2925,27 @@ internal class P8086
             cx--;
             SetCX(cx);
 
-            if (cx > 0)
+            if (_rep_mode == 0xf3)
             {
-                _ip = _rep_addr;
-                SetFlagZ(false);
+                // REP
+                if (cx > 0)
+                {
+                    _ip = _rep_addr;
+                    SetFlagZ(false);
+                }
+                else
+                {
+                    _rep = false;
+                    SetFlagZ(true);
+                }
             }
-            else
+            else if (_rep_mode == 0xf2)
             {
-                _rep = false;
-                SetFlagZ(true);
+                // REPNZ
+                if (cx > 0 && GetFlagZ() == true)
+                    _ip = _rep_addr;
+                else
+                    _rep = false;
             }
         }
     }
