@@ -1742,6 +1742,18 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} LODSB");
         }
+        else if (opcode == 0xad)
+        {
+            // LODSW
+            SetAX(ReadMemWord(_ds, _si));
+
+            if (GetFlagD())
+                _si -= 2;
+            else
+                _si += 2;
+
+            Log.DoLog($"{prefixStr} LODSW");
+        }
         else if (opcode == 0xc3)
         {
             // RET
