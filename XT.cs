@@ -312,6 +312,8 @@ internal class P8086
 
     private readonly List<byte> floppy = new();
 
+    private string tty_output = "";
+
     public P8086(string test, bool is_floppy)
     {
         if (test != "" && is_floppy == false)
@@ -393,6 +395,19 @@ internal class P8086
 
                 Console.Write((char)_al);
 
+                if (_al == 13 || _al == 10)
+                {
+                    Log.DoLog($"CONSOLE-STR: {tty_output}");
+
+                    tty_output = "";
+                }
+                else
+                {
+                    Log.DoLog($"CONSOLE-CHR: {(char)_al}");
+                }
+
+                tty_output += (char)_al;
+
                 if (_al == 13)
                     Console.WriteLine("");
 
@@ -425,17 +440,19 @@ internal class P8086
             else if (_ah == 0x02)
             {
                 // read sector
-                const byte tracks_per_side = 80;
-                const byte sectors_per_track = 9;
-                int disk_offset = (_dh * tracks_per_side * sectors_per_track + _ch * sectors_per_track + (_cl - 1)) * 512;
+                ushort bytes_per_sector = 512;
+                byte sectors_per_track = 9;
+                byte n_sides = 2;
+                byte tracks_per_side = (byte)(floppy.Count / (bytes_per_sector * n_sides * sectors_per_track));
+                int disk_offset = (_dh * tracks_per_side * sectors_per_track + _ch * sectors_per_track + (_cl - 1)) * bytes_per_sector;
 
                 ushort _bx = GetBX();
 
                 Log.DoLog($"INT $13, read sector(s): {_al} sectors, track {_ch}, sector {_cl}, head {_dh}, drive {_dl}, offset {disk_offset} to ${_es:X4}:{_bx:X4}");
 
-                if (disk_offset + 512 <= floppy.Count)
+                if (disk_offset + bytes_per_sector <= floppy.Count)
                 {
-                    for(int i=0; i<512 * _al; i++)
+                    for(int i=0; i<bytes_per_sector * _al; i++)
                         WriteMemByte(_es, (ushort)(_bx + i), floppy[disk_offset + i]);
 
                     SetFlagC(false);
