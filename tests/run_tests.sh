@@ -17,6 +17,13 @@ echo Logfile: $LF
 
 cd $TEMP
 
+(cd ../../ ; dotnet build -c Release)
+
+if [ $? -ne 0 ] ; then
+	echo Build failed
+	exit 3
+fi
+
 for i in *.asm
 do
 	BASE=`basename $i .asm`
@@ -32,7 +39,7 @@ do
 
 	TEST_BIN=`pwd`/$BASE.bin
 
-	(cd ../../ ; rm -f $LF ; dotnet build -c Release && dotnet run -l $LF -t $TEST_BIN)
+	(cd ../../ ; rm -f $LF ; dotnet run -l $LF -t $TEST_BIN)
 
 	if [ $? -ne 123 ] ; then
 		echo Test $i failed
