@@ -444,6 +444,15 @@ internal class P8086
                     return true;
                 }
             }
+            else if (_ah == 0x41)
+            {
+                // Check extensions present
+
+                SetFlagC(true);
+                _ah = 0x01;  // invalid command
+
+                return true;
+            }
         }
         else
         {
@@ -1425,7 +1434,7 @@ internal class P8086
 
             _ip = (ushort)(_ip + offset);
 
-            Log.DoLog($"{prefixStr} JMP {_ip:X}");
+            Log.DoLog($"{prefixStr} JMP {_ip:X} ({offset:X4})");
         }
         else if (opcode == 0x50)
         {
@@ -1973,9 +1982,7 @@ internal class P8086
 
             (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg1, mod, word);
 
-            byte r2 = GetPcByte();
-
-            string name2 = $"{r2:X2}";
+            string name2 = "";
 
             string cmd_name = "error";
             ushort result = 0;
@@ -1985,6 +1992,9 @@ internal class P8086
             if (function == 0)
             {
                 // TEST
+                byte r2 = GetPcByte();
+                name2 = $",{r2:X2}";
+
                 result = (ushort)(r1 & r2);
                 SetLogicFuncFlags(word, result);
                 cmd_name = "TEST";
@@ -2014,7 +2024,7 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented");
             }
 
-            Log.DoLog($"{prefixStr} {cmd_name} {name1},{name2}");
+            Log.DoLog($"{prefixStr} {cmd_name} {name1}{name2}");
         }
         else if (opcode == 0xf7)
         {
