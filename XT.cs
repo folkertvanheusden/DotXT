@@ -2856,6 +2856,7 @@ internal class P8086
             }
             else if (function == 2)
             {
+                // CALL
                 ushort a = GetPcWord();
 
                 push(_ip);
@@ -2863,6 +2864,14 @@ internal class P8086
                 _ip = (ushort)(a + _ip);
 
                 Log.DoLog($"{prefixStr} CALL {a:X4} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
+            }
+            else if (function == 5)
+            {
+                // JMP
+                _cs = ReadMemWord(seg, (ushort)(addr + 2));
+                _ip = ReadMemWord(seg, addr);
+
+                Log.DoLog($"{prefixStr} JMP {_cs:X4}:{_ip:X4}");
             }
             else
             {
