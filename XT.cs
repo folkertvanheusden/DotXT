@@ -1132,7 +1132,7 @@ internal class P8086
         SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
         SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
         SetFlagA(false);
-        SetFlagP((byte)result); // TODO verify: byte? word?
+        SetFlagP((byte)result);
     }
 
     public void push(ushort v)
@@ -1983,7 +1983,7 @@ internal class P8086
                 result = (ushort)(r2 & r1);
                 name = "AND";
             }
-            else if (function == 3) // TODO always true here?
+            else if (function == 3)
             {
                 result = (ushort)(r2 ^ r1);
                 name = "XOR";
@@ -2043,7 +2043,6 @@ internal class P8086
             }
             else if (function == 3)
             {
-                // TODO always true here
                 _al ^= bLow;
 
                 if (word)
