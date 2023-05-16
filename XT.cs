@@ -204,13 +204,13 @@ internal class IO
             return 0x0f;  // 'transfer complete'
 
         if (addr == 0x0040)
-            return (byte)_i8253.get_counter(0);
+            return _i8253.get_counter(0);
 
         if (addr == 0x0041)
-            return (byte)_i8253.get_counter(1);
+            return _i8253.get_counter(1);
 
         if (addr == 0x0042)
-            return (byte)_i8253.get_counter(2);
+            return _i8253.get_counter(2);
 
         if (addr == 0x0062)  // PPI (XT only)
             return 0x03;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
@@ -505,9 +505,8 @@ internal class P8086
 
     private ushort GetPcWord()
     {
-        ushort v = 0;
+        ushort v = GetPcByte();
 
-        v |= GetPcByte();
         v |= (ushort)(GetPcByte() << 8);
 
         return v;
