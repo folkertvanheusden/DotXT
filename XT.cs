@@ -1087,6 +1087,15 @@ internal class P8086
         return @out;
     }
 
+    private void SetMulFlags(bool word, ushort r1, ushort r2, int result)
+    {
+        ushort mask = (ushort)(word ? 0x8000 : 0x80);
+        SetFlagO(((r1 ^ r2) & mask) != mask && ((result ^ r1) & mask) == mask);
+
+        uint u_result = (uint)result;
+        SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
+    }
+
     private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub, bool flag_c)
     {
         Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result:X}, issub {issub}");
@@ -2090,7 +2099,6 @@ internal class P8086
             string name2 = "";
 
             string cmd_name = "error";
-            ushort result = 0;
 
             int function = (o1 >> 3) & 7;
 
@@ -2100,15 +2108,17 @@ internal class P8086
                 byte r2 = GetPcByte();
                 name2 = $",{r2:X2}";
 
-                result = (ushort)(r1 & r2);
+                ushort result = (ushort)(r1 & r2);
                 SetLogicFuncFlags(word, result);
                 cmd_name = "TEST";
             }
             else if (function == 4)
             {
-                SetAX((ushort)(_al * r1));
+                // MUL
+                int result = _al * r1;
+                SetAX((ushort)result);
 
-                // TODO: flags
+                SetMulFlags(word, _al, r1, result);
 
                 cmd_name = "MUL";
             }
@@ -2171,12 +2181,14 @@ internal class P8086
             else if (function == 4)
             {
                 // MUL
-                uint dx_ax = (uint)(GetAX() * r1);
+                ushort ax = GetAX();
+                int resulti = ax * r1;
 
+                SetMulFlags(word, ax, r1, resulti);
+
+                uint dx_ax = (uint)resulti;
                 SetAX((ushort)dx_ax);
                 SetDX((ushort)(dx_ax >> 16));
-
-                // TODO: flags
 
                 use_name1 = "DX:AX";
                 use_name2 = name1;
