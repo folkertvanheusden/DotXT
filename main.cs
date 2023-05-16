@@ -14,6 +14,8 @@ for(int i=0; i<args.Length; i++)
         t_is_floppy = true;
     else if (args[i] == "-l")
         Log.SetLogFile(args[++i]);
+    else
+        Console.WriteLine($"{args[i]} is not understood");
 }
 
 var p = new P8086(test, t_is_floppy);
