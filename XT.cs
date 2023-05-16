@@ -1121,7 +1121,7 @@ internal class P8086
         uint u_result = (uint)result;
         SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
 
-        SetFlagS((word ? in_reg_result & mask : in_reg_result & mask) != 0);
+        SetFlagS((in_reg_result & mask) != 0);
 
         SetFlagZ(in_reg_result == 0);
 
