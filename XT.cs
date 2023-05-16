@@ -97,7 +97,10 @@ internal class i8253
 {
     Timer [] _timers = new Timer[3];
 
-    private Random _random = new Random();
+    // using a static seed to make it behave
+    // the same every invocation (until threads
+    // and timers are introduced)
+    private Random _random = new Random(1);
 
     public i8253()
     {
@@ -204,13 +207,13 @@ internal class IO
             return 0x0f;  // 'transfer complete'
 
         if (addr == 0x0040)
-            return (byte)_i8253.get_counter(0);
+            return _i8253.get_counter(0);
 
         if (addr == 0x0041)
-            return (byte)_i8253.get_counter(1);
+            return _i8253.get_counter(1);
 
         if (addr == 0x0042)
-            return (byte)_i8253.get_counter(2);
+            return _i8253.get_counter(2);
 
         if (addr == 0x0062)  // PPI (XT only)
             return 0x03;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
@@ -505,9 +508,8 @@ internal class P8086
 
     private ushort GetPcWord()
     {
-        ushort v = 0;
+        ushort v = GetPcByte();
 
-        v |= GetPcByte();
         v |= (ushort)(GetPcByte() << 8);
 
         return v;
@@ -1122,7 +1124,7 @@ internal class P8086
         uint u_result = (uint)result;
         SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
 
-        SetFlagS((word ? in_reg_result & mask : in_reg_result & mask) != 0);
+        SetFlagS((in_reg_result & mask) != 0);
 
         SetFlagZ(in_reg_result == 0);
 
