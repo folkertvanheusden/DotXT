@@ -1509,7 +1509,7 @@ internal class P8086
         else if (opcode == 0xa6)
         {
             // CMPSB
-            byte v1 = ReadMemByte(_es, _si);
+            byte v1 = ReadMemByte(_ds, _si);
             byte v2 = ReadMemByte(_es, _di);
 
             int result = v1 - v2;
