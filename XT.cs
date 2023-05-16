@@ -732,9 +732,9 @@ internal class P8086
 
             ushort segment = segment_override_set ? segment_override : _ds;
 
-            name += $" (${segment * 16 + a:X6})";
-
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
+
+            name += $" (${segment * 16 + a:X6} -> {v:X4})";
 
             return (v, name, true, segment, a);
         }
@@ -747,9 +747,9 @@ internal class P8086
 
             ushort segment = segment_override_set ? segment_override : _ds;
 
-            name += $" (${segment * 16 + a:X6})";
-
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
+
+            name += $" (${segment * 16 + a:X6} -> {v:X4})";
 
             return (v, name, true, segment, a);
         }
