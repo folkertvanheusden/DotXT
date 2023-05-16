@@ -97,7 +97,10 @@ internal class i8253
 {
     Timer [] _timers = new Timer[3];
 
-    private Random _random = new Random();
+    // using a static seed to make it behave
+    // the same every invocation (until threads
+    // and timers are introduced)
+    private Random _random = new Random(1);
 
     public i8253()
     {
