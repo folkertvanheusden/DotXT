@@ -1213,13 +1213,25 @@ internal class P8086
         if (opcode == 0x26 || opcode == 0x2e || opcode == 0x36 || opcode == 0x3e || opcode == 0xf2 || opcode == 0xf3)
         {
             if (opcode == 0x26)
+            {
                 segment_override = _es;
+                Log.DoLog($"segment override to ES: {_es:X4}");
+            }
             else if (opcode == 0x2e)
+            {
                 segment_override = _cs;
+                Log.DoLog($"segment override to CS: {_cs:X4}");
+            }
             else if (opcode == 0x36)
+            {
                 segment_override = _ss;
+                Log.DoLog($"segment override to SS: {_ss:X4}");
+            }
             else if (opcode == 0x3e)
+            {
                 segment_override = _ds;
+                Log.DoLog($"segment override to DS: {_ds:X4}");
+            }
             else if (opcode == 0xf2 || opcode == 0xf3)
             {
                 _rep = true;
@@ -1230,10 +1242,10 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"------ {address:X6} segment override {opcode:X2} not implemented");
+                Log.DoLog($"------ {address:X6} prefix {opcode:X2} not implemented");
             }
 
-            if (opcode != 0xf3)
+            if (opcode != 0xf2 && opcode != 0xf3)
                 segment_override_set = true;
 
             address = (uint)(_cs * 16 + _ip) & MemMask;
@@ -1243,7 +1255,7 @@ internal class P8086
         HexDump(address);
 
         string prefixStr =
-            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4} | ";
+            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} | ";
 
         // main instruction handling
         if (opcode == 0x04 || opcode == 0x14)
