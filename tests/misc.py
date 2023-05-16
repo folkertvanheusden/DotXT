@@ -46,7 +46,6 @@ test_002_ok:
 ; TODO: test flags
 
 test_003:
-    xor ax,ax
     mov ax,#$1234
     mov cx,#$aa55
     mul cx
@@ -57,10 +56,24 @@ test_003a_ok:
     cmp dx,#$0c1c
     jz test_003b_ok
     hlt
-
 test_003b_ok:
-
 ; TODO: test flags
+
+test_004:
+	mov ax,#0x4321
+	mov dx,#0x8001
+	mov cx,#0x8fff
+	div cx
+    cmp ax,#$e392
+    jz test_004a_ok
+    hlt
+test_004a_ok:
+    cmp dx,#$06b3
+    jz test_004b_ok
+    hlt
+test_004b_ok:
+; NO(!) flags altered
+
 
 finish:
 ''')

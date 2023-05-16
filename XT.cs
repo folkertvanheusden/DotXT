@@ -2187,6 +2187,7 @@ internal class P8086
 
                 if (r1 != 0)
                 {
+                    // check for overflows TODO
                     SetAX((ushort)(dx_ax / r1));
                     SetDX((ushort)(dx_ax % r1));
                 }
