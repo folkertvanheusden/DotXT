@@ -272,6 +272,14 @@ internal class IO
     }
 }
 
+internal enum RepMode
+{
+    NotSet,
+    REPE_Z,
+    REPNZ,
+    REP
+}
+
 internal class P8086
 {
     private byte _ah, _al;
@@ -306,7 +314,7 @@ internal class P8086
     private Dictionary<int, int> _scheduled_interrupts = new Dictionary<int, int>();
 
     private bool _rep;
-    private byte _rep_mode;
+    private RepMode _rep_mode;
     private ushort _rep_addr;
 
     private bool _is_test;
@@ -1235,21 +1243,42 @@ internal class P8086
             else if (opcode == 0xf2 || opcode == 0xf3)
             {
                 _rep = true;
-                _rep_mode = opcode;
+                _rep_mode = RepMode.NotSet;
                 _rep_addr = _ip;
-
-                Log.DoLog($"REP[{_rep_mode:X2}] {_cs:X4}:{_rep_addr:X4}");
             }
             else
             {
                 Log.DoLog($"------ {address:X6} prefix {opcode:X2} not implemented");
             }
 
-            if (opcode != 0xf2 && opcode != 0xf3)
-                segment_override_set = true;
-
             address = (uint)(_cs * 16 + _ip) & MemMask;
-            opcode = GetPcByte();
+            byte next_opcode = GetPcByte();
+
+            if (opcode == 0xf2)
+            {
+                _rep_mode = RepMode.REPNZ;
+
+                Log.DoLog($"REPNZ: {_cs:X4}:{_rep_addr:X4}");
+            }
+            else if (opcode == 0xf3)
+            {
+                if (next_opcode == 0xa6 || next_opcode == 0xa7 || next_opcode == 0xae || next_opcode == 0xaf)
+                {
+                    _rep_mode = RepMode.REPE_Z;
+                    Log.DoLog($"REPZ: {_cs:X4}:{_rep_addr:X4}");
+                }
+                else
+                {
+                    _rep_mode = RepMode.REP;
+                    Log.DoLog($"REP: {_cs:X4}:{_rep_addr:X4}");
+                }
+            }
+            else
+            {
+                segment_override_set = true;
+            }
+
+            opcode = next_opcode;
         }
 
         HexDump(address);
@@ -1498,7 +1527,7 @@ internal class P8086
 
             SetAddSubFlags(false, v1, v2, result, true, false);
 
-            Log.DoLog($"{prefixStr} CMPSB");
+            Log.DoLog($"{prefixStr} CMPSB ({v1}, {v2})");
         }
         else if (opcode == 0xe3)
         {
@@ -2940,27 +2969,32 @@ internal class P8086
             cx--;
             SetCX(cx);
 
-            if (_rep_mode == 0xf3)
+            if (_rep_mode == RepMode.REPE_Z)
             {
-                // REP
-                if (cx > 0)
-                {
-                    _ip = _rep_addr;
-                    SetFlagZ(false);
-                }
-                else
-                {
-                    _rep = false;
-                    SetFlagZ(true);
-                }
-            }
-            else if (_rep_mode == 0xf2)
-            {
-                // REPNZ
+                // REPE/REPZ
                 if (cx > 0 && GetFlagZ() == true)
                     _ip = _rep_addr;
                 else
                     _rep = false;
+            }
+            else if (_rep_mode == RepMode.REPNZ)
+            {
+                // REPNZ
+                if (cx > 0 && GetFlagZ() == false)
+                    _ip = _rep_addr;
+                else
+                    _rep = false;
+            }
+            else if (_rep_mode == RepMode.REP)
+            {
+                if (cx > 0)
+                    _ip = _rep_addr;
+                else
+                    _rep = false;
+            }
+            else
+            {
+                Log.DoLog($"{prefixStr} unknown _rep_mode {(int)_rep_mode}");
             }
         }
     }
