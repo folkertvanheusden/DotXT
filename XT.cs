@@ -1473,7 +1473,8 @@ internal class P8086
         else if (opcode == 0xa4)
         {
             // MOVSB
-            WriteMemByte(_es, _di, ReadMemByte(_ds, _si));
+            byte v = ReadMemByte(_ds, _si);
+            WriteMemByte(_es, _di, v);
 
             if (GetFlagD())
             {
@@ -1486,7 +1487,7 @@ internal class P8086
                 _di++;
             }
 
-            Log.DoLog($"{prefixStr} MOVSB");
+            Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')})");
         }
         else if (opcode == 0xa5)
         {
