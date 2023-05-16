@@ -2117,10 +2117,13 @@ internal class P8086
                 // DIV
                 ushort ax = GetAX();
 
-                _al = (byte)(ax / r1);
-                _ah = (byte)(ax % r1);
-
-                // TODO: flags
+                if (r1 == 0 || ax / r1 > 0x100)
+                    invoke_interrupt(r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                else
+                {
+                    _al = (byte)(ax / r1);
+                    _ah = (byte)(ax % r1);
+                }
 
                 cmd_name = "DIV";
             }
@@ -2185,22 +2188,12 @@ internal class P8086
                 // DIV
                 uint dx_ax = (uint)((GetDX() << 16) | GetAX());
 
-                if (r1 != 0)
-                {
-                    // check for overflows TODO
-                    SetAX((ushort)(dx_ax / r1));
-                    SetDX((ushort)(dx_ax % r1));
-                }
+                if (r1 == 0 || dx_ax / r1 >= 0x10000)
+                    invoke_interrupt(r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
                 else
                 {
-                    push(_flags);
-                    push(_cs);
-                    push(_ip);
-
-                    uint int0_addr = 0;  // divide by zero
-
-                    _ip = (ushort)(_b.ReadByte(int0_addr + 0) + (_b.ReadByte(int0_addr + 1) << 8));
-                    _cs = (ushort)(_b.ReadByte(int0_addr + 2) + (_b.ReadByte(int0_addr + 3) << 8));
+                    SetAX((ushort)(dx_ax / r1));
+                    SetDX((ushort)(dx_ax % r1));
                 }
 
                 use_name1 = "DX:AX";
