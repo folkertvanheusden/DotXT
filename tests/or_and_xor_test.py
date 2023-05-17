@@ -9,7 +9,7 @@ prev_file_name = None
 fh = None
 
 for al in range(0, 256):
-    file_name = f'or_xor_and_{al:02x}.asm'
+    file_name = f'or_xor_and_test{al:02x}.asm'
 
     if file_name != prev_file_name:
 
@@ -36,7 +36,7 @@ for al in range(0, 256):
         fh.write('\tmov sp,ax\n')  # set stack pointer
 
     for val in range(0, 256):
-        for instr in range(0, 3):
+        for instr in range(0, 4):
             label = f'test_{al:02x}_{val:02x}_{instr}'
 
             fh.write(f'{label}:\n')
@@ -62,6 +62,11 @@ for al in range(0, 256):
             elif instr == 2:
                 fh.write(f'\tand al,bl\n')
                 (check_val, flags) = flags_and(al, val)
+
+            elif instr == 3:
+                fh.write(f'\ttest al,bl\n')
+                (dummy, flags) = flags_and(al, val)
+                check_val = al
 
             fh.write(f'\tmov cl,#${check_val:02x}\n')
 
