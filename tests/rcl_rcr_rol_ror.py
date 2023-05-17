@@ -49,7 +49,7 @@ for al in range(0, 256):
 
                 # verify value
                 fh.write(f'\tmov al,#${al:02x}\n')
-                fh.write(f'\tmov bl,#${val:02x}\n')
+                fh.write(f'\tmov cl,#${val:02x}\n')
 
                 if carry:
                     fh.write('\tstc\n')
@@ -59,27 +59,27 @@ for al in range(0, 256):
                 
                 # do test
                 if instr == 0:
-                    fh.write(f'\trcl al,bl\n')
+                    fh.write(f'\trcl al,cl\n')
                     (check_val, flags) = flags_rcl(al, val, carry)
 
                 elif instr == 1:
-                    fh.write(f'\trcr al,bl\n')
+                    fh.write(f'\trcr al,cl\n')
                     (check_val, flags) = flags_rcr(al, val, carry)
 
                 elif instr == 2:
-                    fh.write(f'\trol al,bl\n')
+                    fh.write(f'\trol al,cl\n')
                     (check_val, flags) = flags_rol(al, val, carry)
 
                 elif instr == 3:
-                    fh.write(f'\tror al,bl\n')
+                    fh.write(f'\tror al,cl\n')
                     (check_val, flags) = flags_ror(al, val, carry)
 
-                fh.write(f'\tmov cl,#${check_val:02x}\n')
+                fh.write(f'\tmov bl,#${check_val:02x}\n')
 
                 # keep flags
                 fh.write(f'\tpushf\n')
 
-                fh.write(f'\tcmp al,cl\n')
+                fh.write(f'\tcmp al,bl\n')
                 fh.write(f'\tjz ok_{label}\n')
 
                 fh.write(f'\thlt\n')
