@@ -11,7 +11,7 @@ for v in range(0, 256):
 def parity(v):
     return parity_lookup[v]
 
-def flags_add_sub_cp(is_sub: bool, carry: bool, val1: int, val2: int) -> int:
+def flags_add_sub_cp(is_sub: bool, carry: bool, val1: int, val2: int):
     org_value = val2
 
     val2 += 1 if carry else 0
@@ -43,7 +43,7 @@ def flags_add_sub_cp(is_sub: bool, carry: bool, val1: int, val2: int) -> int:
 
     return (result, flags)
 
-def flags_add_sub_cp16(is_sub: bool, carry: bool, val1: int, val2: int) -> int:
+def flags_add_sub_cp16(is_sub: bool, carry: bool, val1: int, val2: int):
     org_value = val2
 
     val2 += 1 if carry else 0
@@ -74,3 +74,29 @@ def flags_add_sub_cp16(is_sub: bool, carry: bool, val1: int, val2: int) -> int:
         flags += 4
 
     return (result, flags)
+
+def _flags_logic(value: int):
+    flag_o = False
+    flag_c = False
+    flag_z = value == 0
+    flag_s = (value & 0x80) == 0x80
+    flag_p = parity(value)
+
+    flags = (1 if flag_c else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
+
+    return flags
+
+def flags_or(val1: int, val2: int):
+    result = val1 | val2
+
+    return (result, _flags_logic(result))
+
+def flags_and(val1: int, val2: int):
+    result = val1 & val2
+
+    return (result, _flags_logic(result))
+
+def flags_xor(val1: int, val2: int):
+    result = val1 ^ val2
+
+    return (result, _flags_logic(result))
