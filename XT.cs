@@ -1220,7 +1220,7 @@ internal class P8086
         byte opcode = GetPcByte();
 
         // handle prefixes
-        if (opcode == 0x26 || opcode == 0x2e || opcode == 0x36 || opcode == 0x3e || opcode == 0xf2 || opcode == 0xf3)
+        if (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
         {
             if (opcode == 0x26)
             {
@@ -1242,7 +1242,7 @@ internal class P8086
                 segment_override = _ds;
                 Log.DoLog($"segment override to DS: {_ds:X4}");
             }
-            else if (opcode == 0xf2 || opcode == 0xf3)
+            else if (opcode is (0xf2 or 0xf3))
             {
                 _rep = true;
                 _rep_mode = RepMode.NotSet;
@@ -1264,7 +1264,7 @@ internal class P8086
             }
             else if (opcode == 0xf3)
             {
-                if (next_opcode == 0xa6 || next_opcode == 0xa7 || next_opcode == 0xae || next_opcode == 0xaf)
+                if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
                 {
                     _rep_mode = RepMode.REPE_Z;
                     Log.DoLog($"REPZ: {_cs:X4}:{_rep_addr:X4}");
@@ -1602,7 +1602,7 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} PUSH DI");
         }
-        else if (opcode == 0x80 || opcode == 0x81 || opcode == 0x83)
+        else if (opcode is (0x80 or 0x81 or 0x83))
         {
             // CMP and others
             byte o1 = GetPcByte();
@@ -2054,8 +2054,7 @@ internal class P8086
                 Log.DoLog($"{prefixStr} {name} {name2},{name1}");
             }
         }
-        else if ((opcode == 0x34 || opcode == 0x35) || (opcode == 0x24 || opcode == 0x25) ||
-                 (opcode == 0x0c || opcode == 0x0d))
+        else if (opcode is (0x34 or 0x35 or 0x24 or 0x25 or 0x0c or 0x0d))
         {
             bool word = (opcode & 1) == 1;
 
