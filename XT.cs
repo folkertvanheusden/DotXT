@@ -2561,15 +2561,10 @@ internal class P8086
 
             (ushort v1, string vName, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg1, mod, word);
 
-            int count = -1;
-            string countName;
+            int count = 1;
+            string countName = "1";
 
-            if ((opcode & 2) == 0)
-            {
-                count = 1;
-                countName = "1";
-            }
-            else
+            if ((opcode & 2) == 2)
             {
                 count = _cl;
                 countName = "CL";
