@@ -1,6 +1,6 @@
 #! /usr/bin/python3
 
-from flags import parity, flags_rcl, flags_rcr, flags_rol, flags_ror
+from flags import parity, flags_rcl, flags_rcr, flags_rol, flags_ror, flags_sal, flags_sar
 import sys
 
 p = sys.argv[1]
@@ -8,8 +8,10 @@ p = sys.argv[1]
 prev_file_name = None
 fh = None
 
+nr = 0
+
 for al in range(0, 256):
-    file_name = f'rcl_rcr_rol_ror{al:02x}.asm'
+    file_name = f'rcl_rcr_rol_ror_sal_sar{al:02x}.asm'
 
     if file_name != prev_file_name:
 
@@ -37,10 +39,13 @@ for al in range(0, 256):
 
     for val in range(0, 9):
         for carry in range(0, 2):
-            for instr in range(0, 4):
-                label = f'test_{al:02x}_{carry}_{val:02x}_{instr}'
+            for instr in range(0, 6):
+                nr += 1
+
+                label = f'test_{nr}_{al:02x}_{carry}_{val:02x}_{instr}'
 
                 fh.write(f'{label}:\n')
+                fh.write(f'\tmov dx,#${nr:04x}\n')
 
                 # reset flags
                 fh.write(f'\txor ax,ax\n')
@@ -74,12 +79,21 @@ for al in range(0, 256):
                     fh.write(f'\tror al,cl\n')
                     (check_val, flags, flags_mask) = flags_ror(al, val, carry)
 
-                fh.write(f'\tmov bl,#${check_val:02x}\n')
+                elif instr == 4:
+                    fh.write(f'\tsal al,cl\n')
+                    (check_val, flags, flags_mask) = flags_sal(al, val, carry)
+
+                elif instr == 5:
+                    fh.write(f'\tsar al,cl\n')
+                    (check_val, flags, flags_mask) = flags_sar(al, val, carry)
+
+                else:
+                    sys.exit(2)
 
                 # keep flags
                 fh.write(f'\tpushf\n')
 
-                fh.write(f'\tcmp al,bl\n')
+                fh.write(f'\tcmp al,#${check_val:02x}\n')
                 fh.write(f'\tjz ok_{label}\n')
 
                 fh.write(f'\thlt\n')
@@ -88,7 +102,8 @@ for al in range(0, 256):
 
                 # verify flags
                 fh.write(f'\tpop ax\n')
-                fh.write(f'\tand ax,#${flags_mask & 0xffff:04x}\n')
+                if flags_mask != 0xffff:
+                    fh.write(f'\tand ax,#${flags_mask & 0xffff:04x}\n')
                 fh.write(f'\tcmp ax,#${flags:04x}\n')
                 fh.write(f'\tjz next_{label}\n')
                 fh.write(f'\thlt\n')

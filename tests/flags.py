@@ -178,3 +178,46 @@ def flags_ror(val: int, count: int, carry: int):
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
     return (val, flags, mask)
+
+def flags_sal(val: int, count: int, carry: int):
+    before = val
+
+    for i in range(0, count):
+        carry = True if val & 128 else False
+        val <<= 1
+        val &= 0xff
+
+    flag_s = flag_z = flag_p = flag_o = False
+    mask = ~0
+
+    if count == 1:
+        flag_o = (True if before & 64 else 0) ^ (True if before & 128 else False)
+
+    else:
+        mask = ~(2048 | 16)
+
+    if count >= 1:
+        flag_s = True if val & 128 else 0
+        flag_z = val == 0
+        flag_p = parity(val)
+
+    flags = (1 if carry else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
+
+    return (val, flags, mask)
+
+def flags_sar(val: int, count: int, carry: int):
+    for i in range(0, count):
+        carry = True if val & 1 else False
+        val >>= 1
+
+    flag_s = flag_z = flag_p = flag_o = False
+    mask = ~(2048 | 16)
+
+    if count >= 1:
+        flag_s = True if val & 128 else 0
+        flag_z = val == 0
+        flag_p = parity(val)
+
+    flags = (1 if carry else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
+
+    return (val, flags, mask)

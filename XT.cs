@@ -2575,6 +2575,8 @@ internal class P8086
 
             bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
+            bool set_flags = false;
+
             int mode = (o1 >> 3) & 7;
 
             if (mode == 0)
@@ -2660,7 +2662,9 @@ internal class P8086
             }
             else if (mode == 4)
             {
-                // SHL
+                ushort prev_v1 = v1;
+
+                // SAL
                 for (int i = 0; i < count; i++)
                 {
                     bool newCarry = (v1 & 0x80) == 0x80;
@@ -2670,7 +2674,18 @@ internal class P8086
                     SetFlagC(newCarry);
                 }
 
-                Log.DoLog($"{prefixStr} SHL {vName},{countName}");
+                if (count == 1)
+                {
+                    bool b7 = (word ? prev_v1 & 0x8000 : prev_v1 & 0x80) != 0;
+                    bool b6 = (word ? prev_v1 & 0x4000 : prev_v1 & 0x40) != 0;
+
+                    SetFlagO(b7 != b6);
+                }
+
+                if (count >= 1)
+                    set_flags = true;
+
+                Log.DoLog($"{prefixStr} SAL {vName},{countName}");
             }
             else if (mode == 5)
             {
@@ -2684,19 +2699,43 @@ internal class P8086
                     SetFlagC(newCarry);
                 }
 
+                if (count == 1)
+                    SetFlagO(((v1 & 128) == 128) ^ ((v1 & 64) == 64));
+
                 Log.DoLog($"{prefixStr} SHR {vName},{countName}");
+            }
+            else if (mode == 7)
+            {
+                // SAR
+                for (int i = 0; i < count; i++)
+                {
+                    bool newCarry = (v1 & 0x01) == 0x01;
+
+                    v1 >>= 1;
+
+                    SetFlagC(newCarry);
+                }
+
+                SetFlagO(false);
+
+                set_flags = count != 0;
+
+                Log.DoLog($"{prefixStr} SAR {vName},{countName}");
             }
             else
             {
                 Log.DoLog($"{prefixStr} RCR/SHR/{opcode:X2} mode {mode} not implemented");
             }
 
-            bool newSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
-
-            SetFlagO(oldSign != newSign);
-
             if (!word)
                 v1 &= 0xff;
+
+            if (set_flags)
+            {
+                SetFlagS((word ? v1 & 0x8000 : v1 & 0x80) != 0);
+                SetFlagZ(v1 == 0);
+                SetFlagP((byte)v1);
+            }
 
             UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, v1);
         }
