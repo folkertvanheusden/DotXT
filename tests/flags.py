@@ -107,6 +107,7 @@ def flags_rcl(val: int, count: int, carry: int):
         val <<= 1
         val |= carry
         carry = b7
+        val &= 0xff
 
     flag_o = False
     mask = ~0
@@ -126,6 +127,7 @@ def flags_rcr(val: int, count: int, carry: int):
         val >>= 1
         val |= 128 if carry else 0
         carry = b0
+        val &= 0xff
 
     flag_o = False
     mask = ~0
@@ -144,6 +146,7 @@ def flags_rol(val: int, count: int, carry: int):
         carry = True if val & 128 else False
         val <<= 1
         val |= carry
+        val &= 0xff
 
     flag_o = False
     mask = ~0
@@ -162,6 +165,7 @@ def flags_ror(val: int, count: int, carry: int):
         carry = val & 1
         val >>= 1
         val |= 128 if carry else 0
+        val &= 0xff
 
     flag_o = False
     mask = ~0

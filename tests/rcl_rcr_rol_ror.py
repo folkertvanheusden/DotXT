@@ -88,7 +88,7 @@ for al in range(0, 256):
 
                 # verify flags
                 fh.write(f'\tpop ax\n')
-                fh.write(f'\tand ax,#${flags_mask:04x}\n')
+                fh.write(f'\tand ax,#${flags_mask & 0xffff:04x}\n')
                 fh.write(f'\tcmp ax,#${flags:04x}\n')
                 fh.write(f'\tjz next_{label}\n')
                 fh.write(f'\thlt\n')
