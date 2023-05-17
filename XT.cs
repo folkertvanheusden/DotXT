@@ -2594,6 +2594,9 @@ internal class P8086
                         v1 |= 1;
                 }
 
+                if (count == 1)
+                    SetFlagO(GetFlagC() ^ ((v1 & 128) == 128));
+
                 Log.DoLog($"{prefixStr} ROL {vName},{countName}");
             }
             else if (mode == 1)
@@ -2610,7 +2613,31 @@ internal class P8086
                         v1 |= 128;
                 }
 
+                if (count == 1)
+                    SetFlagO(((v1 & 128) == 128) ^ ((v1 & 64) == 64));
+
                 Log.DoLog($"{prefixStr} ROR {vName},{countName}");
+            }
+            else if (mode == 2)
+            {
+                // RCL
+                for (int i = 0; i < count; i++)
+                {
+                    bool newCarry = (v1 & 128) == 128;
+                    v1 <<= 1;
+
+                    bool oldCarry = GetFlagC();
+
+                    if (oldCarry)
+                        v1 |= 1;
+
+                    SetFlagC(newCarry);
+                }
+
+                if (count == 1)
+                    SetFlagO(GetFlagC() ^ ((v1 & 128) == 128));
+
+                Log.DoLog($"{prefixStr} RCL {vName},{countName}");
             }
             else if (mode == 3)
             {
@@ -2627,6 +2654,9 @@ internal class P8086
 
                     SetFlagC(newCarry);
                 }
+
+                if (count == 1)
+                    SetFlagO(((v1 & 128) == 128) ^ ((v1 & 64) == 64));
 
                 Log.DoLog($"{prefixStr} RCR {vName},{countName}");
             }
@@ -2669,11 +2699,6 @@ internal class P8086
 
             if (!word)
                 v1 &= 0xff;
-
-            SetFlagS((v1 & (word ? 0x8000 : 0x80)) != 0);
-            SetFlagZ(v1 == 0);
-            SetFlagA((v1 & 15) == 0);  // TODO ?
-            SetFlagP((byte)v1);
 
             UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, v1);
         }
