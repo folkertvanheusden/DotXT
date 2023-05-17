@@ -100,3 +100,65 @@ def flags_xor(val1: int, val2: int):
     result = val1 ^ val2
 
     return (result, _flags_logic(result))
+
+def flags_rcl(val: int, count: int, carry: int):
+    for i in range(0, count):
+        b7 = True if val & 128 else False
+        val <<= 1
+        val |= carry
+        carry = b7
+
+    flag_o = False
+
+    if count == 1:
+        flag_o = carry ^ (True if val & 128 else False)
+
+    flags = (1 if carry else 0) + (2048 if flag_o else 0)
+
+    return (val, flags)
+
+def flags_rcr(val: int, count: int, carry: int):
+    for i in range(0, count):
+        b0 = val & 1
+        val >>= 1
+        val |= 128 if carry else 0
+        carry = b0
+
+    flag_o = False
+
+    if count == 1:
+        flag_o = (True if val & 64 else 0) ^ (True if val & 128 else False)
+
+    flags = (1 if carry else 0) + (2048 if flag_o else 0)
+
+    return (val, flags)
+
+def flags_rol(val: int, count: int, carry: int):
+    for i in range(0, count):
+        carry = True if val & 128 else False
+        val <<= 1
+        val |= carry
+
+    flag_o = False
+
+    if count == 1:
+        flag_o = carry ^ (True if val & 128 else False)
+
+    flags = (1 if carry else 0) + (2048 if flag_o else 0)
+
+    return (val, flags)
+
+def flags_ror(val: int, count: int, carry: int):
+    for i in range(0, count):
+        carry = val & 1
+        val >>= 1
+        val |= 128 if carry else 0
+
+    flag_o = False
+
+    if count == 1:
+        flag_o = (True if val & 64 else 0) ^ (True if val & 128 else False)
+
+    flags = (1 if carry else 0) + (2048 if flag_o else 0)
+
+    return (val, flags)
