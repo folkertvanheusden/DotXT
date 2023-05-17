@@ -1736,6 +1736,7 @@ internal class P8086
 
             byte result = (byte)(r1 & r2);
 
+            SetFlagC(false);
             SetLogicFuncFlags(false, result);
 
             Log.DoLog($"{prefixStr} TEST {name1},{name2}");
@@ -2601,6 +2602,7 @@ internal class P8086
             }
             else if (mode == 1)
             {
+                // ROR
                 for (int i = 0; i < count; i++)
                 {
                     bool b0 = (v1 & 1) == 1;
