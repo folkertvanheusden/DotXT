@@ -60,19 +60,19 @@ for al in range(0, 256):
                 # do test
                 if instr == 0:
                     fh.write(f'\trcl al,cl\n')
-                    (check_val, flags) = flags_rcl(al, val, carry)
+                    (check_val, flags, flags_mask) = flags_rcl(al, val, carry)
 
                 elif instr == 1:
                     fh.write(f'\trcr al,cl\n')
-                    (check_val, flags) = flags_rcr(al, val, carry)
+                    (check_val, flags, flags_mask) = flags_rcr(al, val, carry)
 
                 elif instr == 2:
                     fh.write(f'\trol al,cl\n')
-                    (check_val, flags) = flags_rol(al, val, carry)
+                    (check_val, flags, flags_mask) = flags_rol(al, val, carry)
 
                 elif instr == 3:
                     fh.write(f'\tror al,cl\n')
-                    (check_val, flags) = flags_ror(al, val, carry)
+                    (check_val, flags, flags_mask) = flags_ror(al, val, carry)
 
                 fh.write(f'\tmov bl,#${check_val:02x}\n')
 
@@ -88,6 +88,7 @@ for al in range(0, 256):
 
                 # verify flags
                 fh.write(f'\tpop ax\n')
+                fh.write(f'\tand ax,#${flags_mask:04x}\n')
                 fh.write(f'\tcmp ax,#${flags:04x}\n')
                 fh.write(f'\tjz next_{label}\n')
                 fh.write(f'\thlt\n')

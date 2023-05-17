@@ -109,13 +109,16 @@ def flags_rcl(val: int, count: int, carry: int):
         carry = b7
 
     flag_o = False
+    mask = ~0
 
     if count == 1:
         flag_o = carry ^ (True if val & 128 else False)
+    else:
+        mask = ~2048
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
-    return (val, flags)
+    return (val, flags, mask)
 
 def flags_rcr(val: int, count: int, carry: int):
     for i in range(0, count):
@@ -125,13 +128,16 @@ def flags_rcr(val: int, count: int, carry: int):
         carry = b0
 
     flag_o = False
+    mask = ~0
 
     if count == 1:
         flag_o = (True if val & 64 else 0) ^ (True if val & 128 else False)
+    else:
+        mask = ~2048
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
-    return (val, flags)
+    return (val, flags, mask)
 
 def flags_rol(val: int, count: int, carry: int):
     for i in range(0, count):
@@ -140,13 +146,16 @@ def flags_rol(val: int, count: int, carry: int):
         val |= carry
 
     flag_o = False
+    mask = ~0
 
     if count == 1:
         flag_o = carry ^ (True if val & 128 else False)
+    else:
+        mask = ~2048
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
-    return (val, flags)
+    return (val, flags, mask)
 
 def flags_ror(val: int, count: int, carry: int):
     for i in range(0, count):
@@ -155,10 +164,13 @@ def flags_ror(val: int, count: int, carry: int):
         val |= 128 if carry else 0
 
     flag_o = False
+    mask = ~0
 
     if count == 1:
         flag_o = (True if val & 64 else 0) ^ (True if val & 128 else False)
+    else:
+        mask = ~2048
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
-    return (val, flags)
+    return (val, flags, mask)
