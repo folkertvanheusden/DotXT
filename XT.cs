@@ -2570,6 +2570,9 @@ internal class P8086
                 countName = "CL";
             }
 
+            count &= 31;  // masked to 5 bits
+            count %= (word ? 17 : 9);  // from documentation ( https://www.felixcloutier.com/x86/rcl:rcr:rol:ror )
+
             bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
             int mode = (o1 >> 3) & 7;
