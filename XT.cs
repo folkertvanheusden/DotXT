@@ -350,9 +350,6 @@ internal class P8086
                     if (n_read == 0)
                         break;
 
-                    if (n_read != 512)
-                        Console.WriteLine($"Short read from floppy image: {n_read}");
-
                     for(int i=0; i<n_read; i++)
                     {
                         _b.WriteByte((uint)addr, buffer[i]);
