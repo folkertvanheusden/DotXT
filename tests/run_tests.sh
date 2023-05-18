@@ -53,5 +53,7 @@ do
 	rm $BASE.list $BASE.bin $i
 done
 
+(cd ../../ ; dotnet clean -c Release)
+
 echo All fine
 exit 0
