@@ -45,7 +45,7 @@ def emit_test(instr, v1, v2, carry):
     fh.write(f'\tpush ax\n')
     fh.write(f'\tpopf\n')
 
-    (check_val, flags) = flags_add_sub_cp16(instr >= 2, True if carry > 0 else False, v1, v2)
+    (check_val, flags) = flags_add_sub_cp16(instr >= 2, True if carry > 0 and (instr == 0 or instr == 2) else False, v1, v2)
 
     # verify value
     fh.write(f'\tmov ax,#${v1:02x}\n')
@@ -101,9 +101,6 @@ def emit_test(instr, v1, v2, carry):
 
 for instr in range(0, 4):
     for carry in range(0, 2):
-        if (instr == 1 or instr == 3) and carry == 1:
-            break
-
         emit_test(instr, 256, 256, carry)
         emit_test(instr, 255, 256, carry)
         emit_test(instr, 256, 255, carry)
