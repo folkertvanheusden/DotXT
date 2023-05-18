@@ -38,9 +38,6 @@ for al in range(0, 256):
     for val in range(0, 256):
         for carry in range(0, 2):
             for instr in range(0, 4):
-                if (instr == 1 or instr == 3) and carry == 1:
-                    continue
-
                 label = f'test_{al:02x}_{val:02x}_{carry}_{instr}'
 
                 fh.write(f'{label}:\n')
@@ -50,7 +47,7 @@ for al in range(0, 256):
                 fh.write(f'\tpush ax\n')
                 fh.write(f'\tpopf\n')
 
-                (check_val, flags) = flags_add_sub_cp(instr >= 2, True if carry > 0 else False, al, val)
+                (check_val, flags) = flags_add_sub_cp(instr >= 2, True if carry > 0 and (instr == 0 or instr == 2) else False, al, val)
 
                 # verify value
                 fh.write(f'\tmov al,#${al:02x}\n')
