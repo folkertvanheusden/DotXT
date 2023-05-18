@@ -1473,6 +1473,13 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} POP BX");
         }
+        else if (opcode == 0x5d)
+        {
+            // POP BP
+            _bp = pop();
+
+            Log.DoLog($"{prefixStr} POP BP");
+        }
         else if (opcode == 0x5e)
         {
             // POP SI
