@@ -2507,6 +2507,20 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} STOSW");
         }
+        else if (opcode == 0xaf)
+        {
+            // SCASW
+            ushort ax = GetAX();
+            ushort v = ReadMemWord(_es, _di);
+
+            int result = ax - v;
+
+            SetAddSubFlags(true, ax, v, result, true, false);
+
+            _di += (ushort)(GetFlagD() ? -2 : 2);
+
+            Log.DoLog($"{prefixStr} SCASW");
+        }
         else if (opcode == 0xc4)
         {
             // LES
