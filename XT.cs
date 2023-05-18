@@ -473,14 +473,14 @@ internal class P8086
 
                 if (disk_offset + bytes_per_sector <= floppy.Count)
                 {
-                    string s = "";
+                //    string s = "";
 
                     for(int i=0; i<bytes_per_sector * _al; i++)
                     {
                         WriteMemByte(_es, (ushort)(_bx + i), floppy[disk_offset + i]);
-                        s += $" {floppy[disk_offset + i]:X2}";
+                //        s += $" {floppy[disk_offset + i]:X2}";
                     }
-                    Log.DoLog($"SECTOR: {s}");
+                //    Log.DoLog($"SECTOR: {s}");
 
                     SetFlagC(false);
                     _ah = 0x00;  // no error
@@ -501,6 +501,20 @@ internal class P8086
 
                 return true;
             }
+        }
+        else if (nr == 0x16)
+        {
+            // keyboard access
+            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+
+            SetFlagC(true);
+            _ah = 0x01;  // invalid command
+            return true;
+        }
+        else if (nr == 0x19)
+        {
+            // reboot (to bootloader)
+            System.Environment.Exit(1);
         }
         else
         {
