@@ -9,34 +9,34 @@ prev_file_name = None
 fh = None
 
 for al in range(0, 256):
-    file_name = f'or_xor_and_test{al:02x}.asm'
+    for mode in range(0, 2):
+        file_name = f'or_xor_and_test{al:02x}_{mode}.asm'
 
-    if file_name != prev_file_name:
+        if file_name != prev_file_name:
 
-        prev_file_name = file_name
+            prev_file_name = file_name
 
-        if fh != None:
-            # to let emulator know all was fine
-            fh.write('\tmov ax,#$a5ee\n')
+            if fh != None:
+                # to let emulator know all was fine
+                fh.write('\tmov ax,#$a5ee\n')
+                fh.write('\tmov si,ax\n')
+                fh.write('\thlt\n')
+
+                fh.close()
+
+            fh = open(p + '/' + file_name, 'w')
+
+            fh.write('\torg $800\n')
+            fh.write('\n')
+
+            fh.write('\txor ax,ax\n')
             fh.write('\tmov si,ax\n')
-            fh.write('\thlt\n')
+            fh.write('\n')
+            fh.write('\tmov ss,ax\n')  # set stack segment to 0
+            fh.write('\tmov ax,#$800\n')  # set stack pointer
+            fh.write('\tmov sp,ax\n')  # set stack pointer
 
-            fh.close()
-
-        fh = open(p + '/' + file_name, 'w')
-
-        fh.write('\torg $800\n')
-        fh.write('\n')
-
-        fh.write('\txor ax,ax\n')
-        fh.write('\tmov si,ax\n')
-        fh.write('\n')
-        fh.write('\tmov ss,ax\n')  # set stack segment to 0
-        fh.write('\tmov ax,#$800\n')  # set stack pointer
-        fh.write('\tmov sp,ax\n')  # set stack pointer
-
-    for val in range(0, 256):
-        for mode in range(0, 2):
+        for val in range(0, 256):
             for instr in range(0, 4):
                 label = f'test_{al:02x}_{val:02x}_{instr}'
 
@@ -71,7 +71,7 @@ for al in range(0, 256):
                         check_val = al
 
                 else:
-                    fh.write(f'\tjp skip_{label}_field\n')
+                    fh.write(f'\tjmp skip_{label}_field\n')
                     fh.write(f'{label}_field:\n')
                     fh.write(f'\tdb 0\n')
                     fh.write(f'skip_{label}_field:\n')
