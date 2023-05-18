@@ -339,22 +339,25 @@ internal class P8086
 
             uint addr = 0;
 
-            using(Stream source = File.OpenRead(test))
+            using(Stream source = File.Open(test, FileMode.Open))
             {
                 byte[] buffer = new byte[512];
 
                 for(;;)
                 {
-                    int n = source.Read(buffer, 0, 512);
+                    int n_read = source.Read(buffer, 0, 512);
 
-                    for(int i=0; i<n; i++)
+                    if (n_read == 0)
+                        break;
+
+                    if (n_read != 512)
+                        Console.WriteLine($"Short read from floppy image: {n_read}");
+
+                    for(int i=0; i<n_read; i++)
                     {
                         _b.WriteByte((uint)addr, buffer[i]);
                         addr++;
                     }
-
-                    if (n < 512)
-                        break;
                 }
             }
 
