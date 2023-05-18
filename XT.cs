@@ -2170,6 +2170,13 @@ internal class P8086
                 SetLogicFuncFlags(word, result);
                 cmd_name = "TEST";
             }
+            else if (function == 2)
+            {
+                // NOT
+                UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)~r1);
+
+                cmd_name = "NOT";
+            }
             else if (function == 4)
             {
                 // MUL
