@@ -48,7 +48,7 @@ do
 		exit 1
 	fi
 
-	rm $BASE.list $base.bin $i
+	rm $BASE.list $BASE.bin $i
 done
 
 echo All fine
