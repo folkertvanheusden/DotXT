@@ -2568,7 +2568,7 @@ internal class P8086
                 Log.DoLog($"{prefixStr} MOV byte {temp},${v:X2}");
             }
         }
-        else if (opcode == 0xca)
+        else if (opcode == 0xca || opcode == 0xcb)
         {
             // RETF
             ushort nToRelease = GetPcWord();
@@ -2576,9 +2576,16 @@ internal class P8086
             _ip = pop();
             _cs = pop();
 
-            _ss += nToRelease;
+            if (opcode == 0xca)
+            {
+                _ss += nToRelease;
 
-            Log.DoLog($"{prefixStr} RETF ${nToRelease:X4}");
+                Log.DoLog($"{prefixStr} RETF ${nToRelease:X4}");
+            }
+            else
+            {
+                Log.DoLog($"{prefixStr} RETF");
+            }
         }
         else if ((opcode & 0xf8) == 0xd0)
         {
