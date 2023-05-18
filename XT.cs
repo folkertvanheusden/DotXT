@@ -366,12 +366,20 @@ internal class P8086
             _cs = 0;
             _ip = 0x7c00;
 
-            using(Stream source = File.OpenRead(test))
+            using (var stream = File.Open(test, FileMode.Open))
             {
                 byte[] buffer = new byte[512];
 
-                while(source.Read(buffer, 0, 512) == 512)
+                for(;;)
                 {
+                    int n_read = stream.Read(buffer, 0, 512);
+
+                    if (n_read == 0)
+                        break;
+
+                    if (n_read != 512)
+                        Console.WriteLine($"Short read from floppy image: {n_read}");
+
                     for(int i=0; i<512; i++)
                         floppy.Add(buffer[i]);
                 }
@@ -456,7 +464,8 @@ internal class P8086
                 byte sectors_per_track = 9;
                 byte n_sides = 2;
                 byte tracks_per_side = (byte)(floppy.Count / (bytes_per_sector * n_sides * sectors_per_track));
-                int disk_offset = (_dh * tracks_per_side * sectors_per_track + _ch * sectors_per_track + (_cl - 1)) * bytes_per_sector;
+
+                int disk_offset = (_ch * n_sides + _dh) * sectors_per_track * bytes_per_sector + (_cl - 1) * bytes_per_sector;
 
                 ushort _bx = GetBX();
 
@@ -464,8 +473,14 @@ internal class P8086
 
                 if (disk_offset + bytes_per_sector <= floppy.Count)
                 {
+                    string s = "";
+
                     for(int i=0; i<bytes_per_sector * _al; i++)
+                    {
                         WriteMemByte(_es, (ushort)(_bx + i), floppy[disk_offset + i]);
+                        s += $" {floppy[disk_offset + i]:X2}";
+                    }
+                    Log.DoLog($"SECTOR: {s}");
 
                     SetFlagC(false);
                     _ah = 0x00;  // no error
