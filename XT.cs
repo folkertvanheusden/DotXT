@@ -1107,6 +1107,7 @@ internal class P8086
         @out += GetFlagS() ? "s" : "-";
         @out += GetFlagZ() ? "z" : "-";
         @out += GetFlagA() ? "a" : "-";
+        @out += GetFlagP() ? "p" : "-";
         @out += GetFlagC() ? "c" : "-";
 
         return @out;
