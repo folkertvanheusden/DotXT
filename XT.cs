@@ -1315,16 +1315,18 @@ internal class P8086
             string name = "ADD";
 
             bool flag_c = GetFlagC();
+            bool use_flag_c = false;
 
             if (opcode == 0x14 && flag_c)
             {
                 v++;
+                use_flag_c = true;
                 name = "ADC";
             }
 
             int result = _al + v;
 
-            SetAddSubFlags(false, _al, v, result, false, flag_c);
+            SetAddSubFlags(false, _al, v, result, false, use_flag_c ? flag_c : false);
 
             _al = (byte)result;
 
