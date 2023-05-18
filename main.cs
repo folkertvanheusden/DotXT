@@ -1,8 +1,5 @@
 using DotXT;
 
-Console.WriteLine("DotXT, (C) 2023 by Folkert van Heusden");
-Console.WriteLine("Released in the public domain");
-
 string test = "";
 bool t_is_floppy = false;
 
@@ -16,6 +13,12 @@ for(int i=0; i<args.Length; i++)
         Log.SetLogFile(args[++i]);
     else
         Console.WriteLine($"{args[i]} is not understood");
+}
+
+if (test == "")
+{
+    Console.WriteLine("DotXT, (C) 2023 by Folkert van Heusden");
+    Console.WriteLine("Released in the public domain");
 }
 
 var p = new P8086(test, t_is_floppy);
