@@ -492,6 +492,38 @@ internal class P8086
 
                 Log.DoLog(base_str + " FAILED");
             }
+            else if (_ah == 0x08)
+            {
+                // get drive parameters
+                ushort bytes_per_sector = 512;
+                byte sectors_per_track = 9;
+                byte n_sides = 2;
+                byte tracks_per_side = (byte)(floppy.Count / (bytes_per_sector * n_sides * sectors_per_track));
+
+                if (tracks_per_side == 40)
+                    _bl = 1;  // 360kB
+                else if (tracks_per_side == 80)
+                    _bl = 3;  // 720kB
+                else
+                {
+                    Log.DoLog($"Unknown floppy format: {tracks_per_side} tracks per siode");
+
+                    return false;
+                }
+
+                _ch = tracks_per_side;
+
+                _cl = sectors_per_track;
+
+                _dh = 2;
+
+                _dl = 1;
+
+                SetFlagC(false);
+                _ah = 0x00;
+
+                return true;
+            }
             else if (_ah == 0x41)
             {
                 // Check extensions present
@@ -514,6 +546,8 @@ internal class P8086
         else if (nr == 0x19)
         {
             // reboot (to bootloader)
+            Log.DoLog("Reboot");
+            Console.WriteLine("REBOOT");
             System.Environment.Exit(1);
         }
         else
@@ -1556,6 +1590,19 @@ internal class P8086
 
             int result = v1 - v2;
 
+            if (result != 0)
+            {
+                string s1 = "";
+                for(int i=0; i<11; i++)
+                    s1 += (char)ReadMemByte(_ds, (ushort)(_si + i));
+
+                string s2 = "";
+                for(int i=0; i<11; i++)
+                    s2 += (char)ReadMemByte(_es, (ushort)(_di + i));
+
+                Log.DoLog($"{s1}/{s2}");
+            }
+
             if (GetFlagD())
             {
                 _si--;
@@ -1569,7 +1616,7 @@ internal class P8086
 
             SetAddSubFlags(false, v1, v2, result, true, false);
 
-            Log.DoLog($"{prefixStr} CMPSB ({v1}, {v2})");
+            Log.DoLog($"{prefixStr} CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')})");
         }
         else if (opcode == 0xe3)
         {
@@ -2965,7 +3012,7 @@ internal class P8086
 
             _ip = (ushort)(_ip + (sbyte)to);
 
-            Log.DoLog($"{prefixStr} JP ${_ip:X4}");
+            Log.DoLog($"{prefixStr} JP ${_ip:X4} ({_cs * 16 + _ip:X6})");
         }
         else if (opcode == 0xf4)
         {
