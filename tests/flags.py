@@ -43,6 +43,11 @@ def flags_add_sub_cp(is_sub: bool, carry: bool, val1: int, val2: int):
 
     return (result, flags)
 
+def flags_cmp(carry, al, val):
+    (result, flags) = flags_add_sub_cp(True, False, al, val)
+
+    return flags
+
 def flags_add_sub_cp16(is_sub: bool, carry: bool, val1: int, val2: int):
     org_value = val2
 
