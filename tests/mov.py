@@ -19,6 +19,7 @@ fh.write('\tmov sp,ax\n')  # set stack pointer
 
 fh.write(
 '''
+; directly value into register
 test_001:
     mov ax,#$1234
     cmp ax,#$1234
@@ -27,6 +28,7 @@ test_001:
 test_001_ok:
 
 test_002:
+; read from address pointer by
     mov ax,[word_read_001]
     cmp ax,#$4567
     jz test_002_ok
@@ -34,6 +36,7 @@ test_002:
 
 test_002_ok:
 
+; lea
 test_003:
     xor ax,ax
     lea ax,word_read_002

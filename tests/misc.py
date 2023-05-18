@@ -19,6 +19,7 @@ fh.write('\tmov sp,ax\n')  # set stack pointer
 
 fh.write(
 '''
+; NOT
 test_001:
     xor ax,ax
     mov bx,#$1234
@@ -34,6 +35,7 @@ test_001a_ok:
     hlt
 test_001b_ok:
 
+; MUL
 test_002:
     xor ax,ax
     mov al,#$7f
@@ -45,6 +47,7 @@ test_002:
 test_002_ok:
 ; TODO: test flags
 
+; MUL 16b
 test_003:
     mov ax,#$1234
     mov cx,#$aa55
@@ -59,6 +62,7 @@ test_003a_ok:
 test_003b_ok:
 ; TODO: test flags
 
+; DIV
 test_004:
 	mov ax,#0x4321
 	mov dx,#0x8001
