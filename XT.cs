@@ -2006,7 +2006,7 @@ internal class P8086
 
                 result = r1 - r2;
 
-                Log.DoLog($"{prefixStr} CMP AX,{r2:X4}");
+                Log.DoLog($"{prefixStr} CMP AX,#${r2:X4}");
             }
             else if (opcode == 0x3c)
             {
@@ -2015,7 +2015,7 @@ internal class P8086
 
                 result = r1 - r2;
 
-                Log.DoLog($"{prefixStr} CMP AL,{r2:X2}");
+                Log.DoLog($"{prefixStr} CMP AL,#${r2:X2}");
             }
             else
             {

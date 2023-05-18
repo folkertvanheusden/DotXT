@@ -80,6 +80,11 @@ def flags_add_sub_cp16(is_sub: bool, carry: bool, val1: int, val2: int):
 
     return (result, flags)
 
+def flags_cmp16(carry, ax, val):
+    (result, flags) = flags_add_sub_cp16(True, False, ax, val)
+
+    return flags
+
 def _flags_logic(value: int):
     flag_o = False
     flag_c = False
