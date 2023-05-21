@@ -221,6 +221,12 @@ internal class IO
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
 
+        if (addr == 0x03f4)  // diskette controller main status register
+            return 0x80;
+
+        if (addr == 0x03f5)  // diskette command/data register 0 (ST0)
+            return 0b00100000;  // seek completed
+
         Log.DoLog($"IN: I/O port {addr:X4} not implemented");
 
         if (values.ContainsKey(addr))
@@ -455,6 +461,8 @@ internal class P8086
                 SetFlagC(false);
                 _ah = 0x00;  // no error
 
+                _scheduled_interrupts[0x0e] = 50;
+
                 return true;
             }
             else if (_ah == 0x02)
@@ -473,6 +481,8 @@ internal class P8086
 
                 if (disk_offset + bytes_per_sector <= floppy.Count)
                 {
+                    Log.DoLog(base_str);
+
                 //    string s = "";
 
                     for(int i=0; i<bytes_per_sector * _al; i++)
@@ -485,44 +495,10 @@ internal class P8086
                     SetFlagC(false);
                     _ah = 0x00;  // no error
 
-                    Log.DoLog(base_str);
-
                     return true;
                 }
 
                 Log.DoLog(base_str + " FAILED");
-            }
-            else if (_ah == 0x08)
-            {
-                // get drive parameters
-                ushort bytes_per_sector = 512;
-                byte sectors_per_track = 9;
-                byte n_sides = 2;
-                byte tracks_per_side = (byte)(floppy.Count / (bytes_per_sector * n_sides * sectors_per_track));
-
-                if (tracks_per_side == 40)
-                    _bl = 1;  // 360kB
-                else if (tracks_per_side == 80)
-                    _bl = 3;  // 720kB
-                else
-                {
-                    Log.DoLog($"Unknown floppy format: {tracks_per_side} tracks per siode");
-
-                    return false;
-                }
-
-                _ch = tracks_per_side;
-
-                _cl = sectors_per_track;
-
-                _dh = 2;
-
-                _dl = 1;
-
-                SetFlagC(false);
-                _ah = 0x00;
-
-                return true;
             }
             else if (_ah == 0x41)
             {
@@ -1176,16 +1152,17 @@ internal class P8086
 
         ushort in_reg_result = word ? (ushort)result : (byte)result;
 
+        uint u_result = (uint)result;
+
         ushort mask = (ushort)(word ? 0x8000 : 0x80);
 
         ushort temp_r2 = (ushort)(issub ? (r2 - (flag_c ? 1 : 0)) : (r2 + (flag_c ? 1 : 0)));
 
-        if (issub)
-            SetFlagO(((r1 ^ r2) & mask) == mask && ((result ^ r2) & mask) != mask);
-        else
-            SetFlagO(((r1 ^ r2) & mask) != mask && ((result ^ r1) & mask) == mask);
+        bool before_sign = (r1 & mask) == mask;
+        bool value_sign = (r2 & mask) == mask;
+        bool after_sign = (u_result & mask) == mask;
+        SetFlagO(after_sign != before_sign && ((before_sign != value_sign && issub) || (before_sign == value_sign && issub == false)));
 
-        uint u_result = (uint)result;
         SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
 
         SetFlagS((in_reg_result & mask) != 0);
@@ -1363,14 +1340,16 @@ internal class P8086
             bool flag_c = GetFlagC();
             bool use_flag_c = false;
 
-            if (opcode == 0x14 && flag_c)
+            int result = _al + v;
+
+            if (opcode == 0x14)
             {
-                v++;
+                if (flag_c)
+                    result++;
+
                 use_flag_c = true;
                 name = "ADC";
             }
-
-            int result = _al + v;
 
             SetAddSubFlags(false, _al, v, result, false, use_flag_c ? flag_c : false);
 
@@ -1421,6 +1400,24 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} PUSH SS");
         }
+        else if (opcode == 0x1c)
+        {
+            // SBB AL,ib
+            byte v = GetPcByte();
+
+            bool flag_c = GetFlagC();
+
+            int result = _al - v;
+
+            if (flag_c)
+                result--;
+
+            SetAddSubFlags(false, _al, v, result, true, flag_c);
+
+            _al = (byte)result;
+
+            Log.DoLog($"{prefixStr} SBB ${v:X4}");
+        }
         else if (opcode == 0x1d)
         {
             // SBB AX,iw
@@ -1428,16 +1425,14 @@ internal class P8086
 
             ushort AX = GetAX();
 
-            int sub = v;
-
             bool flag_c = GetFlagC();
 
+            int result = AX - v;
+
             if (flag_c)
-                sub++;
+                result--;
 
-            int result = AX - sub;
-
-            SetAddSubFlags(true, AX, (ushort)sub, result, true, flag_c);
+            SetAddSubFlags(true, AX, v, result, true, flag_c);
 
             SetAX((ushort)result);
 
@@ -1495,6 +1490,19 @@ internal class P8086
             SetFlagP(_al);
 
             Log.DoLog($"{prefixStr} DAA");
+        }
+        else if (opcode == 0x2c)
+        {
+            // SUB AL,ib
+            byte v = GetPcByte();
+
+            int result = _al - v;
+
+            SetAddSubFlags(false, _al, v, result, true, false);
+
+            _al = (byte)result;
+
+            Log.DoLog($"{prefixStr} SUB ${v:X2}");
         }
         else if (opcode == 0x58)
         {
