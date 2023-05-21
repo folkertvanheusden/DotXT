@@ -142,6 +142,9 @@ def emit_test(v1, v2, mode, target, instr):
 for mode in range(0, 3):
     for target in (False, True):
         for instr in range(0, 4):
+            emit_test(0, 0, mode, target, instr)
+            emit_test(0, 65535, mode, target, instr)
+            emit_test(65535, 0, mode, target, instr)
             emit_test(256, 256, mode, target, instr)
             emit_test(255, 256, mode, target, instr)
             emit_test(256, 255, mode, target, instr)
@@ -156,6 +159,10 @@ for mode in range(0, 3):
             emit_test(32767, 32767, mode, target, instr)
             emit_test(32768, 32767, mode, target, instr)
             emit_test(32768, 32768, mode, target, instr)
+            emit_test(0xff00, 0xff00, mode, target, instr)
+            emit_test(0xff00, 0x00ff, mode, target, instr)
+            emit_test(0x00ff, 0x00ff, mode, target, instr)
+            emit_test(0x00ff, 0xff00, mode, target, instr)
 
 if fh != None:
     fh.write('\tmov ax,#$a5ee\n')
