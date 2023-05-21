@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 
 from flags import parity, flags_or, flags_and, flags_xor
-from values_16b import pairs_16b
+from values_16b import get_pairs_16b
 import sys
 
 p = sys.argv[1]
@@ -143,7 +143,7 @@ def emit_test(v1, v2, mode, target, instr):
 for mode in range(0, 3):
     for target in (False, True):
         for instr in range(0, 4):
-            for pair in pairs_16b:
+            for pair in get_pairs_16b():
                 emit_test(pair[0], pair[1], mode, target, instr)
 
 if fh != None:

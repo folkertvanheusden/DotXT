@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 
 from flags import parity, flags_cmp16
-from values_16b import pairs_16b
+from values_16b import get_pairs_16b
 import sys
 
 p = sys.argv[1]
@@ -104,7 +104,7 @@ def emit_test(v1, v2, carry):
             fh = None
 
 for carry in (False, True):
-    for pair in pairs_16b:
+    for pair in get_pairs_16b():
         emit_test(pair[0], pair[1], carry)
 
 emit_tail()

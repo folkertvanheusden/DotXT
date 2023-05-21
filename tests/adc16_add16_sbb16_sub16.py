@@ -1,7 +1,7 @@
 #! /usr/bin/python3
 
 from flags import parity, flags_add_sub_cp16
-from values_16b import pairs_16b
+from values_16b import get_pairs_16b
 import sys
 
 p = sys.argv[1]
@@ -109,7 +109,7 @@ for instr in range(0, 4):
     for target in (False, True):
         for carry in (False, True):
             for use_value in (False, True):
-                for pair in pairs_16b:
+                for pair in get_pairs_16b():
                     emit_test(instr, pair[0], pair[1], carry, use_value, target)
 
 emit_tail()
