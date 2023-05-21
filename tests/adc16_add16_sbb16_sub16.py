@@ -16,7 +16,7 @@ def emit_tail():
     fh.write('\tmov si,ax\n')
     fh.write('\thlt\n')
 
-def emit_test(instr, v1, v2, carry):
+def emit_test(instr, v1, v2, carry, use_val, target):
     global fh
     global n_tests
 
@@ -36,7 +36,7 @@ def emit_test(instr, v1, v2, carry):
 
     # test itself
 
-    label = f'test_{instr}_{v1:02x}_{v2:02x}_{carry}'
+    label = f't_{instr}_{v1:04x}_{v2:04x}_{carry}_{use_val}_{target}'
 
     fh.write(f'{label}:\n')
 
@@ -45,11 +45,14 @@ def emit_test(instr, v1, v2, carry):
     fh.write(f'\tpush ax\n')
     fh.write(f'\tpopf\n')
 
-    (check_val, flags) = flags_add_sub_cp16(instr >= 2, True if carry > 0 and (instr == 0 or instr == 2) else False, v1, v2)
+    (check_val, flags) = flags_add_sub_cp16(instr >= 2, True if carry and (instr == 0 or instr == 2) else False, v1, v2)
+
+    target_use_name = 'ax' if target else 'dx'
 
     # verify value
-    fh.write(f'\tmov ax,#${v1:02x}\n')
-    fh.write(f'\tmov bx,#${v2:02x}\n')
+    fh.write(f'\tmov {target_use_name},#${v1:02x}\n')
+    if not use_val:
+        fh.write(f'\tmov bx,#${v2:02x}\n')
     fh.write(f'\tmov cx,#${check_val:02x}\n')
     
     if carry:
@@ -58,23 +61,25 @@ def emit_test(instr, v1, v2, carry):
     else:
         fh.write('\tclc\n')
 
+    from_use_name = 'bx' if not use_val else f'#${v2:02x}'
+
     # do test
     if instr == 0:
-        fh.write(f'\tadc ax,bx\n')
+        fh.write(f'\tadc {target_use_name},{from_use_name}\n')
 
     elif instr == 1:
-        fh.write(f'\tadd ax,bx\n')
+        fh.write(f'\tadd {target_use_name},{from_use_name}\n')
 
     elif instr == 2:
-        fh.write(f'\tsbb ax,bx\n')
+        fh.write(f'\tsbb {target_use_name},{from_use_name}\n')
 
     elif instr == 3:
-        fh.write(f'\tsub ax,bx\n')
+        fh.write(f'\tsub {target_use_name},{from_use_name}\n')
 
     # keep flags
     fh.write(f'\tpushf\n')
 
-    fh.write(f'\tcmp ax,cx\n')
+    fh.write(f'\tcmp {target_use_name},cx\n')
     fh.write(f'\tjz ok_{label}\n')
 
     fh.write(f'\thlt\n')
@@ -100,14 +105,16 @@ def emit_test(instr, v1, v2, carry):
         fh = None
 
 for instr in range(0, 4):
-    for carry in range(0, 2):
-        emit_test(instr, 256, 256, carry)
-        emit_test(instr, 255, 256, carry)
-        emit_test(instr, 256, 255, carry)
-        emit_test(instr, 256 + 15, 256 + 15, carry)
-        emit_test(instr, 256 + 15, 256 + 16, carry)
-        emit_test(instr, 256 + 16, 256 + 16, carry)
-        emit_test(instr, 65535, 65535, carry)
+    for target in (False, True):
+        for carry in (False, True):
+            for use_value in (False, True):
+                emit_test(instr, 256, 256, carry, use_value, target)
+                emit_test(instr, 255, 256, carry, use_value, target)
+                emit_test(instr, 256, 255, carry, use_value, target)
+                emit_test(instr, 256 + 15, 256 + 15, carry, use_value, target)
+                emit_test(instr, 256 + 15, 256 + 16, carry, use_value, target)
+                emit_test(instr, 256 + 16, 256 + 16, carry, use_value, target)
+                emit_test(instr, 65535, 65535, carry, use_value, target)
 
 emit_tail()
 fh.close()

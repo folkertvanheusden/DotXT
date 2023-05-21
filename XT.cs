@@ -1357,20 +1357,34 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} {name} AL,${v:X2}");
         }
-        else if (opcode == 0x05)
+        else if (opcode == 0x05 || opcode == 0x15)
         {
             // ADD AX,xxxx
             ushort v = GetPcWord();
+
+            string name = "ADD";
+
+            bool flag_c = GetFlagC();
+            bool use_flag_c = false;
 
             ushort before = GetAX();
 
             int result = before + v;
 
-            SetAddSubFlags(true, before, v, result, false, false);
+            if (opcode == 0x15)
+            {
+                if (flag_c)
+                    result++;
+
+                use_flag_c = true;
+                name = "ADC";
+            }
+
+            SetAddSubFlags(true, before, v, result, false, use_flag_c ? flag_c : false);
 
             SetAX((ushort)result);
 
-            Log.DoLog($"{prefixStr} ADD AX,${v:X4}");
+            Log.DoLog($"{prefixStr} {name} AX,${v:X4}");
         }
         else if (opcode == 0x06)
         {
@@ -1503,6 +1517,21 @@ internal class P8086
             _al = (byte)result;
 
             Log.DoLog($"{prefixStr} SUB ${v:X2}");
+        }
+        else if (opcode == 0x2d)
+        {
+            // SUB AX,iw
+            ushort v = GetPcWord();
+
+            ushort before = GetAX();
+
+            int result = before - v;
+
+            SetAddSubFlags(true, before, v, result, true, false);
+
+            SetAX((ushort)result);
+
+            Log.DoLog($"{prefixStr} SUB ${v:X4}");
         }
         else if (opcode == 0x58)
         {
