@@ -2331,16 +2331,13 @@ internal class P8086
         else if (opcode == 0xf7)
         {
             // MUL and others
-            bool word = (opcode & 1) == 1;
-
             byte o1 = GetPcByte();
 
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
             int reg2 = (o1 >> 3) & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg1, mod, word);
-            (ushort r2, string name2) = GetRegister(reg2, word);
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg1, mod, true);
 
             string use_name1 = "";
             string use_name2 = "";
@@ -2351,7 +2348,17 @@ internal class P8086
 
             int function = (o1 >> 3) & 7;
 
-            if (function == 2)
+            if (function == 0)
+            {
+                // TEST
+                ushort r2 = GetPcWord();
+                use_name2 = $"{r2:X4}";
+
+                result = (ushort)(r1 & r2);
+                SetLogicFuncFlags(true, result);
+                cmd_name = "TEST";
+            }
+            else if (function == 2)
             {
                 // NOT
                 result = (ushort)~r1;
@@ -2368,7 +2375,7 @@ internal class P8086
                 ushort ax = GetAX();
                 int resulti = ax * r1;
 
-                SetMulFlags(word, ax, r1, resulti);
+                SetMulFlags(true, ax, r1, resulti);
 
                 uint dx_ax = (uint)resulti;
                 SetAX((ushort)dx_ax);
@@ -2403,7 +2410,7 @@ internal class P8086
             }
 
             if (put)
-                UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, result);
+                UpdateRegisterMem(reg1, mod, a_valid, seg, addr, true, result);
 
             Log.DoLog($"{prefixStr} {cmd_name} {use_name1},{use_name2}");
         }
