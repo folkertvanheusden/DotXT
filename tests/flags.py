@@ -85,31 +85,31 @@ def flags_cmp16(carry, ax, val):
 
     return flags
 
-def _flags_logic(value: int):
+def _flags_logic(value: int, is16b: bool):
     flag_o = False
     flag_c = False
     flag_z = value == 0
-    flag_s = (value & 0x80) == 0x80
-    flag_p = parity(value)
+    flag_s = (value & 0x8000) == 0x8000 if is16b else (value & 0x80) == 0x80
+    flag_p = parity(value & 0xff)
 
     flags = (1 if flag_c else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
 
     return flags
 
-def flags_or(val1: int, val2: int):
+def flags_or(val1: int, val2: int, is16b: bool):
     result = val1 | val2
 
-    return (result, _flags_logic(result))
+    return (result, _flags_logic(result, is16b))
 
-def flags_and(val1: int, val2: int):
+def flags_and(val1: int, val2: int, is16b: bool):
     result = val1 & val2
 
-    return (result, _flags_logic(result))
+    return (result, _flags_logic(result, is16b))
 
-def flags_xor(val1: int, val2: int):
+def flags_xor(val1: int, val2: int, is16b: bool):
     result = val1 ^ val2
 
-    return (result, _flags_logic(result))
+    return (result, _flags_logic(result, is16b))
 
 def flags_rcl(val: int, count: int, carry: int):
     for i in range(0, count):

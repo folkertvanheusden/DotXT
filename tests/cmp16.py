@@ -110,6 +110,13 @@ for carry in range(0, 2):
     emit_test(256 + 15, 256 + 16, carry)
     emit_test(256 + 16, 256 + 16, carry)
     emit_test(65535, 65535, carry)
+    emit_test(256 + 15, 15, carry)
+    emit_test(256 + 15, 16, carry)
+    emit_test(256 + 16, 16, carry)
+    emit_test(32767, 65535, carry)
+    emit_test(32767, 32767, carry)
+    emit_test(32768, 32767, carry)
+    emit_test(32768, 32768, carry)
 
 emit_tail()
 fh.close()

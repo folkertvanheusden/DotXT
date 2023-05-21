@@ -10,7 +10,8 @@ AS86=/usr/local/bin86/bin/as86
 #python3 cmp16.py $TEMP
 #python3 misc.py $TEMP
 #python3 mov.py $TEMP
-python3 or_and_xor_test.py $TEMP
+#python3 or_and_xor_test.py $TEMP
+python3 or_and_xor_test_16.py $TEMP
 #python3 rcl_rcr_rol_ror_sal_sar.py $TEMP
 
 #LF=logfile.txt

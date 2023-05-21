@@ -25,7 +25,7 @@ for al in range(0, 256):
                         fh = None
 
                     if fh == None:
-                        file_name = f'adc_add_sbb_sub_{n}.asm'
+                        file_name = f'or_xor_and_test_{n}.asm'
 
                         fh = open(p + '/' + file_name, 'w')
 
@@ -60,19 +60,19 @@ for al in range(0, 256):
                     if mode == 0:
                         if instr == 0:
                             fh.write(f'\tor {target_use_name},bl\n')
-                            (check_val, flags) = flags_or(al, val)
+                            (check_val, flags) = flags_or(al, val, True)
 
                         elif instr == 1:
                             fh.write(f'\txor {target_use_name},bl\n')
-                            (check_val, flags) = flags_xor(al, val)
+                            (check_val, flags) = flags_xor(al, val, True)
 
                         elif instr == 2:
                             fh.write(f'\tand {target_use_name},bl\n')
-                            (check_val, flags) = flags_and(al, val)
+                            (check_val, flags) = flags_and(al, val, True)
 
                         elif instr == 3:
                             fh.write(f'\ttest {target_use_name},bl\n')
-                            (dummy, flags) = flags_and(al, val)
+                            (dummy, flags) = flags_and(al, val, True)
                             check_val = al
 
                     elif mode == 1:
@@ -84,37 +84,37 @@ for al in range(0, 256):
 
                         if instr == 0:
                             fh.write(f'\tor {target_use_name},[{label}_field]\n')
-                            (check_val, flags) = flags_or(al, val)
+                            (check_val, flags) = flags_or(al, val, True)
 
                         elif instr == 1:
                             fh.write(f'\txor {target_use_name},[{label}_field]\n')
-                            (check_val, flags) = flags_xor(al, val)
+                            (check_val, flags) = flags_xor(al, val, True)
 
                         elif instr == 2:
                             fh.write(f'\tand {target_use_name},[{label}_field]\n')
-                            (check_val, flags) = flags_and(al, val)
+                            (check_val, flags) = flags_and(al, val, True)
 
                         elif instr == 3:
                             fh.write(f'\ttest {target_use_name},[{label}_field]\n')
-                            (dummy, flags) = flags_and(al, val)
+                            (dummy, flags) = flags_and(al, val, True)
                             check_val = al
 
                     else:
                         if instr == 0:
                             fh.write(f'\tor {target_use_name},#${val:02x}\n')
-                            (check_val, flags) = flags_or(al, val)
+                            (check_val, flags) = flags_or(al, val, True)
 
                         elif instr == 1:
                             fh.write(f'\txor {target_use_name},#${val:02x}\n')
-                            (check_val, flags) = flags_xor(al, val)
+                            (check_val, flags) = flags_xor(al, val, True)
 
                         elif instr == 2:
                             fh.write(f'\tand {target_use_name},#${val:02x}\n')
-                            (check_val, flags) = flags_and(al, val)
+                            (check_val, flags) = flags_and(al, val, True)
 
                         elif instr == 3:
                             fh.write(f'\ttest {target_use_name},#${val:02x}\n')
-                            (dummy, flags) = flags_and(al, val)
+                            (dummy, flags) = flags_and(al, val, True)
                             check_val = al
 
                     fh.write(f'\tmov cl,#${check_val:02x}\n')
