@@ -59,19 +59,19 @@ def emit_test(v1, v2, mode, target, instr):
     if mode == 0:
         if instr == 0:
             fh.write(f'\tor {target_use_name},bx\n')
-            (check_val, flags) = flags_or(v1, v2, False)
+            (check_val, flags) = flags_or(v1, v2, True)
 
         elif instr == 1:
             fh.write(f'\txor {target_use_name},bx\n')
-            (check_val, flags) = flags_xor(v1, v2, False)
+            (check_val, flags) = flags_xor(v1, v2, True)
 
         elif instr == 2:
             fh.write(f'\tand {target_use_name},bx\n')
-            (check_val, flags) = flags_and(v1, v2, False)
+            (check_val, flags) = flags_and(v1, v2, True)
 
         elif instr == 3:
             fh.write(f'\ttest {target_use_name},bx\n')
-            (dummy, flags) = flags_and(v1, v2, False)
+            (dummy, flags) = flags_and(v1, v2, True)
             check_val = v1
 
     elif mode == 1:
@@ -83,37 +83,37 @@ def emit_test(v1, v2, mode, target, instr):
 
         if instr == 0:
             fh.write(f'\tor {target_use_name},[{label}_field]\n')
-            (check_val, flags) = flags_or(v1, v2, False)
+            (check_val, flags) = flags_or(v1, v2, True)
 
         elif instr == 1:
             fh.write(f'\txor {target_use_name},[{label}_field]\n')
-            (check_val, flags) = flags_xor(v1, v2, False)
+            (check_val, flags) = flags_xor(v1, v2, True)
 
         elif instr == 2:
             fh.write(f'\tand {target_use_name},[{label}_field]\n')
-            (check_val, flags) = flags_and(v1, v2, False)
+            (check_val, flags) = flags_and(v1, v2, True)
 
         elif instr == 3:
             fh.write(f'\ttest {target_use_name},[{label}_field]\n')
-            (dummy, flags) = flags_and(v1, v2, False)
+            (dummy, flags) = flags_and(v1, v2, True)
             check_val = v1
 
     else:
         if instr == 0:
             fh.write(f'\tor {target_use_name},#${v2:02x}\n')
-            (check_val, flags) = flags_or(v1, v2, False)
+            (check_val, flags) = flags_or(v1, v2, True)
 
         elif instr == 1:
             fh.write(f'\txor {target_use_name},#${v2:02x}\n')
-            (check_val, flags) = flags_xor(v1, v2, False)
+            (check_val, flags) = flags_xor(v1, v2, True)
 
         elif instr == 2:
             fh.write(f'\tand {target_use_name},#${v2:02x}\n')
-            (check_val, flags) = flags_and(v1, v2, False)
+            (check_val, flags) = flags_and(v1, v2, True)
 
         elif instr == 3:
             fh.write(f'\ttest {target_use_name},#${v2:02x}\n')
-            (dummy, flags) = flags_and(v1, v2, False)
+            (dummy, flags) = flags_and(v1, v2, True)
             check_val = v1
 
     fh.write(f'\tmov cx,#${check_val:02x}\n')

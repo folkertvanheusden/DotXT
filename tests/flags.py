@@ -89,7 +89,7 @@ def _flags_logic(value: int, is16b: bool):
     flag_o = False
     flag_c = False
     flag_z = value == 0
-    flag_s = (value & 0x8000) == 0x8000 if is16b else (value & 0x80) == 0x80
+    flag_s = ((value & 0x8000) == 0x8000) if is16b else ((value & 0x80) == 0x80)
     flag_p = parity(value & 0xff)
 
     flags = (1 if flag_c else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)

@@ -1845,22 +1845,33 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} {iname} {name1},${r2:X2}");
         }
-        else if (opcode == 0x84)
+        else if (opcode == 0x84 || opcode == 0x85)
         {
             // TEST ...,...
+            bool word = (opcode & 1) == 1;
             byte o1 = GetPcByte();
 
             int mod = o1 >> 6;
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, false);
-            (ushort r2, string name2) = GetRegister(reg1, false);
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, word);
+            (ushort r2, string name2) = GetRegister(reg1, word);
 
-            byte result = (byte)(r1 & r2);
+            if (word)
+            {
+                ushort result = (ushort)(r1 & r2);
+
+                SetLogicFuncFlags(true, result);
+            }
+            else
+            {
+                byte result = (byte)(r1 & r2);
+
+                SetLogicFuncFlags(false, result);
+            }
 
             SetFlagC(false);
-            SetLogicFuncFlags(false, result);
 
             Log.DoLog($"{prefixStr} TEST {name1},{name2}");
         }
@@ -2468,12 +2479,12 @@ internal class P8086
         }
         else if (opcode == 0xa9)
         {
-            // TEST AL,..
+            // TEST AX,..
             ushort v = GetPcWord();
 
-            ushort result = (byte)(GetAX() & v);
+            ushort result = (ushort)(GetAX() & v);
 
-            SetLogicFuncFlags(false, result);
+            SetLogicFuncFlags(true, result);
 
             Log.DoLog($"{prefixStr} TEST AX,${v:X4}");
         }
