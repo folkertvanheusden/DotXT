@@ -50,10 +50,10 @@ def emit_test(instr, v1, v2, carry, use_val, target):
     target_use_name = 'ax' if target else 'dx'
 
     # verify value
-    fh.write(f'\tmov {target_use_name},#${v1:02x}\n')
+    fh.write(f'\tmov {target_use_name},#${v1:04x}\n')
     if not use_val:
-        fh.write(f'\tmov bx,#${v2:02x}\n')
-    fh.write(f'\tmov cx,#${check_val:02x}\n')
+        fh.write(f'\tmov bx,#${v2:04x}\n')
+    fh.write(f'\tmov cx,#${check_val:04x}\n')
     
     if carry:
         fh.write('\tstc\n')
@@ -61,7 +61,7 @@ def emit_test(instr, v1, v2, carry, use_val, target):
     else:
         fh.write('\tclc\n')
 
-    from_use_name = 'bx' if not use_val else f'#${v2:02x}'
+    from_use_name = 'bx' if not use_val else f'#${v2:04x}'
 
     # do test
     if instr == 0:
@@ -114,7 +114,14 @@ for instr in range(0, 4):
                 emit_test(instr, 256 + 15, 256 + 15, carry, use_value, target)
                 emit_test(instr, 256 + 15, 256 + 16, carry, use_value, target)
                 emit_test(instr, 256 + 16, 256 + 16, carry, use_value, target)
+                emit_test(instr, 256 + 15, 15, carry, use_value, target)
+                emit_test(instr, 256 + 15, 16, carry, use_value, target)
+                emit_test(instr, 256 + 16, 16, carry, use_value, target)
                 emit_test(instr, 65535, 65535, carry, use_value, target)
+                emit_test(instr, 32767, 65535, carry, use_value, target)
+                emit_test(instr, 32767, 32767, carry, use_value, target)
+                emit_test(instr, 32768, 32767, carry, use_value, target)
+                emit_test(instr, 32768, 32768, carry, use_value, target)
 
 emit_tail()
 fh.close()
