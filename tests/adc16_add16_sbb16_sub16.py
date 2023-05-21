@@ -1,6 +1,7 @@
 #! /usr/bin/python3
 
 from flags import parity, flags_add_sub_cp16
+from values_16b import pairs_16b
 import sys
 
 p = sys.argv[1]
@@ -108,20 +109,8 @@ for instr in range(0, 4):
     for target in (False, True):
         for carry in (False, True):
             for use_value in (False, True):
-                emit_test(instr, 256, 256, carry, use_value, target)
-                emit_test(instr, 255, 256, carry, use_value, target)
-                emit_test(instr, 256, 255, carry, use_value, target)
-                emit_test(instr, 256 + 15, 256 + 15, carry, use_value, target)
-                emit_test(instr, 256 + 15, 256 + 16, carry, use_value, target)
-                emit_test(instr, 256 + 16, 256 + 16, carry, use_value, target)
-                emit_test(instr, 256 + 15, 15, carry, use_value, target)
-                emit_test(instr, 256 + 15, 16, carry, use_value, target)
-                emit_test(instr, 256 + 16, 16, carry, use_value, target)
-                emit_test(instr, 65535, 65535, carry, use_value, target)
-                emit_test(instr, 32767, 65535, carry, use_value, target)
-                emit_test(instr, 32767, 32767, carry, use_value, target)
-                emit_test(instr, 32768, 32767, carry, use_value, target)
-                emit_test(instr, 32768, 32768, carry, use_value, target)
+                for pair in pairs_16b:
+                    emit_test(instr, pair[0], pair[1], carry, use_value, target)
 
 emit_tail()
 fh.close()

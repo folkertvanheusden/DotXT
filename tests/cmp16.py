@@ -1,6 +1,7 @@
 #! /usr/bin/python3
 
 from flags import parity, flags_cmp16
+from values_16b import pairs_16b
 import sys
 
 p = sys.argv[1]
@@ -102,21 +103,9 @@ def emit_test(v1, v2, carry):
             fh.close()
             fh = None
 
-for carry in range(0, 2):
-    emit_test(256, 256, carry)
-    emit_test(255, 256, carry)
-    emit_test(256, 255, carry)
-    emit_test(256 + 15, 256 + 15, carry)
-    emit_test(256 + 15, 256 + 16, carry)
-    emit_test(256 + 16, 256 + 16, carry)
-    emit_test(65535, 65535, carry)
-    emit_test(256 + 15, 15, carry)
-    emit_test(256 + 15, 16, carry)
-    emit_test(256 + 16, 16, carry)
-    emit_test(32767, 65535, carry)
-    emit_test(32767, 32767, carry)
-    emit_test(32768, 32767, carry)
-    emit_test(32768, 32768, carry)
+for carry in (False, True):
+    for pair in pairs_16b:
+        emit_test(pair[0], pair[1], carry)
 
 emit_tail()
 fh.close()
