@@ -37,7 +37,7 @@ def emit_test(instr, v1, v2, carry, use_val, target):
 
     # test itself
 
-    label = f't_{instr}_{v1:04x}_{v2:04x}_{carry}_{use_val}_{target}'
+    label = f't_{n_tests}_{instr}_{v1:04x}_{v2:04x}_{carry}_{use_val}_{target}'
 
     fh.write(f'{label}:\n')
 
