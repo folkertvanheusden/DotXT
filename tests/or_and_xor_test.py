@@ -5,117 +5,143 @@ import sys
 
 p = sys.argv[1]
 
-prev_file_name = None
+n = 0
 fh = None
 
 for al in range(0, 256):
-    for mode in range(0, 2):
-        file_name = f'or_xor_and_test{al:02x}_{mode}.asm'
+    for mode in range(0, 3):
+        for target in (False, True):
+            for val in range(0, 256):
+                for instr in range(0, 4):
+                    if (n % 512) == 0:
+                        if fh != None:
+                            # to let emulator know all was fine
+                            fh.write('\tmov ax,#$a5ee\n')
+                            fh.write('\tmov si,ax\n')
+                            fh.write('\thlt\n')
 
-        if file_name != prev_file_name:
+                            fh.close()
 
-            prev_file_name = file_name
+                        fh = None
 
-            if fh != None:
-                # to let emulator know all was fine
-                fh.write('\tmov ax,#$a5ee\n')
-                fh.write('\tmov si,ax\n')
-                fh.write('\thlt\n')
+                    if fh == None:
+                        file_name = f'adc_add_sbb_sub_{n}.asm'
 
-                fh.close()
+                        fh = open(p + '/' + file_name, 'w')
 
-            fh = open(p + '/' + file_name, 'w')
+                        fh.write('\torg $800\n')
+                        fh.write('\n')
 
-            fh.write('\torg $800\n')
-            fh.write('\n')
+                        fh.write('\txor ax,ax\n')
+                        fh.write('\tmov si,ax\n')
+                        fh.write('\n')
+                        fh.write('\tmov ss,ax\n')  # set stack segment to 0
+                        fh.write('\tmov ax,#$800\n')  # set stack pointer
+                        fh.write('\tmov sp,ax\n')  # set stack pointer
 
-            fh.write('\txor ax,ax\n')
-            fh.write('\tmov si,ax\n')
-            fh.write('\n')
-            fh.write('\tmov ss,ax\n')  # set stack segment to 0
-            fh.write('\tmov ax,#$800\n')  # set stack pointer
-            fh.write('\tmov sp,ax\n')  # set stack pointer
+                    label = f'test_{al:x}_{val:x}_{instr}_{n}'
 
-        for val in range(0, 256):
-            for instr in range(0, 4):
-                label = f'test_{al:02x}_{val:02x}_{instr}'
+                    fh.write(f'{label}:\n')
 
-                fh.write(f'{label}:\n')
+                    # reset flags
+                    fh.write(f'\txor ax,ax\n')
+                    fh.write(f'\tpush ax\n')
+                    fh.write(f'\tpopf\n')
 
-                # reset flags
-                fh.write(f'\txor ax,ax\n')
-                fh.write(f'\tpush ax\n')
-                fh.write(f'\tpopf\n')
+                    target_use_name = 'al' if target else 'dl'
 
-                # verify value
-                fh.write(f'\tmov al,#${al:02x}\n')
-                fh.write(f'\tmov bl,#${val:02x}\n')
-                
-                # do test
-                if mode == 0:
-                    if instr == 0:
-                        fh.write(f'\tor al,bl\n')
-                        (check_val, flags) = flags_or(al, val)
+                    # verify value
+                    fh.write(f'\tmov {target_use_name},#${al:02x}\n')
 
-                    elif instr == 1:
-                        fh.write(f'\txor al,bl\n')
-                        (check_val, flags) = flags_xor(al, val)
+                    if mode != 2:
+                        fh.write(f'\tmov bl,#${val:02x}\n')
+                    
+                    # do test
+                    if mode == 0:
+                        if instr == 0:
+                            fh.write(f'\tor {target_use_name},bl\n')
+                            (check_val, flags) = flags_or(al, val)
 
-                    elif instr == 2:
-                        fh.write(f'\tand al,bl\n')
-                        (check_val, flags) = flags_and(al, val)
+                        elif instr == 1:
+                            fh.write(f'\txor {target_use_name},bl\n')
+                            (check_val, flags) = flags_xor(al, val)
 
-                    elif instr == 3:
-                        fh.write(f'\ttest al,bl\n')
-                        (dummy, flags) = flags_and(al, val)
-                        check_val = al
+                        elif instr == 2:
+                            fh.write(f'\tand {target_use_name},bl\n')
+                            (check_val, flags) = flags_and(al, val)
 
-                else:
-                    fh.write(f'\tjmp skip_{label}_field\n')
-                    fh.write(f'{label}_field:\n')
-                    fh.write(f'\tdb 0\n')
-                    fh.write(f'skip_{label}_field:\n')
-                    fh.write(f'\tmov [{label}_field],bl\n')
+                        elif instr == 3:
+                            fh.write(f'\ttest {target_use_name},bl\n')
+                            (dummy, flags) = flags_and(al, val)
+                            check_val = al
 
-                    if instr == 0:
-                        fh.write(f'\tor al,[{label}_field]\n')
-                        (check_val, flags) = flags_or(al, val)
+                    elif mode == 1:
+                        fh.write(f'\tjmp skip_{label}_field\n')
+                        fh.write(f'{label}_field:\n')
+                        fh.write(f'\tdb 0\n')
+                        fh.write(f'skip_{label}_field:\n')
+                        fh.write(f'\tmov [{label}_field],bl\n')
 
-                    elif instr == 1:
-                        fh.write(f'\txor al,[{label}_field]\n')
-                        (check_val, flags) = flags_xor(al, val)
+                        if instr == 0:
+                            fh.write(f'\tor {target_use_name},[{label}_field]\n')
+                            (check_val, flags) = flags_or(al, val)
 
-                    elif instr == 2:
-                        fh.write(f'\tand al,[{label}_field]\n')
-                        (check_val, flags) = flags_and(al, val)
+                        elif instr == 1:
+                            fh.write(f'\txor {target_use_name},[{label}_field]\n')
+                            (check_val, flags) = flags_xor(al, val)
 
-                    elif instr == 3:
-                        fh.write(f'\ttest al,[{label}_field]\n')
-                        (dummy, flags) = flags_and(al, val)
-                        check_val = al
+                        elif instr == 2:
+                            fh.write(f'\tand {target_use_name},[{label}_field]\n')
+                            (check_val, flags) = flags_and(al, val)
 
-                fh.write(f'\tmov cl,#${check_val:02x}\n')
+                        elif instr == 3:
+                            fh.write(f'\ttest {target_use_name},[{label}_field]\n')
+                            (dummy, flags) = flags_and(al, val)
+                            check_val = al
 
-                # keep flags
-                fh.write(f'\tpushf\n')
+                    else:
+                        if instr == 0:
+                            fh.write(f'\tor {target_use_name},#${val:02x}\n')
+                            (check_val, flags) = flags_or(al, val)
 
-                fh.write(f'\tcmp al,cl\n')
-                fh.write(f'\tjz ok_{label}\n')
+                        elif instr == 1:
+                            fh.write(f'\txor {target_use_name},#${val:02x}\n')
+                            (check_val, flags) = flags_xor(al, val)
 
-                fh.write(f'\thlt\n')
+                        elif instr == 2:
+                            fh.write(f'\tand {target_use_name},#${val:02x}\n')
+                            (check_val, flags) = flags_and(al, val)
 
-                fh.write(f'ok_{label}:\n')
+                        elif instr == 3:
+                            fh.write(f'\ttest {target_use_name},#${val:02x}\n')
+                            (dummy, flags) = flags_and(al, val)
+                            check_val = al
 
-                # verify flags
-                fh.write(f'\tpop ax\n')
-                fh.write(f'\tcmp ax,#${flags:04x}\n')
-                fh.write(f'\tjz next_{label}\n')
-                fh.write(f'\thlt\n')
+                    fh.write(f'\tmov cl,#${check_val:02x}\n')
 
-                fh.write(f'next_{label}:\n')
-                fh.write('\n')
+                    # keep flags
+                    fh.write(f'\tpushf\n')
 
-fh.write('\tmov ax,#$a5ee\n')
-fh.write('\tmov si,ax\n')
-fh.write('\thlt\n')
-fh.close()
+                    fh.write(f'\tcmp {target_use_name},cl\n')
+                    fh.write(f'\tjz ok_{label}\n')
+
+                    fh.write(f'\thlt\n')
+
+                    fh.write(f'ok_{label}:\n')
+
+                    # verify flags
+                    fh.write(f'\tpop ax\n')
+                    fh.write(f'\tcmp ax,#${flags:04x}\n')
+                    fh.write(f'\tjz next_{label}\n')
+                    fh.write(f'\thlt\n')
+
+                    fh.write(f'next_{label}:\n')
+                    fh.write('\n')
+
+                    n += 1
+
+if fh != None:
+    fh.write('\tmov ax,#$a5ee\n')
+    fh.write('\tmov si,ax\n')
+    fh.write('\thlt\n')
+    fh.close()

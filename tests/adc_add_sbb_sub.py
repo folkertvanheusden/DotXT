@@ -5,7 +5,6 @@ import sys
 
 p = sys.argv[1]
 
-prev_file_name = None
 fh = None
 
 n = 0
