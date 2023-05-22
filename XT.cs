@@ -2788,7 +2788,6 @@ internal class P8086
         }
         else if ((opcode & 0xf8) == 0xd0)
         {
-            // RCR
             bool word = (opcode & 1) == 1;
             byte o1 = GetPcByte();
 
@@ -2806,10 +2805,13 @@ internal class P8086
                 countName = "CL";
             }
 
-            bool count_1_of = opcode is (0xd0 or 0xd1);
+            // which one is correct? dosbox and cpu_test from 'riapyx' use the 2nd definition
+            //bool count_1_of = opcode is (0xd0 or 0xd1);
+            bool count_1_of = count == 1;
 
             count &= 31;  // masked to 5 bits
-            count %= (word ? 17 : 9);  // from documentation ( https://www.felixcloutier.com/x86/rcl:rcr:rol:ror )
+            // only since 286?
+            // count %= (word ? 17 : 9);  // from documentation ( https://www.felixcloutier.com/x86/rcl:rcr:rol:ror )
 
             bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
@@ -2906,7 +2908,7 @@ internal class P8086
             {
                 ushort prev_v1 = v1;
 
-                // SAL
+                // SAL/SHL
                 for (int i = 0; i < count; i++)
                 {
                     bool newCarry = (v1 & check_bit) == check_bit;
@@ -2918,14 +2920,19 @@ internal class P8086
 
                 if (count_1_of)
                 {
-                    bool b7 = (word ? prev_v1 & 0x8000 : prev_v1 & 0x80) != 0;
-                    bool b6 = (word ? prev_v1 & 0x4000 : prev_v1 & 0x40) != 0;
+                    bool b7 = (prev_v1 & check_bit) != 0;
+                    bool b6 = (prev_v1 & check_bit2) != 0;
+
+                    Log.DoLog($"b6: {b6}, b7: {b7}: flagO: {b7 != b6}");
 
                     SetFlagO(b7 != b6);
                 }
+                else
+                {
+                    SetFlagO(false);  // undefined!
+                }
 
-                if (count >= 1)
-                    set_flags = true;
+                set_flags = count != 0;
 
                 Log.DoLog($"{prefixStr} SAL {vName},{countName}");
             }
@@ -2944,16 +2951,22 @@ internal class P8086
                 if (count_1_of)
                     SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
 
+                set_flags = count != 0;
+
                 Log.DoLog($"{prefixStr} SHR {vName},{countName}");
             }
             else if (mode == 7)
             {
                 // SAR
+                ushort mask = (ushort)((v1 & check_bit) != 0 ? check_bit : 0);
+
                 for (int i = 0; i < count; i++)
                 {
                     bool newCarry = (v1 & 0x01) == 0x01;
 
                     v1 >>= 1;
+
+                    v1 |= mask;
 
                     SetFlagC(newCarry);
                 }
