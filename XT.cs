@@ -3206,7 +3206,7 @@ internal class P8086
                 SetFlagA((v & 15) == 0);
 
                 SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
-                SetFlagZ(v == 0);
+                SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
                 SetFlagP((byte)v);
 
                 Log.DoLog($"{prefixStr} INC {name}");
@@ -3220,7 +3220,7 @@ internal class P8086
                 SetFlagA((v & 15) == 15);
 
                 SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
-                SetFlagZ(v == 0);
+                SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
                 SetFlagP((byte)v);
 
                 Log.DoLog($"{prefixStr} DEC {name}");
