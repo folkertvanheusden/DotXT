@@ -2409,6 +2409,8 @@ internal class P8086
                 cmd_name = "NEG";
 
                 use_name1 = name1;
+
+                SetAddSubFlags(true, 0, r1, -r1, true, false);
             }
             else if (function == 4)
             {
