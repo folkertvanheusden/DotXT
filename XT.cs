@@ -2297,6 +2297,9 @@ internal class P8086
 
                 ushort result = (ushort)(r1 & r2);
                 SetLogicFuncFlags(word, result);
+
+                SetFlagC(false);
+
                 cmd_name = "TEST";
             }
             else if (function == 2)
@@ -2366,6 +2369,9 @@ internal class P8086
 
                 result = (ushort)(r1 & r2);
                 SetLogicFuncFlags(true, result);
+
+                SetFlagC(false);
+
                 cmd_name = "TEST";
             }
             else if (function == 2)
@@ -2492,6 +2498,8 @@ internal class P8086
 
             SetLogicFuncFlags(false, result);
 
+            SetFlagC(false);
+
             Log.DoLog($"{prefixStr} TEST AL,${v:X2}");
         }
         else if (opcode == 0xa9)
@@ -2502,6 +2510,8 @@ internal class P8086
             ushort result = (ushort)(GetAX() & v);
 
             SetLogicFuncFlags(true, result);
+
+            SetFlagC(false);
 
             Log.DoLog($"{prefixStr} TEST AX,${v:X4}");
         }
