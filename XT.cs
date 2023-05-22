@@ -632,9 +632,11 @@ internal class P8086
         uint a1 = (uint)(((segment << 4) + offset) & MemMask);
         uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
 
-        Log.DoLog($"ReadMemWord {segment:X4}:{offset:X4}: {a1:X6}/{a2:X6}");
+        ushort v = (ushort)(_b.ReadByte(a1) | (_b.ReadByte(a2) << 8));
 
-        return (ushort)(_b.ReadByte(a1) | (_b.ReadByte(a2) << 8));
+        Log.DoLog($"ReadMemWord {segment:X4}:{offset:X4}: {a1:X6}/{a2:X6}, value: {v:X4}");
+
+        return v;
     } 
 
     private (ushort, string) GetRegister(int reg, bool w)
@@ -2690,7 +2692,7 @@ internal class P8086
 
             if (word)
             {
-                ushort v = ReadMemWord(_cs, (ushort)(_ip + 1));
+                ushort v = ReadMemWord(_cs, (ushort)(_ip + 2));
 
                 string temp = PutRegisterMem(mreg, mod, word, v);
 
@@ -2700,7 +2702,7 @@ internal class P8086
             }
             else
             {
-                byte v = ReadMemByte(_cs, (ushort)(_ip + 1));
+                byte v = ReadMemByte(_cs, (ushort)(_ip + 2));  // TODO test this variant
 
                 string temp = PutRegisterMem(mreg, mod, word, v);
 
