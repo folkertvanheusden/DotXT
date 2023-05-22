@@ -17,7 +17,7 @@ def emit_tail():
     fh.write('\tmov si,ax\n')
     fh.write('\thlt\n')
 
-def emit_test(instr, v1, v2, carry, use_val, target):
+def emit_test(instr, v1, v2, carry, from_mode, target):
     global fh
     global n_tests
 
@@ -37,7 +37,7 @@ def emit_test(instr, v1, v2, carry, use_val, target):
 
     # test itself
 
-    label = f't_{n_tests}_{instr}_{v1:04x}_{v2:04x}_{carry}_{use_val}_{target}'
+    label = f't_{n_tests}_{instr}_{v1:04x}_{v2:04x}_{carry}_{from_mode}_{target}'
 
     fh.write(f'{label}:\n')
 
@@ -52,7 +52,7 @@ def emit_test(instr, v1, v2, carry, use_val, target):
 
     # verify value
     fh.write(f'\tmov {target_use_name},#${v1:04x}\n')
-    if not use_val:
+    if from_mode != 1:
         fh.write(f'\tmov bx,#${v2:04x}\n')
     fh.write(f'\tmov cx,#${check_val:04x}\n')
     
@@ -62,7 +62,20 @@ def emit_test(instr, v1, v2, carry, use_val, target):
     else:
         fh.write('\tclc\n')
 
-    from_use_name = 'bx' if not use_val else f'#${v2:04x}'
+    if from_mode == 0:
+        from_use_name = 'bx'
+
+    elif from_mode == 1:
+        from_use_name = f'#${v2:04x}'
+
+    else:
+        fh.write(f'\tjmp skip_{label}_field\n')
+        fh.write(f'{label}_field:\n')
+        fh.write(f'\tdw 0\n')
+        fh.write(f'skip_{label}_field:\n')
+        fh.write(f'\tmov [{label}_field],bx\n')
+
+        from_use_name = f'[{label}_field]'
 
     # do test
     if instr == 0:
@@ -108,9 +121,9 @@ def emit_test(instr, v1, v2, carry, use_val, target):
 for instr in range(0, 4):
     for target in (False, True):
         for carry in (False, True):
-            for use_value in (False, True):
+            for from_mode in (0, 1, 2):
                 for pair in get_pairs_16b():
-                    emit_test(instr, pair[0], pair[1], carry, use_value, target)
+                    emit_test(instr, pair[0], pair[1], carry, from_mode, target)
 
 emit_tail()
 fh.close()
