@@ -1933,6 +1933,16 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} CBW");
         }
+        else if (opcode == 0x99)
+        {
+            // CWD
+            if ((_ah & 32768) == 32768)
+                SetDX(0xffff);
+            else
+                SetDX(0);
+
+            Log.DoLog($"{prefixStr} CDW");
+        }
         else if (opcode == 0x9c)
         {
             // PUSHF
@@ -2386,6 +2396,17 @@ internal class P8086
                 put = true;
 
                 cmd_name = "NOT";
+
+                use_name1 = name1;
+            }
+            else if (function == 3)
+            {
+                // NEG
+                result = (ushort)-r1;
+
+                put = true;
+
+                cmd_name = "NEG";
 
                 use_name1 = name1;
             }
