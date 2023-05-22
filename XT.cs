@@ -1814,6 +1814,7 @@ internal class P8086
                 result = r1 & r2;
                 is_logic = true;
                 iname = "AND";
+                SetFlagC(false);
             }
             else if (function == 5)
             {
@@ -2171,6 +2172,7 @@ internal class P8086
             {
                 result = (ushort)(r2 & r1);
                 name = "AND";
+                SetFlagC(false);
             }
             else if (function == 3)
             {
@@ -2228,6 +2230,8 @@ internal class P8086
                     _ah &= bHigh;
 
                 name = "AND";
+
+                SetFlagC(false);
             }
             else if (function == 3)
             {
