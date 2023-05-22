@@ -2746,6 +2746,8 @@ internal class P8086
                 countName = "CL";
             }
 
+            bool count_1_of = opcode is (0xd0 or 0xd1);
+
             count &= 31;  // masked to 5 bits
             count %= (word ? 17 : 9);  // from documentation ( https://www.felixcloutier.com/x86/rcl:rcr:rol:ror )
 
@@ -2755,12 +2757,15 @@ internal class P8086
 
             int mode = (o1 >> 3) & 7;
 
+            ushort check_bit = (ushort)(word ? 32768 : 128);
+            ushort check_bit2 = (ushort)(word ? 16384 : 64);
+
             if (mode == 0)
             {
                 // ROL
                 for (int i = 0; i < count; i++)
                 {
-                    bool b7 = (v1 & 128) == 128;
+                    bool b7 = (v1 & check_bit) == check_bit;
 
                     SetFlagC(b7);
 
@@ -2770,8 +2775,8 @@ internal class P8086
                         v1 |= 1;
                 }
 
-                if (count == 1)
-                    SetFlagO(GetFlagC() ^ ((v1 & 128) == 128));
+                if (count_1_of)
+                    SetFlagO(GetFlagC() ^ ((v1 & check_bit) == check_bit));
 
                 Log.DoLog($"{prefixStr} ROL {vName},{countName}");
             }
@@ -2787,11 +2792,11 @@ internal class P8086
                     v1 >>= 1;
 
                     if (b0)
-                        v1 |= 128;
+                        v1 |= check_bit;
                 }
 
-                if (count == 1)
-                    SetFlagO(((v1 & 128) == 128) ^ ((v1 & 64) == 64));
+                if (count_1_of)
+                    SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
 
                 Log.DoLog($"{prefixStr} ROR {vName},{countName}");
             }
@@ -2800,7 +2805,7 @@ internal class P8086
                 // RCL
                 for (int i = 0; i < count; i++)
                 {
-                    bool newCarry = (v1 & 128) == 128;
+                    bool newCarry = (v1 & check_bit) == check_bit;
                     v1 <<= 1;
 
                     bool oldCarry = GetFlagC();
@@ -2811,8 +2816,8 @@ internal class P8086
                     SetFlagC(newCarry);
                 }
 
-                if (count == 1)
-                    SetFlagO(GetFlagC() ^ ((v1 & 128) == 128));
+                if (count_1_of)
+                    SetFlagO(GetFlagC() ^ ((v1 & check_bit) == check_bit));
 
                 Log.DoLog($"{prefixStr} RCL {vName},{countName}");
             }
@@ -2832,8 +2837,8 @@ internal class P8086
                     SetFlagC(newCarry);
                 }
 
-                if (count == 1)
-                    SetFlagO(((v1 & 128) == 128) ^ ((v1 & 64) == 64));
+                if (count_1_of)
+                    SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
 
                 Log.DoLog($"{prefixStr} RCR {vName},{countName}");
             }
@@ -2844,14 +2849,14 @@ internal class P8086
                 // SAL
                 for (int i = 0; i < count; i++)
                 {
-                    bool newCarry = (v1 & 0x80) == 0x80;
+                    bool newCarry = (v1 & check_bit) == check_bit;
 
                     v1 <<= 1;
 
                     SetFlagC(newCarry);
                 }
 
-                if (count == 1)
+                if (count_1_of)
                 {
                     bool b7 = (word ? prev_v1 & 0x8000 : prev_v1 & 0x80) != 0;
                     bool b6 = (word ? prev_v1 & 0x4000 : prev_v1 & 0x40) != 0;
@@ -2876,8 +2881,8 @@ internal class P8086
                     SetFlagC(newCarry);
                 }
 
-                if (count == 1)
-                    SetFlagO(((v1 & 128) == 128) ^ ((v1 & 64) == 64));
+                if (count_1_of)
+                    SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
 
                 Log.DoLog($"{prefixStr} SHR {vName},{countName}");
             }

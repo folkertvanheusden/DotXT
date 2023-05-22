@@ -111,111 +111,128 @@ def flags_xor(val1: int, val2: int, is16b: bool):
 
     return (result, _flags_logic(result, is16b))
 
-def flags_rcl(val: int, count: int, carry: int):
+def flags_rcl(val: int, count: int, carry: int, width: int, set_flag_o: bool):
+    check_bit = 32768 if width == 16 else 128
+
     for i in range(0, count):
-        b7 = True if val & 128 else False
+        b7 = True if val & check_bit else False
         val <<= 1
         val |= carry
         carry = b7
-        val &= 0xff
+        val &= 0xff if width == 8 else 65535
 
     flag_o = False
     mask = ~0
 
-    if count == 1:
-        flag_o = carry ^ (True if val & 128 else False)
+    if set_flag_o:
+        flag_o = carry ^ (True if val & check_bit else False)
     else:
         mask = ~2048
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
-    return (val, flags, mask)
+    return (val, flags, mask & 0xffff)
 
-def flags_rcr(val: int, count: int, carry: int):
+def flags_rcr(val: int, count: int, carry: int, width: int, set_flag_o: bool):
+    check_bit = 32768 if width == 16 else 128
+
     for i in range(0, count):
         b0 = val & 1
         val >>= 1
-        val |= 128 if carry else 0
+        val |= check_bit if carry else 0
         carry = b0
-        val &= 0xff
+        val &= 0xff if width == 8 else 65535
 
     flag_o = False
     mask = ~0
 
-    if count == 1:
-        flag_o = (True if val & 64 else 0) ^ (True if val & 128 else False)
+    if set_flag_o:
+        check_bit2 = 16384 if width == 16 else 64
+        flag_o = (True if val & check_bit2 else 0) ^ (True if val & check_bit else False)
+
     else:
         mask = ~2048
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
-    return (val, flags, mask)
+    return (val, flags, mask & 0xffff)
 
-def flags_rol(val: int, count: int, carry: int):
+def flags_rol(val: int, count: int, carry: int, width: int, set_flag_o: bool):
+    check_bit = 32768 if width == 16 else 128
+
     for i in range(0, count):
-        carry = True if val & 128 else False
+        carry = True if val & check_bit else False
         val <<= 1
         val |= carry
-        val &= 0xff
+        val &= 0xff if width == 8 else 65535
 
     flag_o = False
     mask = ~0
 
-    if count == 1:
-        flag_o = carry ^ (True if val & 128 else False)
+    if set_flag_o:
+        flag_o = carry ^ (True if val & check_bit else False)
     else:
         mask = ~2048
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
-    return (val, flags, mask)
+    return (val, flags, mask & 0xffff)
 
-def flags_ror(val: int, count: int, carry: int):
+def flags_ror(val: int, count: int, carry: int, width: int, set_flag_o: bool):
+    check_bit = 32768 if width == 16 else 128
+
     for i in range(0, count):
         carry = val & 1
         val >>= 1
-        val |= 128 if carry else 0
-        val &= 0xff
+        val |= check_bit if carry else 0
+        val &= 0xff if width == 8 else 65535
 
     flag_o = False
     mask = ~0
 
-    if count == 1:
-        flag_o = (True if val & 64 else 0) ^ (True if val & 128 else False)
+    if set_flag_o:
+        check_bit2 = 16384 if width == 16 else 64
+        flag_o = (True if val & check_bit2 else 0) ^ (True if val & check_bit else False)
+
     else:
         mask = ~2048
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
-    return (val, flags, mask)
+    return (val, flags, mask & 0xffff)
 
-def flags_sal(val: int, count: int, carry: int):
+def flags_sal(val: int, count: int, carry: int, width: int, set_flag_o: bool):
+    check_bit = 32768 if width == 16 else 128
+
     before = val
 
     for i in range(0, count):
-        carry = True if val & 128 else False
+        carry = True if val & check_bit else False
         val <<= 1
-        val &= 0xff
+        val &= 0xff if width == 8 else 65535
 
     flag_s = flag_z = flag_p = flag_o = False
     mask = ~0
 
-    if count == 1:
-        flag_o = (True if before & 64 else 0) ^ (True if before & 128 else False)
+    if set_flag_o:
+        check_bit2 = 16384 if width == 16 else 64
+        flag_o = (True if before & check_bit2 else 0) ^ (True if before & check_bit else False)
 
     else:
         mask = ~(2048 | 16)
 
     if count >= 1:
-        flag_s = True if val & 128 else 0
+        flag_s = True if val & check_bit else 0
         flag_z = val == 0
-        flag_p = parity(val)
+        flag_p = parity(val & 255)
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
 
-    return (val, flags, mask)
+    return (val, flags, mask & 0xffff)
 
-def flags_sar(val: int, count: int, carry: int):
+def flags_sar(val: int, count: int, carry: int, width: int, set_flag_o: bool):
+    check_bit = 32768 if width == 16 else 128
+
     for i in range(0, count):
         carry = True if val & 1 else False
         val >>= 1
@@ -224,10 +241,10 @@ def flags_sar(val: int, count: int, carry: int):
     mask = ~(2048 | 16)
 
     if count >= 1:
-        flag_s = True if val & 128 else 0
+        flag_s = True if val & check_bit else 0
         flag_z = val == 0
-        flag_p = parity(val)
+        flag_p = parity(val & 255)
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
 
-    return (val, flags, mask)
+    return (val, flags, mask & 0xffff)
