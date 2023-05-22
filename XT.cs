@@ -2323,6 +2323,18 @@ internal class P8086
 
                 cmd_name = "NOT";
             }
+            else if (function == 3)
+            {
+                // NEG
+                int result = (ushort)-r1;
+
+                cmd_name = "NEG";
+
+                SetAddSubFlags(false, 0, r1, -r1, true, false);
+                SetFlagC(r1 != 0);
+
+                UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)result);
+            }
             else if (function == 4)
             {
                 // MUL
@@ -2411,6 +2423,7 @@ internal class P8086
                 use_name1 = name1;
 
                 SetAddSubFlags(true, 0, r1, -r1, true, false);
+                SetFlagC(r1 != 0);
             }
             else if (function == 4)
             {
