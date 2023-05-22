@@ -3205,6 +3205,10 @@ internal class P8086
                 SetFlagO(word ? v == 0x8000 : v == 0x80);
                 SetFlagA((v & 15) == 0);
 
+                SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
+                SetFlagZ(v == 0);
+                SetFlagP((byte)v);
+
                 Log.DoLog($"{prefixStr} INC {name}");
             }
             else if (function == 1)
@@ -3214,6 +3218,10 @@ internal class P8086
 
                 SetFlagO(word ? v == 0x7fff : v == 0x7f);
                 SetFlagA((v & 15) == 15);
+
+                SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
+                SetFlagZ(v == 0);
+                SetFlagP((byte)v);
 
                 Log.DoLog($"{prefixStr} DEC {name}");
             }
@@ -3243,11 +3251,6 @@ internal class P8086
 
             if (!word)
                 v &= 0xff;
-
-            SetFlagS((v & 0x8000) == 0x8000);
-            SetFlagZ(v == 0);
-            SetFlagA((v & 15) == 0);
-            SetFlagP((byte)v);
 
             UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, v);
         }
