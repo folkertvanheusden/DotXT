@@ -2631,12 +2631,18 @@ internal class P8086
                 v++;
 
             if (isDec)
+            {
                 SetFlagO(v == 0x7fff);
+                SetFlagA((v & 15) == 15);
+            }
             else
+            {
                 SetFlagO(v == 0x8000);
+                SetFlagA((v & 15) == 0);
+            }
+
             SetFlagS((v & 0x8000) == 0x8000);
             SetFlagZ(v == 0);
-            SetFlagA((v & 15) == 0);
             SetFlagP((byte)v);
 
             PutRegister(reg, true, v);
@@ -3174,6 +3180,7 @@ internal class P8086
                 v++;
 
                 SetFlagO(word ? v == 0x8000 : v == 0x80);
+                SetFlagA((v & 15) == 0);
 
                 Log.DoLog($"{prefixStr} INC {name}");
             }
@@ -3183,6 +3190,7 @@ internal class P8086
                 v--;
 
                 SetFlagO(word ? v == 0x7fff : v == 0x7f);
+                SetFlagA((v & 15) == 15);
 
                 Log.DoLog($"{prefixStr} DEC {name}");
             }
