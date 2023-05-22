@@ -53,7 +53,7 @@ def emit_test(v1, v2, mode, target, instr):
     # verify value
     fh.write(f'\tmov {target_use_name},#${v1:04x}\n')
 
-    if mode != 2:
+    if mode != 3:
         fh.write(f'\tmov bx,#${v2:04x}\n')
     
     # do test
@@ -99,6 +99,32 @@ def emit_test(v1, v2, mode, target, instr):
             (dummy, flags) = flags_and(v1, v2, True)
             check_val = v1
 
+    elif mode == 2:
+        fh.write(f'\tjmp skip_{label}_field\n')
+        fh.write(f'{label}_field:\n')
+        fh.write(f'\tdw 0\n')
+        fh.write(f'skip_{label}_field:\n')
+        fh.write(f'\tmov [{label}_field],{target_use_name}\n')
+
+        if instr == 0:
+            fh.write(f'\tor [{label}_field],bx\n')
+            (check_val, flags) = flags_or(v1, v2, True)
+
+        elif instr == 1:
+            fh.write(f'\txor [{label}_field],bx\n')
+            (check_val, flags) = flags_xor(v1, v2, True)
+
+        elif instr == 2:
+            fh.write(f'\tand [{label}_field],bx\n')
+            (check_val, flags) = flags_and(v1, v2, True)
+
+        elif instr == 3:
+            fh.write(f'\ttest [{label}_field],bx\n')
+            (dummy, flags) = flags_and(v1, v2, True)
+            check_val = v1
+
+        fh.write(f'\tmov {target_use_name},[{label}_field]\n')
+
     else:
         if instr == 0:
             fh.write(f'\tor {target_use_name},#${v2:02x}\n')
@@ -140,7 +166,7 @@ def emit_test(v1, v2, mode, target, instr):
 
     n += 1
 
-for mode in range(0, 3):
+for mode in range(0, 4):
     for target in (False, True):
         for instr in range(0, 4):
             for pair in get_pairs_16b():

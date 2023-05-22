@@ -1005,7 +1005,7 @@ internal class P8086
         return "error";
     }
 
-    void UpdateRegisterMem(int reg, int mod, bool a_valid, ushort seg, ushort addr, bool word, ushort v)
+    string UpdateRegisterMem(int reg, int mod, bool a_valid, ushort seg, ushort addr, bool word, ushort v)
     {
         if (a_valid)
         {
@@ -1013,10 +1013,12 @@ internal class P8086
                 WriteMemWord(seg, addr, v);
             else
                 WriteMemByte(seg, addr, (byte)v);
+
+            return $"[addr:X4]";
         }
         else
         {
-            PutRegisterMem(reg, mod, word, v);
+            return PutRegisterMem(reg, mod, word, v);
         }
     }
 
@@ -2190,7 +2192,7 @@ internal class P8086
             }
             else
             {
-                affected = PutRegister(reg2, word, result);
+                affected = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, result);
 
                 Log.DoLog($"{prefixStr} {name} {name2},{name1}");
             }
