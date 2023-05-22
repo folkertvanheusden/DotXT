@@ -23,7 +23,7 @@ def emit_test(v1, v2, carry):
     global fh
     global n_tests
 
-    for instr in range(0, 2):
+    for instr in range(0, 3):
         if fh == None:
             file_name = f'cmp16_{n_tests}.asm'
             fh = open(p + '/' + file_name, 'w')
@@ -56,7 +56,7 @@ def emit_test(v1, v2, carry):
         # verify value
         fh.write(f'\tmov ax,#${v1:04x}\n')
 
-        if instr == 0:
+        if instr != 2:
             fh.write(f'\tmov bx,#${v2:04x}\n')
         
         if carry:
@@ -69,6 +69,15 @@ def emit_test(v1, v2, carry):
         if instr == 0:
             fh.write(f'\tcmp ax,bx\n')
 
+        elif instr == 1:
+            fh.write(f'\tjmp skip_{label}_field\n')
+            fh.write(f'{label}_field:\n')
+            fh.write(f'\tdw 0\n')
+            fh.write(f'skip_{label}_field:\n')
+            fh.write(f'\tmov [{label}_field],bx\n')
+
+            fh.write(f'\tcmp ax,[{label}_field]\n')
+
         else:
             fh.write(f'\tcmp ax,#${v2:04x}\n')
 
@@ -76,16 +85,11 @@ def emit_test(v1, v2, carry):
         fh.write(f'\tpushf\n')
 
         fh.write(f'\tcmp ax,#${v1:04x}\n')
-        fh.write(f'\tjz ok_a_{label}\n')
-        fh.write(f'\thlt\n')
-
-        fh.write(f'ok_a_{label}:\n')
-        fh.write(f'\tcmp bx,#${v2:04x}\n')
-        fh.write(f'\tjz ok_b_{label}\n')
+        fh.write(f'\tjz ok_{label}\n')
         fh.write(f'\thlt\n')
 
         # verify flags
-        fh.write(f'ok_b_{label}:\n')
+        fh.write(f'ok_{label}:\n')
         fh.write(f'\tpop ax\n')
         fh.write(f'\tcmp ax,#${flags:04x}\n')
         fh.write(f'\tjz next_{label}\n')

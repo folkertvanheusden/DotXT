@@ -2075,7 +2075,10 @@ internal class P8086
                 }
             }
 
-            SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? GetFlagC() : false);
+            if (direction)
+                SetAddSubFlags(word, r2, r1, result, is_sub, use_flag_c ? GetFlagC() : false);
+            else
+                SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? GetFlagC() : false);
 
             // 0x38...0x3b are CMP
             if (apply)
@@ -2095,6 +2098,9 @@ internal class P8086
             }
             else
             {
+                if (direction)
+                    Log.DoLog($"{prefixStr} {name} {name2},{name1}");
+                else
                     Log.DoLog($"{prefixStr} {name} {name1},{name2}");
             }
         }
