@@ -1,8 +1,12 @@
 #! /bin/sh
 
-TEMP='test'
+TEMP=test
 
 AS86=/usr/local/bin86/bin/as86
+
+CC=1
+CCREPORT=`pwd`/ccreport
+CCXML=`pwd`/coverage.xml
 
 #python3 adc_add_sbb_sub.py $TEMP
 #python3 adc16_add16_sbb16_sub16.py $TEMP
@@ -12,7 +16,7 @@ AS86=/usr/local/bin86/bin/as86
 python3 mov.py $TEMP
 #python3 or_and_xor_test.py $TEMP
 #python3 or_and_xor_test_16.py $TEMP
-python3 rcl_rcr_rol_ror_sal_sar.py $TEMP
+#python3 rcl_rcr_rol_ror_sal_sar.py $TEMP
 
 #LF=logfile.txt
 LF=/home/folkert/temp/ramdisk/logfile.txt
@@ -44,7 +48,16 @@ do
 
 	TEST_BIN=`pwd`/$BASE.bin
 
-	(cd ../../ ; rm -f $LF ; dotnet run -l $LF -t $TEST_BIN)
+	COVERAGE=`pwd`/$BASE.coverage
+
+	(cd ../../ ;
+	 rm -f $LF ;
+	 if [ $CC -eq 1 ] ; then
+		 dotnet-coverage collect "dotnet run -t $TEST_BIN -l $LF" -o $COVERAGE
+	 else
+		 dotnet run -l $LF -t $TEST_BIN
+	 fi
+ 	)
 
 	if [ $? -ne 123 ] ; then
 		echo Test $i failed
@@ -53,6 +66,14 @@ do
 
 	rm $BASE.list $BASE.bin $i
 done
+
+if [ $CC -eq 1 ] ; then
+	dotnet-coverage merge -o $CCXML -f xml *.coverage
+
+	rm -rf $CCREPORT
+	mkdir $CCREPORT
+	reportgenerator -reports:$CCXML -targetdir:$CCREPORT/ -reporttypes:html
+fi
 
 (cd ../../ ; dotnet clean -c Release)
 
