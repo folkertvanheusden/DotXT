@@ -5,10 +5,12 @@ import multiprocessing
 import os
 import shutil
 import sys
+import time
 
 TEMP='test'
 
-AS86='/usr/local/bin86/bin/as86'
+#AS86='/usr/local/bin86/bin/as86'
+AS86='/usr/bin/as86'
 
 CUR_PATH=os.getcwd()
 
@@ -42,6 +44,7 @@ def run_path(path, cmd, exprc):
     return rc
 
 print('Generating tests...')
+start_t = time.time()
 run('python3 adc_add_sbb_sub.py', TEMP)
 run('python3 adc16_add16_sbb16_sub16.py', TEMP)
 run('python3 cmp.py', TEMP)
@@ -51,6 +54,7 @@ run('python3 mov.py', TEMP)
 run('python3 or_and_xor_test.py', TEMP)
 run('python3 or_and_xor_test_16.py', TEMP)
 run('python3 rcl_rcr_rol_ror_sal_sar.py', TEMP)
+print(f'Script generation took {time.time() - start_t:.3f} seconds')
 
 #LF='logfile.txt'
 #LF='/home/folkert/temp/ramdisk/logfile.txt'
@@ -99,10 +103,14 @@ print('Loading file list...')
 files = glob.glob('*.asm')
 
 print('Running batch...')
+start_t = time.time()
+
 # limit number of processes to about 75% of the number available: dotnet-coverage does
 # not use a complete processing unit
 with multiprocessing.Pool(processes=int(multiprocessing.cpu_count() * 3 / 4)) as pool:
     pool.map(dotest, files)
+
+print(f'Batch processing took {time.time() - start_t:.3f} seconds')
 
 if CC:
     run(f'dotnet-coverage merge -o {CCXML} -f xml', '*.coverage')
