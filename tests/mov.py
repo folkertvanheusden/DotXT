@@ -156,6 +156,49 @@ test_00b:
 
 test_00b_ok:
 
+test_00c:
+    mov si,#$000c
+    mov bx,#-2
+    lea di,[word_write_001b]
+    mov [bx+di],#8384
+    mov ax,[bx+di]
+    cmp ax,#8384
+    jz test_00c_ok
+    hlt
+
+test_00c_ok:
+
+test_00d:
+    mov si,#$000d
+    mov ax,#$8285
+    mov es,ax
+    mov [word_write_001],es
+    mov ax,#$8a86
+    mov es,ax
+    mov es,[word_write_001]
+    mov ax,es
+    cmp ax,#$8285
+    jz test_00d_ok
+    hlt
+
+test_00d_ok:
+
+test_00e:
+    mov si,#$000e
+    lea di,[word_write_001]
+    mov dx,#$02
+    mov ax,#$4312
+    mov es,ax
+    mov [bx+di+0x02],es
+    mov [word_write_001],#$9977
+    mov es,[bx+di+0x02]
+    mov ax,es
+    cmp ax,#$9977
+    jz test_00e_ok
+    hlt
+
+test_00e_ok:
+
 finish:
 ''')
 
