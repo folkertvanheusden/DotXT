@@ -233,9 +233,12 @@ def flags_sal(val: int, count: int, carry: int, width: int, set_flag_o: bool):
 def flags_sar(val: int, count: int, carry: int, width: int, set_flag_o: bool):
     check_bit = 32768 if width == 16 else 128
 
+    add_bit = check_bit if (val & check_bit) != 0 else 0
+
     for i in range(0, count):
         carry = True if val & 1 else False
         val >>= 1
+        val |= add_bit
 
     flag_s = flag_z = flag_p = flag_o = False
     mask = ~(2048 | 16)
