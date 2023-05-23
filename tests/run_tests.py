@@ -99,7 +99,9 @@ print('Loading file list...')
 files = glob.glob('*.asm')
 
 print('Running batch...')
-with multiprocessing.Pool(processes=6) as pool:
+# limit number of processes to about 75% of the number available: dotnet-coverage does
+# not use a complete processing unit
+with multiprocessing.Pool(processes=multiprocessing.cpu_count() * 3 / 4) as pool:
     pool.map(dotest, files)
 
 if CC:
