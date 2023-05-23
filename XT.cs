@@ -2758,25 +2758,26 @@ internal class P8086
 
             int mreg = o1 & 7;
 
+            // get address to write to ('seg, addr'))
+            (ushort dummy, string name, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(mreg, mod, word);
+
             if (word)
             {
-                ushort v = ReadMemWord(_cs, (ushort)(_ip + 2));
+                // the value follows
+                ushort v = GetPcWord();
 
-                string temp = PutRegisterMem(mreg, mod, word, v);
+                UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
 
-                _ip += 2;
-
-                Log.DoLog($"{prefixStr} MOV word {temp},${v:X4}");
+                Log.DoLog($"{prefixStr} MOV word {name},${v:X4}");
             }
             else
             {
-                byte v = ReadMemByte(_cs, (ushort)(_ip + 2));  // TODO test this variant
+                // the value follows
+                byte v = GetPcByte();
 
-                string temp = PutRegisterMem(mreg, mod, word, v);
+                UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
 
-                _ip++;
-
-                Log.DoLog($"{prefixStr} MOV byte {temp},${v:X2}");
+                Log.DoLog($"{prefixStr} MOV byte {name},${v:X2}");
             }
         }
         else if (opcode == 0xca || opcode == 0xcb)
