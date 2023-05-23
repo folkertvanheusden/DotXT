@@ -98,6 +98,7 @@ test_007:
 test_007_ok:
 
 test_008:
+    mov si,#0008
     mov [word_write_001],#$1188
     lea bx,[word_write_001]
     mov di,bx
@@ -109,6 +110,7 @@ test_008:
 test_008_ok:
 
 test_009:
+    mov si,#0009
     mov ah,#$1d
     mov cl,ah
     cmp cl,#$1d
@@ -116,9 +118,7 @@ test_009:
     hlt
 
 test_009_ok:
-
-
-    jmp finish
+    jmp test_continue
 
 word_read_001:
     dw $4567
@@ -131,6 +131,30 @@ word_read_002:
 word_write_001:
     dw $1111
 word_write_001b:
+
+test_continue:
+
+test_00a:
+    mov si,#$000a
+    lea bx,[word_write_001b]
+    mov si,bx
+    mov word [si - $02],#$9977
+    mov ax,word [si - $02]
+    cmp ax,#$9977
+    jz test_00a_ok
+    hlt
+
+test_00a_ok:
+
+test_00b:
+    mov si,#$000b
+    mov [word_write_001],#$8844
+    mov di,[word_write_001]
+    cmp di,#$8844
+    jz test_00b_ok
+    hlt
+
+test_00b_ok:
 
 finish:
 ''')
