@@ -2447,7 +2447,7 @@ internal class P8086
                 SetAX((ushort)dx_ax);
                 SetDX((ushort)(dx_ax >> 16));
 
-                bool flag = GetDX() != 0;
+                bool flag = dx_ax >= 0x10000;
                 SetFlagC(flag);
                 SetFlagO(flag);
 
