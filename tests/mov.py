@@ -64,6 +64,60 @@ test_004:
 
 test_004_ok:
 
+test_005:
+    mov si,#0005
+    lea bx,[word_write_001]
+    mov [bx],#$3366
+    mov ax,#$3366
+    cmp ax,[bx]
+    jz test_005_ok
+    hlt
+
+test_005_ok:
+
+test_006:
+    mov si,#0006
+    mov cx,ds
+    mov bx,#2277
+    mov ds,bx
+    mov ax,ds
+    mov ds,cx
+    cmp ax,#2277
+    jz test_006_ok
+    hlt
+
+test_006_ok:
+
+test_007:
+    mov si,#0007
+    mov bx,si
+    cmp bx,#0007
+    jz test_007_ok
+    hlt
+
+test_007_ok:
+
+test_008:
+    mov [word_write_001],#$1188
+    lea bx,[word_write_001]
+    mov di,bx
+    mov ax,[di]
+    cmp ax,#$1188
+    jz test_008_ok
+    hlt
+
+test_008_ok:
+
+test_009:
+    mov ah,#$1d
+    mov cl,ah
+    cmp cl,#$1d
+    jz test_009_ok
+    hlt
+
+test_009_ok:
+
+
     jmp finish
 
 word_read_001:
