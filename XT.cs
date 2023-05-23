@@ -1874,7 +1874,7 @@ internal class P8086
 
             Log.DoLog($"{prefixStr} TEST {name1},{name2}");
         }
-        else if (opcode == 0x86)
+        else if (opcode == 0x86 || opcode == 0x87)
         {
             // XCHG
             bool word = (opcode & 1) == 1;
