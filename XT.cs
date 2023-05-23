@@ -2620,19 +2620,17 @@ internal class P8086
         {
             // LEA
             byte o1 = GetPcByte();
-            int mode = o1 >> 6;
+            int mod = o1 >> 6;
             int reg = (o1 >> 3) & 7;
             int rm = o1 & 7;
 
-            (ushort val, string name_from) = GetRegister(rm, true);
+            // might introduce problems when the dereference of *addr reads from i/o even
+            // when it is not required
+            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(rm, mod, true);
 
-            short displacement = (short)GetPcWord();
+            string name_to = PutRegister(reg, true, addr);
 
-            val = (ushort)(val + displacement);
-
-            string name_to = PutRegister(reg, true, val);
-
-            Log.DoLog($"{prefixStr} LEA {name_to},[{name_from} + {displacement:X2}]");
+            Log.DoLog($"{prefixStr} LEA {name_to},{name_from}");
         }
         else if ((opcode & 0xf8) == 0xb8)
         {

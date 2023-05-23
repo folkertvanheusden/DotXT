@@ -21,6 +21,7 @@ fh.write(
 '''
 ; directly value into register
 test_001:
+    mov si,#0001
     mov ax,#$1234
     cmp ax,#$1234
     jz test_001_ok
@@ -29,6 +30,7 @@ test_001_ok:
 
 test_002:
 ; read from address pointer by
+    mov si,#0002
     mov ax,[word_read_001]
     cmp ax,#$4567
     jz test_002_ok
@@ -38,6 +40,7 @@ test_002_ok:
 
 ; lea
 test_003:
+    mov si,#0003
     xor ax,ax
     lea ax,word_read_002
     mov di,ax
@@ -50,6 +53,7 @@ test_003:
 test_003_ok:
 
 test_004:
+    mov si,#0004
     lea bx,[word_write_001b]
     mov bp,bx
     mov word [bp - $02],#$4455
