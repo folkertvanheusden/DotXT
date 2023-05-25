@@ -1282,7 +1282,11 @@ internal class P8086
         }
 
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
-        byte opcode = _rep ? _rep_opcode : GetPcByte();
+        byte opcode = GetPcByte();
+
+        // ^ address must increase!
+        if (_rep)
+            opcode = _rep_opcode;
 
         // handle prefixes
         if (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
@@ -3594,6 +3598,7 @@ internal class P8086
             else
             {
                 Log.DoLog($"{prefixStr} unknown _rep_mode {(int)_rep_mode}");
+                _rep = false;
             }
         }
     }
