@@ -1256,7 +1256,9 @@ internal class P8086
 
     public void Tick()
     {
+#if DEBUG
         string flagStr = GetFlagsAsString();
+#endif
 
         // tick I/O, check for interrupt
         (int interrupt_countdown_nr, int interrupt_countdown) = _io.Tick();
