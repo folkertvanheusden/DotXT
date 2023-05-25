@@ -82,13 +82,17 @@ def dotest(i):
     rc = None
 
     if CC:
-        rc = run_path('../../', f'dotnet-coverage collect "dotnet run -t {TEST_BIN} -l {LOGFILE}" -o {COVERAGE}', 123)
+        rc = run_path('../../', f'dotnet-coverage collect "dotnet run -c Release -t {TEST_BIN} -l {LOGFILE}" -o {COVERAGE}', 123)
 
     else:
-        rc = run_path('../../', f'dotnet run -l {LOGFILE} -t {TEST_BIN}', 123)
+        rc = run_path('../../', f'dotnet run -c Release -l {LOGFILE} -t {TEST_BIN}', 123)
 
     if rc == 123:
-        os.unlink(LOGFILE)
+        try:
+            os.unlink(LOGFILE)
+        except FileNotFoundError as e:
+            pass
+
         os.unlink(BASE + '.list')
         os.unlink(TEST_BIN)
         os.unlink(i)
