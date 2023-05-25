@@ -6,6 +6,8 @@
 
 Tested with dotnet 7.0 on linux
 
+In release mode (dotnet run -c Release) it is a lot faster.
+
 
 This software is (C) Folkert van Heusden.
 
