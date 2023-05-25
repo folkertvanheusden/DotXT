@@ -1937,7 +1937,7 @@ internal class P8086
         else if (opcode == 0x99)
         {
             // CWD
-            if ((_ah & 32768) == 32768)
+            if ((_ah & 128) == 128)
                 SetDX(0xffff);
             else
                 SetDX(0);
