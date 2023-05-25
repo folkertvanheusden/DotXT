@@ -21,6 +21,10 @@ if (test == "")
     Console.WriteLine("Released in the public domain");
 }
 
+#if DEBUG
+Console.WriteLine("Debug mode");
+#endif
+
 var p = new P8086(test, t_is_floppy);
 
 for (;;)
