@@ -78,6 +78,27 @@ test_004a_ok:
 test_004b_ok:
 ; NO(!) flags altered
 
+; XCHG
+test_005:
+    pushf
+	mov ax,#0x4321
+	mov dx,#0x8001
+    xchg ax,dx
+    cmp ax,#0x8001
+    jz test_005a_ok
+    hlt
+test_005a_ok:
+    cmp dx,#0x4321
+    jz test_005b_ok
+    hlt
+test_005b_ok:
+    pushf
+    pop bx
+    pop ax
+    cmp ax,bx
+    jz test_005c_ok
+    hlt
+test_005c_ok:
 
 finish:
 ''')
