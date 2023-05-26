@@ -541,6 +541,17 @@ internal class P8086
             Console.WriteLine("REBOOT");
             System.Environment.Exit(1);
         }
+        else if (nr == 0x2f)
+        {
+            Console.WriteLine($"INT NR {nr:X2}, AX: {_ah:X2}{_al:X2}");
+
+            if (_ah == 0x0d) {
+                // disk reset
+                SetFlagC(false);
+                _ah = 0x00;  // no error
+                return true;
+            }
+        }
         else
         {
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
@@ -3543,6 +3554,15 @@ internal class P8086
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} CALL {a:X4} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
+#endif
+            }
+            else if (function == 4)
+            {
+                // JMP
+                _ip = (ushort)v;
+
+#if DEBUG
+                Log.DoLog($"{prefixStr} JMP {_cs * 16 + _ip:X6}");
 #endif
             }
             else if (function == 5)
