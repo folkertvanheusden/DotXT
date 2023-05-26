@@ -100,6 +100,40 @@ test_005b_ok:
     hlt
 test_005c_ok:
 
+; CALL & RET
+test_006:
+    pushf
+    pop bx
+    mov ax,sp
+    call test_006_sub_a
+    jp test_006_cont
+test_006_sub_a:
+    pushf
+    cmp ax,sp
+    jne test_006_sub_a_ok
+    hlt
+test_006_sub_a_ok:
+    pop cx
+    cmp bx,cx
+    jz test_006_sub_b_ok
+    hlt
+test_006_sub_b_ok:
+    push bx
+    popf
+    ret
+    hlt
+test_006_cont:
+    cmp ax,sp
+    jz test_006_b_ok
+    hlt
+test_006_b_ok:
+    pushf
+    pop cx
+    cmp bx,cx
+    jz test_006_c_ok
+    hlt
+test_006_c_ok:
+
 finish:
 ''')
 
