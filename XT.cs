@@ -1820,6 +1820,15 @@ internal class P8086
             Log.DoLog($"{prefixStr} PUSH BX");
 #endif
         }
+        else if (opcode == 0x54)
+        {
+            // PUSH SP
+            push(_sp);
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} PUSH SP");
+#endif
+        }
         else if (opcode == 0x55)
         {
             // PUSH BP
