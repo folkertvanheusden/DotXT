@@ -2135,19 +2135,35 @@ internal class P8086
             Log.DoLog($"{prefixStr} RET");
 #endif
         }
-        else if (opcode == 0xc5)
+        else if (opcode == 0xc4 || opcode == 0xc5)
         {
-            // LDS
+            // LES (c4) / LDS (c5)
             byte o1 = GetPcByte();
-            int reg = o1 & 7;
+            int mod = o1 >> 6;
+            int reg = (o1 >> 3) & 7;
+            int rm = o1 & 7;
 
-            ushort v = GetPcWord();
-            _ds = (ushort)(v + 2);
+            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(rm, mod, true);
 
-            string name = PutRegister(reg, true, v);
+            ushort v = ReadMemWord(seg, (ushort)(addr + 0));
+
+            string name;
+
+            if (opcode == 0xc4)
+            {
+                _es = ReadMemWord(seg, (ushort)(addr + 2));
+                name = "LES";
+            }
+            else
+            {
+                _ds = ReadMemWord(seg, (ushort)(addr + 2));
+                name = "LDS";
+            }
+
+            string affected = PutRegister(reg, true, v);
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} LDS {name},${v:X4}");
+            Log.DoLog($"{prefixStr} {name} {affected},{name_from}");
 #endif
         }
         else if (opcode == 0xcd)
@@ -2952,25 +2968,6 @@ internal class P8086
 
 #if DEBUG
             Log.DoLog($"{prefixStr} SCASW");
-#endif
-        }
-        else if (opcode == 0xc4)
-        {
-            // LES
-            byte o1 = GetPcByte();
-            int mod = o1 >> 6;
-            int reg = (o1 >> 3) & 7;
-            int rm = o1 & 7;
-
-            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(rm, mod, true);
-
-            ushort v = ReadMemWord(seg, (ushort)(addr + 0));
-            _es = ReadMemWord(seg, (ushort)(addr + 2));
-
-            string affected = PutRegister(reg, true, v);
-
-#if DEBUG
-            Log.DoLog($"{prefixStr} LES {affected},{name_from}");
 #endif
         }
         else if (opcode == 0xc6 || opcode == 0xc7)
