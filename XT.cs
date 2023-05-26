@@ -1249,7 +1249,7 @@ internal class P8086
         _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
 
 #if DEBUG
-        Log.DoLog($"----- ------ INT {interrupt_nr:X2}");
+        Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs * 16 + _ip:X4}");
 #endif
     }
 
@@ -2024,13 +2024,9 @@ internal class P8086
             (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, word);
             (ushort r2, string name2) = GetRegister(reg1, word);
 
-            ushort temp = r1;
-            r1 = r2;
-            r2 = temp;
+            UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, r2);
 
-            UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, r1);
-
-            PutRegister(reg1, word, r2);
+            PutRegister(reg1, word, r1);
 
 #if DEBUG
             Log.DoLog($"{prefixStr} XCHG {name1},{name2}");
