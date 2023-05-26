@@ -3184,6 +3184,9 @@ internal class P8086
             else if (mode == 5)
             {
                 // SHR
+                if (count_1_of)
+                    SetFlagO((v1 & check_bit) == check_bit);
+
                 for (int i = 0; i < count; i++)
                 {
                     bool newCarry = (v1 & 1) == 1;
@@ -3192,9 +3195,6 @@ internal class P8086
 
                     SetFlagC(newCarry);
                 }
-
-                if (count_1_of)
-                    SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
 
                 set_flags = count != 0;
 
