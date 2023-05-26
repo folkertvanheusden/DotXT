@@ -1,6 +1,6 @@
 #! /usr/bin/python3
 
-from flags import parity, flags_rcl, flags_rcr, flags_rol, flags_ror, flags_sal, flags_sar
+from flags import parity, flags_rcl, flags_rcr, flags_rol, flags_ror, flags_sal, flags_sar, flags_shr
 from values_16b import b16_values
 import sys
 
@@ -98,6 +98,10 @@ def emit_test(width, v1, shift, carry, instr):
         fh.write(f'\tsar {target_name},{shift_reg}\n')
         (check_val, flags, flags_mask) = flags_sar(v1, shift, carry, width, is_1)
 
+    elif instr == 6:
+        fh.write(f'\tshr {target_name},{shift_reg}\n')
+        (check_val, flags, flags_mask) = flags_shr(v1, shift, carry, width, is_1)
+
     else:
         sys.exit(2)
 
@@ -125,7 +129,7 @@ def emit_test(width, v1, shift, carry, instr):
 # 8b
 for al in range(0, 256):
     for carry in (False, True):
-        for instr in range(0, 6):
+        for instr in range(0, 7):
             for shift in range(0, 9):
                 emit_test(8, al, shift, carry, instr)
 
@@ -134,7 +138,7 @@ for al in range(0, 256):
 # 16b
 for v1 in b16_values:
     for carry in (False, True):
-        for instr in range(0, 6):
+        for instr in range(0, 7):
             for shift in range(0, 17):
                 emit_test(16, v1, shift, carry, instr)
 

@@ -252,6 +252,31 @@ def flags_sar(val: int, count: int, carry: int, width: int, set_flag_o: bool):
 
     return (val, flags, mask & 0xffff)
 
+def flags_shr(val: int, count: int, carry: int, width: int, set_flag_o: bool):
+    check_bit = 32768 if width == 16 else 128
+
+    if count == 1:
+        flag_o = (val & check_bit) == check_bit
+
+    else:
+        flag_o = False
+
+    for i in range(0, count):
+        carry = True if val & 1 else False
+        val >>= 1
+
+    flag_s = flag_z = flag_p = False
+    mask = ~(16)
+
+    if count >= 1:
+        flag_s = True if val & check_bit else 0
+        flag_z = val == 0
+        flag_p = parity(val & 255)
+
+    flags = (1 if carry else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
+
+    return (val, flags, mask & 0xffff)
+
 def flags_inc_dec(carry: bool, al: int, is_sub: bool):
     (result, flags) = flags_add_sub_cp(is_sub, False, al, 1)
 

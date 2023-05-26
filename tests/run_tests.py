@@ -35,7 +35,7 @@ def run_path(path, cmd, exprc):
         rc = os.waitstatus_to_exitcode(os.system(cmd))
 
         if rc != exprc:
-            print(f' *** FAILED {rc} ***')
+            print(f' *** FAILED {rc} {cmd} ***')
 
         sys.exit(rc)
 
@@ -53,20 +53,16 @@ start_t = time.time()
 #run('python3 mov.py', TEMP)
 #run('python3 or_and_xor_test.py', TEMP)
 #run('python3 or_and_xor_test_16.py', TEMP)
-#run('python3 rcl_rcr_rol_ror_sal_sar.py', TEMP)
+run('python3 rcl_rcr_rol_ror_sal_sar.py', TEMP)
 #run('python3 inc_dec.py', TEMP)
-run('python3 inc_dec16.py', TEMP)
+#run('python3 inc_dec16.py', TEMP)
 print(f'Script generation took {time.time() - start_t:.3f} seconds')
 
-#LF='logfile.txt'
-#LF='/home/folkert/temp/ramdisk/logfile.txt'
-LF='/dev/null'
-
-print(f'Logfile: {LF}')
+LF=True
 
 os.chdir(TEMP)
 
-run_path('../..', 'dotnet build -c Release', 0)
+run_path('../..', 'dotnet build -c Debug', 0)
 
 def dotest(i):
     BASE=CUR_PATH + '/' + TEMP + '/' + os.path.splitext(i)[0]
@@ -79,21 +75,22 @@ def dotest(i):
 
     COVERAGE=f'{BASE}.coverage'
 
-    LOGFILE='/dev/null' if LF is None else f'{BASE}.log'
+    LOGFILE='/dev/null' if not LF else f'{BASE}.log'
 
     rc = None
 
     if CC:
-        rc = run_path('../../', f'dotnet-coverage collect "dotnet run -c Release -t {TEST_BIN} -l {LOGFILE}" -o {COVERAGE}', 123)
+        rc = run_path('../../', f'dotnet-coverage collect "dotnet run -c Debug -t {TEST_BIN} -l {LOGFILE}" -o {COVERAGE}', 123)
 
     else:
-        rc = run_path('../../', f'dotnet run -c Release -l {LOGFILE} -t {TEST_BIN}', 123)
+        rc = run_path('../../', f'dotnet run -c Debug -l {LOGFILE} -t {TEST_BIN}', 123)
 
     if rc == 123:
-        try:
-            os.unlink(LOGFILE)
-        except FileNotFoundError as e:
-            pass
+        if LF:
+            try:
+                os.unlink(LOGFILE)
+            except FileNotFoundError as e:
+                pass
 
         os.unlink(BASE + '.list')
         os.unlink(TEST_BIN)
@@ -115,6 +112,7 @@ start_t = time.time()
 # not use a complete processing unit
 with multiprocessing.Pool(processes=int(multiprocessing.cpu_count() * 3 / 4)) as pool:
     pool.map(dotest, files)
+# dotest('rcl_rcr_rol_ror_sal_sar8a_19456.asm')
 
 print(f'Batch processing took {time.time() - start_t:.3f} seconds')
 
@@ -127,7 +125,7 @@ if CC:
 
     run(f'reportgenerator -reports:{CCXML} -targetdir:{CCREPORT} -reporttypes:html', '')
 
-#(cd ../../ ; dotnet clean -c Release)
+#(cd ../../ ; dotnet clean -c Debug)
 
 #echo All fine
 #exit 0
