@@ -3387,6 +3387,17 @@ internal class P8086
             Log.DoLog($"{prefixStr} IN AL,${from:X2}");
 #endif
         }
+        else if (opcode == 0xe5)
+        {
+            // IN AL,ib
+            byte @from = GetPcByte();
+
+            SetAX(_io.In(_scheduled_interrupts, @from));
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} IN AX,${from:X2}");
+#endif
+        }
         else if (opcode == 0xec)
         {
             // IN AL,DX
