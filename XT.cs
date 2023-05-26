@@ -1039,7 +1039,7 @@ internal class P8086
             else
                 WriteMemByte(seg, addr, (byte)v);
 
-            return $"[addr:X4]";
+            return $"[{addr:X4}]";
         }
         else
         {
@@ -2948,11 +2948,15 @@ internal class P8086
 
             (ushort val, string name_from, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(rm, mod, true);
 
-            SetBX(ReadMemWord(seg, (ushort)(addr + 0)));
+            Console.WriteLine($"LES reg: {reg}, rm: {rm}/{name_from}");
+
+            ushort v = ReadMemWord(seg, (ushort)(addr + 0));
             _es = ReadMemWord(seg, (ushort)(addr + 2));
 
+            string affected = PutRegister(reg, true, v);
+
 #if DEBUG
-            Log.DoLog($"{prefixStr} LES {name_from},{val:X4}");
+            Log.DoLog($"{prefixStr} LES {affected},{name_from}");
 #endif
         }
         else if (opcode == 0xc6 || opcode == 0xc7)
