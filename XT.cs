@@ -3354,6 +3354,26 @@ internal class P8086
             Log.DoLog($"{prefixStr} {name} {to} ({_cs:X4}:{newAddress:X4} -> {_cs * 16 + newAddress:X6})");
 #endif
         }
+        else if (opcode == 0xe0)
+        {
+            // LOOPNZ
+            byte to = GetPcByte();
+
+            (ushort cx, string dummy) = GetRegister(1, true);
+
+            cx--;
+
+            PutRegister(1, true, cx);
+
+            ushort newAddresses = (ushort)(_ip + (sbyte)to);
+
+            if (cx > 0 && GetFlagZ() == false)
+                _ip = newAddresses;
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} LOOP {to} ({newAddresses:X4} -> {_ip:X4})");
+#endif
+        }
         else if (opcode == 0xe2)
         {
             // LOOP
