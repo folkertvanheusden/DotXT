@@ -251,3 +251,17 @@ def flags_sar(val: int, count: int, carry: int, width: int, set_flag_o: bool):
     flags = (1 if carry else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
 
     return (val, flags, mask & 0xffff)
+
+def flags_inc_dec(carry: bool, al: int, is_sub: bool):
+    (result, flags) = flags_add_sub_cp(is_sub, False, al, 1)
+
+    flags &= ~1
+
+    return flags
+
+def flags_inc_dec16(carry: bool, ax: int, is_sub: bool):
+    (result, flags) = flags_add_sub_cp16(is_sub, False, ax, 1)
+
+    flags &= ~1
+
+    return flags
