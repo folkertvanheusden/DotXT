@@ -544,8 +544,10 @@ internal class P8086
             // keyboard access
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
 
-            SetFlagC(true);
-            _ah = 0x01;  // invalid command
+            _ah = 0x3b;  // F1 scan code
+            _al = 0x00;  // F1 ascii char
+
+            SetFlagC(false);
             return true;
         }
         else if (nr == 0x19)
