@@ -3624,6 +3624,14 @@ internal class P8086
                 Log.DoLog($"{prefixStr} JMP {_cs:X4}:{_ip:X4}");
 #endif
             }
+            else if (function == 6)
+            {
+                // PUSH rmw
+                push(v);
+#if DEBUG
+                Log.DoLog($"{prefixStr} PUSH ${v:X4}");
+#endif
+            }
             else
             {
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
