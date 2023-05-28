@@ -422,9 +422,23 @@ internal class P8086
     {
         if (nr == 0x10)
         {
-            if (_ah == 00)
+            if (_ah == 0x00)
             {
                 // set resolution
+                SetFlagC(false);
+                return true;
+            }
+
+            if (_ah == 0x02)
+            {
+                // set cursor position
+                SetFlagC(false);
+                return true;
+            }
+
+            if (_ah == 0x03)
+            {
+                // get cursor position
                 SetFlagC(false);
                 return true;
             }
