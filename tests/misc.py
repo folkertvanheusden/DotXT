@@ -188,6 +188,52 @@ test_009_skip:
 test_009_ok:
 ; TODO: test flags
 
+; LDS
+test_00a:
+    mov si,#$000a
+    jmp test_00a_skip
+test_00a_words:
+    dw $1234
+    dw $6789
+    nop
+    nop
+    nop
+test_00a_skip:
+    lds bx, [test_00a_words]
+    cmp bx,#$1234
+    jz test_00aa_ok
+    hlt
+test_00aa_ok:
+    mov dx,ds
+    cmp dx,#$6789
+    jz test_00ab_ok
+    hlt
+test_00ab_ok:
+
+; LES
+test_00b:
+    mov si,#$000b
+    xor ax,ax
+    mov ds,ax
+    jmp test_00b_skip
+test_00b_words:
+    dw $3412
+    dw $1219
+    nop
+    nop
+    nop
+test_00b_skip:
+    les dx, [test_00b_words]
+    cmp dx,#$3412
+    jz test_00ba_ok
+    hlt
+test_00ba_ok:
+    mov bx,es
+    cmp bx,#$1219
+    jz test_00bb_ok
+    hlt
+test_00bb_ok:
+
 finish:
 ''')
 
