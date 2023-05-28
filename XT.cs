@@ -2736,7 +2736,7 @@ internal class P8086
             // MOV AL,[...]
             ushort a = GetPcWord();
 
-            _al = _b.ReadByte((uint)(a + (_ds << 4)));
+            _al = ReadMemByte(_ds, a);
 
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV AL,{a:X4}");
@@ -2755,10 +2755,10 @@ internal class P8086
         }
         else if (opcode == 0xa2)
         {
-            // MOV AL,[...]
+            // MOV [...],AL
             ushort a = GetPcWord();
 
-            _b.WriteByte((uint)(a + (_ds << 4)), _al);
+            WriteMemByte(_ds, a, _al);
 
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV [${a:X4}],AL");
