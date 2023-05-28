@@ -201,16 +201,100 @@ internal class i8253
     }
 }
 
+// programmable interrupt controller (PIC)
+internal class i8259
+{
+    bool _ICW2 = false;
+    bool _ICW3 = false;
+    bool _ICW4 = false;
+    int _int_offset = 8;
+    byte _interrupt_mask = 0xff;
+
+    public i8259()
+    {
+    }
+
+    public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
+    {
+        return 0;
+    }
+
+    public (int, int) Tick()
+    {
+        return (-1, -1);
+    }
+
+    public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
+    {
+        Log.DoLog($"i8259 port {addr} value {value:X2}");
+
+        if (addr == 0)
+        {
+            _ICW2 = (value & 0b00010000) == 0b00010000;
+            _ICW3 = (value & 2) == 0;
+            _ICW4 = (value & 1) == 1;
+
+            Log.DoLog($"i8259: ICW1 init_pic {_ICW2} / {value:X2}");
+        }
+        else if (addr == 1)
+        {
+            if (_ICW2)
+            {
+                _ICW2 = false;
+
+                _int_offset = value;
+
+                Log.DoLog($"i8259: ICW2 {value:X2}");
+            }
+            else if (_ICW3)
+            {
+                _ICW3 = false;
+
+                Log.DoLog($"i8259: ICW3 {value:X2}");
+            }
+            else if (_ICW4)
+            {
+                _ICW4 = false;
+
+                Log.DoLog($"i8259: ICW4 {value:X2}");
+            }
+            else
+            {
+                Log.DoLog($"i8259: set interrupt mask {value:X2}");
+
+                _interrupt_mask = value;
+            }
+        }
+        else
+        {
+            Log.DoLog($"i8259 has no port {addr:X2}");
+        }
+    }
+
+    public int get_interrupt_offset()
+    {
+        return _int_offset;
+    }
+}
+
 internal class IO
 {
     private i8253 _i8253 = new i8253();
+    private i8259 _pic = new i8259();
+
+    private bool floppy_0_state = false;
 
     private Dictionary <ushort, byte> values = new Dictionary <ushort, byte>();
 
     public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
     {
+        Log.DoLog($"IN: {addr:X4}");
+
         if (addr == 0x0008)  // DMA status register
             return 0x0f;  // 'transfer complete'
+
+        if (addr == 0x0020 || addr == 0021)  // PIC
+            return _pic.In(scheduled_interrupts, (ushort)(addr - 0x0020));
 
         if (addr == 0x0040)
             return _i8253.get_counter(0);
@@ -227,8 +311,11 @@ internal class IO
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
 
-        if (addr == 0x03f4)  // diskette controller main status register
-            return 0x80;
+        if (addr == 0x03f4) {  // diskette controller main status register
+            floppy_0_state = !floppy_0_state;
+
+            return (byte)(floppy_0_state ? 0x91 : 0x80);
+        }
 
         if (addr == 0x03f5)  // diskette command/data register 0 (ST0)
             return 0b00100000;  // seek completed
@@ -246,16 +333,21 @@ internal class IO
     public (int, int) Tick()
     {
         if (_i8253.Tick())
-            return (0x08, 10);
+            return (_pic.get_interrupt_offset() + 0, 10);
 
         return (-1, -1);
     }
 
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
     {
+        Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})");
+
         // TODO
 
-        if (addr == 0x0040)
+        if (addr == 0x0020 || addr == 0x0021)  // PIC
+            _pic.Out(scheduled_interrupts, (ushort)(addr - 0x0020), value);
+
+        else if (addr == 0x0040)
             _i8253.latch_counter(0, value);
 
         else if (addr == 0x0041)
@@ -273,8 +365,10 @@ internal class IO
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) generate controller select pulse");
 #endif
 
-            if (scheduled_interrupts.ContainsKey(0x0d) == false)
-                scheduled_interrupts[0x0d] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
+            int harddisk_interrupt_nr = _pic.get_interrupt_offset() + 14;
+
+            if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
+                scheduled_interrupts[harddisk_interrupt_nr] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
         }
         else if (addr == 0x03f2)
         {
@@ -282,7 +376,7 @@ internal class IO
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) FDC enable");
 #endif
 
-            scheduled_interrupts[0x0e] = 10;  // FDC enable (controller reset) (IRQ 6)
+            scheduled_interrupts[_pic.get_interrupt_offset() + 6] = 10;  // FDC enable (controller reset) (IRQ 6)
         }
         else
         {
@@ -1269,7 +1363,7 @@ internal class P8086
         _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
 
 #if DEBUG
-        Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs * 16 + _ip:X4}");
+        Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs * 16 + _ip:X4})");
 #endif
     }
 
