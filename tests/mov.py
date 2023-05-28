@@ -75,6 +75,7 @@ test_005:
 
 test_005_ok:
 
+; access of ds and ax, bx
 test_006:
     mov si,#0006
     mov cx,ds
@@ -88,6 +89,7 @@ test_006:
 
 test_006_ok:
 
+; si & bx
 test_007:
     mov si,#0007
     mov bx,si
@@ -97,6 +99,7 @@ test_007:
 
 test_007_ok:
 
+; access label
 test_008:
     mov si,#0008
     mov [word_write_001],#$1188
@@ -109,6 +112,7 @@ test_008:
 
 test_008_ok:
 
+; 8 bit
 test_009:
     mov si,#0009
     mov ah,#$1d
@@ -134,6 +138,7 @@ word_write_001b:
 
 test_continue:
 
+; reference + offset
 test_00a:
     mov si,#$000a
     lea bx,[word_write_001b]
@@ -198,6 +203,67 @@ test_00e:
     hlt
 
 test_00e_ok:
+
+test_00f:
+; acces of 8b and check in 16b
+    mov si,#$000f
+    mov cx,#$1234
+    mov cl,#$88
+    cmp cx,#$1288
+    jz test_00f_a_ok
+    hlt
+test_00f_a_ok:
+    mov cx,#$1234
+    mov ch,#$44
+    cmp cx,#$4434
+    jz test_00f_b_ok
+    hlt
+test_00f_b_ok:
+
+test_010:
+; check for .x -> .x
+    mov si,#$0010
+    mov ax,#$9988
+    mov cx,#$1234
+    mov cx,ax
+    cmp cx,#$9988
+    jz test_010_ok
+    hlt
+test_010_ok:
+
+test_011:
+    mov si,#$0011
+    mov cx,#$2211
+    mov [word_write_001],cx
+    cmp [word_write_001],#$2211
+    jz test_011_ok
+    hlt
+test_011_ok:
+
+test_012:
+    mov si,#$0012
+    mov cl,#$93
+    mov [word_write_001],cl
+    cmp [word_write_001],#$2293
+    jz test_012_ok
+    hlt
+test_012_ok:
+
+test_013:
+    mov si,#$0013
+    mov [word_write_001],#$4312
+    cmp [word_write_001],#$4312
+    jz test_013_ok
+    hlt
+test_013_ok:
+
+test_014:
+    mov si,#$0014
+    mov byte [word_write_001],#$43
+    cmp byte [word_write_001],#$43
+    jz test_014_ok
+    hlt
+test_014_ok:
 
 finish:
 ''')

@@ -21,6 +21,7 @@ fh.write(
 '''
 ; NOT
 test_001:
+    mov si,#$0001
     xor ax,ax
     mov bx,#$1234
     not bx
@@ -37,6 +38,7 @@ test_001b_ok:
 
 ; MUL
 test_002:
+    mov si,#$0002
     xor ax,ax
     mov al,#$7f
     mov cl,#$fe
@@ -49,6 +51,7 @@ test_002_ok:
 
 ; MUL 16b
 test_003:
+    mov si,#$0003
     mov ax,#$1234
     mov cx,#$aa55
     mul cx
@@ -64,6 +67,7 @@ test_003b_ok:
 
 ; DIV
 test_004:
+    mov si,#$0004
 	mov ax,#0x4321
 	mov dx,#0x8001
 	mov cx,#0x8fff
@@ -80,6 +84,7 @@ test_004b_ok:
 
 ; XCHG
 test_005:
+    mov si,#$0005
     pushf
 	mov ax,#0x4321
 	mov dx,#0x8001
@@ -102,6 +107,7 @@ test_005c_ok:
 
 ; CALL & RET
 test_006:
+    mov si,#$0006
     pushf
     pop bx
     mov ax,sp
@@ -133,6 +139,54 @@ test_006_b_ok:
     jz test_006_c_ok
     hlt
 test_006_c_ok:
+
+test_007:
+    mov si,#$0007
+    mov bx,#$1234
+    xor bx,bx
+    cmp bx,#$0000
+    jz test_007a_ok
+    hlt
+test_007a_ok:
+
+; DIV (2)
+test_008:
+    mov si,#$0008
+    jmp test_008_skip
+test_008_word:
+    dw 0
+    nop
+    nop
+    nop
+test_008_skip:
+	mov ax,#0x4321
+	mov dx,#0x8001
+	mov [test_008_word],#0x8fff
+	div [test_008_word]
+    cmp ax,#$e392
+    jz test_008a_ok
+    hlt
+test_008a_ok:
+
+; MUL
+test_009:
+    mov si,#$0009
+    jmp test_009_skip
+test_009_byte:
+    db 0
+    nop
+    nop
+    nop
+test_009_skip:
+    xor ax,ax
+    mov al,#$7f
+    mov [test_009_byte],#$fe
+    mul [test_009_byte]
+    cmp ax,#$7e02
+    jz test_009_ok
+    hlt
+test_009_ok:
+; TODO: test flags
 
 finish:
 ''')
