@@ -821,6 +821,8 @@ internal class P8086
 
     private (ushort, string, bool, ushort, ushort) GetRegisterMem(int reg, int mod, bool w)
     {
+        Log.DoLog($"GetRegisterMem {mod},{w}");
+
         if (mod == 0)
         {
             (ushort a, string name) = GetDoubleRegisterMod00(reg);
@@ -1013,6 +1015,8 @@ internal class P8086
 
     private string PutRegisterMem(int reg, int mod, bool w, ushort val)
     {
+        Log.DoLog($"PutRegisterMem {mod},{w}");
+
         if (mod == 0)
         {
             (ushort a, string name) = GetDoubleRegisterMod00(reg);
@@ -1021,16 +1025,16 @@ internal class P8086
 
             name += $" (${segment * 16 + a:X6})";
 
-            WriteMemWord(segment, a, val);
+            if (w)
+                WriteMemWord(segment, a, val);
+            else
+                WriteMemByte(segment, a, (byte)val);
 
             return name;
         }
 
         if (mod == 1 || mod == 2)
         {
-#if DEBUG
-            Log.DoLog($"mod = {mod}, word {w}, val {val:X4}");
-#endif
             (ushort a, string name) = GetDoubleRegisterMod01_02(reg, mod == 2);
 
             ushort segment = segment_override_set ? segment_override : _ds;
