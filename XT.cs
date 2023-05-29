@@ -204,9 +204,13 @@ internal class i8253
 // programmable interrupt controller (PIC)
 internal class i8259
 {
-    bool _ICW2 = false;
-    bool _ICW3 = false;
-    bool _ICW4 = false;
+    bool _init = false;
+    byte _init_data = 0;
+    byte _ICW1, _ICW2, _ICW3, _ICW4;
+    bool _is_ocw = false;
+    int _ocw_nr = 0;
+    byte _OCW1, _OCW2, _OCW3;
+
     int _int_offset = 8;
     byte _interrupt_mask = 0xff;
 
@@ -218,6 +222,30 @@ internal class i8259
 
     public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
     {
+        if (_is_ocw)
+        {
+            if (_ocw_nr == 0)
+            {
+                _ocw_nr++;
+                return _OCW1;
+            }
+            else if (_ocw_nr == 1)
+            {
+                _ocw_nr++;
+                return _OCW2;
+            }
+            else if (_ocw_nr == 2)
+            {
+                _ocw_nr++;
+                return _OCW3;
+            }
+            else
+            {
+                Log.DoLog($"OCW nr is {_ocw_nr}");
+                _is_ocw = false;
+            }
+        }
+
         return register_cache[addr];
     }
 
@@ -233,39 +261,55 @@ internal class i8259
 
         if (addr == 0)
         {
-            _ICW2 = (value & 16) == 16;
-            _ICW3 = (value & 2) == 0;
-            _ICW4 = (value & 1) == 1;
-
-            Log.DoLog($"i8259: ICW2 {_ICW2}, ICW3 {_ICW3}, ICW4 {_ICW4} / {value:X2}");
+            if ((value & 128) == 0)
+                _init = (value & 16) == 16;
+            else
+            {
+                _is_ocw = true;
+                _OCW1 = value;
+                _ocw_nr = 1;
+            }
         }
         else if (addr == 1)
         {
-            if (_ICW2)
+            if (_init)
             {
-                _ICW2 = false;
+                if ((_init_data & 16) == 16)  // waiting for ICW2
+                {
+                    _ICW2 = value;
 
-                _int_offset = value;
+                    _init_data = (byte)(_init_data & ~16);
+                }
+                else if ((_init_data & 2) == 2)  // waiting for ICW3
+                {
+                    _ICW3 = value;
 
-                Log.DoLog($"i8259: ICW2 {value:X2}");
+                    _init_data = (byte)(_init_data & ~2);
+                }
+                else if ((_init_data & 1) == 1)  // waiting for ICW4
+                {
+                    _ICW4 = value;
+
+                    _init_data = (byte)(_init_data & ~1);
+                }
+                else
+                {
+                    _init = false;
+                }
             }
-            else if (_ICW3)
+            else if (_is_ocw)
             {
-                _ICW3 = false;
+                if (_ocw_nr == 0)
+                    _OCW2 = value;
+                else if (_ocw_nr == 1)
+                    _OCW3 = value;
+                else
+                {
+                    Log.DoLog($"OCW nr is {_ocw_nr}");
+                    _is_ocw = false;
+                }
 
-                Log.DoLog($"i8259: ICW3 {value:X2}");
-            }
-            else if (_ICW4)
-            {
-                _ICW4 = false;
-
-                Log.DoLog($"i8259: ICW4 {value:X2}");
-            }
-            else
-            {
-                Log.DoLog($"i8259: set interrupt mask {value:X2}");
-
-                _interrupt_mask = value;
+                _ocw_nr++;
             }
         }
         else
@@ -314,7 +358,9 @@ internal class IO
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
 
-        if (addr == 0x03f4) {  // diskette controller main status register
+        if (addr == 0x03f4)
+        {
+            // diskette controller main status register
             floppy_0_state = !floppy_0_state;
 
             return (byte)(floppy_0_state ? 0x91 : 0x80);
@@ -667,7 +713,8 @@ internal class P8086
         {
             Console.WriteLine($"INT NR {nr:X2}, AX: {_ah:X2}{_al:X2}");
 
-            if (_ah == 0x0d) {
+            if (_ah == 0x0d)
+            {
                 // disk reset
                 SetFlagC(false);
                 _ah = 0x00;  // no error
