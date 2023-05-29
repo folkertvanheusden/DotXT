@@ -233,11 +233,11 @@ internal class i8259
 
         if (addr == 0)
         {
-            _ICW2 = (value & 0b00010000) == 0b00010000;
+            _ICW2 = (value & 16) == 16;
             _ICW3 = (value & 2) == 0;
             _ICW4 = (value & 1) == 1;
 
-            Log.DoLog($"i8259: ICW1 init_pic {_ICW2} / {value:X2}");
+            Log.DoLog($"i8259: ICW2 {_ICW2}, ICW3 {_ICW3}, ICW4 {_ICW4} / {value:X2}");
         }
         else if (addr == 1)
         {
