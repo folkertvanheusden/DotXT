@@ -435,14 +435,19 @@ internal class P8086
     private ushort _rep_addr;
     private byte _rep_opcode;
 
+    private bool _intercept_int_flag;
+
     private bool _is_test;
 
     private readonly List<byte> floppy = new();
 
     private string tty_output = "";
 
-    public P8086(string test, bool is_floppy)
+    public P8086(string test, bool is_floppy, bool intercept_int_flag)
     {
+        // intercept also other ints besides keyboard/console access
+        _intercept_int_flag =intercept_int_flag;
+
         if (test != "" && is_floppy == false)
         {
             _is_test = true;
@@ -564,8 +569,25 @@ internal class P8086
             }
 
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+
+            return false;
         }
-        else if (nr == 0x12)
+        else if (nr == 0x16)
+        {
+            // keyboard access
+            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+
+            _ah = 0x3b;  // F1 scan code
+            _al = 0x00;  // F1 ascii char
+
+            SetFlagC(false);
+            return true;
+        }
+
+        if (!_intercept_int_flag)
+            return false;
+
+        if (nr == 0x12)
         {
             // return conventional memory size
             SetAX(640); // 640kB
@@ -633,21 +655,10 @@ internal class P8086
                 return true;
             }
         }
-        else if (nr == 0x16)
-        {
-            // keyboard access
-            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
-
-            _ah = 0x3b;  // F1 scan code
-            _al = 0x00;  // F1 ascii char
-
-            SetFlagC(false);
-            return true;
-        }
         else if (nr == 0x19)
         {
             // reboot (to bootloader)
-            Log.DoLog("Reboot");
+            Log.DoLog("INT 19, Reboot");
             Console.WriteLine("REBOOT");
             System.Environment.Exit(1);
         }

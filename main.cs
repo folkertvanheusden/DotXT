@@ -2,6 +2,7 @@ using DotXT;
 
 string test = "";
 bool t_is_floppy = false;
+bool intercept_int = false;
 
 for(int i=0; i<args.Length; i++)
 {
@@ -11,6 +12,8 @@ for(int i=0; i<args.Length; i++)
         t_is_floppy = true;
     else if (args[i] == "-l")
         Log.SetLogFile(args[++i]);
+    else if (args[i] == "-i")
+        intercept_int = true;
     else
         Console.WriteLine($"{args[i]} is not understood");
 }
@@ -25,7 +28,7 @@ if (test == "")
 Console.WriteLine("Debug mode");
 #endif
 
-var p = new P8086(test, t_is_floppy);
+var p = new P8086(test, t_is_floppy, intercept_int);
 
 for (;;)
     p.Tick();
