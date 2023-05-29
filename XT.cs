@@ -221,9 +221,8 @@ internal class i8259
         return register_cache[addr];
     }
 
-    public (int, int) Tick()
+    public void Tick(Dictionary <int, int> scheduled_interrupts)
     {
-        return (-1, -1);
     }
 
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
@@ -334,12 +333,10 @@ internal class IO
         return 0;
     }
 
-    public (int, int) Tick()
+    public void Tick(Dictionary <int, int> scheduled_interrupts)
     {
         if (_i8253.Tick())
-            return (_pic.get_interrupt_offset() + 0, 10);
-
-        return (-1, -1);
+            scheduled_interrupts[_pic.get_interrupt_offset() + 0] = 10;
     }
 
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
@@ -1401,10 +1398,7 @@ internal class P8086
 #endif
 
         // tick I/O, check for interrupt
-        (int interrupt_countdown_nr, int interrupt_countdown) = _io.Tick();
-
-        if (interrupt_countdown_nr != -1)
-            _scheduled_interrupts[interrupt_countdown_nr] = interrupt_countdown;
+        _io.Tick(_scheduled_interrupts);
 
         if (GetFlag(9) == true)
         {
