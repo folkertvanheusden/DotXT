@@ -202,7 +202,7 @@ internal class i8253
 }
 
 // programmable interrupt controller (PIC)
-internal class i8259
+internal class pic8259
 {
     bool _init = false;
     byte _init_data = 0;
@@ -216,7 +216,7 @@ internal class i8259
 
     byte [] register_cache = new byte[2];
 
-    public i8259()
+    public pic8259()
     {
     }
 
@@ -224,6 +224,8 @@ internal class i8259
     {
         if (_is_ocw)
         {
+            Log.DoLog($"8259 IN: is ocw {_ocw_nr}, read nr {_ocw_nr}");
+
             if (_ocw_nr == 0)
             {
                 _ocw_nr++;
@@ -241,7 +243,7 @@ internal class i8259
             }
             else
             {
-                Log.DoLog($"OCW nr is {_ocw_nr}");
+                Log.DoLog($"8259 IN: OCW nr is {_ocw_nr}");
                 _is_ocw = false;
             }
         }
@@ -255,25 +257,33 @@ internal class i8259
 
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
     {
-        Log.DoLog($"i8259 port {addr} value {value:X2}");
+        Log.DoLog($"8259 OUT port {addr} value {value:X2}");
 
         register_cache[addr] = value;
 
         if (addr == 0)
         {
             if ((value & 128) == 0)
+            {
                 _init = (value & 16) == 16;
+
+                Log.DoLog($"8259 OUT: is init: {_init}");
+            }
             else
             {
+                Log.DoLog($"8259 OUT: is OCW, value {value:X2}");
+
                 _is_ocw = true;
                 _OCW1 = value;
-                _ocw_nr = 1;
+                _ocw_nr = 0;
             }
         }
         else if (addr == 1)
         {
             if (_init)
             {
+                Log.DoLog($"8259 OUT: is ICW, value {value:X2}, {_init_data:X}");
+
                 if ((_init_data & 16) == 16)  // waiting for ICW2
                 {
                     _ICW2 = value;
@@ -299,13 +309,15 @@ internal class i8259
             }
             else if (_is_ocw)
             {
+                Log.DoLog($"8259 OUT: is OCW, value {value:X2}, {_ocw_nr}");
+
                 if (_ocw_nr == 0)
                     _OCW2 = value;
                 else if (_ocw_nr == 1)
                     _OCW3 = value;
                 else
                 {
-                    Log.DoLog($"OCW nr is {_ocw_nr}");
+                    Log.DoLog($"8259 OCW OUT nr is {_ocw_nr}");
                     _is_ocw = false;
                 }
 
@@ -314,7 +326,7 @@ internal class i8259
         }
         else
         {
-            Log.DoLog($"i8259 has no port {addr:X2}");
+            Log.DoLog($"8259 OUT has no port {addr:X2}");
         }
     }
 
@@ -327,7 +339,7 @@ internal class i8259
 internal class IO
 {
     private i8253 _i8253 = new i8253();
-    private i8259 _pic = new i8259();
+    private pic8259 _pic = new pic8259();
 
     private bool floppy_0_state = false;
 
@@ -3179,15 +3191,15 @@ internal class P8086
         }
         else if (opcode == 0xca || opcode == 0xcb)
         {
-            // RETF
-            ushort nToRelease = GetPcWord();
+            // RETF / RET
+            ushort nToRelease = opcode == 0xca ? GetPcWord() : (ushort)0;
 
             _ip = pop();
             _cs = pop();
 
             if (opcode == 0xca)
             {
-                _ss += nToRelease;
+                _sp += nToRelease;
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} RETF ${nToRelease:X4}");
