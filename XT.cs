@@ -293,7 +293,7 @@ internal class IO
         if (addr == 0x0008)  // DMA status register
             return 0x0f;  // 'transfer complete'
 
-        if (addr == 0x0020 || addr == 0021)  // PIC
+        if (addr == 0x0020 || addr == 0x0021)  // PIC
             return _pic.In(scheduled_interrupts, (ushort)(addr - 0x0020));
 
         if (addr == 0x0040)
