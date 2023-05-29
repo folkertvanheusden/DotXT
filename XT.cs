@@ -210,13 +210,15 @@ internal class i8259
     int _int_offset = 8;
     byte _interrupt_mask = 0xff;
 
+    byte [] register_cache = new byte[2];
+
     public i8259()
     {
     }
 
     public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
     {
-        return 0;
+        return register_cache[addr];
     }
 
     public (int, int) Tick()
@@ -227,6 +229,8 @@ internal class i8259
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
     {
         Log.DoLog($"i8259 port {addr} value {value:X2}");
+
+        register_cache[addr] = value;
 
         if (addr == 0)
         {
