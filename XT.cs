@@ -2334,6 +2334,22 @@ internal class P8086
             Log.DoLog($"{prefixStr} CDW");
 #endif
         }
+        else if (opcode == 0x9a)
+        {
+            // CALL far ptr
+            ushort temp_ip = GetPcWord();
+            ushort temp_cs = GetPcWord();
+
+            push(_ip);
+            push(_cs);
+
+            _ip = temp_ip;
+            _cs = temp_cs;
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} CALL ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
+#endif
+        }
         else if (opcode == 0x9c)
         {
             // PUSHF
