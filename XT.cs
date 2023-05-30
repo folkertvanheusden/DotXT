@@ -3903,14 +3903,12 @@ internal class P8086
             else if (function == 2)
             {
                 // CALL
-                ushort a = GetPcWord();
-
                 push(_ip);
 
-                _ip = (ushort)(a + _ip);
+                _ip = v;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} CALL {a:X4} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
+                Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
 #endif
             }
             else if (function == 4)
