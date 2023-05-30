@@ -1469,12 +1469,20 @@ internal class P8086
     }
 
 #if DEBUG
-    private void HexDump(uint addr)
+    private void HexDump(uint addr, bool word)
     {
         string s = "";
 
-        for(uint o=0; o<16; o++)
-            s += $" {_b.ReadByte(addr + o):X2}";
+        if (word)
+        {
+            for(uint o=0; o<16; o += 2)
+                s += $" {_b.ReadByte(addr + o) + (_b.ReadByte(addr + o + 1) << 8):X4}";
+        }
+        else
+        {
+            for(uint o=0; o<16; o++)
+                s += $" {_b.ReadByte(addr + o):X2}";
+        }
 
         Log.DoLog($"{addr:X6}: {s}");
     }
@@ -1582,10 +1590,11 @@ internal class P8086
         }
 
 #if DEBUG
-        HexDump(address);
+//        HexDump(address, false);
+        HexDump((uint)(_ss * 16 + _sp), true);
 
         string prefixStr =
-            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} | ";
+            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{_ip:X4} | ";
 #else
         string prefixStr = "";
 #endif
@@ -2340,8 +2349,8 @@ internal class P8086
             ushort temp_ip = GetPcWord();
             ushort temp_cs = GetPcWord();
 
-            push(_ip);
             push(_cs);
+            push(_ip);
 
             _ip = temp_ip;
             _cs = temp_cs;
@@ -3917,8 +3926,10 @@ internal class P8086
                 push(_cs);
                 push(_ip);
 
-                _cs = ReadMemWord(_ds, (ushort)(addr + 2));
+                Log.DoLog($"v: {v:X4}, addr: {addr:X4}, word@addr+0: {ReadMemWord(seg, (ushort)(addr + 0)):X4}, word@addr+2: {ReadMemWord(seg, (ushort)(addr + 2)):X4}");
+
                 _ip = v;
+                _cs = ReadMemWord(seg, (ushort)(addr + 2));
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
