@@ -3300,7 +3300,7 @@ internal class P8086
         }
         else if (opcode == 0xca || opcode == 0xcb)
         {
-            // RETF / RET
+            // RETF n / RETF
             ushort nToRelease = opcode == 0xca ? GetPcWord() : (ushort)0;
 
             _ip = pop();
