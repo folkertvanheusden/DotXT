@@ -3548,7 +3548,7 @@ internal class P8086
 
             cx--;
 
-            PutCX(cx);
+            SetCX(cx);
 
             ushort newAddresses = (ushort)(_ip + (sbyte)to);
 
@@ -3568,7 +3568,7 @@ internal class P8086
 
             cx--;
 
-            PutCX(cx);
+            SetCX(cx);
 
             ushort newAddresses = (ushort)(_ip + (sbyte)to);
 
