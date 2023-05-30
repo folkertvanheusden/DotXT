@@ -1866,6 +1866,10 @@ internal class P8086
             byte v = ReadMemByte(_ds, _si);
             WriteMemByte(_es, _di, v);
 
+#if DEBUG
+            Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}) {_ds * 16 + _si:X6} -> {_es * 16 + _di:X6}");
+#endif
+
             if (GetFlagD())
             {
                 _si--;
@@ -1876,10 +1880,6 @@ internal class P8086
                 _si++;
                 _di++;
             }
-
-#if DEBUG
-            Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')})");
-#endif
         }
         else if (opcode == 0xa5)
         {
