@@ -3609,12 +3609,12 @@ internal class P8086
             }
             else if (opcode == 0x7e)
             {
-                state = GetFlagZ() || GetFlagS() != GetFlagO();
+                state = GetFlagZ() == true || GetFlagS() != GetFlagO();
                 name = "JLE";
             }
             else if (opcode == 0x7f)
             {
-                state = GetFlagZ() && GetFlagS() == GetFlagO();
+                state = GetFlagZ() == false && GetFlagS() == GetFlagO();
                 name = "JNLE";
             }
             else
