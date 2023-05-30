@@ -3582,10 +3582,12 @@ internal class P8086
         else if (opcode == 0xd7)
         {
             // XLATB
+            byte old_al = _al;
+
             _al = ReadMemByte(_ds, (ushort)(GetBX() + _al));
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} XLATB");
+            Log.DoLog($"{prefixStr} XLATB ({_ds:X4}:{GetBX():X4} + {old_al:X2})");
 #endif
         }
         else if (opcode == 0xe0)
