@@ -3662,7 +3662,7 @@ internal class P8086
             Log.DoLog($"{prefixStr} LOOP {to} ({newAddresses:X4} -> {_ip:X4})");
 #endif
         }
-        else if (opcode == 0xe2)
+        else if (opcode == 0xe1 || opcode == 0xe2)
         {
             // LOOP
             byte to = GetPcByte();
@@ -3673,13 +3673,32 @@ internal class P8086
 
             SetCX(cx);
 
+            string name = "?";
             ushort newAddresses = (ushort)(_ip + (sbyte)to);
 
-            if (cx > 0)
-                _ip = newAddresses;
+            if (opcode == 0xe2)
+            {
+                if (cx > 0)
+                    _ip = newAddresses;
+
+                name = "LOOP";
+            }
+            else if (opcode == 0xe1)
+            {
+                if (cx > 0 && GetFlagZ() == true)
+                    _ip = newAddresses;
+
+                name = "LOOPZ";
+            }
+#if DEBUG
+            else
+            {
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
+            }
+#endif
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} LOOP {to} ({newAddresses:X4})");
+            Log.DoLog($"{prefixStr} {name} {to} ({newAddresses:X4})");
 #endif
         }
         else if (opcode == 0xe4)
