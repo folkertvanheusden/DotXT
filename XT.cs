@@ -3911,6 +3911,19 @@ internal class P8086
                 Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
 #endif
             }
+            else if (function == 3)
+            {
+                // CALL FAR
+                push(_cs);
+                push(_ip);
+
+                _cs = ReadMemWord(_ds, (ushort)(addr + 2));
+                _ip = v;
+
+#if DEBUG
+                Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
+#endif
+            }
             else if (function == 4)
             {
                 // JMP
