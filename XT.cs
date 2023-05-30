@@ -1475,12 +1475,12 @@ internal class P8086
 
         if (word)
         {
-            for(uint o=0; o<16; o += 2)
+            for(uint o=0; o<32; o += 2)
                 s += $" {_b.ReadByte(addr + o) + (_b.ReadByte(addr + o + 1) << 8):X4}";
         }
         else
         {
-            for(uint o=0; o<16; o++)
+            for(uint o=0; o<32; o++)
                 s += $" {_b.ReadByte(addr + o):X2}";
         }
 
@@ -1516,6 +1516,7 @@ internal class P8086
             }
         }
 
+        ushort prev_ip = _ip;
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
         byte opcode = GetPcByte();
 
@@ -1557,6 +1558,7 @@ internal class P8086
                 Log.DoLog($"------ {address:X6} prefix {opcode:X2} not implemented");
             }
 
+            prev_ip = _ip;
             address = (uint)(_cs * 16 + _ip) & MemMask;
             byte next_opcode = GetPcByte();
 
@@ -1590,11 +1592,11 @@ internal class P8086
         }
 
 #if DEBUG
-//        HexDump(address, false);
+        HexDump(address, false);
         HexDump((uint)(_ss * 16 + _sp), true);
 
         string prefixStr =
-            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{_ip:X4} | ";
+            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{prev_ip:X4} | ";
 #else
         string prefixStr = "";
 #endif
@@ -2405,6 +2407,19 @@ internal class P8086
 
 #if DEBUG
             Log.DoLog($"{prefixStr} LODSW");
+#endif
+        }
+        else if (opcode == 0xc2)
+        {
+            ushort nToRelease = GetPcWord();
+
+            // RET
+            _ip = pop();
+
+            _sp += nToRelease;
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} RET ${nToRelease:X4}");
 #endif
         }
         else if (opcode == 0xc3)
