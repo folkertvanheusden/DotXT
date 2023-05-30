@@ -3739,15 +3739,6 @@ internal class P8086
             Log.DoLog($"{prefixStr} IN AX,${from:X2}");
 #endif
         }
-        else if (opcode == 0xec)
-        {
-            // IN AX,DX
-            SetAX(_io.In(_scheduled_interrupts, GetDX()));
-
-#if DEBUG
-            Log.DoLog($"{prefixStr} IN AL,DX");
-#endif
-        }
         else if (opcode == 0xe6)
         {
             // OUT
@@ -3757,6 +3748,15 @@ internal class P8086
 
 #if DEBUG
             Log.DoLog($"{prefixStr} OUT ${to:X2},AL");
+#endif
+        }
+        else if (opcode == 0xec)
+        {
+            // IN AL,DX
+            _al = _io.In(_scheduled_interrupts, GetDX());
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} IN AL,DX");
 #endif
         }
         else if (opcode == 0xee)
