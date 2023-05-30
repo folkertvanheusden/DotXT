@@ -498,14 +498,18 @@ internal class P8086
 
     private bool _is_test;
 
+    private bool _terminate_on_hlt;
+
     private readonly List<byte> floppy = new();
 
     private string tty_output = "";
 
-    public P8086(string test, bool is_floppy, bool intercept_int_flag)
+    public P8086(string test, bool is_floppy, bool intercept_int_flag, bool terminate_on_hlt)
     {
         // intercept also other ints besides keyboard/console access
-        _intercept_int_flag =intercept_int_flag;
+        _intercept_int_flag = intercept_int_flag;
+
+        _terminate_on_hlt = terminate_on_hlt;
 
         if (test != "" && is_floppy == false)
         {
@@ -574,6 +578,11 @@ internal class P8086
             _cs = 0xf000;
             _ip = 0xfff0;
         }
+    }
+
+    public void set_ip(ushort ip)
+    {
+        _ip = ip;
     }
 
     private bool intercept_int(int nr)
@@ -827,7 +836,7 @@ internal class P8086
        _b.WriteByte(a2, (byte)(v >> 8));
     }
 
-    private byte ReadMemByte(ushort segment, ushort offset)
+    public byte ReadMemByte(ushort segment, ushort offset)
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
 
@@ -836,7 +845,7 @@ internal class P8086
         return _b.ReadByte(a);
     } 
 
-    private ushort ReadMemWord(ushort segment, ushort offset)
+    public ushort ReadMemWord(ushort segment, ushort offset)
     {
         uint a1 = (uint)(((segment << 4) + offset) & MemMask);
         uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
@@ -1450,8 +1459,10 @@ internal class P8086
     }
 #endif
 
-    public void Tick()
+    public bool Tick()
     {
+        bool rc = true;
+
 #if DEBUG
         string flagStr = GetFlagsAsString();
 #endif
@@ -3652,10 +3663,15 @@ internal class P8086
 
             Console.WriteLine($"{address:X6} HLT");
 
-            if (_is_test)
-                System.Environment.Exit(_si == 0xa5ee ? 123 : 0);
+            if (_terminate_on_hlt)
+            {
+                if (_is_test)
+                    System.Environment.Exit(_si == 0xa5ee ? 123 : 0);
 
-            System.Environment.Exit(0);
+                System.Environment.Exit(0);
+            }
+
+            rc = false;
         }
         else if (opcode == 0xf5)
         {
@@ -3849,5 +3865,7 @@ internal class P8086
                 _rep = false;
             }
         }
+
+        return rc;
     }
 }
