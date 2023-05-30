@@ -61,18 +61,25 @@ internal class Bus
     private readonly Rom _bios = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
     private readonly Rom _basic = new("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
 
-    public Bus(uint size)
+    private bool _use_bios;
+
+    public Bus(uint size, bool use_bios)
     {
         _m = new Memory(size);
+
+        _use_bios = use_bios;
     }
 
     public byte ReadByte(uint address)
     {
-        if (address is >= 0x000f8000 and <= 0x000fffff)
-            return _bios.ReadByte(address - 0x000f8000);
+        if (_use_bios)
+        {
+            if (address is >= 0x000f8000 and <= 0x000fffff)
+                return _bios.ReadByte(address - 0x000f8000);
 
-        if (address is >= 0x000f0000 and <= 0x000f1fff)
-            return _basic.ReadByte(address - 0x000f0000);
+            if (address is >= 0x000f0000 and <= 0x000f1fff)
+                return _basic.ReadByte(address - 0x000f0000);
+        }
 
         return _m.ReadByte(address);
     }
@@ -504,7 +511,7 @@ internal class P8086
 
     private string tty_output = "";
 
-    public P8086(string test, bool is_floppy, bool intercept_int_flag, bool terminate_on_hlt)
+    public P8086(string test, bool is_floppy, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, bool load_bios)
     {
         // intercept also other ints besides keyboard/console access
         _intercept_int_flag = intercept_int_flag;
@@ -515,12 +522,14 @@ internal class P8086
         {
             _is_test = true;
 
-            _b = new Bus(1024 * 1024);
+            _b = new Bus(1024 * 1024, load_bios);
 
             _cs = 0;
             _ip = 0x0800;
 
-            uint addr = 0;
+            uint addr = load_test_at == 0xffffffff ? 0 : load_test_at;
+
+            Log.DoLog($"Load {test} at {addr:X6}");
 
             using(Stream source = File.Open(test, FileMode.Open))
             {
@@ -535,16 +544,15 @@ internal class P8086
 
                     for(int i=0; i<n_read; i++)
                     {
-                        _b.WriteByte((uint)addr, buffer[i]);
+                        _b.WriteByte(addr, buffer[i]);
                         addr++;
                     }
                 }
             }
-
         }
         else if (test != "" && is_floppy == true)
         {
-            _b = new Bus(1024 * 1024);
+            _b = new Bus(1024 * 1024, load_bios);
 
             _cs = 0;
             _ip = 0x7c00;
@@ -573,15 +581,22 @@ internal class P8086
         }
         else
         {
-            _b = new Bus(64 * 1024);
+            _b = new Bus(64 * 1024, true);
 
             _cs = 0xf000;
             _ip = 0xfff0;
         }
+
+        // bit 1 of the flags register is always 1
+        // https://www.righto.com/2023/02/silicon-reverse-engineering-intel-8086.html
+        _flags |= 2;
     }
 
-    public void set_ip(ushort ip)
+    public void set_ip(ushort cs, ushort ip)
     {
+        Log.DoLog($"Set CS/IP to {cs:X4}:{ip:X4}");
+
+        _cs = cs;
         _ip = ip;
     }
 
