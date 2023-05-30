@@ -2239,6 +2239,7 @@ internal class P8086
         }
         else if (opcode == 0x98)
         {
+            // CBW
             ushort new_value = _al;
 
             if ((_al & 128) == 128)
@@ -2253,7 +2254,7 @@ internal class P8086
         else if (opcode == 0x99)
         {
             // CWD
-            if ((_ah & 128) == 128)
+            if ((_ah & 32768) == 32768)
                 SetDX(0xffff);
             else
                 SetDX(0);
