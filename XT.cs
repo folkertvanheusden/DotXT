@@ -3164,7 +3164,7 @@ internal class P8086
 
             int mreg = o1 & 7;
 
-            // get address to write to ('seg, addr'))
+            // get address to write to ('seg, addr')
             (ushort dummy, string name, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(mreg, mod, word);
 
             if (word)
@@ -3544,11 +3544,11 @@ internal class P8086
             // LOOPNZ
             byte to = GetPcByte();
 
-            (ushort cx, string dummy) = GetRegister(1, true);
+            ushort cx = GetCX();
 
             cx--;
 
-            PutRegister(1, true, cx);
+            PutCX(cx);
 
             ushort newAddresses = (ushort)(_ip + (sbyte)to);
 
@@ -3564,11 +3564,11 @@ internal class P8086
             // LOOP
             byte to = GetPcByte();
 
-            (ushort cx, string dummy) = GetRegister(1, true);
+            ushort cx = GetCX();
 
             cx--;
 
-            PutRegister(1, true, cx);
+            PutCX(cx);
 
             ushort newAddresses = (ushort)(_ip + (sbyte)to);
 
@@ -3603,8 +3603,8 @@ internal class P8086
         }
         else if (opcode == 0xec)
         {
-            // IN AL,DX
-            _al = _io.In(_scheduled_interrupts, GetDX());
+            // IN AX,DX
+            SetAX(_io.In(_scheduled_interrupts, GetDX()));
 
 #if DEBUG
             Log.DoLog($"{prefixStr} IN AL,DX");
