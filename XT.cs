@@ -765,6 +765,12 @@ internal class P8086
         return false;
     }
 
+    private void FixFlags()
+    {
+            _flags &= 0b0000111111010101;
+            _flags |= 2;
+    }
+
     private byte GetPcByte()
     {
         uint address = (uint)(_cs * 16 + _ip++) & MemMask;
@@ -2317,6 +2323,8 @@ internal class P8086
             // POPF
             _flags = pop();
 
+            FixFlags();
+
 #if DEBUG
             Log.DoLog($"{prefixStr} POPF");
 #endif
@@ -2415,7 +2423,9 @@ internal class P8086
             // IRET
             _ip = pop();
             _cs = pop();
+
             _flags = pop();
+            FixFlags();
 
 #if DEBUG
             Log.DoLog($"{prefixStr} IRET");
@@ -3103,6 +3113,8 @@ internal class P8086
             ushort add = (ushort)(_ah & 0b11010101);
 
             _flags = (ushort)(keep | add);
+
+            FixFlags();
 
 #if DEBUG
             Log.DoLog($"{prefixStr} SAHF (set to {GetFlagsAsString()})");
