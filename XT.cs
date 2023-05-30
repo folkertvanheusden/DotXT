@@ -3579,6 +3579,15 @@ internal class P8086
             Log.DoLog($"{prefixStr} {name} {to} ({_cs:X4}:{newAddress:X4} -> {_cs * 16 + newAddress:X6})");
 #endif
         }
+        else if (opcode == 0xd7)
+        {
+            // XLATB
+            _al = ReadMemByte(_ds, (ushort)(GetBX() + _al));
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} XLATB");
+#endif
+        }
         else if (opcode == 0xe0)
         {
             // LOOPNZ
