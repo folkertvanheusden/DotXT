@@ -1973,6 +1973,31 @@ internal class P8086
             Log.DoLog($"{prefixStr} CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')})");
 #endif
         }
+        else if (opcode == 0xa7)
+        {
+            // CMPSB
+            ushort v1 = ReadMemWord(_ds, _si);
+            ushort v2 = ReadMemWord(_es, _di);
+
+            int result = v1 - v2;
+
+            if (GetFlagD())
+            {
+                _si -= 2;
+                _di -= 2;
+            }
+            else
+            {
+                _si += 2;
+                _di += 2;
+            }
+
+            SetAddSubFlags(true, v1, v2, result, true, false);
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} CMPSW (${v1:X4},${v2:X4})");
+#endif
+        }
         else if (opcode == 0xe3)
         {
             // JCXZ np
@@ -3187,6 +3212,21 @@ internal class P8086
 
 #if DEBUG
             Log.DoLog($"{prefixStr} STOSW");
+#endif
+        }
+        else if (opcode == 0xae)
+        {
+            // SCASW
+            byte v = ReadMemByte(_es, _di);
+
+            int result = _al - v;
+
+            SetAddSubFlags(false, _al, v, result, true, false);
+
+            _di += (ushort)(GetFlagD() ? -1 : 1);
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} SCASB");
 #endif
         }
         else if (opcode == 0xaf)
