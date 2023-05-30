@@ -2240,6 +2240,20 @@ internal class P8086
             Log.DoLog($"{prefixStr} XCHG {name1},{name2}");
 #endif
         }
+        else if (opcode == 0x8f)
+        {
+            // POP rmw
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg2 = o1 & 7;
+
+            string toName = PutRegisterMem(reg2, mod, true, pop());
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} POP {toName}");
+#endif
+        }
         else if (opcode == 0x90)
         {
             // NOP
