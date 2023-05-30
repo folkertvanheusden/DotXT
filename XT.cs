@@ -3253,7 +3253,7 @@ internal class P8086
             }
 #endif
         }
-        else if ((opcode & 0xf8) == 0xd0)
+        else if ((opcode & 0xfc) == 0xd0)
         {
             bool word = (opcode & 1) == 1;
             byte o1 = GetPcByte();
