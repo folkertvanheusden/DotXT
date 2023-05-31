@@ -666,6 +666,15 @@ internal class P8086
             SetFlagC(false);
             return true;
         }
+        else if (nr == 0x29)
+        {
+            // fast console output
+            SetFlagC(false);
+
+            Console.Write((char)_al);
+
+            return true;
+        }
 
         if (!_intercept_int_flag)
             return false;
