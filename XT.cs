@@ -3888,9 +3888,17 @@ internal class P8086
             int mod = o1 >> 6;
             int reg = o1 & 7;
 
-            (ushort v, string name, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg, mod, word);
-
             int function = (o1 >> 3) & 7;
+
+            Log.DoLog($"mod {mod} reg {reg} function {function}");
+
+            if (function == 4 || function == 5)
+            {
+                segment_override_set = true;
+                segment_override = _ss;
+            }
+
+            (ushort v, string name, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg, mod, word);
 
             if (function == 0)
             {
@@ -3952,11 +3960,11 @@ internal class P8086
             }
             else if (function == 4)
             {
-                // JMP
-                _ip = (ushort)v;
+                // JMP NEAR
+                _ip = v;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} JMP {_cs * 16 + _ip:X6}");
+                Log.DoLog($"{prefixStr} JMP {name} ({_cs * 16 + _ip:X6})");
 #endif
             }
             else if (function == 5)
