@@ -1035,6 +1035,9 @@ internal class P8086
 
             ushort segment = segment_override_set ? segment_override : _ds;
 
+            if (segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+                segment = _ss;
+
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
             name += $" (${segment * 16 + a:X6} -> {v:X4})";
@@ -1049,6 +1052,9 @@ internal class P8086
             (ushort a, string name) = GetDoubleRegisterMod01_02(reg, word);
 
             ushort segment = segment_override_set ? segment_override : _ds;
+
+            if (segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+                segment = _ss;
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
@@ -1229,6 +1235,9 @@ internal class P8086
 
             ushort segment = segment_override_set ? segment_override : _ds;
 
+            if (segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+                segment = _ss;
+
             name += $" (${segment * 16 + a:X6})";
 
             if (w)
@@ -1244,6 +1253,9 @@ internal class P8086
             (ushort a, string name) = GetDoubleRegisterMod01_02(reg, mod == 2);
 
             ushort segment = segment_override_set ? segment_override : _ds;
+
+            if (segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+                segment = _ss;
 
 #if DEBUG
             name += $" (${segment * 16 + a:X6})";
@@ -3900,12 +3912,6 @@ internal class P8086
             int function = (o1 >> 3) & 7;
 
             Log.DoLog($"mod {mod} reg {reg} function {function}");
-
-            if (function == 4 || function == 5)
-            {
-                segment_override_set = true;
-                segment_override = _ss;
-            }
 
             (ushort v, string name, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg, mod, word);
 
