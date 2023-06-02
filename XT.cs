@@ -492,8 +492,8 @@ internal class P8086
     private ushort _ss;
 
     // replace by an Optional-type when available
-    private ushort segment_override;
-    private bool segment_override_set;
+    private ushort _segment_override;
+    private bool _segment_override_set;
 
     private ushort _flags;
 
@@ -1042,9 +1042,9 @@ internal class P8086
         {
             (ushort a, string name) = GetDoubleRegisterMod00(reg);
 
-            ushort segment = segment_override_set ? segment_override : _ds;
+            ushort segment = _segment_override_set ? _segment_override : _ds;
 
-            if (segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
                 segment = _ss;
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
@@ -1060,9 +1060,9 @@ internal class P8086
 
             (ushort a, string name) = GetDoubleRegisterMod01_02(reg, word);
 
-            ushort segment = segment_override_set ? segment_override : _ds;
+            ushort segment = _segment_override_set ? _segment_override : _ds;
 
-            if (segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
                 segment = _ss;
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
@@ -1242,9 +1242,9 @@ internal class P8086
         {
             (ushort a, string name) = GetDoubleRegisterMod00(reg);
 
-            ushort segment = segment_override_set ? segment_override : _ds;
+            ushort segment = _segment_override_set ? _segment_override : _ds;
 
-            if (segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
                 segment = _ss;
 
             name += $" (${segment * 16 + a:X6})";
@@ -1261,9 +1261,9 @@ internal class P8086
         {
             (ushort a, string name) = GetDoubleRegisterMod01_02(reg, mod == 2);
 
-            ushort segment = segment_override_set ? segment_override : _ds;
+            ushort segment = _segment_override_set ? _segment_override : _ds;
 
-            if (segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
                 segment = _ss;
 
 #if DEBUG
@@ -1484,6 +1484,9 @@ internal class P8086
 
     void invoke_interrupt(int interrupt_nr)
     {
+        _segment_override_set = false;
+        _rep = false;
+
         push(_flags);
         push(_cs);
         push(_ip);
@@ -1555,26 +1558,26 @@ internal class P8086
             opcode = _rep_opcode;
 
         // handle prefixes
-        if (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
+        while (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
         {
             if (opcode == 0x26)
             {
-                segment_override = _es;
+                _segment_override = _es;
                 Log.DoLog($"segment override to ES: {_es:X4}");
             }
             else if (opcode == 0x2e)
             {
-                segment_override = _cs;
+                _segment_override = _cs;
                 Log.DoLog($"segment override to CS: {_cs:X4}");
             }
             else if (opcode == 0x36)
             {
-                segment_override = _ss;
+                _segment_override = _ss;
                 Log.DoLog($"segment override to SS: {_ss:X4}");
             }
             else if (opcode == 0x3e)
             {
-                segment_override = _ds;
+                _segment_override = _ds;
                 Log.DoLog($"segment override to DS: {_ds:X4}");
             }
             else if (opcode is (0xf2 or 0xf3))
@@ -1615,7 +1618,7 @@ internal class P8086
             }
             else
             {
-                segment_override_set = true;
+                _segment_override_set = true;
             }
 
             opcode = next_opcode;
@@ -4024,7 +4027,7 @@ internal class P8086
             Log.DoLog($"{prefixStr} opcode {opcode:x} not implemented");
         }
 
-        segment_override_set = false;
+        _segment_override_set = false;
 
         if (_rep)
         {
