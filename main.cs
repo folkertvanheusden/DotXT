@@ -13,6 +13,8 @@ bool load_bios = true;
 
 uint load_test_at = 0xffffffff;
 
+bool debugger = false;
+
 for(int i=0; i<args.Length; i++)
 {
     if (args[i] == "-t")
@@ -27,6 +29,8 @@ for(int i=0; i<args.Length; i++)
         intercept_int = true;
     else if (args[i] == "-B")
         load_bios = false;
+    else if (args[i] == "-d")
+        debugger = true;
     else if (args[i] == "-o")
     {
         string[] parts = args[++i].Split(',');
@@ -52,10 +56,62 @@ if (test == "")
 Console.WriteLine("Debug mode");
 #endif
 
-var p = new P8086(test, t_is_floppy, load_test_at, intercept_int, true, load_bios);
+var p = new P8086(test, t_is_floppy, load_test_at, intercept_int, !debugger, load_bios);
 
 if (set_initial_ip)
     p.set_ip(initial_cs, initial_ip);
 
-for (;;)
-    p.Tick();
+if (debugger)
+{
+    bool echo_state = true;
+
+    Log.EchoToConsole(echo_state);
+
+    for(;;)
+    {
+        Console.Write("==>");
+
+        string line = Console.ReadLine();
+
+        string[] parts = line.Split(' ');
+
+        if (line == "s")
+            p.Tick();
+        else if (line == "echo")
+        {
+            echo_state = !echo_state;
+
+            Console.WriteLine(echo_state ? "echo on" : "echo off");
+
+            Log.EchoToConsole(echo_state);
+        }
+        else if (parts[0] == "ef")
+        {
+            if (parts.Length != 2)
+                Console.WriteLine("usage: ef 0xhex_address");
+            else
+            {
+                int address = Convert.ToInt32(parts[1], 16);
+
+                p.HexDump((uint)address, false);
+            }
+        }
+        else if (line == "c")
+        {
+            for (;;)
+            {
+                if (p.Tick() == false)
+                    break;
+            }
+        }
+        else
+        {
+            Console.WriteLine($"\"{line}\" not understood");
+        }
+    }
+}
+else
+{
+    for (;;)
+        p.Tick();
+}
