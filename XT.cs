@@ -2184,6 +2184,9 @@ internal class P8086
 
                 r2 = GetPcByte();
 
+                if ((r2 & 128) == 128)
+                    r2 |= 0xff00;
+
                 word = true;
             }
             else
