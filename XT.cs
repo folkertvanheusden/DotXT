@@ -1501,7 +1501,6 @@ internal class P8086
 #endif
     }
 
-#if DEBUG
     public void HexDump(uint addr, bool word)
     {
         string s = "";
@@ -1519,7 +1518,6 @@ internal class P8086
 
         Log.DoLog($"{addr:X6}: {s}");
     }
-#endif
 
     public bool Tick()
     {
