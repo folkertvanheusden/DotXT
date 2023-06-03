@@ -1555,11 +1555,13 @@ internal class P8086
 
         // ^ address must increase!
         if (_rep)
-            opcode = _rep_opcode;
+            opcode = _rep_opcode;  // TODO: redundant assignment? _ip should've pointed already at 'this' instruction
 
         // handle prefixes
         while (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
         {
+            _rep_addr = _ip;
+
             if (opcode == 0x26)
             {
                 _segment_override = _es;
@@ -1584,7 +1586,7 @@ internal class P8086
             {
                 _rep = true;
                 _rep_mode = RepMode.NotSet;
-                _rep_addr = _ip;
+                Log.DoLog($"set _rep_addr to {_rep_addr:X4}");
             }
             else
             {
@@ -1617,7 +1619,7 @@ internal class P8086
             }
             else
             {
-                _segment_override_set = true;
+                _segment_override_set = true;  // TODO: move up
             }
 
             if (_segment_override_set)
@@ -1632,6 +1634,8 @@ internal class P8086
 
         Log.DoLog($"{address:X6}: {mem}");
         Log.DoLog($"{_ss * 16 + _sp:X6}: {stk}");
+
+        Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}");
 
         string prefixStr =
             $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{instr_start:X4} | ";
@@ -1944,11 +1948,12 @@ internal class P8086
         else if (opcode == 0xa4)
         {
             // MOVSB
-            byte v = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
+            ushort segment = _segment_override_set ? _segment_override : _ds;
+            byte v = ReadMemByte(segment, _si);
             WriteMemByte(_es, _di, v);
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}) {_ds * 16 + _si:X6} -> {_es * 16 + _di:X6}");
+            Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_name} {segment * 16 + _si:X6} -> {_es * 16 + _di:X6}");
 #endif
 
             if (GetFlagD())
@@ -4041,9 +4046,6 @@ internal class P8086
             Log.DoLog($"{prefixStr} opcode {opcode:x} not implemented");
         }
 
-        _segment_override_set = false;
-        _segment_override_name = "";
-
         if (_rep)
         {
             ushort cx = GetCX();
@@ -4078,6 +4080,17 @@ internal class P8086
                 Log.DoLog($"{prefixStr} unknown _rep_mode {(int)_rep_mode}");
                 _rep = false;
             }
+
+            if (_rep == false)
+            {
+                _segment_override_set = false;
+                _segment_override_name = "";
+            }
+        }
+        else
+        {
+            _segment_override_set = false;
+            _segment_override_name = "";
         }
 
         return rc;

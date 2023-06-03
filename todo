@@ -19,3 +19,5 @@ ebf874d1b131595ed93caa5fb30e8d3326670b14
 
 rm /home/folkert/temp/ramdisk/logfile.txt ; dotnet run -t ru/jmpmov.bin -T 0xf0000 -B -o 0xf000,0x0000 -l /home/folkert/temp/ramdisk/logfile.txt
 bochs 'romimage: file=ru/jmpmov.bin'
+
+-> working on segpr.bin: runs into unknown non-existing instructions
