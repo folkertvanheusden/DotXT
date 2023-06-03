@@ -1468,12 +1468,12 @@ internal class P8086
 
         // Log.DoLog($"push({v:X4}) write @ {_ss:X4}:{_sp:X4}");
 
-        WriteMemWord(_ss, _sp, v);
+        WriteMemWord(_segment_override_set ? _segment_override : _ss, _sp, v);
     }
 
     public ushort pop()
     {
-        ushort v = ReadMemWord(_ss, _sp);
+        ushort v = ReadMemWord(_segment_override_set ? _segment_override : _ss, _sp);
 
         // Log.DoLog($"pop({v:X4}) read @ {_ss:X4}:{_sp:X4}");
 
@@ -1501,7 +1501,7 @@ internal class P8086
 #endif
     }
 
-    public void HexDump(uint addr, bool word)
+    public string HexDump(uint addr, bool word)
     {
         string s = "";
 
@@ -1516,7 +1516,7 @@ internal class P8086
                 s += $" {_b.ReadByte(addr + o):X2}";
         }
 
-        Log.DoLog($"{addr:X6}: {s}");
+        return s;
     }
 
     public bool Tick()
@@ -1621,15 +1621,18 @@ internal class P8086
                 _segment_override_set = true;
             }
 
-            opcode = next_opcode;
-
             if (_segment_override_set)
-                Log.DoLog($"segment override to {override_name}: {_ds:X4}, next opcode: {next_opcode:X2}");
+                Log.DoLog($"segment override to {override_name}: {_ds:X4}, opcode(s): {opcode:X2} {HexDump(address, false):X2}");
+
+            opcode = next_opcode;
         }
 
 #if DEBUG
-        HexDump(address, false);
-        HexDump((uint)(_ss * 16 + _sp), true);
+        string mem = HexDump(address, false);
+        string stk = HexDump((uint)(_ss * 16 + _sp), true);
+
+        Log.DoLog($"{address:X6}: {mem}");
+        Log.DoLog($"{_ss * 16 + _sp:X6}: {stk}");
 
         string prefixStr =
             $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{prev_ip:X4} | ";
@@ -2480,7 +2483,7 @@ internal class P8086
 
             (ushort val, string name_from, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(rm, mod, true);
 
-            ushort v = ReadMemWord(seg, (ushort)(addr + 0));
+            ushort v = ReadMemWord(seg, (ushort)(addr + 0)); // TODO is val
 
             string name;
 
@@ -3055,7 +3058,7 @@ internal class P8086
             // MOV AL,[...]
             ushort a = GetPcWord();
 
-            _al = ReadMemByte(_ds, a);
+            _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, a);
 
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV AL,[${a:X4}]");
@@ -3077,7 +3080,7 @@ internal class P8086
             // MOV [...],AL
             ushort a = GetPcWord();
 
-            WriteMemByte(_ds, a, _al);
+            WriteMemByte(_segment_override_set ? _segment_override : _ds, a, _al);
 
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV [${a:X4}],AL");
@@ -3088,7 +3091,7 @@ internal class P8086
             // MOV [...],AX
             ushort a = GetPcWord();
 
-            WriteMemWord(_ds, a, GetAX());
+            WriteMemWord(_segment_override_set ? _segment_override : _ds, a, GetAX());
 
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV [${a:X4}],AX");
@@ -3715,7 +3718,7 @@ internal class P8086
             // XLATB
             byte old_al = _al;
 
-            _al = ReadMemByte(_ds, (ushort)(GetBX() + _al));
+            _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, (ushort)(GetBX() + _al));
 
 #if DEBUG
             Log.DoLog($"{prefixStr} XLATB ({_ds:X4}:{GetBX():X4} + {old_al:X2})");
