@@ -2483,8 +2483,6 @@ internal class P8086
 
             (ushort val, string name_from, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(rm, mod, true);
 
-            ushort v = ReadMemWord(seg, (ushort)(addr + 0)); // TODO is val
-
             string name;
 
             if (opcode == 0xc4)
@@ -2498,7 +2496,7 @@ internal class P8086
                 name = "LDS";
             }
 
-            string affected = PutRegister(reg, true, v);
+            string affected = PutRegister(reg, true, val);
 
 #if DEBUG
             Log.DoLog($"{prefixStr} {name} {affected},{name_from}");
