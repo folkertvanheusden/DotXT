@@ -41,6 +41,8 @@ def flags_add_sub_cp(is_sub: bool, carry: bool, val1: int, val2: int):
     if parity(result):
         flags += 4
 
+    flags |= 2  # always set
+
     return (result, flags)
 
 def flags_cmp(carry, al, val):
@@ -78,6 +80,8 @@ def flags_add_sub_cp16(is_sub: bool, carry: bool, val1: int, val2: int):
     if parity(result & 0xff):
         flags += 4
 
+    flags |= 2  # always set
+
     return (result, flags)
 
 def flags_cmp16(carry, ax, val):
@@ -93,6 +97,8 @@ def _flags_logic(value: int, is16b: bool):
     flag_p = parity(value & 0xff)
 
     flags = (1 if flag_c else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
+
+    flags |= 2  # always set
 
     return flags
 
@@ -131,6 +137,8 @@ def flags_rcl(val: int, count: int, carry: int, width: int, set_flag_o: bool):
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
+    flags |= 2  # always set
+
     return (val, flags, mask & 0xffff)
 
 def flags_rcr(val: int, count: int, carry: int, width: int, set_flag_o: bool):
@@ -155,6 +163,8 @@ def flags_rcr(val: int, count: int, carry: int, width: int, set_flag_o: bool):
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
 
+    flags |= 2  # always set
+
     return (val, flags, mask & 0xffff)
 
 def flags_rol(val: int, count: int, carry: int, width: int, set_flag_o: bool):
@@ -175,6 +185,8 @@ def flags_rol(val: int, count: int, carry: int, width: int, set_flag_o: bool):
         mask = ~2048
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
+
+    flags |= 2  # always set
 
     return (val, flags, mask & 0xffff)
 
@@ -198,6 +210,8 @@ def flags_ror(val: int, count: int, carry: int, width: int, set_flag_o: bool):
         mask = ~2048
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0)
+
+    flags |= 2  # always set
 
     return (val, flags, mask & 0xffff)
 
@@ -228,6 +242,8 @@ def flags_sal(val: int, count: int, carry: int, width: int, set_flag_o: bool):
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
 
+    flags |= 2  # always set
+
     return (val, flags, mask & 0xffff)
 
 def flags_sar(val: int, count: int, carry: int, width: int, set_flag_o: bool):
@@ -249,6 +265,8 @@ def flags_sar(val: int, count: int, carry: int, width: int, set_flag_o: bool):
         flag_p = parity(val & 255)
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
+
+    flags |= 2  # always set
 
     return (val, flags, mask & 0xffff)
 
@@ -274,6 +292,8 @@ def flags_shr(val: int, count: int, carry: int, width: int, set_flag_o: bool):
         flag_p = parity(val & 255)
 
     flags = (1 if carry else 0) + (2048 if flag_o else 0) + (64 if flag_z else 0) + (128 if flag_s else 0) + (4 if flag_p else 0)
+
+    flags |= 2  # always set
 
     return (val, flags, mask & 0xffff)
 
