@@ -1594,7 +1594,7 @@ internal class P8086
             address = (uint)(_cs * 16 + _ip) & MemMask;
             byte next_opcode = GetPcByte();
 
-            _rep_opcode = next_opcode;
+            _rep_opcode = next_opcode;  // TODO: only allow for certain instructions
 
             if (opcode == 0xf2)
             {
@@ -3977,6 +3977,7 @@ internal class P8086
                 // CALL
                 push(_ip);
 
+                _rep = false;
                 _ip = v;
 
 #if DEBUG
