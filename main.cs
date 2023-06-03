@@ -93,7 +93,7 @@ if (debugger)
             {
                 int address = Convert.ToInt32(parts[1], 16);
 
-                p.HexDump((uint)address, false);
+                Console.WriteLine($"{address:X6} {p.HexDump((uint)address, false)}");
             }
         }
         else if (line == "c")
