@@ -1,8 +1,21 @@
 http://bitsavers.informatik.uni-stuttgart.de/pdf/ibm/pc/xt/1502237_PC_XT_Technical_Reference_Apr83.pdf
 
+
+- tests: set all other bits to 1 and then verify they did not change
+
+
+47298103989ece60dc293257ff4641b11a323d91
+- jump1, jump2
+
+88eda0274a11b45399db86fd8bbc9dea9acb2af7
+- jump1, jump2, jmpmov
+
 6988dd281f816fedbc3b06dd1af1d1426a42455f
 - control.bin, datatrnf.bin
 
 ebf874d1b131595ed93caa5fb30e8d3326670b14
 - cmpneg.bin
 - strings.bin
+
+rm /home/folkert/temp/ramdisk/logfile.txt ; dotnet run -t ru/jmpmov.bin -T 0xf0000 -B -o 0xf000,0x0000 -l /home/folkert/temp/ramdisk/logfile.txt
+bochs 'romimage: file=ru/jmpmov.bin'
