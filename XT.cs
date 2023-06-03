@@ -1942,7 +1942,7 @@ internal class P8086
         else if (opcode == 0xa4)
         {
             // MOVSB
-            byte v = ReadMemByte(_ds, _si);
+            byte v = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
             WriteMemByte(_es, _di, v);
 
 #if DEBUG
@@ -1963,7 +1963,7 @@ internal class P8086
         else if (opcode == 0xa5)
         {
             // MOVSW
-            WriteMemWord(_es, _di, ReadMemWord(_ds, _si));
+            WriteMemWord(_es, _di, ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
 
             if (GetFlagD())
             {
@@ -1983,7 +1983,7 @@ internal class P8086
         else if (opcode == 0xa6)
         {
             // CMPSB
-            byte v1 = ReadMemByte(_ds, _si);
+            byte v1 = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
             byte v2 = ReadMemByte(_es, _di);
 
             int result = v1 - v2;
@@ -2023,7 +2023,7 @@ internal class P8086
         else if (opcode == 0xa7)
         {
             // CMPSB
-            ushort v1 = ReadMemWord(_ds, _si);
+            ushort v1 = ReadMemWord(_segment_override_set ? _segment_override : _ds, _si);
             ushort v2 = ReadMemWord(_es, _di);
 
             int result = v1 - v2;
@@ -2423,7 +2423,7 @@ internal class P8086
         else if (opcode == 0xac)
         {
             // LODSB
-            _al = ReadMemByte(_ds, _si);
+            _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
 
             if (GetFlagD())
                 _si--;
@@ -2437,7 +2437,7 @@ internal class P8086
         else if (opcode == 0xad)
         {
             // LODSW
-            SetAX(ReadMemWord(_ds, _si));
+            SetAX(ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
 
             if (GetFlagD())
                 _si -= 2;
