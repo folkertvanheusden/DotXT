@@ -494,6 +494,7 @@ internal class P8086
     // replace by an Optional-type when available
     private ushort _segment_override;
     private bool _segment_override_set;
+    private string _segment_override_name;
 
     private ushort _flags;
 
@@ -1049,7 +1050,7 @@ internal class P8086
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
-            name += $" (${segment * 16 + a:X6} -> {v:X4})";
+            name += $" ({_segment_override_name}:${segment * 16 + a:X6} -> {v:X4})";
 
             return (v, name, true, segment, a);
         }
@@ -1067,7 +1068,7 @@ internal class P8086
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
-            name += $" (${segment * 16 + a:X6} -> {v:X4})";
+            name += $" ({_segment_override_name}:${segment * 16 + a:X6} -> {v:X4})";
 
             return (v, name, true, segment, a);
         }
@@ -1247,7 +1248,7 @@ internal class P8086
             if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
                 segment = _ss;
 
-            name += $" (${segment * 16 + a:X6})";
+            name += $" ({_segment_override_name}:${segment * 16 + a:X6})";
 
             if (w)
                 WriteMemWord(segment, a, val);
@@ -1267,7 +1268,7 @@ internal class P8086
                 segment = _ss;
 
 #if DEBUG
-            name += $" (${segment * 16 + a:X6})";
+            name += $" ({_segment_override_name}:${segment * 16 + a:X6})";
 #endif
 
             if (w)
@@ -1482,14 +1483,15 @@ internal class P8086
         return v;
     }
 
-    void InvokeInterrupt(int interrupt_nr)
+    void InvokeInterrupt(ushort instr_start, int interrupt_nr)
     {
         _segment_override_set = false;
+        _segment_override_name = "";
         _rep = false;
 
         push(_flags);
         push(_cs);
-        push(_ip);
+        push(instr_start);
 
         uint addr = (uint)(interrupt_nr * 4);
 
@@ -1538,7 +1540,7 @@ internal class P8086
 
                 if (new_count == 0)
                 {
-                    InvokeInterrupt(pair.Key);
+                    InvokeInterrupt(_ip, pair.Key);
 
                     _scheduled_interrupts.Remove(pair.Key);
 
@@ -1547,7 +1549,7 @@ internal class P8086
             }
         }
 
-        ushort prev_ip = _ip;
+        ushort instr_start = _ip;
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
         byte opcode = GetPcByte();
 
@@ -1558,27 +1560,25 @@ internal class P8086
         // handle prefixes
         while (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
         {
-            string override_name = "?";
-
             if (opcode == 0x26)
             {
                 _segment_override = _es;
-                override_name = "ES";
+                _segment_override_name = "ES";
             }
             else if (opcode == 0x2e)
             {
                 _segment_override = _cs;
-                override_name = "CS";
+                _segment_override_name = "CS";
             }
             else if (opcode == 0x36)
             {
                 _segment_override = _ss;
-                override_name = "SS";
+                _segment_override_name = "SS";
             }
             else if (opcode == 0x3e)
             {
                 _segment_override = _ds;
-                override_name = "DS";
+                _segment_override_name = "DS";
             }
             else if (opcode is (0xf2 or 0xf3))
             {
@@ -1591,7 +1591,6 @@ internal class P8086
                 Log.DoLog($"------ {address:X6} prefix {opcode:X2} not implemented");
             }
 
-            prev_ip = _ip;
             address = (uint)(_cs * 16 + _ip) & MemMask;
             byte next_opcode = GetPcByte();
 
@@ -1622,7 +1621,7 @@ internal class P8086
             }
 
             if (_segment_override_set)
-                Log.DoLog($"segment override to {override_name}: {_ds:X4}, opcode(s): {opcode:X2} {HexDump(address, false):X2}");
+                Log.DoLog($"segment override to {_segment_override_name}: {_ds:X4}, opcode(s): {opcode:X2} {HexDump(address, false):X2}");
 
             opcode = next_opcode;
         }
@@ -1635,7 +1634,7 @@ internal class P8086
         Log.DoLog($"{_ss * 16 + _sp:X6}: {stk}");
 
         string prefixStr =
-            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{prev_ip:X4} | ";
+            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{instr_start:X4} | ";
 #else
         string prefixStr = "";
 #endif
@@ -2880,7 +2879,7 @@ internal class P8086
                 ushort ax = GetAX();
 
                 if (r1 == 0 || ax / r1 > 0x100)
-                    InvokeInterrupt(r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                    InvokeInterrupt(instr_start, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
                 else
                 {
                     _al = (byte)(ax / r1);
@@ -3000,7 +2999,7 @@ internal class P8086
                 uint dx_ax = (uint)((GetDX() << 16) | GetAX());
 
                 if (r1 == 0 || dx_ax / r1 >= 0x10000)
-                    InvokeInterrupt(r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                    InvokeInterrupt(instr_start, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
                 else
                 {
                     SetAX((ushort)(dx_ax / r1));
@@ -3142,6 +3141,13 @@ internal class P8086
 
             // Log.DoLog($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}, sreg {sreg}");
 
+            // 88: rm < r (byte) 00  false,byte
+            // 89: rm < r (word) 01  false,word  <--
+            // 8a: r < rm (byte) 10  true, byte
+            // 8b: r < rm (word) 11  true, word
+
+            // 89|E6 mode 3, reg 4, rm 6, dir False, word True, sreg False
+
             if (dir)
             {
                 // to 'REG' from 'rm'
@@ -3172,7 +3178,7 @@ internal class P8086
                 string toName = PutRegisterMem(rm, mode, word, v);
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} MOV {toName},{fromName}");
+                Log.DoLog($"{prefixStr} MOV {toName},{fromName} ({v:X4})");
 #endif
             }
         }
@@ -4035,6 +4041,7 @@ internal class P8086
         }
 
         _segment_override_set = false;
+        _segment_override_name = "";
 
         if (_rep)
         {
