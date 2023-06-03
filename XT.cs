@@ -1482,7 +1482,7 @@ internal class P8086
         return v;
     }
 
-    void invoke_interrupt(int interrupt_nr)
+    void InvokeInterrupt(int interrupt_nr)
     {
         _segment_override_set = false;
         _rep = false;
@@ -1497,7 +1497,7 @@ internal class P8086
         _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
 
 #if DEBUG
-        Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs * 16 + _ip:X4})");
+        Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs:X4}:{_ip:X4})");
 #endif
     }
 
@@ -1538,7 +1538,7 @@ internal class P8086
 
                 if (new_count == 0)
                 {
-                    invoke_interrupt(pair.Key);
+                    InvokeInterrupt(pair.Key);
 
                     _scheduled_interrupts.Remove(pair.Key);
 
@@ -2874,7 +2874,7 @@ internal class P8086
                 ushort ax = GetAX();
 
                 if (r1 == 0 || ax / r1 > 0x100)
-                    invoke_interrupt(r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                    InvokeInterrupt(r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
                 else
                 {
                     _al = (byte)(ax / r1);
@@ -2994,7 +2994,7 @@ internal class P8086
                 uint dx_ax = (uint)((GetDX() << 16) | GetAX());
 
                 if (r1 == 0 || dx_ax / r1 >= 0x10000)
-                    invoke_interrupt(r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                    InvokeInterrupt(r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
                 else
                 {
                     SetAX((ushort)(dx_ax / r1));
@@ -3061,7 +3061,7 @@ internal class P8086
             // MOV AX,[...]
             ushort a = GetPcWord();
 
-            SetAX(ReadMemWord(_ds, a));
+            SetAX(ReadMemWord(_segment_override_set ? _segment_override : _ds, a));
 
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV AX,[${a:X4}]");
