@@ -1468,12 +1468,12 @@ internal class P8086
 
         // Log.DoLog($"push({v:X4}) write @ {_ss:X4}:{_sp:X4}");
 
-        WriteMemWord(_segment_override_set ? _segment_override : _ss, _sp, v);
+        WriteMemWord(_ss, _sp, v);
     }
 
     public ushort pop()
     {
-        ushort v = ReadMemWord(_segment_override_set ? _segment_override : _ss, _sp);
+        ushort v = ReadMemWord(_ss, _sp);
 
         // Log.DoLog($"pop({v:X4}) read @ {_ss:X4}:{_sp:X4}");
 
