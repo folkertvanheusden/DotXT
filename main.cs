@@ -104,7 +104,7 @@ if (debugger)
                     break;
             }
         }
-        else
+        else if (line != "")
         {
             Console.WriteLine($"\"{line}\" not understood");
         }
