@@ -1558,25 +1558,27 @@ internal class P8086
         // handle prefixes
         while (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
         {
+            string override_name = "?";
+
             if (opcode == 0x26)
             {
                 _segment_override = _es;
-                Log.DoLog($"segment override to ES: {_es:X4}");
+                override_name = "ES";
             }
             else if (opcode == 0x2e)
             {
                 _segment_override = _cs;
-                Log.DoLog($"segment override to CS: {_cs:X4}");
+                override_name = "CS";
             }
             else if (opcode == 0x36)
             {
                 _segment_override = _ss;
-                Log.DoLog($"segment override to SS: {_ss:X4}");
+                override_name = "SS";
             }
             else if (opcode == 0x3e)
             {
                 _segment_override = _ds;
-                Log.DoLog($"segment override to DS: {_ds:X4}");
+                override_name = "DS";
             }
             else if (opcode is (0xf2 or 0xf3))
             {
@@ -1620,6 +1622,9 @@ internal class P8086
             }
 
             opcode = next_opcode;
+
+            if (_segment_override_set)
+                Log.DoLog($"segment override to {override_name}: {_ds:X4}, next opcode: {next_opcode:X2}");
         }
 
 #if DEBUG
@@ -3119,7 +3124,7 @@ internal class P8086
             Log.DoLog($"{prefixStr} TEST AX,${v:X4}");
 #endif
         }
-        else if (((opcode & 0b11111100) == 0b10001000 /* 0x88 */) || opcode == 0b10001110 /* 0x8e */|| opcode == 0x8c)
+        else if (opcode is (0x88 or 0x89 or 0x8a or 0x8b or 0x8e or 0x8c))
         {
             bool dir = (opcode & 2) == 2; // direction
             bool word = (opcode & 1) == 1; // b/w
