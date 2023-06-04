@@ -11,8 +11,6 @@ bool set_initial_ip = false;
 
 bool load_bios = true;
 
-bool emulate_terminal = false;
-
 uint load_test_at = 0xffffffff;
 
 bool debugger = false;
@@ -33,8 +31,6 @@ for(int i=0; i<args.Length; i++)
         load_bios = false;
     else if (args[i] == "-d")
         debugger = true;
-    else if (args[i] == "-e")
-        emulate_terminal = true;
     else if (args[i] == "-o")
     {
         string[] parts = args[++i].Split(',');
@@ -60,7 +56,20 @@ if (test == "")
 Console.WriteLine("Debug mode");
 #endif
 
-var p = new P8086(test, t_is_floppy, load_test_at, intercept_int, !debugger, load_bios, emulate_terminal);
+CGA cga = new CGA();
+
+List<Device> devices = new();
+devices.Add(cga);
+
+uint ram_size = 64 * 1024;
+
+if (test != "")
+    ram_size = 1024 * 1024;
+
+// Bus gets the devices for memory mapped i/o
+Bus b = new Bus(ram_size, load_bios, ref devices);
+
+var p = new P8086(ref b, test, t_is_floppy, load_test_at, intercept_int, !debugger, ref devices);
 
 if (set_initial_ip)
     p.set_ip(initial_cs, initial_ip);
