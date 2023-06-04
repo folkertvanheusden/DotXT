@@ -730,7 +730,15 @@ class IO
 
     private FloppyDisk _fd;
 
-    private Dictionary <ushort, byte> values = new Dictionary <ushort, byte>();
+    private Dictionary <ushort, byte> _values = new Dictionary <ushort, byte>();
+
+    private Dictionary <ushort, Device> _io_map = new Dictionary <ushort, Device>();
+
+    public IO(ref List<Device> devices)
+    {
+        foreach(var device in devices)
+            device.RegisterDevice(_io_map);
+    }
 
     public IO(Bus b)
     {
@@ -787,12 +795,15 @@ class IO
         if (addr >= 0x03f0 && addr <= 0x3f7)
             return _fd.In(scheduled_interrupts, addr);
 
+        if (_io_map.ContainsKey(addr))
+            return _io_map[addr].IO_Read(addr);
+
 #if DEBUG
         Log.DoLog($"IN: I/O port {addr:X4} not implemented");
 #endif
 
-        if (values.ContainsKey(addr))
-            return values[addr];
+        if (_values.ContainsKey(addr))
+            return _values[addr];
 
         return 0;
     }
@@ -847,11 +858,18 @@ class IO
 
         else
         {
+            if (_io_map.ContainsKey(addr))
+            {
+                _io_map[addr].IO_Write(addr, value);
+
+                return;
+            }
+
 #if DEBUG
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
 #endif
         }
 
-        values[addr] = value;
+        _values[addr] = value;
     }
 }

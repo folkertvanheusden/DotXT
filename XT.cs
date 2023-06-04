@@ -36,7 +36,7 @@ internal class P8086
 
     private const uint MemMask = 0x00ffffff;
 
-    private readonly Bus _b;
+    private Bus _b;
 
     private readonly IO _io;
 
@@ -53,17 +53,17 @@ internal class P8086
 
     private bool _terminate_on_hlt;
 
-    private Terminal _terminal = null;
-
     private readonly List<byte> floppy = new();
 
     private string tty_output = "";
 
     private int clock;
 
-    public P8086(string test, bool is_floppy, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, bool load_bios, bool terminal)
+    public P8086(ref Bus b, string test, bool is_floppy, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, ref List<Device> devices)
     {
-        _io = new(_b);
+        _b = b;
+
+        _io = new IO(ref devices);
 
         // intercept also other ints besides keyboard/console access
         _intercept_int_flag = intercept_int_flag;
@@ -73,14 +73,9 @@ internal class P8086
 
         _terminate_on_hlt = terminate_on_hlt;
 
-        if (terminal)
-            _terminal = new();
-
         if (test != "" && is_floppy == false)
         {
             _is_test = true;
-
-            _b = new Bus(1024 * 1024, load_bios);
 
             _cs = 0;
             _ip = 0x0800;
@@ -110,8 +105,6 @@ internal class P8086
         }
         else if (test != "" && is_floppy == true)
         {
-            _b = new Bus(1024 * 1024, load_bios);
-
             _cs = 0;
             _ip = 0x7c00;
 
@@ -139,8 +132,6 @@ internal class P8086
         }
         else
         {
-            _b = new Bus(64 * 1024, true);
-
             _cs = 0xf000;
             _ip = 0xfff0;
         }
@@ -158,7 +149,7 @@ internal class P8086
         _ip = ip;
     }
 
-    private bool intercept_int(int nr)  // TODO rename
+    private bool InterceptInt(int nr)  // TODO rename
     {
         if (!_intercept_int_flag)
             return false;
@@ -167,110 +158,28 @@ internal class P8086
 
         if (nr == 0x10)
         {
-            if (_ah == 0x00)
-            {
-                // set resolution
-                if (_terminal != null)
-                    _terminal.Clear();
-
-                SetFlagC(false);
-                return true;
-            }
-
-            if (_ah == 0x02)
-            {
-                // set cursor position
-                if (_terminal != null)
-                    _terminal.SetXY(_dl, _dh);
-
-                SetFlagC(false);
-                return true;
-            }
-
-            if (_ah == 0x03)
-            {
-                // get cursor position
-                if (_terminal != null)
-                {
-                    (int x, int y) = _terminal.GetXY();
-
-                    _dh = (byte)y;
-                    _dl = (byte)x;
-                }
-
-                SetFlagC(false);
-                return true;
-            }
-
-            if (_ah == 0x05)
-            {
-                // set page
-                if (_terminal != null)
-                    _terminal.SetPage(_al);
-
-                SetFlagC(false);
-                return true;
-            }
-
-            if (_ah == 0x08)
-            {
-                if (_terminal != null)
-                {
-                    (int col, int char_) = _terminal.GetText(_terminal.GetX(), _terminal.GetY());
-
-                    _ah = (byte)col;
-                    _al = (byte)char_;
-                }
-
-                SetFlagC(false);
-                return true;
-            }
-
-
-            if (_ah == 0x09)
-            {
-                // Write character and attribute at cursor position
-                if (_terminal != null)
-                {
-                    ushort CX = GetCX();
-
-                    for(ushort i=0; i<CX; i++)
-                        _terminal.PutText(_bl, _al);
-                }
-
-                SetFlagC(false);
-                return true;
-            }
-
             if (_ah == 0x0e)
             {
                 // teletype output
                 SetFlagC(false);
 
-                if (_terminal != null)
+                Console.Write((char)_al);
+
+                if (_al == 13 || _al == 10)
                 {
-                    _terminal.PutText(_bl, _al);
+                    Log.DoLog($"CONSOLE-STR: {tty_output}");
+
+                    tty_output = "";
                 }
                 else
                 {
-                    Console.Write((char)_al);
-
-                    if (_al == 13 || _al == 10)
-                    {
-                        Log.DoLog($"CONSOLE-STR: {tty_output}");
-
-                        tty_output = "";
-                    }
-                    else
-                    {
-                        Log.DoLog($"CONSOLE-CHR: {(char)_al}");
-                    }
-
-                    tty_output += (char)_al;
-
-                    if (_al == 13)
-                        Console.WriteLine("");
+                    Log.DoLog($"CONSOLE-CHR: {(char)_al}");
                 }
+
+                tty_output += (char)_al;
+
+                if (_al == 13)
+                    Console.WriteLine("");
 
                 return true;
             }
@@ -2142,7 +2051,7 @@ internal class P8086
 
             uint addr = (uint)(@int * 4);
 
-            if (intercept_int(@int) == false)
+            if (InterceptInt(@int) == false)
             {
                 push(_flags);
                 push(_cs);
