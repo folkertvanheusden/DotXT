@@ -30,7 +30,7 @@ internal class P8086
     // replace by an Optional-type when available
     private ushort _segment_override;
     private bool _segment_override_set;
-    private string _segment_override_name;
+    private string _segment_override_name = "";
 
     private ushort _flags;
 
@@ -53,16 +53,21 @@ internal class P8086
 
     private bool _terminate_on_hlt;
 
+    private Terminal _terminal = null;
+
     private readonly List<byte> floppy = new();
 
     private string tty_output = "";
 
-    public P8086(string test, bool is_floppy, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, bool load_bios)
+    public P8086(string test, bool is_floppy, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, bool load_bios, bool terminal)
     {
         // intercept also other ints besides keyboard/console access
         _intercept_int_flag = intercept_int_flag;
 
         _terminate_on_hlt = terminate_on_hlt;
+
+        if (terminal)
+            _terminal = new();
 
         if (test != "" && is_floppy == false)
         {
@@ -146,7 +151,7 @@ internal class P8086
         _ip = ip;
     }
 
-    private bool intercept_int(int nr)
+    private bool intercept_int(int nr)  // TODO rename
     {
         if (nr == 0x10)
         {
@@ -160,6 +165,9 @@ internal class P8086
             if (_ah == 0x02)
             {
                 // set cursor position
+                if (_terminal != null)
+                    _terminal.SetXY(_dl, _dh);
+
                 SetFlagC(false);
                 return true;
             }
@@ -167,8 +175,25 @@ internal class P8086
             if (_ah == 0x03)
             {
                 // get cursor position
+                if (_terminal != null)
+                {
+                    (int x, int y) = _terminal.GetXY();
+
+                    _dh = (byte)y;
+                    _dl = (byte)x;
+                }
+
                 SetFlagC(false);
                 return true;
+            }
+
+            if (_ah == 0x09)
+            {
+                // Write character and attribute at cursor position
+                ushort CX = GetCX();
+
+                for(ushort i=0; i<CX; i++)
+                    _terminal.PutText(_bl, _al);
             }
 
             if (_ah == 0x0e)
@@ -176,35 +201,46 @@ internal class P8086
                 // teletype output
                 SetFlagC(false);
 
-                Console.Write((char)_al);
-
-                if (_al == 13 || _al == 10)
+                if (_terminal != null)
                 {
-                    Log.DoLog($"CONSOLE-STR: {tty_output}");
-
-                    tty_output = "";
+                    _terminal.PutText(_bl, _al);
                 }
                 else
                 {
-                    Log.DoLog($"CONSOLE-CHR: {(char)_al}");
+                    Console.Write((char)_al);
+
+                    if (_al == 13 || _al == 10)
+                    {
+                        Log.DoLog($"CONSOLE-STR: {tty_output}");
+
+                        tty_output = "";
+                    }
+                    else
+                    {
+                        Log.DoLog($"CONSOLE-CHR: {(char)_al}");
+                    }
+
+                    tty_output += (char)_al;
+
+                    if (_al == 13)
+                        Console.WriteLine("");
                 }
-
-                tty_output += (char)_al;
-
-                if (_al == 13)
-                    Console.WriteLine("");
 
                 return true;
             }
 
+#if DEBUG
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+#endif
 
             return false;
         }
         else if (nr == 0x16)
         {
             // keyboard access
+#if DEBUG
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+#endif
 
             _ah = 0x3b;  // F1 scan code
             _al = 0x00;  // F1 ascii char
@@ -234,7 +270,9 @@ internal class P8086
         }
         else if (nr == 0x13 && floppy.Count > 0)
         {
+#if DEBUG
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+#endif
 
             if (_ah == 0x00)
             {
@@ -302,7 +340,9 @@ internal class P8086
         }
         else if (nr == 0x2f)
         {
+#if DEBUG
             Console.WriteLine($"INT NR {nr:X2}, AX: {_ah:X2}{_al:X2}");
+#endif
 
             if (_ah == 0x0d)
             {
@@ -314,7 +354,9 @@ internal class P8086
         }
         else
         {
+#if DEBUG
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
+#endif
         }
 
         return false;

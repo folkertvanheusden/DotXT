@@ -251,10 +251,116 @@ internal class pic8259
     }
 }
 
+class Terminal
+{
+    private byte [,] _chars = new byte[25, 80];
+    private byte [,] _meta = new byte[25, 80];
+    private int _x = 0;
+    private int _y = 0;
+
+    public Terminal()
+    {
+        Console.Write((char)27);  // clear screen
+        Console.Write($"[2J");
+    }
+
+    private void DrawChar(int x, int y)
+    {
+        Console.Write((char)27);  // position cursor
+        Console.Write($"[{y + 1};{x + 1}H");
+
+        byte m = _meta[y, x];
+        int bg_col = m >> 4;
+        int fg_col = m & 15;
+
+        if (fg_col >= 8)
+        {
+            Console.Write((char)27);  // set to increased intensity
+            Console.Write($"[1m");
+        }
+        else
+        {
+            Console.Write((char)27);  // set to normal
+            Console.Write($"[22m");
+        }
+
+        Console.Write((char)27);  // set color
+        Console.Write($"[{30 + (fg_col & 7)};{40 + (bg_col & 7)}m");
+
+        Console.Write((char)_chars[y, x]);  // emit character
+    }
+
+    public (int, int) GetXY()
+    {
+        return (_x, _y);
+    }
+
+    public void SetXY(int x, int y)
+    {
+        if (x < 80)
+            _x = x;
+
+        if (y < 25)
+            _y = y;
+    }
+
+    public void PutText(byte m, byte c)
+    {
+        if (c == 13)
+            _x = 0;
+        else if (c == 10)
+            _y++;
+        else
+        {
+            _chars[_y, _x] = c;
+            _meta[_y, _x] = m;
+
+            DrawChar(_x, _y);
+
+            _x++;
+        }
+
+        if (_x == 80)
+        {
+            _x = 0;
+
+            _y++;
+        }
+
+        if (_y == 25)
+        {
+            // move
+            for(int y=1; y<25; y++)
+            {
+                for(int x=0; x<80; x++)
+                {
+                    _chars[y - 1, x] = _chars[y, x];
+                    _meta[y - 1, x] = _meta[y, x];
+
+                    DrawChar(x, y - 1);
+                }
+            }
+
+            // clear last line
+            for(int x=0; x<80; x++)
+            {
+                _chars[24, x] = 0;
+                _meta[24, x] = 0;
+
+                DrawChar(x, 24);
+            }
+
+            _y = 24;
+        }
+    }
+}
+
 class IO
 {
-    private i8253 _i8253 = new i8253();
-    private pic8259 _pic = new pic8259();
+    private i8253 _i8253 = new();
+    private pic8259 _pic = new();
+
+    private Terminal _t = new();
 
     private bool floppy_0_state = false;
 
@@ -338,7 +444,9 @@ class IO
 #if DEBUG
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) generate controller select pulse");
 #endif
-
+        }
+        else if (addr == 0x03f2)
+        {
             int harddisk_interrupt_nr = _pic.get_interrupt_offset() + 14;
 
             if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
