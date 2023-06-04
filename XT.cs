@@ -153,6 +153,8 @@ internal class P8086
 
     private bool intercept_int(int nr)  // TODO rename
     {
+        Log.DoLog($"INT {nr:X2} {_ah:X2}");
+
         if (nr == 0x10)
         {
             if (_ah == 0x00)
@@ -242,11 +244,17 @@ internal class P8086
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
 #endif
 
-            _ah = 0x3b;  // F1 scan code
-            _al = 0x00;  // F1 ascii char
+            if (_ah == 0x00)
+            {
+                // Get keystroke
+                ConsoleKeyInfo cki = Console.ReadKey(true);
 
-            SetFlagC(false);
-            return true;
+// FIXME                _ah = 0x3b;  // F1 scan code
+                _al = (byte)cki.KeyChar;  // F1 ascii char
+
+                SetFlagC(false);
+                return true;
+            }
         }
         else if (nr == 0x29)
         {
@@ -615,8 +623,6 @@ internal class P8086
 
     private (ushort, string, bool, ushort, ushort) GetRegisterMem(int reg, int mod, bool w)
     {
-        Log.DoLog($"GetRegisterMem {mod},{w}");
-
         if (mod == 0)
         {
             (ushort a, string name) = GetDoubleRegisterMod00(reg);
