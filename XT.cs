@@ -160,6 +160,9 @@ internal class P8086
             if (_ah == 0x00)
             {
                 // set resolution
+                if (_terminal != null)
+                    _terminal.Clear();
+
                 SetFlagC(false);
                 return true;
             }
@@ -189,13 +192,44 @@ internal class P8086
                 return true;
             }
 
+            if (_ah == 0x05)
+            {
+                // set page
+                if (_terminal != null)
+                    _terminal.SetPage(_al);
+
+                SetFlagC(false);
+                return true;
+            }
+
+            if (_ah == 0x08)
+            {
+                if (_terminal != null)
+                {
+                    (int col, int char_) = _terminal.GetText(_terminal.GetX(), _terminal.GetY());
+
+                    _ah = (byte)col;
+                    _al = (byte)char_;
+                }
+
+                SetFlagC(false);
+                return true;
+            }
+
+
             if (_ah == 0x09)
             {
                 // Write character and attribute at cursor position
-                ushort CX = GetCX();
+                if (_terminal != null)
+                {
+                    ushort CX = GetCX();
 
-                for(ushort i=0; i<CX; i++)
-                    _terminal.PutText(_bl, _al);
+                    for(ushort i=0; i<CX; i++)
+                        _terminal.PutText(_bl, _al);
+                }
+
+                SetFlagC(false);
+                return true;
             }
 
             if (_ah == 0x0e)

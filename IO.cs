@@ -253,15 +253,53 @@ internal class pic8259
 
 class Terminal
 {
-    private byte [,] _chars = new byte[25, 80];
-    private byte [,] _meta = new byte[25, 80];
+    private byte [,,] _chars = new byte[8, 25, 80];
+    private byte [,,] _meta = new byte[8, 25, 80];
+    private int _page = 0;
     private int _x = 0;
     private int _y = 0;
 
     public Terminal()
     {
+        TerminalClear();
+    }
+
+    private void TerminalClear()
+    {
         Console.Write((char)27);  // clear screen
         Console.Write($"[2J");
+    }
+
+    private void Redraw()
+    {
+        TerminalClear();
+
+        for(int y=0; y<25; y++)
+        {
+            for(int x=0; x<80; x++)
+                DrawChar(x, y);
+        }
+    }
+
+    public void Clear()
+    {
+        for(int y=0; y<25; y++)
+        {
+            for(int x=0; x<80; x++)
+            {
+                _chars[_page, y, x] = 0;
+                _meta[_page, y, x] = 0;
+            }
+        }
+
+        Redraw();
+    }
+
+    public void SetPage(int page)
+    {
+        _page = page;
+
+        Redraw();
     }
 
     private void DrawChar(int x, int y)
@@ -269,7 +307,7 @@ class Terminal
         Console.Write((char)27);  // position cursor
         Console.Write($"[{y + 1};{x + 1}H");
 
-        byte m = _meta[y, x];
+        byte m = _meta[_page, y, x];
         int bg_col = m >> 4;
         int fg_col = m & 15;
 
@@ -287,12 +325,27 @@ class Terminal
         Console.Write((char)27);  // set color
         Console.Write($"[{30 + (fg_col & 7)};{40 + (bg_col & 7)}m");
 
-        Console.Write((char)_chars[y, x]);  // emit character
+        char c = (char)_chars[_page, y, x];
+
+        if (c == 0x00)
+            c = ' ';
+
+        Console.Write(c);  // emit character
     }
 
     public (int, int) GetXY()
     {
         return (_x, _y);
+    }
+
+    public int GetX()
+    {
+        return _x;
+    }
+
+    public int GetY()
+    {
+        return _y;
     }
 
     public void SetXY(int x, int y)
@@ -304,6 +357,11 @@ class Terminal
             _y = y;
     }
 
+    public (int, int) GetText(int x, int y)
+    {
+        return (_meta[_page, y, x], _chars[_page, y, x]);
+    }
+
     public void PutText(byte m, byte c)
     {
         if (c == 13)
@@ -312,8 +370,8 @@ class Terminal
             _y++;
         else
         {
-            _chars[_y, _x] = c;
-            _meta[_y, _x] = m;
+            _chars[_page, _y, _x] = c;
+            _meta[_page, _y, _x] = m;
 
             DrawChar(_x, _y);
 
@@ -334,8 +392,8 @@ class Terminal
             {
                 for(int x=0; x<80; x++)
                 {
-                    _chars[y - 1, x] = _chars[y, x];
-                    _meta[y - 1, x] = _meta[y, x];
+                    _chars[_page, y - 1, x] = _chars[_page, y, x];
+                    _meta[_page, y - 1, x] = _meta[_page, y, x];
 
                     DrawChar(x, y - 1);
                 }
@@ -344,8 +402,8 @@ class Terminal
             // clear last line
             for(int x=0; x<80; x++)
             {
-                _chars[24, x] = 0;
-                _meta[24, x] = 0;
+                _chars[_page, 24, x] = 0;
+                _meta[_page, 24, x] = 0;
 
                 DrawChar(x, 24);
             }
