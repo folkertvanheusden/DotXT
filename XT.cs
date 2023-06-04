@@ -3423,7 +3423,7 @@ internal class P8086
         }
         else if (opcode == 0xe5)
         {
-            // IN AL,ib
+            // IN AX,ib
             byte @from = GetPcByte();
 
             SetAX(_io.In(_scheduled_interrupts, @from));
