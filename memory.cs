@@ -33,7 +33,10 @@ internal class Rom
 
     public byte ReadByte(uint address)
     {
-        return _contents[address];
+        if (address < _contents.Length)
+            return _contents[address];
+
+        return 0xee;
     }
 }
 
@@ -62,7 +65,7 @@ class Bus
             if (address is >= 0x000f8000 and <= 0x000fffff)
                 return _bios.ReadByte(address - 0x000f8000);
 
-            if (address is >= 0x000f0000 and <= 0x000f1fff)
+            if (address is >= 0x000f0000 and <= 0x000f7fff)
                 return _basic.ReadByte(address - 0x000f0000);
         }
 
