@@ -69,6 +69,8 @@ internal class Bus
 
     private readonly Rom _bios = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
     private readonly Rom _basic = new("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
+//    private readonly Rom _bios = new("roms/t/eproms/ibmxt/u18.rom");
+//    private readonly Rom _basic = new("roms/t/eproms/ibmxt/u19.rom");
 
     private bool _use_bios;
 
