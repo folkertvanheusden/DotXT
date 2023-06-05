@@ -61,8 +61,7 @@ CGA cga = new CGA();
 List<Device> devices = new();
 devices.Add(cga);
 
-uint ram_size = 64 * 1024;
-
+uint ram_size = 64 * 1024;  // if 64, then tweak i/o register 63
 if (test != "")
     ram_size = 1024 * 1024;
 
