@@ -777,11 +777,11 @@ class IO
             // note: the switch bits are inverted when read through the PPI
             byte mode = 0;
 
-            if (values.ContainsKey(0x61))
-                 mode = values[0x61];
+            if (_values.ContainsKey(0x61))
+                 mode = _values[0x61];
 
             if ((mode & 8) == 0)
-                return 3;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
+                return 0x3;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
 
             return 0b00100000 ^ 0xff;  // 1 floppy drive, 80x25 color, 64kB, reserved=00
         }
@@ -798,9 +798,9 @@ class IO
         if (_io_map.ContainsKey(addr))
             return _io_map[addr].IO_Read(addr);
 
-#if DEBUG
+//#if DEBUG
         Log.DoLog($"IN: I/O port {addr:X4} not implemented");
-#endif
+//#endif
 
         if (_values.ContainsKey(addr))
             return _values[addr];
@@ -865,9 +865,9 @@ class IO
                 return;
             }
 
-#if DEBUG
+//#if DEBUG
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
-#endif
+//#endif
         }
 
         _values[addr] = value;
