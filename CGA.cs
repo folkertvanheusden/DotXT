@@ -71,6 +71,9 @@ class CGA : Device
     {
         Log.DoLog("CGA::IO_Read");
 
+        if ((port == 0x3d5 || port == 0x3d7) && _m6845_reg >= 0x0c)
+            return _m6845.Read(_m6845_reg);
+
         return 0xee;
     }
 
