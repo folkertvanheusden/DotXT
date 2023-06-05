@@ -288,7 +288,17 @@ class IO
             return _i8253.get_counter(2);
 
         if (addr == 0x0062)  // PPI (XT only)
-            return 0x03;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
+        {
+            byte mode = 0;
+
+            if (_values.ContainsKey(0x61))
+                 mode = _values[0x61];
+
+            if ((mode & 8) == 0)
+                return 0x03;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
+
+            return 0x2e; //0b00100000 ^ 0xff;  // 1 floppy drive, 80x25 color, 64kB, reserved=00
+        }
 
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
@@ -307,9 +317,9 @@ class IO
         if (_io_map.ContainsKey(addr))
             return _io_map[addr].IO_Read(addr);
 
-#if DEBUG
+//#if DEBUG
         Log.DoLog($"IN: I/O port {addr:X4} not implemented");
-#endif
+//#endif
 
         if (_values.ContainsKey(addr))
             return _values[addr];
@@ -374,9 +384,9 @@ class IO
                 return;
             }
 
-#if DEBUG
+//#if DEBUG
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
-#endif
+//#endif
         }
 
         _values[addr] = value;
