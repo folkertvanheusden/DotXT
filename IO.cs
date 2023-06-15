@@ -444,7 +444,18 @@ class IO
             return _i8253.get_counter(2);
 
         if (addr == 0x0062)  // PPI (XT only)
-            return 0x03;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
+        {
+            // note: the switch bits are inverted when read through the PPI
+            byte mode = 0;
+
+            if (_values.ContainsKey(0x61))
+                 mode = _values[0x61];
+
+            if ((mode & 8) == 0)
+                return 0xff;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
+
+            return 0b00100000 ^ 0xff;  // 1 floppy drive, 80x25 color, 64kB, reserved=00
+        }
 
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
