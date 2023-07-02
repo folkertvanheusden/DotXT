@@ -2,6 +2,14 @@ http://bitsavers.informatik.uni-stuttgart.de/pdf/ibm/pc/xt/1502237_PC_XT_Technic
 
 
 - tests: set all other bits to 1 and then verify they did not change
+- loop en/of string (D(irection)!)
+- prefixen
+- jcxz
+- jmp np
+- cbw/cwd
+- call far ptr
+  - ret
+ - jmp far ptr
 
 
 47298103989ece60dc293257ff4641b11a323d91
