@@ -255,6 +255,42 @@ skip_int_func:
     hlt
 test_00c_ok:
 
+; C flag
+test_00d:
+    xor ax,ax
+    push ax
+    popf
+    ; set
+    stc
+    stc
+    pushf
+    pop ax
+    and ax,#$1
+    cmp ax,#$1
+    beq test_00d_1
+    hlt
+test_00d_1:
+    ; invert
+    stc
+    cmc
+    pushf
+    pop ax
+    and ax,#$1
+    cmp ax,#$0
+    beq test_00d_2
+    hlt
+test_00d_2:
+    ; set & reset
+    stc
+    clc
+    pushf
+    pop ax
+    and ax,#$1
+    cmp ax,#$0
+    beq test_00d_3
+    hlt
+test_00d_3:
+
 finish:
 ''')
 
