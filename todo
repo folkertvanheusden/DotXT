@@ -6,7 +6,6 @@ http://bitsavers.informatik.uni-stuttgart.de/pdf/ibm/pc/xt/1502237_PC_XT_Technic
 - prefixen
 - jcxz
 - jmp np
-- cbw/cwd
 - call far ptr
   - ret
  - jmp far ptr
