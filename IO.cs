@@ -292,8 +292,8 @@ class IO
             // note: the switch bits are inverted when read through the PPI
             byte mode = 0;
 
-            if (values.ContainsKey(0x61))
-                 mode = values[0x61];
+            if (_values.ContainsKey(0x61))
+                 mode = _values[0x61];
 
             if ((mode & 8) == 0)
                 return 3;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
