@@ -234,6 +234,27 @@ test_00ba_ok:
     hlt
 test_00bb_ok:
 
+; INT
+test_00c:
+    jmp skip_int_func
+int_func:
+    mov cx,#$1726
+    iret
+skip_int_func:
+    mov si,#$000c
+    mov di,#$002a
+    mov ax,#0
+    mov [di],ax
+    mov di,#$0028
+    mov ax,#int_func
+    mov [di],ax
+    mov cx,#$4321
+    int 10
+    cmp cx,#$1726
+    jz test_00c_ok
+    hlt
+test_00c_ok:
+
 finish:
 ''')
 
