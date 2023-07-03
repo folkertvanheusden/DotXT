@@ -148,6 +148,9 @@ internal class P8086
     {
         Log.DoLog($"INT {nr:X2} {_ah:X2}");
 
+        if (!_intercept_int_flag)
+            return false;
+
         if (nr == 0x10)
         {
             if (_ah == 0x0e)
@@ -210,9 +213,6 @@ internal class P8086
 
             return true;
         }
-
-        if (!_intercept_int_flag)
-            return false;
 
         if (nr == 0x12)
         {
@@ -1911,7 +1911,7 @@ internal class P8086
         else if (opcode == 0x99)
         {
             // CWD
-            if ((_ah & 32768) == 32768)
+            if ((_ah & 128) == 128)
                 SetDX(0xffff);
             else
                 SetDX(0);
@@ -3334,7 +3334,7 @@ internal class P8086
         }
         else if (opcode == 0xe5)
         {
-            // IN AL,ib
+            // IN AX,ib
             byte @from = GetPcByte();
 
             SetAX(_io.In(_scheduled_interrupts, @from));

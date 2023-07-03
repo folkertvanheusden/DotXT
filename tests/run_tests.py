@@ -45,17 +45,20 @@ def run_path(path, cmd, exprc):
 
 print('Generating tests...')
 start_t = time.time()
-run('python3 adc_add_sbb_sub.py', TEMP)
-run('python3 adc16_add16_sbb16_sub16.py', TEMP)
-run('python3 cmp.py', TEMP)
-run('python3 cmp16.py', TEMP)
+#run('python3 adc_add_sbb_sub.py', TEMP)
+#run('python3 adc16_add16_sbb16_sub16.py', TEMP)
+#run('python3 cbw_cwd.py', TEMP)
+#run('python3 cmp.py', TEMP)
+#run('python3 cmp16.py', TEMP)
+#run('python3 inc_dec.py', TEMP)
+#run('python3 inc_dec16.py', TEMP)
 run('python3 misc.py', TEMP)
-run('python3 mov.py', TEMP)
-run('python3 or_and_xor_test.py', TEMP)
-run('python3 or_and_xor_test_16.py', TEMP)
-run('python3 rcl_rcr_rol_ror_sal_sar.py', TEMP)
-run('python3 inc_dec.py', TEMP)
-run('python3 inc_dec16.py', TEMP)
+#run('python3 mov.py', TEMP)
+#run('python3 or_and_xor_test.py', TEMP)
+#run('python3 or_and_xor_test_16.py', TEMP)
+#run('python3 push_pop.py', TEMP)
+#run('python3 rcl_rcr_rol_ror_sal_sar.py', TEMP)
+run('python3 strings.py', TEMP)
 print(f'Script generation took {time.time() - start_t:.3f} seconds')
 
 LF=True
@@ -80,10 +83,10 @@ def dotest(i):
     rc = None
 
     if CC:
-        rc = run_path('../../', f'dotnet-coverage collect "dotnet run -c Debug -t {TEST_BIN} -l {LOGFILE}" -o {COVERAGE}', 123)
+        rc = run_path('../../', f'dotnet-coverage collect "dotnet run -c Debug -t {TEST_BIN} -l {LOGFILE} -e" -o {COVERAGE}', 123)
 
     else:
-        rc = run_path('../../', f'dotnet run -c Debug -l {LOGFILE} -t {TEST_BIN}', 123)
+        rc = run_path('../../', f'dotnet run -c Debug -l {LOGFILE} -t {TEST_BIN} -e', 123)
 
     if rc == 123:
         if LF:
@@ -112,7 +115,6 @@ start_t = time.time()
 # not use a complete processing unit
 with multiprocessing.Pool(processes=int(multiprocessing.cpu_count() * 3 / 4)) as pool:
     pool.map(dotest, files)
-# dotest('rcl_rcr_rol_ror_sal_sar8a_19456.asm')
 
 print(f'Batch processing took {time.time() - start_t:.3f} seconds')
 
