@@ -2,6 +2,12 @@ http://bitsavers.informatik.uni-stuttgart.de/pdf/ibm/pc/xt/1502237_PC_XT_Technic
 
 
 - tests: set all other bits to 1 and then verify they did not change
+* loop en/of string (D(irection)!)
+* prefixen
+- jmp np
+- call far ptr
+  - ret
+ - jmp far ptr
 
 
 47298103989ece60dc293257ff4641b11a323d91
@@ -22,3 +28,8 @@ ebf874d1b131595ed93caa5fb30e8d3326670b14
 
 rm /home/folkert/temp/ramdisk/logfile.txt ; dotnet run -t ru/jmpmov.bin -T 0xf0000 -B -o 0xf000,0x0000 -l /home/folkert/temp/ramdisk/logfile.txt
 bochs 'romimage: file=ru/jmpmov.bin'
+
+
+05/09/86 bios:
+- FE289 is the check for a CGA card
+  if AL = 30h at that point, it's an MDA card.  If AL = 10h or 20h it's a CGA card
