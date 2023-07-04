@@ -290,6 +290,32 @@ test_00d_2:
     beq test_00d_3
     hlt
 test_00d_3:
+    jmp test_00e
+
+; XCHG2
+test_value:
+    dw $1234
+
+test_00e:
+    mov si,#$000e
+    pushf
+	mov ax,#$4321
+    xchg ax,[test_value]
+    cmp ax,#$1234
+    jz test_00ea_ok
+    hlt
+test_00ea_ok:
+    cmp [test_value],#$4321
+    jz test_00eb_ok
+    hlt
+test_00eb_ok:
+    pushf
+    pop bx
+    pop ax
+    cmp ax,bx
+    jz test_00ec_ok
+    hlt
+test_00ec_ok:
 
 finish:
 ''')
