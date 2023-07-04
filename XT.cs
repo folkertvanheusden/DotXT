@@ -2925,7 +2925,7 @@ internal class P8086
         }
         else if (opcode == 0xae)
         {
-            // SCASW
+            // SCASB
             byte v = ReadMemByte(_es, _di);
 
             int result = _al - v;
