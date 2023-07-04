@@ -52,9 +52,10 @@ start_t = time.time()
 #run('python3 cmp16.py', TEMP)
 #run('python3 inc_dec.py', TEMP)
 #run('python3 inc_dec16.py', TEMP)
+#run('python3 jmp_call_ret.py', TEMP)
 #run('python3 misc.py', TEMP)
 #run('python3 mov.py', TEMP)
-run('python3 neg.py', TEMP)
+#run('python3 neg.py', TEMP)
 #run('python3 or_and_xor_test.py', TEMP)
 #run('python3 or_and_xor_test_16.py', TEMP)
 #run('python3 push_pop.py', TEMP)
@@ -116,6 +117,15 @@ start_t = time.time()
 # not use a complete processing unit
 with multiprocessing.Pool(processes=int(multiprocessing.cpu_count() * 3 / 4)) as pool:
     pool.map(dotest, files)
+
+# special case
+run(f'../jmp_call_ret_far.sh', '')
+DATA_PATH = f'tests/{TEMP}/'
+if CC:
+    rc = run_path('../../', f'dotnet-coverage collect "dotnet run -c Debug -t {DATA_PATH}/jmp_call_ret_far1.bin -l {DATA_PATH}/jmp_call_ret_far1.log -e" -o {DATA_PATH}/jmp_call_ret_far1.coverage', 123)
+else:
+    rc = run_path('../../', f'dotnet run -c Debug -l jmp_call_ret_far1.log -t {DATA_PATH}/jmp_call_ret_far1.bin -e', 123)
+
 
 print(f'Batch processing took {time.time() - start_t:.3f} seconds')
 
