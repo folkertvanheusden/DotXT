@@ -52,13 +52,19 @@ start_t = time.time()
 #run('python3 cmp16.py', TEMP)
 #run('python3 inc_dec.py', TEMP)
 #run('python3 inc_dec16.py', TEMP)
-run('python3 misc.py', TEMP)
+#run('python3 jmp_call_ret.py', TEMP)
+#run('python3 misc.py', TEMP)
+#run('python3 misc2.py', TEMP)
+#run('python3 misc2b.py', TEMP)
+run('python3 misc3.py', TEMP)
 #run('python3 mov.py', TEMP)
+#run('python3 neg.py', TEMP)
 #run('python3 or_and_xor_test.py', TEMP)
 #run('python3 or_and_xor_test_16.py', TEMP)
 #run('python3 push_pop.py', TEMP)
 #run('python3 rcl_rcr_rol_ror_sal_sar.py', TEMP)
-run('python3 strings.py', TEMP)
+#run('python3 strings.py', TEMP)
+do_special_cases = False
 print(f'Script generation took {time.time() - start_t:.3f} seconds')
 
 LF=True
@@ -116,10 +122,30 @@ start_t = time.time()
 with multiprocessing.Pool(processes=int(multiprocessing.cpu_count() * 3 / 4)) as pool:
     pool.map(dotest, files)
 
+# special cases
+if do_special_cases:
+    DATA_PATH = f'tests/{TEMP}/'
+
+    run(f'../jmp_call_ret_far.sh', '')
+
+    if CC:
+        rc = run_path('../../', f'dotnet-coverage collect "dotnet run -c Debug -t {DATA_PATH}/jmp_call_ret_far1.bin -l {DATA_PATH}/jmp_call_ret_far1.log -e" -o {DATA_PATH}/jmp_call_ret_far1.coverage', 123)
+    else:
+        rc = run_path('../../', f'dotnet run -c Debug -l jmp_call_ret_far1.log -t {DATA_PATH}/jmp_call_ret_far1.bin -e', 123)
+
+    run(f'../jmp_call_ret_far2.sh', '')
+
+    if CC:
+        rc = run_path('../../', f'dotnet-coverage collect "dotnet run -c Debug -t {DATA_PATH}/jmp_call_ret_far2.bin -l {DATA_PATH}/jmp_call_ret_far2.log -e" -o {DATA_PATH}/jmp_call_ret_far2.coverage', 123)
+    else:
+        rc = run_path('../../', f'dotnet run -c Debug -l jmp_call_ret_far2.log -t {DATA_PATH}/jmp_call_ret_far2.bin -e', 123)
+
+
+
 print(f'Batch processing took {time.time() - start_t:.3f} seconds')
 
 if CC:
-    run(f'dotnet-coverage merge -o {CCXML} -f xml', '*.coverage')
+    run(f'dotnet-coverage merge -o {CCXML} -f xml *.coverage', '> /dev/null')
 
     rm_r(CCREPORT)
 
