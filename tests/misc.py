@@ -290,17 +290,23 @@ test_00d_2:
     beq test_00d_3
     hlt
 test_00d_3:
-    jmp test_00e
+    clc
+    jnc test_00d_4
+    hlt
+test_00d_4:
+    stc
+    jc test_00e
+    hlt
 
 ; XCHG2
 test_value:
     dw $1234
-
 test_00e:
     mov si,#$000e
     pushf
 	mov ax,#$4321
     xchg ax,[test_value]
+    pushf
     cmp ax,#$1234
     jz test_00ea_ok
     hlt
@@ -309,13 +315,41 @@ test_00ea_ok:
     jz test_00eb_ok
     hlt
 test_00eb_ok:
-    pushf
     pop bx
     pop ax
     cmp ax,bx
     jz test_00ec_ok
     hlt
 test_00ec_ok:
+
+test_00f:
+    mov si,#$000f
+    xor ax,ax
+    push ax
+    popf
+    sti
+    pushf
+    pop ax
+    and ax,#$200
+    cmp ax,#$200
+    jz test_00f_ok
+    hlt
+test_00f_ok:
+
+test_010:
+    mov si,#$0010
+    xor ax,ax
+    push ax
+    popf
+    mov al,#$76
+    add al,#$01
+    jno test_010_1
+    hlt
+test_010_1:
+    add al,#$39
+    jo test_010_2
+    hlt
+test_010_2:
 
 finish:
 ''')
