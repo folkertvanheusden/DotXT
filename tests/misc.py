@@ -453,6 +453,24 @@ test_017:
     hlt
 test_017_ok:
 
+test_018:
+    mov si,#$0018
+; set $10000 to 12
+    mov ax,#$1000
+    mov ds,ax
+    xor ax,ax
+    mov di,ax
+    mov [di],#$12
+; check
+    mov si,ax
+    mov ax,#$5555
+    dseg
+    mov al,[si]
+    cmp ax,#$5512
+    beq test_018_ok
+    hlt
+test_018_ok:
+
 finish:
 ''')
 
