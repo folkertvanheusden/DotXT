@@ -119,13 +119,38 @@ test_002_xfer_ok:
 test_003:
     dw $7766
 test_003_go:
+    cld
     mov ax,#test_003
     mov si,ax
     lodsw
     cmp ax,#$7766
-    beq test_003_ok
+    beq test_003_ok1
     hlt
-test_003_ok:
+test_003_ok1:
+    mov ax,si
+    cmp ax,#test_003_go
+    beq test_003_ok2
+    hlt
+test_003_ok2:
+
+test_004:
+    mov ax,#$9911
+    not ax
+    cmp ax,#$66ee
+    beq test_004_ok
+    hlt
+test_004_ok:
+    jmp test_005_go
+
+test_005:
+    dw $1199
+test_005_go:
+    not [test_005]
+    mov ax,[test_005]
+    cmp ax,#$ee66
+    beq test_005_ok
+    hlt
+test_005_ok:
 
 finish:
 ''')
