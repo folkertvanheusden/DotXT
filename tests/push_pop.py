@@ -67,6 +67,19 @@ for reg in 'AX', 'CX', 'DX', 'BX', 'BP', 'SI', 'DI', 'ES':
     fh.write(f'\thlt\n')
     fh.write(f'{l2}:\n')
 
+fh.write('\tjmp skip_dw_1\n')
+fh.write('store_field:\n')
+fh.write('\tdw 0\n')
+fh.write('skip_dw_1:\n')
+fh.write('\tmov ax,#$aa33\n')
+fh.write('\tpush ax\n')
+fh.write('\tpop [store_field]\n')
+fh.write('\tmov ax,[store_field]\n')
+fh.write('\tcmp ax,#$aa33\n')
+fh.write('\tbeq test_ok\n')
+fh.write('\thlt\n')
+fh.write('test_ok:\n')
+
 fh.write('\tmov ax,#$a5ee\n')
 fh.write('\tmov si,ax\n')  # set si to 'finished successfully'
 fh.write('\thlt\n')
