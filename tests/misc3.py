@@ -114,6 +114,18 @@ test_002_di_ok:
     hlt
 
 test_002_xfer_ok:
+    jmp test_003_go
+
+test_003:
+    dw $7766
+test_003_go:
+    mov ax,#test_003
+    mov si,ax
+    lodsw
+    cmp ax,#$7766
+    beq test_003_ok
+    hlt
+test_003_ok:
 
 finish:
 ''')
