@@ -261,7 +261,7 @@ class Terminal
 
     public Terminal()
     {
-        TerminalClear();
+    //    TerminalClear();
     }
 
     private void TerminalClear()
