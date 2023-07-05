@@ -1647,7 +1647,7 @@ internal class P8086
         }
         else if (opcode == 0xa7)
         {
-            // CMPSB
+            // CMPSW
             ushort v1 = ReadMemWord(_segment_override_set ? _segment_override : _ds, _si);
             ushort v2 = ReadMemWord(_es, _di);
 
