@@ -264,6 +264,26 @@ test_014:
     jz test_014_ok
     hlt
 test_014_ok:
+    jmp test_015_go
+
+test_015:
+    dw 0
+    dw 0
+    dw 0
+    dw $a5e5
+    dw 0
+ 
+test_015_go:
+    mov si,#$0015
+    mov ax,#test_015
+    mov di,ax
+    mov ax,#$0006
+    mov bp,ax
+    mov ax,[bp + di]
+    cmp ax,#$a5e5
+    beq test_015_ok
+    hlt
+test_015_ok:
 
 finish:
 ''')
