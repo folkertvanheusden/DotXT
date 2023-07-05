@@ -284,6 +284,30 @@ test_015_go:
     beq test_015_ok
     hlt
 test_015_ok:
+    jmp test_016_go
+ 
+test_016:
+    dw $1332
+test_016_go:
+    mov si,#$0016
+    mov ax,#$ff00
+    mov al,[test_016]
+    cmp ax,#$ff32
+    beq test_016_ok
+    hlt
+test_016_ok:
+ 
+test_017:
+    dw $1332
+test_017_go:
+    mov si,#$0017
+    mov al,#$ff
+    mov [test_017],al
+    mov ax,#$13ff
+    cmp ax,[test_017]
+    beq test_017_ok
+    hlt
+test_017_ok:
 
 finish:
 ''')
