@@ -37,6 +37,28 @@ test_002_sub:
     ret
     hlt
 test_002_ok:
+    jmp test_003
+
+test_003_data:
+    dw test_003_ok
+test_003:
+    mov si,#$0003
+    jmp [test_003_data]
+    hlt
+test_003_ok:
+    jmp test_004
+
+test_004_data:
+    dw test_004_sub
+test_004:
+    mov si,#$0004
+    call [test_004_data]
+    jmp test_004_ok
+    hlt
+test_004_sub:
+    ret
+    hlt
+test_004_ok:
 
 finish:
 ''')
