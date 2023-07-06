@@ -26,9 +26,9 @@ internal class Rom
 {
     private readonly byte[] _contents;
 
-    public Rom(byte[] contents)
+    public Rom(string filename)
     {
-        _contents = contents;
+        _contents = File.ReadAllBytes(filename);
     }
 
     public byte ReadByte(uint address)
@@ -48,19 +48,11 @@ class Bus
 //    private readonly Rom _basic = new("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
     private readonly Rom _bios = new("roms/BIOS_5160_09MAY86_U18_59X7268_62X0890_27256_F800.BIN");
     private readonly Rom _basic = new("roms/BIOS_5160_09MAY86_U19_62X0819_68X4370_27256_F000.BIN");
-//    private readonly Rom _bios = new("roms/t/eproms/ibmxt/u18.rom");
-//    private readonly Rom _basic = new("roms/t/eproms/ibmxt/u19.rom");
 
     private bool _use_bios;
 
     public Bus(uint size, bool use_bios)
     {
-//        var firmware = new Firmware("roms/BIOS_5160_16AUG82.zip");
-        // _bios = firmware.Read("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
-        // _basic = firmware.Read("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
- //       _bios = firmware.Read("BIOS_5160_16AUG82_U18_5000026.BIN");
-//        _basic = firmware.Read("BIOS_5160_16AUG82_U19_5000027.BIN");
-        
         _m = new Memory(size);
 
         _use_bios = use_bios;

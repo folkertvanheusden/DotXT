@@ -1,6 +1,8 @@
 DotXT
 =====
 
+* in the roms subdirectory, unzip BIOS\_5160\_16AUG82.zip
+
 - to run the unit-tests, install python3 and:
   - `dotnet tool install --global dotnet-coverage`
   - `dotnet tool install -g dotnet-reportgenerator-globaltool`
