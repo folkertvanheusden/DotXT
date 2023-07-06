@@ -2823,23 +2823,6 @@ internal class P8086
             Log.DoLog($"{prefixStr} LEA {name_to},{name_from}");
 #endif
         }
-        else if ((opcode & 0xf8) == 0xb8)
-        {
-            // MOV immed to reg
-            bool word = (opcode & 8) == 8; // b/w
-            int reg = opcode & 7;
-
-            ushort val = GetPcByte();
-
-            if (word)
-                val |= (ushort)(GetPcByte() << 8);
-
-            string toName = PutRegister(reg, word, val);
-
-#if DEBUG
-            Log.DoLog($"{prefixStr} MOV {toName},${val:X}");
-#endif
-        }
         else if (opcode == 0x9e)
         {
             // SAHF
