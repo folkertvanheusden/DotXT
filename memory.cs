@@ -26,9 +26,9 @@ internal class Rom
 {
     private readonly byte[] _contents;
 
-    public Rom(string filename)
+    public Rom(byte[] contents)
     {
-        _contents = File.ReadAllBytes(filename);
+        _contents = contents;
     }
 
     public byte ReadByte(uint address)
@@ -55,6 +55,12 @@ class Bus
 
     public Bus(uint size, bool use_bios)
     {
+//        var firmware = new Firmware("roms/BIOS_5160_16AUG82.zip");
+        // _bios = firmware.Read("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
+        // _basic = firmware.Read("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
+ //       _bios = firmware.Read("BIOS_5160_16AUG82_U18_5000026.BIN");
+//        _basic = firmware.Read("BIOS_5160_16AUG82_U19_5000027.BIN");
+        
         _m = new Memory(size);
 
         _use_bios = use_bios;
