@@ -152,6 +152,32 @@ test_005_go:
     hlt
 test_005_ok:
 
+test_006:
+    mov ax,#$ffff
+    push ax
+    popf
+    lahf
+    cmp ah,#$d7
+    beq test_006_ok1
+    hlt
+test_006_ok1:
+    cmp al,#$00
+    beq test_006_ok2
+    hlt
+test_006_ok2:
+    mov ax,#$0000
+    push ax
+    popf
+    lahf
+    cmp ah,#$02
+    beq test_006_ok3
+    hlt
+test_006_ok3:
+    cmp al,#$00
+    beq test_006_ok4
+    hlt
+test_006_ok4:
+
 finish:
 ''')
 

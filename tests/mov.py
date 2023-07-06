@@ -308,6 +308,21 @@ test_017_go:
     beq test_017_ok
     hlt
 test_017_ok:
+ 
+test_018:
+    mov si,#$0018
+    mov ax,#$ff12
+    cmp ax,#$ff12
+    beq test_018_ok1
+    hlt
+test_018_ok1:
+    xor ax,ax
+    mov bx,ax
+    mov bl,#$12
+    cmp bx,#$12
+    beq test_018_ok2
+    hlt
+test_018_ok2:
 
 finish:
 ''')
