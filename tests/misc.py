@@ -470,6 +470,25 @@ test_018:
     beq test_018_ok
     hlt
 test_018_ok:
+    xor ax,ax
+    mov ds,ax
+    jmp test_019_go
+
+; NOT
+test_019:
+    dw $1234
+test_019_go:
+    mov si,#$0019
+    xor ax,ax
+    not [test_019]
+    cmp [test_019],#$EDCB
+    jz test_019a_ok
+    hlt
+test_019a_ok:
+    cmp ax,#$0000
+    jz test_019b_ok
+    hlt
+test_019b_ok:
 
 finish:
 ''')
