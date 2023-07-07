@@ -264,6 +264,116 @@ test_014:
     jz test_014_ok
     hlt
 test_014_ok:
+    jmp test_015_go
+
+test_015:
+    dw 0
+    dw 0
+    dw 0
+    dw $a5e5
+    dw 0
+ 
+test_015_go:
+    mov si,#$0015
+    mov ax,#test_015
+    mov di,ax
+    mov ax,#$0006
+    mov bp,ax
+    mov ax,[bp + di]
+    cmp ax,#$a5e5
+    beq test_015_ok
+    hlt
+test_015_ok:
+    jmp test_016_go
+ 
+test_016:
+    dw $1332
+test_016_go:
+    mov si,#$0016
+    mov ax,#$ff00
+    mov al,[test_016]
+    cmp ax,#$ff32
+    beq test_016_ok
+    hlt
+test_016_ok:
+ 
+test_017:
+    dw $1332
+test_017_go:
+    mov si,#$0017
+    mov al,#$ff
+    mov [test_017],al
+    mov ax,#$13ff
+    cmp ax,[test_017]
+    beq test_017_ok
+    hlt
+test_017_ok:
+ 
+test_018:
+    mov si,#$0018
+    mov ax,#$ff12
+    cmp ax,#$ff12
+    beq test_018_ok1
+    hlt
+test_018_ok1:
+    xor ax,ax
+    mov bx,ax
+    mov bl,#$12
+    cmp bx,#$12
+    beq test_018_ok2
+    hlt
+test_018_ok2:
+    jmp test_019_go
+
+test_019:
+    dw $0
+    dw $2
+    dw $4
+    dw $6
+    dw $8
+    dw $a
+    dw $c
+    dw $e
+    dw $10
+    dw $12
+    dw $14
+    dw $16
+    dw $18
+    dw $1a
+ 
+test_019_go:
+    mov si,#$0019
+    mov ax,#test_019
+    mov bp,ax
+    mov ax,[bp + si]
+    cmp ax,#$1a00
+    beq test_019_ok
+    hlt
+test_019_ok:
+    jmp test_01a_go
+
+test_01a:
+    dw $0
+test_01a_go:
+    mov si,#$001a
+    ; increment after stos
+    cld
+    xor ax,ax
+    mov es,ax
+    mov di,#test_01a
+    mov ax,#$8382
+    stosw
+    ; next statement is for debugging
+    mov bx,[test_01a]
+    cmp [test_01a],#$8382
+    beq test_01a_ok1
+    hlt
+test_01a_ok1:
+    sub di,#2
+    cmp di,#test_01a
+    beq test_01a_ok2
+    hlt
+test_01a_ok2:
 
 finish:
 ''')

@@ -36,6 +36,7 @@ test_001_dest:
     dw 0
 
 test_001_do:
+    mov si,#$0001
     mov ax,#test_001_source
     add ax,#8
     mov si,ax
@@ -85,6 +86,7 @@ test_002_dest:
     dw 0
 
 test_002_do:
+    mov si,#$0002
     mov ax,#test_002_source
     mov si,ax
 
@@ -114,6 +116,113 @@ test_002_di_ok:
     hlt
 
 test_002_xfer_ok:
+    jmp test_003_go
+
+test_003:
+    dw $7766
+test_003_go:
+    mov si,#$0003
+    cld
+    mov ax,#test_003
+    mov si,ax
+    lodsw
+    cmp ax,#$7766
+    beq test_003_ok1
+    hlt
+test_003_ok1:
+    mov ax,si
+    cmp ax,#test_003_go
+    beq test_003_ok2
+    hlt
+test_003_ok2:
+
+test_004:
+    mov si,#$0004
+    mov ax,#$9911
+    not ax
+    cmp ax,#$66ee
+    beq test_004_ok
+    hlt
+test_004_ok:
+    jmp test_005_go
+
+test_005:
+    dw $1199
+test_005_go:
+    mov si,#$0005
+    not [test_005]
+    mov ax,[test_005]
+    cmp ax,#$ee66
+    beq test_005_ok
+    hlt
+test_005_ok:
+
+test_006:
+    mov si,#$0006
+    ; make sure not to enable interrupts
+    mov ax,#$fdff
+    push ax
+    popf
+    lahf
+    cmp ah,#$d7
+    beq test_006_ok1
+    hlt
+test_006_ok1:
+    cmp al,#$ff
+    beq test_006_ok2
+    hlt
+test_006_ok2:
+    mov ax,#$0000
+    push ax
+    popf
+    lahf
+    cmp ah,#$02
+    beq test_006_ok3
+    hlt
+test_006_ok3:
+    cmp al,#$00
+    beq test_006_ok4
+    hlt
+test_006_ok4:
+
+test_007:
+    mov si,#$0007
+    mov ax,#$fdff
+    push ax
+    popf
+    mov al,#$00
+    sahf
+    pushf
+    pop ax
+    cmp al,#$d7
+    beq test_007_ok1
+    hlt
+test_007_ok1:
+
+test_008:
+    mov si,#$0008
+    ; clear flags
+    xor ax,ax
+    push ax
+    popf
+    ; enable interrupts
+    sti
+    pushf
+    pop ax
+    and ax,#$200
+    cmp ax,#512
+    beq test_008_ok1
+    hlt
+test_008_ok1:
+    ; disable interrupts
+    cli
+    pushf
+    pop bx
+    and bx,#$200
+    cmp bx,#0
+    beq test_008_ok2
+    hlt
+test_008_ok2:
 
 finish:
 ''')

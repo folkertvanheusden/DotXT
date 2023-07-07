@@ -48,8 +48,9 @@ class Bus
 //    private readonly Rom _basic = new("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
     private readonly Rom _bios = new("roms/BIOS_5160_09MAY86_U18_59X7268_62X0890_27256_F800.BIN");
     private readonly Rom _basic = new("roms/BIOS_5160_09MAY86_U19_62X0819_68X4370_27256_F000.BIN");
-    private List<Device> _devices;
     private bool _use_bios;
+
+    private List<Device> _devices;
 
     public Bus(uint size, bool use_bios, ref List<Device> devices)
     {

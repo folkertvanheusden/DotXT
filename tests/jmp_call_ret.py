@@ -60,6 +60,22 @@ test_004_sub:
     hlt
 test_004_ok:
 
+test_005:
+    mov si,#$0004
+    mov ax,sp
+    push ax
+    push ax
+    push ax
+    call test_005_sub
+    jmp test_005_cont
+test_005_sub:
+    ret 6
+test_005_cont:
+    cmp ax,sp
+    beq test_005_ok
+    hlt
+test_005_ok:
+
 finish:
 ''')
 
