@@ -233,15 +233,34 @@ test_009_go:
     mov es,ax
     mov di,#test_009
     mov ax,#$bbbb
+    std
     scasw
     jge test_009_ok1
     hlt
 test_009_ok1:
     add di,#2
-    cmp di,#test_009_go
+    cmp di,#test_009
     beq test_009_ok2
     hlt
 test_009_ok2:
+
+test_00a:
+    dw $aa
+test_00a_go:
+    mov si,#$000a
+    xor ax,ax
+    mov es,ax
+    mov di,#test_00a
+    mov al,#$bb
+    scasb
+    jge test_00a_ok1
+    hlt
+test_00a_ok1:
+    inc di
+    cmp di,#test_00a
+    beq test_00a_ok2
+    hlt
+test_00a_ok2:
 
 finish:
 ''')
