@@ -2455,13 +2455,26 @@ internal class P8086
             if (function == 0)
             {
                 // TEST
-                byte r2 = GetPcByte();
-                name2 = $",{r2:X2}";
+                if (word) {
+                    ushort r2 = GetPcWord();
+                    name2 = $"{r2:X4}";
 
-                ushort result = (ushort)(r1 & r2);
-                SetLogicFuncFlags(word, result);
+                    ushort result = (ushort)(r1 & r2);
+                    SetLogicFuncFlags(true, result);
 
-                SetFlagC(false);
+                    SetFlagC(false);
+
+                    cmd_name = "TEST";
+                }
+                else {
+                    byte r2 = GetPcByte();
+                    name2 = $",{r2:X2}";
+
+                    ushort result = (ushort)(r1 & r2);
+                    SetLogicFuncFlags(word, result);
+
+                    SetFlagC(false);
+                }
 
                 cmd_name = "TEST";
             }
@@ -2479,7 +2492,7 @@ internal class P8086
 
                 cmd_name = "NEG";
 
-                SetAddSubFlags(false, 0, r1, -r1, true, false);
+                SetAddSubFlags(word, 0, r1, -r1, true, false);
                 SetFlagC(r1 != 0);
 
                 UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)result);
