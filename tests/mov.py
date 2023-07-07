@@ -323,6 +323,33 @@ test_018_ok1:
     beq test_018_ok2
     hlt
 test_018_ok2:
+    jmp test_019_go
+
+test_019:
+    dw $0
+    dw $2
+    dw $4
+    dw $6
+    dw $8
+    dw $a
+    dw $c
+    dw $e
+    dw $10
+    dw $12
+    dw $14
+    dw $16
+    dw $18
+    dw $1a
+ 
+test_019_go:
+    mov si,#$0019
+    mov ax,#test_019
+    mov bp,ax
+    mov ax,[bp + si]
+    cmp ax,#$1a00
+    beq test_019_ok
+    hlt
+test_019_ok:
 
 finish:
 ''')
