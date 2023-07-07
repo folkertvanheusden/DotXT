@@ -289,7 +289,7 @@ test_00c:
     mov si,#$000c
     xor bx,bx
     xor dx,dx
-    xor cx,#$256
+    mov cx,#$256
 test_00c_loop:
     inc bx
     inc dx
@@ -303,6 +303,25 @@ test_00c_ok1:
     beq test_00c_ok2
     hlt
 test_00c_ok2:
+
+test_00d:
+    mov si,#$000d
+    xor bx,bx
+    xor dx,dx
+    mov cx,#$0009
+test_00d_loop:
+    inc bx
+    inc dx
+    cmp bx,dx
+    loopz test_00d_loop
+    cmp cx,#$0000
+    beq test_00d_ok1
+    hlt
+test_00d_ok1:
+    cmp dx,#$09
+    beq test_00d_ok2
+    hlt
+test_00d_ok2:
 
 
 finish:
