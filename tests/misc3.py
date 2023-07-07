@@ -223,6 +223,25 @@ test_008_ok1:
     beq test_008_ok2
     hlt
 test_008_ok2:
+    jmp test_009_go
+
+test_009:
+    dw $aaaa
+test_009_go:
+    mov si,#$0009
+    xor ax,ax
+    mov es,ax
+    mov di,#test_009
+    mov ax,#$bbbb
+    scasw
+    jge test_009_ok1
+    hlt
+test_009_ok1:
+    add di,#2
+    cmp di,#test_009_go
+    beq test_009_ok2
+    hlt
+test_009_ok2:
 
 finish:
 ''')
