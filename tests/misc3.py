@@ -261,6 +261,29 @@ test_00a_ok1:
     beq test_00a_ok2
     hlt
 test_00a_ok2:
+    jmp test_00b_go
+
+test_00b:
+    db $a
+    db $b
+    db $c
+    db $d
+    db $e
+    db $f
+    db $1
+    db $2
+    db $3
+test_00b_go:
+    mov si,#$000b
+    xor ax,ax
+    mov ds,ax
+    mov bx,#test_00b
+    mov al,#$05
+    xlatb
+    cmp al,#$0f
+    beq test_00b_ok1
+    hlt
+test_00b_ok1:
 
 finish:
 ''')
