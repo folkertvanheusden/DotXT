@@ -199,6 +199,31 @@ test_007:
     hlt
 test_007_ok1:
 
+test_008:
+    mov si,#$0008
+    ; clear flags
+    xor ax,ax
+    push ax
+    popf
+    ; enable interrupts
+    sti
+    pushf
+    pop ax
+    and ax,#$200
+    cmp ax,#512
+    beq test_008_ok1
+    hlt
+test_008_ok1:
+    ; disable interrupts
+    cli
+    pushf
+    pop bx
+    and bx,#$200
+    cmp bx,#0
+    beq test_008_ok2
+    hlt
+test_008_ok2:
+
 finish:
 ''')
 
