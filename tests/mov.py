@@ -350,6 +350,30 @@ test_019_go:
     beq test_019_ok
     hlt
 test_019_ok:
+    jmp test_01a_go
+
+test_01a:
+    dw $0
+test_01a_go:
+    mov si,#$001a
+    ; increment after stos
+    cld
+    xor ax,ax
+    mov es,ax
+    mov di,#test_01a
+    mov ax,#$8382
+    stosw
+    ; next statement is for debugging
+    mov bx,[test_01a]
+    cmp [test_01a],#$8382
+    beq test_01a_ok1
+    hlt
+test_01a_ok1:
+    sub di,#2
+    cmp di,#test_01a
+    beq test_01a_ok2
+    hlt
+test_01a_ok2:
 
 finish:
 ''')
