@@ -285,6 +285,26 @@ test_00b_go:
     hlt
 test_00b_ok1:
 
+test_00c:
+    mov si,#$000c
+    xor bx,bx
+    xor dx,dx
+    xor cx,#$256
+test_00c_loop:
+    inc bx
+    inc dx
+    cmp bx,#$123
+    loopnz test_00c_loop
+    cmp cx,#$133
+    beq test_00c_ok1
+    hlt
+test_00c_ok1:
+    cmp dx,#$123
+    beq test_00c_ok2
+    hlt
+test_00c_ok2:
+
+
 finish:
 ''')
 
