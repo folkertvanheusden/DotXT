@@ -2434,7 +2434,7 @@ internal class P8086
             Log.DoLog($"{prefixStr} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
 #endif
         }
-        else if (opcode == 0xf6)
+        else if (opcode == 0xf6 || opcode == 0xf7)
         {
             // TEST and others
             bool word = (opcode & 1) == 1;
@@ -2487,26 +2487,56 @@ internal class P8086
             else if (function == 4)
             {
                 // MUL
-                int result = _al * r1;
-                SetAX((ushort)result);
+                if (word) {
+                    ushort ax = GetAX();
+                    int resulti = ax * r1;
 
-                bool flag = _ah != 0;
-                SetFlagC(flag);
-                SetFlagO(flag);
+                    uint dx_ax = (uint)resulti;
+                    SetAX((ushort)dx_ax);
+                    SetDX((ushort)(dx_ax >> 16));
+
+                    bool flag = GetDX() != 0;
+                    SetFlagC(flag);
+                    SetFlagO(flag);
+
+                    name2 = name1;
+                    name1 = "DX:AX";
+                }
+                else {
+                    int result = _al * r1;
+                    SetAX((ushort)result);
+
+                    bool flag = _ah != 0;
+                    SetFlagC(flag);
+                    SetFlagO(flag);
+                }
 
                 cmd_name = "MUL";
             }
             else if (function == 6)
             {
                 // DIV
-                ushort ax = GetAX();
+                if (word) {
+                    uint dx_ax = (uint)((GetDX() << 16) | GetAX());
 
-                if (r1 == 0 || ax / r1 > 0x100)
-                    InvokeInterrupt(instr_start, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
-                else
-                {
-                    _al = (byte)(ax / r1);
-                    _ah = (byte)(ax % r1);
+                    if (r1 == 0 || dx_ax / r1 >= 0x10000)
+                        InvokeInterrupt(instr_start, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                    else
+                    {
+                        SetAX((ushort)(dx_ax / r1));
+                        SetDX((ushort)(dx_ax % r1));
+                    }
+                }
+                else {
+                    ushort ax = GetAX();
+
+                    if (r1 == 0 || ax / r1 > 0x100)
+                        InvokeInterrupt(instr_start, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                    else
+                    {
+                        _al = (byte)(ax / r1);
+                        _ah = (byte)(ax % r1);
+                    }
                 }
 
                 cmd_name = "DIV";
@@ -2518,132 +2548,6 @@ internal class P8086
 
 #if DEBUG
             Log.DoLog($"{prefixStr} {cmd_name} {name1}{name2}");
-#endif
-        }
-        else if (opcode == 0xf7)
-        {
-            // MUL and others
-            byte o1 = GetPcByte();
-
-            int mod = o1 >> 6;
-            int reg1 = o1 & 7;
-            int reg2 = (o1 >> 3) & 7;
-
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg1, mod, true);
-
-            string use_name1 = "";
-            string use_name2 = "";
-
-            string cmd_name = "error";
-            ushort result = 0;
-            bool put = false;
-
-            int function = (o1 >> 3) & 7;
-
-            if (function == 0)
-            {
-                // TEST
-                ushort r2 = GetPcWord();
-                use_name2 = $"{r2:X4}";
-
-                result = (ushort)(r1 & r2);
-                SetLogicFuncFlags(true, result);
-
-                SetFlagC(false);
-
-                cmd_name = "TEST";
-            }
-            else if (function == 2)
-            {
-                // NOT
-                result = (ushort)~r1;
-
-                put = true;
-
-                cmd_name = "NOT";
-
-                use_name1 = name1;
-            }
-            else if (function == 3)
-            {
-                // NEG
-                result = (ushort)-r1;
-
-                put = true;
-
-                cmd_name = "NEG";
-
-                use_name1 = name1;
-
-                SetAddSubFlags(true, 0, r1, -r1, true, false);
-                SetFlagC(r1 != 0);
-            }
-            else if (function == 4)
-            {
-                // MUL
-                ushort ax = GetAX();
-                int resulti = ax * r1;
-
-                uint dx_ax = (uint)resulti;
-                SetAX((ushort)dx_ax);
-                SetDX((ushort)(dx_ax >> 16));
-
-                bool flag = GetDX() != 0;
-                SetFlagC(flag);
-                SetFlagO(flag);
-
-                use_name1 = "DX:AX";
-                use_name2 = name1;
-
-                cmd_name = "MUL";
-            }
-            else if (function == 5)
-            {
-                // IMUL
-                short ax = (short)GetAX();
-                int resulti = ax * (short)r1;
-
-                uint dx_ax = (uint)resulti;
-                SetAX((ushort)dx_ax);
-                SetDX((ushort)(dx_ax >> 16));
-
-                bool flag = dx_ax >= 0x10000;
-                SetFlagC(flag);
-                SetFlagO(flag);
-
-                use_name1 = "DX:AX";
-                use_name2 = name1;
-
-                cmd_name = "IMUL";
-            }
-            else if (function == 6)
-            {
-                // DIV
-                uint dx_ax = (uint)((GetDX() << 16) | GetAX());
-
-                if (r1 == 0 || dx_ax / r1 >= 0x10000)
-                    InvokeInterrupt(instr_start, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
-                else
-                {
-                    SetAX((ushort)(dx_ax / r1));
-                    SetDX((ushort)(dx_ax % r1));
-                }
-
-                use_name1 = "DX:AX";
-                use_name2 = name1;
-
-                cmd_name = "DIV";
-            }
-            else
-            {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented");
-            }
-
-            if (put)
-                UpdateRegisterMem(reg1, mod, a_valid, seg, addr, true, result);
-
-#if DEBUG
-            Log.DoLog($"{prefixStr} {cmd_name} {use_name1},{use_name2}");
 #endif
         }
         else if (opcode == 0xfa)
