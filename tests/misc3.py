@@ -323,6 +323,21 @@ test_00d_ok1:
     hlt
 test_00d_ok2:
 
+test_00e:
+    mov si,#$000e
+    xor ax,ax
+    jpe test_00e_ok1
+    hlt
+test_00e_ok1:
+    xor ax,#$1
+    jpo test_00e_ok2
+    hlt
+test_00e_ok2:
+    xor ax,ax
+    xor ax,#$3
+    jpe test_00e_ok3
+    hlt
+test_00e_ok3:
 
 finish:
 ''')
