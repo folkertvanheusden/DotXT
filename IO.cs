@@ -508,6 +508,9 @@ class IO
         else if (addr == 0x0043)
             _i8253.command(value);
 
+        else if (addr == 0x0080)
+            Console.WriteLine($"Manufacturer systems checkpoint {value:X2}");
+
         else if (addr == 0x0322)
         {
 #if DEBUG
