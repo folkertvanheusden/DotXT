@@ -19,7 +19,19 @@ bool debugger = false;
 
 for(int i=0; i<args.Length; i++)
 {
-    if (args[i] == "-t")
+    if (args[i] == "-h") {
+        Console.WriteLine("-t file   load 'file' in RAM");
+        Console.WriteLine("-T addr   sets the load-address for -t");
+        Console.WriteLine("-F        -t parameter is a floppy image");
+        Console.WriteLine("-l file   log to file");
+        Console.WriteLine("-i        intercept some of the BIOS calls");
+        Console.WriteLine("-B        disable loading of the BIOS ROM images");
+        Console.WriteLine("-d        enable debugger");
+        Console.WriteLine("-e        emulate terminal");
+        Console.WriteLine("-o cs,ip  start address (in hexadecimal)");
+        System.Environment.Exit(0);
+    }
+    else if (args[i] == "-t")
         test = args[++i];
     else if (args[i] == "-T")
         load_test_at = (uint)Convert.ToInt32(args[++i], 16);
@@ -47,6 +59,8 @@ for(int i=0; i<args.Length; i++)
     else
     {
         Console.WriteLine($"{args[i]} is not understood");
+
+        System.Environment.Exit(1);
     }
 }
 
