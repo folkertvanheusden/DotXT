@@ -354,6 +354,18 @@ test_00f_ok1:
     hlt
 test_00f_ok2:
 
+test_010:
+    mov si,#$0010
+    mov bx,#$10
+    cmp bx,#$08
+    jnbe test_010_ok1
+    hlt
+test_010_ok1:
+    cmp bx,#$18
+    jbe test_010_ok2
+    hlt
+test_010_ok2:
+
 finish:
 ''')
 
