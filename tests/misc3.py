@@ -339,6 +339,21 @@ test_00e_ok2:
     hlt
 test_00e_ok3:
 
+test_00f:
+    mov si,#$000f
+    mov bx,#3
+    mov ax,#2
+    sub bx,ax
+    jns test_00f_ok1
+    hlt
+test_00f_ok1:
+    mov bx,#2
+    mov ax,#3
+    sub bx,ax
+    js test_00f_ok2
+    hlt
+test_00f_ok2:
+
 finish:
 ''')
 
