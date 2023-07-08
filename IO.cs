@@ -290,6 +290,12 @@ internal class b16buffer
         return (ushort)((values[1] << 8) | values[0]);
     }
 
+    public void SetValue(ushort v)
+    {
+        values[0] = (byte)(v & 255);
+        values[1] = (byte)(v >> 8);
+    }
+
     public byte Get()
     {
         bool low_high = f.get_state();
@@ -300,21 +306,29 @@ internal class b16buffer
 
 internal class i8237
 {
-    b16buffer [] channel_address_register = new b16buffer[4];
-    b16buffer [] channel_word_count = new b16buffer[4];
-    byte command;
-    bool [] channel_mask = new bool[4];
-    bool [] reached_tc = new bool[4];
-    byte [] channel_mode = new byte[4];
-    FlipFlop ff = new();
-    bool dma_enabled = true;
+    byte [] _channel_page = new byte[4];
+    b16buffer [] _channel_address_register = new b16buffer[4];
+    b16buffer [] _channel_word_count = new b16buffer[4];
+    byte _command;
+    bool [] _channel_mask = new bool[4];
+    bool [] _reached_tc = new bool[4];
+    byte [] _channel_mode = new byte[4];
+    FlipFlop _ff = new();
+    bool _dma_enabled = true;
+    Bus _b;
 
-    public i8237()
+    public i8237(Bus b)
     {
         for(int i=0; i<4; i++) {
-            channel_address_register[i] = new b16buffer(ff);
-            channel_word_count[i] = new b16buffer(ff);
+            _channel_address_register[i] = new b16buffer(_ff);
+            _channel_word_count[i] = new b16buffer(_ff);
         }
+
+        _b = b;
+    }
+
+    public void Tick()
+    {
     }
 
     public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
@@ -325,14 +339,14 @@ internal class i8237
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
-            v = channel_address_register[addr / 2].Get();
+            v = _channel_address_register[addr / 2].Get();
 
             Log.DoLog($"{prefix} {v:X2}");
         }
 
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
         {
-            v = channel_word_count[addr / 2].Get();
+            v = _channel_word_count[addr / 2].Get();
 
             Log.DoLog($"{prefix} {v:X2}");
         }
@@ -341,9 +355,9 @@ internal class i8237
         {
             for(int i=0; i<4; i++)
             {
-                if (reached_tc[i])
+                if (_reached_tc[i])
                 {
-                    reached_tc[i] = false;
+                    _reached_tc[i] = false;
 
                     v |= (byte)(1 << i);
                 }
@@ -361,7 +375,7 @@ internal class i8237
     void reset_masks(bool state)
     {
         for(int i=0; i<4; i++)
-            channel_mask[i] = state;
+            _channel_mask[i] = state;
     }
 
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
@@ -369,31 +383,31 @@ internal class i8237
         Log.DoLog($"8237_OUT: {addr:X4} {value:X2}");
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
-            channel_address_register[addr / 2].Put(value);
+            _channel_address_register[addr / 2].Put(value);
 
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
-            channel_word_count[addr / 2].Put(value);
+            _channel_word_count[addr / 2].Put(value);
 
         else if (addr == 8)
         {
-            command = value;
+            _command = value;
 
-            dma_enabled = (command & 4) == 0;
+            _dma_enabled = (_command & 4) == 0;
         }
 
         else if (addr == 0x0a)  // mask
-            channel_mask[value & 3] = (value & 4) == 4;  // dreq enable/disable
+            _channel_mask[value & 3] = (value & 4) == 4;  // dreq enable/disable
 
         else if (addr == 0x0b)  // mode register
-            channel_mode[value & 3] = value;
+            _channel_mode[value & 3] = value;
 
         else if (addr == 0x0c)  // reset flipflop
-            ff.reset();
+            _ff.reset();
 
         else if (addr == 0x0d)  // master reset
         {
             reset_masks(true);
-            ff.reset();
+            _ff.reset();
             // TODO: clear status
         }
 
@@ -405,14 +419,43 @@ internal class i8237
         else if (addr == 0x0f)  // multiple mask
         {
             for(int i=0; i<4; i++)
-                channel_mask[i] = (value & (1 << i)) != 0;
+                _channel_mask[i] = (value & (1 << i)) != 0;
+        }
+        else if (addr == 0x87)
+        {
+            _channel_page[0] = (byte)(value & 0x0f);
+        }
+        else if (addr == 0x83)
+        {
+            _channel_page[1] = (byte)(value & 0x0f);
+        }
+        else if (addr == 0x81)
+        {
+            _channel_page[2] = (byte)(value & 0x0f);
+        }
+        else if (addr == 0x82)
+        {
+            _channel_page[3] = (byte)(value & 0x0f);
         }
     }
 
     // used by devices, e.g. floppy
-    public void SendToChannel(int channel, byte value)
+    public bool SendToChannel(int channel, byte value)
     {
-        // TODO
+        if (_dma_enabled == false)
+            return false;
+
+        if (_channel_mask[channel])
+            return false;
+
+        uint addr = (uint)((_channel_page[channel] << 16) | _channel_address_register[channel].GetValue());
+
+        _b.WriteByte(addr, value);
+
+        // TODO increase/decrease _channel_address_register
+        // decrease counter. if new_counter == -1, set _reached_tc flag
+
+        return true;
     }
 }
 
@@ -582,13 +625,22 @@ class IO
 {
     private i8253 _i8253 = new();
     private pic8259 _pic = new();
-    private i8237 _i8237 = new();
+    private i8237 _i8237;
 
     private Terminal _t = new();
+
+    private Bus _b;
 
     private bool floppy_0_state = false;
 
     private Dictionary <ushort, byte> values = new Dictionary <ushort, byte>();
+
+    public IO(Bus b)
+    {
+        _b = b;
+
+        _i8237 = new(_b);
+    }
 
     public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
     {
@@ -654,6 +706,8 @@ class IO
     {
         if (_i8253.Tick())
             scheduled_interrupts[_pic.get_interrupt_offset() + 0] = 10;
+
+        _i8237.Tick();
     }
 
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)

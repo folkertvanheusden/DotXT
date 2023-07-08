@@ -38,7 +38,7 @@ internal class P8086
 
     private readonly Bus _b;
 
-    private readonly IO _io = new();
+    private readonly IO _io;
 
     private Dictionary<int, int> _scheduled_interrupts = new Dictionary<int, int>();
 
@@ -61,6 +61,8 @@ internal class P8086
 
     public P8086(string test, bool is_floppy, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, bool load_bios, bool terminal)
     {
+        _io = new(_b);
+
         // intercept also other ints besides keyboard/console access
         _intercept_int_flag = intercept_int_flag;
 
