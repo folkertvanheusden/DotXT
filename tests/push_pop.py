@@ -80,6 +80,21 @@ fh.write('\tbeq test_ok\n')
 fh.write('\thlt\n')
 fh.write('test_ok:\n')
 
+fh.write('''
+    mov bx,#$123
+    mov cx,#$0000
+    mov ds,bx
+    push ds
+    mov ds,cx
+    pop ds
+    mov ax,ds
+    mov ds,cx
+    cmp ax,#$123
+    beq ds_test_1
+    hlt
+ds_test_1:
+''')
+
 fh.write('\tmov ax,#$a5ee\n')
 fh.write('\tmov si,ax\n')  # set si to 'finished successfully'
 fh.write('\thlt\n')
