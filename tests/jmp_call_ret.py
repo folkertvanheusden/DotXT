@@ -37,30 +37,44 @@ test_002_sub:
     ret
     hlt
 test_002_ok:
+    jmp test_003
 
-; JMP FAR
+test_003_data:
+    dw test_003_ok
 test_003:
     mov si,#$0003
-    jmpf test_003_ok_seg,test_003_ok
+    jmp [test_003_data]
     hlt
-    .space 70000
-LOC 4
-test_003_ok_seg:
 test_003_ok:
+    jmp test_004
 
-; CALL FAR
+test_004_data:
+    dw test_004_sub
 test_004:
     mov si,#$0004
-    callf test_004_sub_seg,test_004_sub
-    jmpf test_004_sub_seg,test_004_ok
+    call [test_004_data]
+    jmp test_004_ok
     hlt
-    .space 70000
-LOC 5
-test_004_sub_seg:
 test_004_sub:
-    retf
+    ret
     hlt
 test_004_ok:
+
+test_005:
+    mov si,#$0004
+    mov ax,sp
+    push ax
+    push ax
+    push ax
+    call test_005_sub
+    jmp test_005_cont
+test_005_sub:
+    ret 6
+test_005_cont:
+    cmp ax,sp
+    beq test_005_ok
+    hlt
+test_005_ok:
 
 finish:
 ''')

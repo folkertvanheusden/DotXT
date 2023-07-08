@@ -290,6 +290,217 @@ test_00d_2:
     beq test_00d_3
     hlt
 test_00d_3:
+    clc
+    jnc test_00d_4
+    hlt
+test_00d_4:
+    stc
+    jc test_00e
+    hlt
+
+; XCHG2
+test_value:
+    dw $1234
+test_00e:
+    mov si,#$000e
+    pushf
+	mov ax,#$4321
+    xchg ax,[test_value]
+    pushf
+    cmp ax,#$1234
+    jz test_00ea_ok
+    hlt
+test_00ea_ok:
+    cmp [test_value],#$4321
+    jz test_00eb_ok
+    hlt
+test_00eb_ok:
+    pop bx
+    pop ax
+    cmp ax,bx
+    jz test_00ec_ok
+    hlt
+test_00ec_ok:
+
+test_00f:
+    mov si,#$000f
+    xor ax,ax
+    push ax
+    popf
+    sti
+    pushf
+    pop ax
+    and ax,#$200
+    cmp ax,#$200
+    jz test_00f_ok
+    hlt
+test_00f_ok:
+
+test_010:
+    mov si,#$0010
+    xor ax,ax
+    push ax
+    popf
+    mov al,#$76
+    add al,#$01
+    jno test_010_1
+    hlt
+test_010_1:
+    add al,#$39
+    jo test_010_2
+    hlt
+test_010_2:
+
+test_011:
+    mov si,#$0011
+    xor ax,ax
+    push ax
+    popf
+    mov al,#$76
+    mov bl,#$13
+    cmp bl,al
+    jl test_011_1
+    hlt
+test_011_1:
+    xchg bl,al
+    cmp bl,al
+    jnl test_011_2
+    hlt
+test_011_2:
+
+test_012:
+    mov si,#$0012
+    xor ax,ax
+    push ax
+    popf
+    mov al,#$13
+    mov bl,#$13
+    cmp bl,al
+    jle test_012_1
+    hlt
+test_012_1:
+    xchg bl,al
+    cmp bl,al
+    jnle test_012_2
+    jmp test_012_2b
+test_012_2:
+    hlt
+test_012_2b:
+
+test_013:
+    mov si,#$0013
+    mov ax,#$1234
+    mov bp,ax
+    mov bx,bp
+    cmp bx,#$1234
+    beq test_013_ok
+    hlt
+test_013_ok:
+
+test_014:
+    mov si,#$0014
+    xor ax,ax
+    mov cl,al
+    mov dl,al
+    mov bl,al
+    mov ch,#$12
+    mov dh,#$34
+    mov bh,#$56
+    cmp cx,#$1200
+    beq test_014_1_ok
+    hlt
+test_014_1_ok:
+    cmp dx,#$3400
+    beq test_014_2_ok
+    hlt
+test_014_2_ok:
+    cmp bx,#$5600
+    beq test_014_3_ok
+    hlt
+test_014_3_ok:
+
+test_015:
+    mov si,#$0015
+    mov bx,#$ae00
+    mov cx,#$8e00
+    mov dx,#$ce00
+    cmp ch,#$8e
+    beq test_015_1_ok
+    hlt
+test_015_1_ok:
+    cmp dh,#$ce
+    beq test_015_2_ok
+    hlt
+test_015_2_ok:
+    cmp bh,#$ae
+    beq test_015_3_ok
+    hlt
+test_015_3_ok:
+
+test_016:
+    mov si,#$0016
+    mov ax,cs
+    cmp ax,#$0000
+    beq test_016_ok
+    hlt
+test_016_ok:
+
+test_017:
+    mov si,#$0017
+    mov ax,ss
+    cmp ax,#$0000
+    beq test_017_ok
+    hlt
+test_017_ok:
+
+test_018:
+    mov si,#$0018
+; set $10000 to 12
+    mov ax,#$1000
+    mov ds,ax
+    xor ax,ax
+    mov di,ax
+    mov [di],#$12
+; check
+    mov si,ax
+    mov ax,#$5555
+    dseg
+    mov al,[si]
+    cmp ax,#$5512
+    beq test_018_ok
+    hlt
+test_018_ok:
+    xor ax,ax
+    mov ds,ax
+    jmp test_019_go
+
+; NOT
+test_019:
+    dw $1234
+test_019_go:
+    mov si,#$0019
+    xor ax,ax
+    not [test_019]
+    cmp [test_019],#$EDCB
+    jz test_019a_ok
+    hlt
+test_019a_ok:
+    cmp ax,#$0000
+    jz test_019b_ok
+    hlt
+test_019b_ok:
+
+; DIV
+test_01a:
+    mov si,#$001a
+	mov ax,#0x4321
+	mov dx,#0x8001
+	mov cx,#0x004f
+	div cl
+    cmp ax,#$2ad9
+    jz test_01a_ok
+    hlt
+test_01a_ok:
 
 finish:
 ''')
