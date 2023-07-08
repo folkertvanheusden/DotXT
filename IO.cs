@@ -261,6 +261,11 @@ internal class FlipFlop
         state = !state;
         return rc;
     }
+
+    public void reset()
+    {
+        state = false;
+    }
 }
 
 internal class b16buffer
@@ -302,6 +307,7 @@ internal class i8237
     bool [] reached_tc = new bool[4];
     byte [] channel_mode = new byte[4];
     FlipFlop ff = new();
+    bool dma_enabled = true;
 
     public i8237()
     {
@@ -352,6 +358,12 @@ internal class i8237
         return v;
     }
 
+    void reset_masks(bool state)
+    {
+        for(int i=0; i<4; i++)
+            channel_mask[i] = state;
+    }
+
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
     {
         Log.DoLog($"8237_OUT: {addr:X4} {value:X2}");
@@ -363,7 +375,11 @@ internal class i8237
             channel_word_count[addr / 2].Put(value);
 
         else if (addr == 8)
+        {
             command = value;
+
+            dma_enabled = (command & 4) == 0;
+        }
 
         else if (addr == 0x0a)  // mask
             channel_mask[value & 3] = (value & 4) == 4;  // dreq enable/disable
@@ -371,11 +387,32 @@ internal class i8237
         else if (addr == 0x0b)  // mode register
             channel_mode[value & 3] = value;
 
+        else if (addr == 0x0c)  // reset flipflop
+            ff.reset();
+
+        else if (addr == 0x0d)  // master reset
+        {
+            reset_masks(true);
+            ff.reset();
+            // TODO: clear status
+        }
+
+        else if (addr == 0x0e)  // reset masks
+        {
+            reset_masks(false);
+        }
+
         else if (addr == 0x0f)  // multiple mask
         {
             for(int i=0; i<4; i++)
                 channel_mask[i] = (value & (1 << i)) != 0;
         }
+    }
+
+    // used by devices, e.g. floppy
+    public void SendToChannel(int channel, byte value)
+    {
+        // TODO
     }
 }
 
