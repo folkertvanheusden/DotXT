@@ -251,32 +251,45 @@ internal class pic8259
     }
 }
 
+internal class FlipFlop
+{
+    bool state = false;
+
+    public bool get_state()
+    {
+        bool rc = state;
+        state = !state;
+        return rc;
+    }
+}
+
 internal class b16buffer
 {
     byte [] values = new byte[2];
-    bool low_high;
+    FlipFlop f;
 
-    public b16buffer()
+    public b16buffer(FlipFlop f_in)
     {
+        f = f_in;
     }
 
     public void Put(byte v)
     {
+        bool low_high = f.get_state();
+
         values[low_high ? 1 : 0] = v;
-        low_high = !low_high;
     }
 
     public ushort GetValue()
     {
-        return (ushort)((values[0] << 8) | values[1]);
+        return (ushort)((values[1] << 8) | values[0]);
     }
 
     public byte Get()
     {
-        byte v = values[low_high ? 1 : 0];
-        low_high = !low_high;
+        bool low_high = f.get_state();
 
-        return v;
+        return values[low_high ? 1 : 0];
     }
 }
 
@@ -284,12 +297,17 @@ internal class i8237
 {
     b16buffer [] channel_address_register = new b16buffer[4];
     b16buffer [] channel_word_count = new b16buffer[4];
+    byte command;
+    bool [] channel_mask = new bool[4];
+    bool [] reached_tc = new bool[4];
+    byte [] channel_mode = new byte[4];
+    FlipFlop ff = new();
 
     public i8237()
     {
         for(int i=0; i<4; i++) {
-            channel_address_register[i] = new b16buffer();
-            channel_word_count[i] = new b16buffer();
+            channel_address_register[i] = new b16buffer(ff);
+            channel_word_count[i] = new b16buffer(ff);
         }
     }
 
@@ -313,6 +331,19 @@ internal class i8237
             Log.DoLog($"{prefix} {v:X2}");
         }
 
+        else if (addr == 8)  // status register
+        {
+            for(int i=0; i<4; i++)
+            {
+                if (reached_tc[i])
+                {
+                    reached_tc[i] = false;
+
+                    v |= (byte)(1 << i);
+                }
+            }
+        }
+
         else
         {
             Log.DoLog($"{prefix} ?");
@@ -330,6 +361,21 @@ internal class i8237
 
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
             channel_word_count[addr / 2].Put(value);
+
+        else if (addr == 8)
+            command = value;
+
+        else if (addr == 0x0a)  // mask
+            channel_mask[value & 3] = (value & 4) == 4;  // dreq enable/disable
+
+        else if (addr == 0x0b)  // mode register
+            channel_mode[value & 3] = value;
+
+        else if (addr == 0x0f)  // multiple mask
+        {
+            for(int i=0; i<4; i++)
+                channel_mask[i] = (value & (1 << i)) != 0;
+        }
     }
 }
 
