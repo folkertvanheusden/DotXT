@@ -251,6 +251,88 @@ internal class pic8259
     }
 }
 
+internal class b16buffer
+{
+    byte [] values = new byte[2];
+    bool low_high;
+
+    public b16buffer()
+    {
+    }
+
+    public void Put(byte v)
+    {
+        values[low_high ? 1 : 0] = v;
+        low_high = !low_high;
+    }
+
+    public ushort GetValue()
+    {
+        return (ushort)((values[0] << 8) | values[1]);
+    }
+
+    public byte Get()
+    {
+        byte v = values[low_high ? 1 : 0];
+        low_high = !low_high;
+
+        return v;
+    }
+}
+
+internal class i8237
+{
+    b16buffer [] channel_address_register = new b16buffer[4];
+    b16buffer [] channel_word_count = new b16buffer[4];
+
+    public i8237()
+    {
+        for(int i=0; i<4; i++) {
+            channel_address_register[i] = new b16buffer();
+            channel_word_count[i] = new b16buffer();
+        }
+    }
+
+    public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
+    {
+        string prefix = $"8237_IN: {addr:X4}";
+
+        byte v = 0;
+
+        if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
+        {
+            v = channel_address_register[addr / 2].Get();
+
+            Log.DoLog($"{prefix} {v:X2}");
+        }
+
+        else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
+        {
+            v = channel_word_count[addr / 2].Get();
+
+            Log.DoLog($"{prefix} {v:X2}");
+        }
+
+        else
+        {
+            Log.DoLog($"{prefix} ?");
+        }
+
+        return v;
+    }
+
+    public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
+    {
+        Log.DoLog($"8237_OUT: {addr:X4} {value:X2}");
+
+        if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
+            channel_address_register[addr / 2].Put(value);
+
+        else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
+            channel_word_count[addr / 2].Put(value);
+    }
+}
+
 class Terminal
 {
     private byte [,,] _chars = new byte[8, 25, 80];
@@ -417,6 +499,7 @@ class IO
 {
     private i8253 _i8253 = new();
     private pic8259 _pic = new();
+    private i8237 _i8237 = new();
 
     private Terminal _t = new();
 
@@ -427,6 +510,9 @@ class IO
     public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
     {
         Log.DoLog($"IN: {addr:X4}");
+
+        if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2)
+            return _i8237.In(scheduled_interrupts, addr);
 
         if (addr == 0x0008)  // DMA status register
             return 0x0f;  // 'transfer complete'
@@ -492,8 +578,10 @@ class IO
         Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})");
 
         // TODO
+        if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2) // 8237
+            _i8237.Out(scheduled_interrupts, addr, value);
 
-        if (addr == 0x0020 || addr == 0x0021)  // PIC
+        else if (addr == 0x0020 || addr == 0x0021)  // PIC
             _pic.Out(scheduled_interrupts, (ushort)(addr - 0x0020), value);
 
         else if (addr == 0x0040)
