@@ -113,19 +113,19 @@ internal class i8253
 
             if (_timers[1].counter == 0)
                 _i8237.TickChannel0();
+
+            _timers[0].counter--;  // counter
+
+            if (_timers[0].counter == 0 && _timers[0].mode == 0 && _timers[0].is_running == true)
+            {
+                _timers[0].is_running = false;
+
+                // interrupt
+                return true;
+            }
+
+            _timers[2].counter--;  // speaker
         }
-
-        _timers[0].counter--;  // counter
-       
-        if (_timers[0].counter == 0 && _timers[0].mode == 0 && _timers[0].is_running == true)
-        {
-            _timers[0].is_running = false;
-
-            // interrupt
-            return true;
-        }
-
-        _timers[2].counter--;  // speaker
 
         return false;
     }
