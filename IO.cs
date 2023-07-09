@@ -67,10 +67,10 @@ internal class i8253
         }
     }
 
-    public byte get_counter(int nr)
+    public byte GetCounter(int nr)
     {
 #if DEBUG
-        Log.DoLog($"OUT 8253: get_counter {nr}");
+        Log.DoLog($"OUT 8253: GetCounter {nr}");
 #endif
 
         return (byte)_timers[nr].counter;
@@ -736,13 +736,13 @@ class IO
             return _pic.In(scheduled_interrupts, (ushort)(addr - 0x0020));
 
         if (addr == 0x0040)
-            return _i8253.get_counter(0);
+            return _i8253.GetCounter(0);
 
         if (addr == 0x0041)
-            return _i8253.get_counter(1);
+            return _i8253.GetCounter(1);
 
         if (addr == 0x0042)
-            return _i8253.get_counter(2);
+            return _i8253.GetCounter(2);
 
         if (addr == 0x0062)  // PPI (XT only)
         {
