@@ -66,6 +66,9 @@ internal class P8086
         // intercept also other ints besides keyboard/console access
         _intercept_int_flag = intercept_int_flag;
 
+        if (_intercept_int_flag)
+            Console.WriteLine("Intercept IRQ enabled");
+
         _terminate_on_hlt = terminate_on_hlt;
 
         if (terminal)
@@ -155,10 +158,10 @@ internal class P8086
 
     private bool intercept_int(int nr)  // TODO rename
     {
-        Log.DoLog($"INT {nr:X2} {_ah:X2}");
-
         if (!_intercept_int_flag)
             return false;
+
+        Log.DoLog($"INT {nr:X2} {_ah:X2}");
 
         if (nr == 0x10)
         {

@@ -270,37 +270,48 @@ internal class FlipFlop
 
 internal class b16buffer
 {
-    byte [] values = new byte[2];
-    FlipFlop f;
+    ushort _value;
+    FlipFlop _f;
 
-    public b16buffer(FlipFlop f_in)
+    public b16buffer(FlipFlop f)
     {
-        f = f_in;
+        _f = f;
     }
 
     public void Put(byte v)
     {
-        bool low_high = f.get_state();
+        bool low_high = _f.get_state();
 
-        values[low_high ? 1 : 0] = v;
+        if (low_high)
+        {
+            _value &= 0xff;
+            _value |= (ushort)(v << 8);
+        }
+        else
+        {
+            _value &= 0xff00;
+            _value |= v;
+        }
     }
 
     public ushort GetValue()
     {
-        return (ushort)((values[1] << 8) | values[0]);
+        return _value;
     }
 
     public void SetValue(ushort v)
     {
-        values[0] = (byte)(v & 255);
-        values[1] = (byte)(v >> 8);
+        _value = v;
     }
 
     public byte Get()
     {
-        bool low_high = f.get_state();
+        bool low_high = _f.get_state();
 
-        return values[low_high ? 1 : 0];
+        if (low_high)
+            return (byte)(_value >> 8);
+
+        return (byte)(_value & 0xff);
     }
 }
 
@@ -448,12 +459,26 @@ internal class i8237
         if (_channel_mask[channel])
             return false;
 
-        uint addr = (uint)((_channel_page[channel] << 16) | _channel_address_register[channel].GetValue());
+        if (_reached_tc[channel])
+            return false;
 
-        _b.WriteByte(addr, value);
+        ushort addr = _channel_address_register[channel].GetValue();
 
-        // TODO increase/decrease _channel_address_register
-        // decrease counter. if new_counter == -1, set _reached_tc flag
+        uint full_addr = (uint)((_channel_page[channel] << 16) | addr);
+
+        _b.WriteByte(full_addr, value);
+
+        addr++;
+         _channel_address_register[channel].SetValue(addr);
+
+         ushort count = _channel_word_count[channel].GetValue();
+
+         count--;
+
+         if (count == 0xffff)
+             _reached_tc[channel] = true;
+
+         _channel_word_count[channel].SetValue(count);
 
         return true;
     }
