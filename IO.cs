@@ -11,6 +11,8 @@ internal struct Timer
 internal class i8253
 {
     Timer [] _timers = new Timer[3];
+    i8237 _i8237 = null;
+    int clock_divider = 0;
 
     // using a static seed to make it behave
     // the same every invocation (until threads
@@ -23,7 +25,12 @@ internal class i8253
             _timers[i] = new Timer();
     }
 
-    public void latch_counter(int nr, byte v)
+    public void SetDma(i8237 dma_instance)
+    {
+        _i8237 = dma_instance;
+    }
+
+    public void LatchCounter(int nr, byte v)
     {
 #if DEBUG
         Log.DoLog($"OUT 8253: latch_counter {nr} to {v}");
@@ -95,10 +102,18 @@ internal class i8253
 
     public bool Tick()
     {
-        // this trickery is to (hopefully) trigger code that expects
-        // some kind of cycle-count versus interrupt-count locking
-        if (_random.Next(2) == 1)
-            _timers[1].counter--;  // RAM refresh
+        clock_divider++;
+
+        if (clock_divider == 4)
+        {
+            clock_divider = 0;
+
+            // RAM refresh
+            _timers[1].counter--;
+
+            if (_timers[1].counter == 0)
+                _i8237.TickChannel0();
+        }
 
         _timers[0].counter--;  // counter
        
@@ -331,6 +346,13 @@ internal class i8237
     {
     }
 
+    public void TickChannel0()
+    {
+        // RAM refresh
+        _channel_address_register[0].SetValue((ushort)(_channel_address_register[1].GetValue() + 1));
+        _channel_word_count[0].SetValue((ushort)(_channel_word_count[0].GetValue() - 1));
+    }
+
     public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
     {
         string prefix = $"8237_IN: {addr:X4}";
@@ -456,6 +478,36 @@ internal class i8237
         // decrease counter. if new_counter == -1, set _reached_tc flag
 
         return true;
+    }
+}
+
+class FloppyDisk
+{
+    i8237 _dma_controller;
+    pic8259 _pic;
+
+    public FloppyDisk(i8237 dma_controller, pic8259 pic)
+    {
+        _dma_controller = dma_controller;
+        _pic = pic;
+    }
+
+    public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
+    {
+        Log.DoLog($"Floppy-IN {addr:X4}");
+
+        if (addr == 0x3f4)
+            return 128;
+
+        return 0x00;
+    }
+
+    public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
+    {
+        Log.DoLog($"Floppy-OUT {addr:X4} {value:X2}");
+
+        if (addr == 0x3f2)
+            scheduled_interrupts[_pic.get_interrupt_offset() + 6] = 10;  // FDC enable (controller reset) (IRQ 6)
     }
 }
 
@@ -631,7 +683,7 @@ class IO
 
     private Bus _b;
 
-    private bool floppy_0_state = false;
+    private FloppyDisk _fd;
 
     private Dictionary <ushort, byte> values = new Dictionary <ushort, byte>();
 
@@ -640,6 +692,9 @@ class IO
         _b = b;
 
         _i8237 = new(_b);
+        _i8253.SetDma(_i8237);
+
+        _fd = new(_i8237, _pic);
     }
 
     public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
@@ -681,16 +736,8 @@ class IO
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
 
-        if (addr == 0x03f4)
-        {
-            // diskette controller main status register
-            floppy_0_state = !floppy_0_state;
-
-            return (byte)(floppy_0_state ? 0x91 : 0x80);
-        }
-
-        if (addr == 0x03f5)  // diskette command/data register 0 (ST0)
-            return 0b00100000;  // seek completed
+        if (addr >= 0x03f0 && addr <= 0x3f7)
+            return _fd.In(scheduled_interrupts, addr);
 
 #if DEBUG
         Log.DoLog($"IN: I/O port {addr:X4} not implemented");
@@ -722,13 +769,13 @@ class IO
             _pic.Out(scheduled_interrupts, (ushort)(addr - 0x0020), value);
 
         else if (addr == 0x0040)
-            _i8253.latch_counter(0, value);
+            _i8253.LatchCounter(0, value);
 
         else if (addr == 0x0041)
-            _i8253.latch_counter(1, value);
+            _i8253.LatchCounter(1, value);
 
         else if (addr == 0x0042)
-            _i8253.latch_counter(2, value);
+            _i8253.LatchCounter(2, value);
 
         else if (addr == 0x0043)
             _i8253.command(value);
@@ -742,21 +789,9 @@ class IO
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) generate controller select pulse");
 #endif
         }
-        else if (addr == 0x03f2)
-        {
-            int harddisk_interrupt_nr = _pic.get_interrupt_offset() + 14;
+        else if (addr >= 0x03f0 && addr <= 0x3f7)
+            _fd.Out(scheduled_interrupts, addr, value);
 
-            if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
-                scheduled_interrupts[harddisk_interrupt_nr] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
-        }
-        else if (addr == 0x03f2)
-        {
-#if DEBUG
-            Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) FDC enable");
-#endif
-
-            scheduled_interrupts[_pic.get_interrupt_offset() + 6] = 10;  // FDC enable (controller reset) (IRQ 6)
-        }
         else
         {
 #if DEBUG
