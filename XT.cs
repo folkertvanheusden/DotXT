@@ -59,6 +59,8 @@ internal class P8086
 
     private string tty_output = "";
 
+    private int clock;
+
     public P8086(string test, bool is_floppy, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, bool load_bios, bool terminal)
     {
         _io = new(_b);
@@ -1144,17 +1146,18 @@ internal class P8086
         return s;
     }
 
+    // cycle counts from https://zsmith.co/intel_i.php
     public bool Tick()
     {
         bool rc = true;
+
+        int cycle_count = 1;  // cycles used for an instruction
 
 #if DEBUG
         string flagStr = GetFlagsAsString();
 #endif
 
-        // tick I/O, check for interrupt
-        _io.Tick(_scheduled_interrupts);
-
+        // check for interrupt
         if (GetFlag(9) == true)
         {
             foreach (var pair in _scheduled_interrupts)
@@ -1968,6 +1971,9 @@ internal class P8086
         else if (opcode == 0x90)
         {
             // NOP
+
+            cycle_count = 3;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} NOP");
 #endif
@@ -3322,6 +3328,8 @@ internal class P8086
 
             _al = _io.In(_scheduled_interrupts, @from);
 
+            cycle_count = 10;  // or 14
+
 #if DEBUG
             Log.DoLog($"{prefixStr} IN AL,${from:X2}");
 #endif
@@ -3343,6 +3351,8 @@ internal class P8086
             byte to = GetPcByte();
 
             _io.Out(_scheduled_interrupts, @to, _al);
+
+            cycle_count = 10;  // max 14
 
 #if DEBUG
             Log.DoLog($"{prefixStr} OUT ${to:X2},AL");
@@ -3615,6 +3625,11 @@ internal class P8086
             _segment_override_set = false;
             _segment_override_name = "";
         }
+
+        // tick I/O
+        _io.Tick(_scheduled_interrupts, cycle_count);
+
+        clock += cycle_count;
 
         return rc;
     }

@@ -1,18 +1,19 @@
 internal struct Timer
 {
-    public ushort counter    { get; set; }
-    public int    mode       { get; set; }
-    public bool   in_setup   { get; set; }
-    public int    latch_type { get; set; }
-    public int    latch_n    { get; set; }
-    public bool   is_running { get; set; }
+    public ushort counter_cur { get; set; }
+    public ushort counter_ini { get; set; }
+    public int    mode        { get; set; }
+    public int    latch_type  { get; set; }
+    public int    latch_n     { get; set; }
+    public int    latch_n_cur { get; set; }
+    public bool   is_running  { get; set; }
 }
 
 internal class i8253
 {
     Timer [] _timers = new Timer[3];
     i8237 _i8237 = null;
-    int clock_divider = 0;
+    int clock;
 
     // using a static seed to make it behave
     // the same every invocation (until threads
@@ -33,36 +34,41 @@ internal class i8253
     public void LatchCounter(int nr, byte v)
     {
 #if DEBUG
-        Log.DoLog($"OUT 8253: latch_counter {nr} to {v}");
+        Log.DoLog($"OUT 8253: latch_counter {nr} to {v} (type {_timers[nr].latch_type}, {_timers[nr].latch_n_cur} out of {_timers[nr].latch_n})");
 #endif
 
-        if (_timers[nr].latch_n > 0)
+        if (_timers[nr].latch_n_cur > 0)
         {
-            if (_timers[nr].latch_n == 2)
+            if (_timers[nr].latch_n_cur == 2)
             {
-                _timers[nr].counter &= 0xff00;
-                _timers[nr].counter |= v;
+                _timers[nr].counter_ini &= 0xff00;
+                _timers[nr].counter_ini |= v;
             }
-            else if (_timers[nr].latch_n == 1 && _timers[nr].latch_type == 3)
+            else if (_timers[nr].latch_n_cur == 1 && _timers[nr].latch_type == 3)
             {
-                _timers[nr].counter &= 0xff00;
-                _timers[nr].counter |= v;
+                _timers[nr].counter_ini &= 0x00ff;
+                _timers[nr].counter_ini |= (ushort)(v << 8);
             }
             else if (_timers[nr].latch_type == 1)
             {
-                _timers[nr].counter = v;
+                _timers[nr].counter_ini = v;
             }
             else if (_timers[nr].latch_type == 2)
             {
-                _timers[nr].counter = (ushort)(v << 8);
+                _timers[nr].counter_ini = (ushort)(v << 8);
             }
 
-            _timers[nr].latch_n--;
+            _timers[nr].latch_n_cur--;
 
-            if (_timers[nr].latch_n == 0)
+            if (_timers[nr].latch_n_cur == 0)
             {
+                Log.DoLog($"OUT 8253: counter {nr} started (count start: {_timers[nr].counter_ini})");
+
+                _timers[nr].latch_n_cur = _timers[nr].latch_n;  // restart setup
+
+                _timers[nr].counter_cur = _timers[nr].counter_ini;
+
                 _timers[nr].is_running = true;
-                _timers[nr].in_setup   = false;
             }
         }
     }
@@ -70,64 +76,79 @@ internal class i8253
     public byte GetCounter(int nr)
     {
 #if DEBUG
-        Log.DoLog($"OUT 8253: GetCounter {nr}");
+        Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur}");
 #endif
 
-        return (byte)_timers[nr].counter;
+        return (byte)_timers[nr].counter_cur;
     }
 
-    public void command(byte v)
+    public void Command(byte v)
     {
-        int counter = v >> 6;
-        int latch   = (v >> 4) & 3;
-        int mode    = (v >> 1) & 7;
-        int type    = v & 1;
+        int nr    = v >> 6;
+        int latch = (v >> 4) & 3;
+        int mode  = (v >> 1) & 7;
+        int type  = v & 1;
 
 #if DEBUG
-        Log.DoLog($"OUT 8253: command counter {counter}, latch {latch}, mode {mode}, type {type}");
+        Log.DoLog($"OUT 8253: command counter {nr}, latch {latch}, mode {mode}, type {type}");
 #endif
 
-        _timers[counter].mode       = mode;
-        _timers[counter].in_setup   = true;
-        _timers[counter].latch_type = latch;
-        _timers[counter].is_running = false;
+        if (latch == 0)
+        {
+            _timers[nr].counter_cur = _timers[nr].counter_ini;
+        }
+        else
+        {
+            _timers[nr].mode       = mode;
+            _timers[nr].latch_type = latch;
+            _timers[nr].is_running = false;
 
-        _timers[counter].counter = 0;
+            _timers[nr].counter_cur = 0;
 
-        if (_timers[counter].latch_type == 1 || _timers[counter].latch_type == 2)
-            _timers[counter].latch_n = 1;
-        else if (_timers[counter].latch_type == 3)
-            _timers[counter].latch_n = 2;
+            if (_timers[nr].latch_type == 1 || _timers[nr].latch_type == 2)
+                _timers[nr].latch_n = 1;
+            else if (_timers[nr].latch_type == 3)
+                _timers[nr].latch_n = 2;
+
+            _timers[nr].latch_n_cur = _timers[nr].latch_n;
+        }
     }
 
-    public bool Tick()
+    public bool Tick(int ticks)
     {
-        clock_divider++;
+        clock += ticks;
 
-        if (clock_divider == 4)
+        Log.DoLog($"{clock} cycles, {ticks} added");
+
+        bool interrupt = false;
+
+        while(clock >= 4)
         {
-            clock_divider = 0;
-
-            // RAM refresh
-            _timers[1].counter--;
-
-            if (_timers[1].counter == 0)
-                _i8237.TickChannel0();
-
-            _timers[0].counter--;  // counter
-
-            if (_timers[0].counter == 0 && _timers[0].mode == 0 && _timers[0].is_running == true)
+            for(int i=0; i<3; i++)
             {
-                _timers[0].is_running = false;
+                if (_timers[i].is_running == false)
+                    continue;
 
-                // interrupt
-                return true;
+                _timers[i].counter_cur--;
+
+                if (_timers[i].counter_cur == 0)
+                {
+                    // timer 0 is RAM refresh counter
+                    if (i == 0)
+                        _i8237.TickChannel0();
+
+                    _timers[i].counter_cur = _timers[i].counter_ini;
+
+                    // mode 0 generates an interrupt
+                    if (_timers[i].mode == 0)
+                        interrupt = true;
+                }   
             }
 
-            _timers[2].counter--;  // speaker
+            clock -= 4;
         }
 
-        return false;
+        return interrupt;
     }
 }
 
@@ -353,14 +374,15 @@ internal class i8237
         _b = b;
     }
 
-    public void Tick()
+    public void Tick(int ticks)
     {
     }
 
     public void TickChannel0()
     {
         // RAM refresh
-        _channel_address_register[0].SetValue((ushort)(_channel_address_register[1].GetValue() + 1));
+        _channel_address_register[0].SetValue((ushort)(_channel_address_register[0].GetValue() + 1));
+
         _channel_word_count[0].SetValue((ushort)(_channel_word_count[0].GetValue() - 1));
     }
 
@@ -373,6 +395,11 @@ internal class i8237
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
             v = _channel_address_register[addr / 2].Get();
+
+            // This hack is to make sure the bios doesn't wait forever.
+            // With proper cycle-count emulation this is not required.
+            if (addr == 0)
+                v = 0xfe;
 
             Log.DoLog($"{prefix} {v:X2}");
         }
@@ -774,19 +801,18 @@ class IO
         return 0;
     }
 
-    public void Tick(Dictionary <int, int> scheduled_interrupts)
+    public void Tick(Dictionary <int, int> scheduled_interrupts, int ticks)
     {
-        if (_i8253.Tick())
+        if (_i8253.Tick(ticks))
             scheduled_interrupts[_pic.get_interrupt_offset() + 0] = 10;
 
-        _i8237.Tick();
+        _i8237.Tick(ticks);
     }
 
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
     {
         Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})");
 
-        // TODO
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2) // 8237
             _i8237.Out(scheduled_interrupts, addr, value);
 
@@ -803,17 +829,23 @@ class IO
             _i8253.LatchCounter(2, value);
 
         else if (addr == 0x0043)
-            _i8253.command(value);
+            _i8253.Command(value);
 
         else if (addr == 0x0080)
             Console.WriteLine($"Manufacturer systems checkpoint {value:X2}");
 
         else if (addr == 0x0322)
         {
+            int harddisk_interrupt_nr = _pic.get_interrupt_offset() + 14;
+
+            if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
+                scheduled_interrupts[harddisk_interrupt_nr] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
+
 #if DEBUG
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) generate controller select pulse");
 #endif
         }
+
         else if (addr >= 0x03f0 && addr <= 0x3f7)
             _fd.Out(scheduled_interrupts, addr, value);
 
