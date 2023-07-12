@@ -13,7 +13,7 @@ internal class i8253
 {
     Timer [] _timers = new Timer[3];
     i8237 _i8237 = null;
-    int clock;
+    int clock = 0;
 
     // using a static seed to make it behave
     // the same every invocation (until threads
@@ -93,11 +93,7 @@ internal class i8253
         Log.DoLog($"OUT 8253: command counter {nr}, latch {latch}, mode {mode}, type {type}");
 #endif
 
-        if (latch == 0)
-        {
-            _timers[nr].counter_cur = _timers[nr].counter_ini;
-        }
-        else
+        if (latch != 0)
         {
             _timers[nr].mode       = mode;
             _timers[nr].latch_type = latch;
