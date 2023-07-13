@@ -734,6 +734,8 @@ class IO
 
     private Dictionary <ushort, Device> _io_map = new Dictionary <ushort, Device>();
 
+    private bool horizontal_drive;
+
     public IO(Bus b, ref List<Device> devices)
     {
         _b = b;
@@ -790,7 +792,11 @@ class IO
             return 0xa5;
 
         if (addr == 0x03ba)  // horizontal drive (crt)
-            return 0x01;
+        {
+            byte rc = (byte)(horizontal_drive ? 0x01 : 0x00);
+            horizontal_drive = !horizontal_drive;
+            return rc;
+        }
 
         if (addr >= 0x03f0 && addr <= 0x3f7)
             return _fd.In(scheduled_interrupts, addr);
