@@ -769,6 +769,9 @@ class IO
         if (addr == 0x0042)
             return _i8253.GetCounter(2);
 
+        if (addr == 0x0061)  // "system control port for compatibility with 8255"
+            return 0;
+
         if (addr == 0x0062)  // PPI (XT only)
         {
             // note: the switch bits are inverted when read through the PPI
@@ -778,7 +781,7 @@ class IO
                  mode = _values[0x61];
 
             if ((mode & 8) == 0)
-                return 0xff;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
+                return 0x3f;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
 
             return 0b00100000 ^ 0xff;  // 1 floppy drive, 80x25 color, 64kB, reserved=00
         }
