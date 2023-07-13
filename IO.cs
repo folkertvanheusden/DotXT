@@ -795,6 +795,9 @@ class IO
         if (_io_map.ContainsKey(addr))
             return _io_map[addr].IO_Read(addr);
 
+        if (_io_map.ContainsKey(addr))
+            return _io_map[addr].IO_Read(addr);
+
 //#if DEBUG
         Log.DoLog($"IN: I/O port {addr:X4} not implemented");
 //#endif
@@ -834,6 +837,9 @@ class IO
 
         else if (addr == 0x0043)
             _i8253.Command(value);
+
+        else if (addr == 0x0080)
+            Console.WriteLine($"Manufacturer systems checkpoint {value:X2}");
 
         else if (addr == 0x0080)
             Console.WriteLine($"Manufacturer systems checkpoint {value:X2}");
