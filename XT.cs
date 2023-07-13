@@ -497,85 +497,98 @@ internal class P8086
         return (0, "error");
     }
 
-    private (ushort, string) GetDoubleRegisterMod00(int reg)
+    // value, name, cycles
+    private (ushort, string, int) GetDoubleRegisterMod00(int reg)
     {
         ushort a = 0;
         string name = "error";
+        int cycles = 0;
 
         if (reg == 0)
         {
             a = (ushort)(GetBX() + _si);
             name = "[BX+SI]";
+            cycles = 7;
         }
         else if (reg == 1)
         {
             a = (ushort)(GetBX() + _di);
             name = "[BX+DI]";
+            cycles = 8;
         }
         else if (reg == 2)
         {
             a = (ushort)(_bp + _si);
             name = "[BP+SI]";
+            cycles = 8;
         }
         else if (reg == 3)
         {
             a = (ushort)(_bp + _di);
             name = "[BP+DI]";
+            cycles = 7;
         }
         else if (reg == 4)
         {
             a = _si;
             name = "[SI]";
+            cycles = 5;
         }
         else if (reg == 5)
         {
             a = _di;
             name = "[DI]";
+            cycles = 5;
         }
         else if (reg == 6)
         {
             a = GetPcWord();
-
             name = $"[${a:X4}]";
+            cycles = 6;
         }
         else if (reg == 7)
         {
             a = GetBX();
             name = "[BX]";
+            cycles = 5;
         }
         else
         {
             Log.DoLog($"{nameof(GetDoubleRegisterMod00)} {reg} not implemented");
         }
 
-        return (a, name);
+        return (a, name, cycles);
     }
 
-    private (ushort, string) GetDoubleRegisterMod01_02(int reg, bool word)
+    // value, name, cycles
+    private (ushort, string, int) GetDoubleRegisterMod01_02(int reg, bool word)
     {
         ushort a = 0;
         string name = "error";
+        int cycles = 0;
 
         if (reg == 6)
         {
             a = _bp;
             name = "[BP]";
+            cycles = 5;
         }
         else
         {
-            (a, name) = GetDoubleRegisterMod00(reg);
+            (a, name, cycles) = GetDoubleRegisterMod00(reg);
         }
 
         short disp = word ? (short)GetPcWord() : (sbyte)GetPcByte();
 
-        return ((ushort)(a + disp), name + $" disp {disp:X4}");
+        return ((ushort)(a + disp), name + $" disp {disp:X4}", cycles);
     }
 
-    private (ushort, string, bool, ushort, ushort) GetRegisterMem(int reg, int mod, bool w)
+    // value, name_of_source, segment_a_valid, segment/, address of value, number of cycles
+    private (ushort, string, bool, ushort, ushort, int) GetRegisterMem(int reg, int mod, bool w)
     {
         if (mod == 0)
         {
-            (ushort a, string name) = GetDoubleRegisterMod00(reg);
+            (ushort a, string name, int cycles) = GetDoubleRegisterMod00(reg);
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
@@ -584,16 +597,18 @@ internal class P8086
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
+            cycles += 6;
+
             name += $" ({_segment_override_name}:${segment * 16 + a:X6} -> {v:X4})";
 
-            return (v, name, true, segment, a);
+            return (v, name, true, segment, a, cycles);
         }
 
         if (mod == 1 || mod == 2)
         {
             bool word = mod == 2;
 
-            (ushort a, string name) = GetDoubleRegisterMod01_02(reg, word);
+            (ushort a, string name, int cycles) = GetDoubleRegisterMod01_02(reg, word);
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
@@ -602,21 +617,23 @@ internal class P8086
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
+            cycles += 6;
+
             name += $" ({_segment_override_name}:${segment * 16 + a:X6} -> {v:X4})";
 
-            return (v, name, true, segment, a);
+            return (v, name, true, segment, a, cycles);
         }
 
         if (mod == 3)
         {
             (ushort v, string name) = GetRegister(reg, w);
 
-            return (v, name, false, 0, 0);
+            return (v, name, false, 0, 0, 0);
         }
 
         Log.DoLog($"reg {reg} mod {mod} w {w} not supported for {nameof(GetRegisterMem)}");
 
-        return (0, "error", false, 0, 0);
+        return (0, "error", false, 0, 0, 0);
     }
 
     private string PutRegister(int reg, bool w, ushort val)
@@ -769,13 +786,14 @@ internal class P8086
         return "error";
     }
 
-    private string PutRegisterMem(int reg, int mod, bool w, ushort val)
+    // name, cycles
+    private (string, int) PutRegisterMem(int reg, int mod, bool w, ushort val)
     {
         Log.DoLog($"PutRegisterMem {mod},{w}");
 
         if (mod == 0)
         {
-            (ushort a, string name) = GetDoubleRegisterMod00(reg);
+            (ushort a, string name, int cycles) = GetDoubleRegisterMod00(reg);
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
@@ -789,12 +807,14 @@ internal class P8086
             else
                 WriteMemByte(segment, a, (byte)val);
 
-            return name;
+            cycles += 4;
+
+            return (name, cycles);
         }
 
         if (mod == 1 || mod == 2)
         {
-            (ushort a, string name) = GetDoubleRegisterMod01_02(reg, mod == 2);
+            (ushort a, string name, int cycles) = GetDoubleRegisterMod01_02(reg, mod == 2);
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
@@ -810,18 +830,20 @@ internal class P8086
             else
                 WriteMemByte(segment, a, (byte)val);
 
-            return name;
+            cycles += 4;
+
+            return (name, cycles);
         }
 
         if (mod == 3)
-            return PutRegister(reg, w, val);
+            return (PutRegister(reg, w, val), 0);
 
         Log.DoLog($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(PutRegisterMem)}");
 
-        return "error";
+        return ("error", 0);
     }
 
-    string UpdateRegisterMem(int reg, int mod, bool a_valid, ushort seg, ushort addr, bool word, ushort v)
+    (string, int) UpdateRegisterMem(int reg, int mod, bool a_valid, ushort seg, ushort addr, bool word, ushort v)
     {
         if (a_valid)
         {
@@ -830,7 +852,7 @@ internal class P8086
             else
                 WriteMemByte(seg, addr, (byte)v);
 
-            return $"[{addr:X4}]";
+            return ($"[{addr:X4}]", 4);
         }
         else
         {
@@ -1060,11 +1082,7 @@ internal class P8086
     {
         bool rc = true;
 
-        int cycle_count = 1;  // cycles used for an instruction
-
-#if DEBUG
-        string flagStr = GetFlagsAsString();
-#endif
+        int cycle_count = 0;  // cycles used for an instruction
 
         // check for interrupt
         if (GetFlag(9) == true)
@@ -1079,10 +1097,16 @@ internal class P8086
 
                     _scheduled_interrupts.Remove(pair.Key);
 
+                    cycle_count += 4;  // TODO: guess (1 bus cycle)
+
                     break;
                 }
             }
         }
+
+#if DEBUG
+        string flagStr = GetFlagsAsString();
+#endif
 
         ushort instr_start = _ip;
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
@@ -1121,6 +1145,7 @@ internal class P8086
             {
                 _rep = true;
                 _rep_mode = RepMode.NotSet;
+                cycle_count += 2;
                 Log.DoLog($"set _rep_addr to {_rep_addr:X4}");
             }
             else
@@ -1155,6 +1180,7 @@ internal class P8086
             else
             {
                 _segment_override_set = true;  // TODO: move up
+                cycle_count += 2;
             }
 
             if (_segment_override_set)
@@ -1244,6 +1270,8 @@ internal class P8086
             // PUSH ES
             push(_es);
 
+            cycle_count += 11;  // 15
+
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH ES");
 #endif
@@ -1252,6 +1280,8 @@ internal class P8086
         {
             // POP ES
             _es = pop();
+
+            cycle_count += 8;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} POP ES");
@@ -1262,6 +1292,8 @@ internal class P8086
             // PUSH CS
             push(_cs);
 
+            cycle_count += 11;  // 15
+
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH CS");
 #endif
@@ -1270,6 +1302,8 @@ internal class P8086
         {
             // PUSH SS
             push(_ss);
+
+            cycle_count += 11;  // 15
 
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH SS");
@@ -1322,6 +1356,8 @@ internal class P8086
             // PUSH DS
             push(_ds);
 
+            cycle_count += 11;  // 15
+
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH DS");
 #endif
@@ -1330,6 +1366,8 @@ internal class P8086
         {
             // POP DS
             _ds = pop();
+
+            cycle_count += 8;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} POP DS");
@@ -1413,6 +1451,8 @@ internal class P8086
             // POP AX
             SetAX(pop());
 
+            cycle_count += 8;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} POP AX");
 #endif
@@ -1421,6 +1461,8 @@ internal class P8086
         {
             // POP CX
             SetCX(pop());
+
+            cycle_count += 8;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} POP CX");
@@ -1431,6 +1473,8 @@ internal class P8086
             // POP DX
             SetDX(pop());
 
+            cycle_count += 8;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} POP DX");
 #endif
@@ -1439,6 +1483,8 @@ internal class P8086
         {
             // POP BX
             SetBX(pop());
+
+            cycle_count += 8;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} POP BX");
@@ -1449,6 +1495,8 @@ internal class P8086
             // POP SP
             _sp = pop();
 
+            cycle_count += 8;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} POP SP");
 #endif
@@ -1457,6 +1505,8 @@ internal class P8086
         {
             // POP BP
             _bp = pop();
+
+            cycle_count += 8;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} POP BP");
@@ -1467,6 +1517,8 @@ internal class P8086
             // POP SI
             _si = pop();
 
+            cycle_count += 8;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} POP SI");
 #endif
@@ -1475,6 +1527,8 @@ internal class P8086
         {
             // POP DI
             _di = pop();
+
+            cycle_count += 8;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} POP DI");
@@ -1617,6 +1671,8 @@ internal class P8086
             // PUSH AX
             push(GetAX());
 
+            cycle_count += 11;  // 15
+
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH AX");
 #endif
@@ -1625,6 +1681,8 @@ internal class P8086
         {
             // PUSH CX
             push(GetCX());
+
+            cycle_count += 11;  // 15
 
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH CX");
@@ -1635,6 +1693,8 @@ internal class P8086
             // PUSH DX
             push(GetDX());
 
+            cycle_count += 11;  // 15
+
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH DX");
 #endif
@@ -1643,6 +1703,8 @@ internal class P8086
         {
             // PUSH BX
             push(GetBX());
+
+            cycle_count += 11;  // 15
 
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH BX");
@@ -1653,6 +1715,8 @@ internal class P8086
             // PUSH SP
             push(_sp);
 
+            cycle_count += 11;  // 15
+
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH SP");
 #endif
@@ -1661,6 +1725,8 @@ internal class P8086
         {
             // PUSH BP
             push(_bp);
+
+            cycle_count += 11;  // 15
 
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH BP");
@@ -1671,6 +1737,8 @@ internal class P8086
             // PUSH SI
             push(_si);
 
+            cycle_count += 11;  // 15
+
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH SI");
 #endif
@@ -1679,6 +1747,8 @@ internal class P8086
         {
             // PUSH DI
             push(_di);
+
+            cycle_count += 11;  // 15
 
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSH DI");
@@ -1709,15 +1779,17 @@ internal class P8086
 
             int result = 0;
 
+            int cycles = 0;
+
             if (opcode == 0x80)
             {
-                (r1, name1, a_valid, seg, addr) = GetRegisterMem(reg, mod, false);
+                (r1, name1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, false);
 
                 r2 = GetPcByte();
             }
             else if (opcode == 0x81)
             {
-                (r1, name1, a_valid, seg, addr) = GetRegisterMem(reg, mod, true);
+                (r1, name1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, true);
 
                 r2 = GetPcWord();
 
@@ -1725,7 +1797,7 @@ internal class P8086
             }
             else if (opcode == 0x83)
             {
-                (r1, name1, a_valid, seg, addr) = GetRegisterMem(reg, mod, true);
+                (r1, name1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, true);
 
                 r2 = GetPcByte();
 
@@ -1804,7 +1876,13 @@ internal class P8086
                 SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? GetFlagC() : false);
 
             if (apply)
-                UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, (ushort)result);
+            {
+                (string dummy, int put_cycles) = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, (ushort)result);
+
+                cycles += put_cycles;
+            }
+
+            cycle_count += 3 + cycles;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} {iname} {name1},${r2:X2}");
@@ -1820,7 +1898,7 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, word);
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int cycles) = GetRegisterMem(reg2, mod, word);
             (ushort r2, string name2) = GetRegister(reg1, word);
 
             if (word)
@@ -1838,6 +1916,8 @@ internal class P8086
 
             SetFlagC(false);
 
+            cycle_count += cycles;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} TEST {name1},{name2}");
 #endif
@@ -1852,12 +1932,14 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, word);
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
             (ushort r2, string name2) = GetRegister(reg1, word);
 
-            UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, r2);
+            (string dummy, int put_cycles) = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, r2);
 
             PutRegister(reg1, word, r1);
+
+            cycle_count += 3 + get_cycles + put_cycles;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} XCHG {name1},{name2}");
@@ -1871,7 +1953,11 @@ internal class P8086
             int mod = o1 >> 6;
             int reg2 = o1 & 7;
 
-            string toName = PutRegisterMem(reg2, mod, true, pop());
+            (string toName, int put_cycles) = PutRegisterMem(reg2, mod, true, pop());
+
+            cycle_count += put_cycles;
+ 
+            cycle_count += 17;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} POP {toName}");
@@ -1881,7 +1967,7 @@ internal class P8086
         {
             // NOP
 
-            cycle_count = 3;
+            cycle_count += 3;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} NOP");
@@ -1950,6 +2036,8 @@ internal class P8086
             // PUSHF
             push(_flags);
 
+            cycle_count += 10;  // 14
+
 #if DEBUG
             Log.DoLog($"{prefixStr} PUSHF");
 #endif
@@ -1958,6 +2046,8 @@ internal class P8086
         {
             // POPF
             _flags = pop();
+
+            cycle_count += 8;  // 12
 
             FixFlags();
 
@@ -2023,7 +2113,7 @@ internal class P8086
             int reg = (o1 >> 3) & 7;
             int rm = o1 & 7;
 
-            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(rm, mod, true);
+            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
 
             string name;
 
@@ -2039,6 +2129,8 @@ internal class P8086
             }
 
             string affected = PutRegister(reg, true, val);
+
+            cycle_count += get_cycles;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} {name} {affected},{name_from}");
@@ -2088,8 +2180,10 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, word);
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
             (ushort r2, string name2) = GetRegister(reg1, word);
+
+            cycle_count += get_cycles;
 
             string name = "error";
             int result = 0;
@@ -2157,7 +2251,9 @@ internal class P8086
                 }
                 else
                 {
-                    UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result);
+                    (string dummy, int put_cycles) = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result);
+
+                    cycle_count += put_cycles;
 
 #if DEBUG
                     Log.DoLog($"{prefixStr} {name} {name1},{name2}");
@@ -2223,8 +2319,10 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg2, mod, word);
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
             (ushort r2, string name2) = GetRegister(reg1, word);
+
+            cycle_count += get_cycles;
 
             string name = "error";
 
@@ -2255,11 +2353,9 @@ internal class P8086
 
             SetLogicFuncFlags(word, result);
 
-            string affected;
-
             if (direction)
             {
-                affected = PutRegister(reg1, word, result);
+                string affected = PutRegister(reg1, word, result);
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} {name} {name1},{name2}");
@@ -2267,7 +2363,9 @@ internal class P8086
             }
             else
             {
-                affected = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, result);
+                (string affected, int put_cycles) = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, result);
+
+                cycle_count += put_cycles;
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} {name} {name2},{name1}");
@@ -2364,7 +2462,9 @@ internal class P8086
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg1, mod, word);
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
+
+            cycle_count += get_cycles;
 
             string name2 = "";
 
@@ -2401,7 +2501,9 @@ internal class P8086
             else if (function == 2)
             {
                 // NOT
-                UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)~r1);
+                (string dummy, int put_cycles) = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)~r1);
+
+                cycle_count += put_cycles;
 
                 cmd_name = "NOT";
             }
@@ -2415,7 +2517,9 @@ internal class P8086
                 SetAddSubFlags(word, 0, r1, -r1, true, false);
                 SetFlagC(r1 != 0);
 
-                UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)result);
+                (string dummy, int put_cycles) = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)result);
+
+                cycle_count += put_cycles;
             }
             else if (function == 4)
             {
@@ -2611,7 +2715,9 @@ internal class P8086
             if (dir)
             {
                 // to 'REG' from 'rm'
-                (ushort v, string fromName, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(rm, mode, word);
+                (ushort v, string fromName, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mode, word);
+
+                cycle_count += get_cycles;
 
                 string toName;
 
@@ -2635,7 +2741,9 @@ internal class P8086
                 else
                     (v, fromName) = GetRegister(reg, word);
 
-                string toName = PutRegisterMem(rm, mode, word, v);
+                (string toName, int put_cycles) = PutRegisterMem(rm, mode, word, v);
+
+                cycle_count += put_cycles;
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} MOV {toName},{fromName} ({v:X4})");
@@ -2652,7 +2760,9 @@ internal class P8086
 
             // might introduce problems when the dereference of *addr reads from i/o even
             // when it is not required
-            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(rm, mod, true);
+            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
+
+            cycle_count += get_cycles;
 
             string name_to = PutRegister(reg, true, addr);
 
@@ -2786,14 +2896,18 @@ internal class P8086
             int mreg = o1 & 7;
 
             // get address to write to ('seg, addr')
-            (ushort dummy, string name, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(mreg, mod, word);
+            (ushort dummy, string name, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(mreg, mod, word);
+
+            cycle_count += get_cycles;
 
             if (word)
             {
                 // the value follows
                 ushort v = GetPcWord();
 
-                UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
+                (string dummy2, int put_cycles) = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
+
+                cycle_count += put_cycles;
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} MOV word {name},${v:X4}");
@@ -2804,7 +2918,9 @@ internal class P8086
                 // the value follows
                 byte v = GetPcByte();
 
-                UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
+                (string dummy2, int put_cycles) = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
+
+                cycle_count += put_cycles;
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} MOV byte {name},${v:X2}");
@@ -2842,7 +2958,9 @@ internal class P8086
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
 
-            (ushort v1, string vName, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg1, mod, word);
+            (ushort v1, string vName, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
+
+            cycle_count += get_cycles;
 
             int count = 1;
             string countName = "1";
@@ -3056,7 +3174,9 @@ internal class P8086
                 SetFlagP((byte)v1);
             }
 
-            UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, v1);
+            (string dummy, int put_cycles) = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, v1);
+
+            cycle_count += put_cycles;
         }
         else if ((opcode & 0xf0) == 0b01110000)
         {
@@ -3154,7 +3274,14 @@ internal class P8086
             ushort newAddress = (ushort)(_ip + (sbyte)to);
 
             if (state)
+            {
                 _ip = newAddress;
+                cycle_count += 16;
+            }
+            else
+            {
+                cycle_count += 4;
+            }
 
 #if DEBUG
             Log.DoLog($"{prefixStr} {name} {to} ({_cs:X4}:{newAddress:X4} -> {_cs * 16 + newAddress:X6})");
@@ -3205,17 +3332,25 @@ internal class P8086
             string name = "?";
             ushort newAddresses = (ushort)(_ip + (sbyte)to);
 
+            cycle_count += 4;
+
             if (opcode == 0xe2)
             {
                 if (cx > 0)
+                {
                     _ip = newAddresses;
+                    cycle_count += 4;
+                }
 
                 name = "LOOP";
             }
             else if (opcode == 0xe1)
             {
                 if (cx > 0 && GetFlagZ() == true)
+                {
                     _ip = newAddresses;
+                    cycle_count += 4;
+                }
 
                 name = "LOOPZ";
             }
@@ -3237,7 +3372,7 @@ internal class P8086
 
             _al = _io.In(_scheduled_interrupts, @from);
 
-            cycle_count = 10;  // or 14
+            cycle_count += 10;  // or 14
 
 #if DEBUG
             Log.DoLog($"{prefixStr} IN AL,${from:X2}");
@@ -3261,7 +3396,7 @@ internal class P8086
 
             _io.Out(_scheduled_interrupts, @to, _al);
 
-            cycle_count = 10;  // max 14
+            cycle_count += 10;  // max 14
 
 #if DEBUG
             Log.DoLog($"{prefixStr} OUT ${to:X2},AL");
@@ -3385,7 +3520,9 @@ internal class P8086
 
             Log.DoLog($"mod {mod} reg {reg} function {function}");
 
-            (ushort v, string name, bool a_valid, ushort seg, ushort addr) = GetRegisterMem(reg, mod, word);
+            (ushort v, string name, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg, mod, word);
+
+            cycle_count += get_cycles;
 
             if (function == 0)
             {
@@ -3469,6 +3606,8 @@ internal class P8086
             {
                 // PUSH rmw
                 push(v);
+
+                cycle_count += 16;
 #if DEBUG
                 Log.DoLog($"{prefixStr} PUSH ${v:X4}");
 #endif
@@ -3481,7 +3620,9 @@ internal class P8086
             if (!word)
                 v &= 0xff;
 
-            UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, v);
+            (string dummy, int put_cycles) = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, v);
+
+            cycle_count += put_cycles;
         }
         else
         {
@@ -3534,6 +3675,9 @@ internal class P8086
             _segment_override_set = false;
             _segment_override_name = "";
         }
+
+        if (cycle_count == 0)
+            cycle_count = 1;  // TODO workaround
 
         // tick I/O
         _io.Tick(_scheduled_interrupts, cycle_count);

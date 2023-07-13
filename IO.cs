@@ -114,7 +114,7 @@ internal class i8253
     {
         clock += ticks;
 
-        Log.DoLog($"{clock} cycles, {ticks} added");
+        Log.DoLog($"i8253: {clock} cycles, {ticks} added");
 
         bool interrupt = false;
 
@@ -143,6 +143,9 @@ internal class i8253
 
             clock -= 4;
         }
+
+        if (interrupt)
+            Log.DoLog($"i8253: interrupt");
 
         return interrupt;
     }
@@ -820,7 +823,7 @@ class IO
     public void Tick(Dictionary <int, int> scheduled_interrupts, int ticks)
     {
         if (_i8253.Tick(ticks))
-            scheduled_interrupts[_pic.get_interrupt_offset() + 0] = 10;
+            scheduled_interrupts[_pic.get_interrupt_offset() + 0] = 2;
 
         _i8237.Tick(ticks);
     }
