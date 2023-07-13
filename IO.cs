@@ -394,11 +394,6 @@ internal class i8237
         {
             v = _channel_address_register[addr / 2].Get();
 
-            // This hack is to make sure the bios doesn't wait forever.
-            // With proper cycle-count emulation this is not required.
-            if (addr == 0)
-                v = 0xfe;
-
             Log.DoLog($"{prefix} {v:X2}");
         }
 
