@@ -129,8 +129,8 @@ internal class i8253
 
                 if (_timers[i].counter_cur == 0)
                 {
-                    // timer 0 is RAM refresh counter
-                    if (i == 0)
+                    // timer 1 is RAM refresh counter
+                    if (i == 1)
                         _i8237.TickChannel0();
 
                     _timers[i].counter_cur = _timers[i].counter_ini;
@@ -377,6 +377,8 @@ internal class i8237
     public void TickChannel0()
     {
         // RAM refresh
+        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}");
+
         _channel_address_register[0].SetValue((ushort)(_channel_address_register[0].GetValue() + 1));
 
         _channel_word_count[0].SetValue((ushort)(_channel_word_count[0].GetValue() - 1));
