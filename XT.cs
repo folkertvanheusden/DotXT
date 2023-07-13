@@ -1226,6 +1226,8 @@ internal class P8086
                 name = "ADC";
             }
 
+            cycle_count += 3;
+
             SetAddSubFlags(false, _al, v, result, false, use_flag_c ? flag_c : false);
 
             _al = (byte)result;
@@ -1260,6 +1262,8 @@ internal class P8086
             SetAddSubFlags(true, before, v, result, false, use_flag_c ? flag_c : false);
 
             SetAX((ushort)result);
+
+            cycle_count += 3;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} {name} AX,${v:X4}");
@@ -1325,6 +1329,8 @@ internal class P8086
 
             _al = (byte)result;
 
+            cycle_count += 3;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} SBB ${v:X4}");
 #endif
@@ -1346,6 +1352,8 @@ internal class P8086
             SetAddSubFlags(true, AX, v, result, true, flag_c);
 
             SetAX((ushort)result);
+
+            cycle_count += 3;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} SBB ${v:X4}");
@@ -1410,6 +1418,8 @@ internal class P8086
             SetFlagZ(_al != 0);
             SetFlagP(_al);
 
+            cycle_count += 4;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} DAA");
 #endif
@@ -1424,6 +1434,8 @@ internal class P8086
             SetAddSubFlags(false, _al, v, result, true, false);
 
             _al = (byte)result;
+
+            cycle_count += 3;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} SUB ${v:X2}");
@@ -1441,6 +1453,8 @@ internal class P8086
             SetAddSubFlags(true, before, v, result, true, false);
 
             SetAX((ushort)result);
+
+            cycle_count += 3;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} SUB ${v:X4}");
@@ -1555,6 +1569,8 @@ internal class P8086
                 _si++;
                 _di++;
             }
+
+            cycle_count += 18;
         }
         else if (opcode == 0xa5)
         {
@@ -1571,6 +1587,8 @@ internal class P8086
                 _si += 2;
                 _di += 2;
             }
+
+            cycle_count += 18;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} MOVSW");
@@ -1612,6 +1630,8 @@ internal class P8086
 
             SetAddSubFlags(false, v1, v2, result, true, false);
 
+            cycle_count += 22;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')})");
 #endif
@@ -1637,6 +1657,8 @@ internal class P8086
 
             SetAddSubFlags(true, v1, v2, result, true, false);
 
+            cycle_count += 22;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} CMPSW (${v1:X4},${v2:X4})");
 #endif
@@ -1649,7 +1671,14 @@ internal class P8086
             ushort addr = (ushort)(_ip + offset);
 
             if (GetCX() == 0)
+            {
                 _ip = addr;
+                cycle_count += 18;
+            }
+            else
+            {
+                cycle_count += 6;
+            }
 
 #if DEBUG
             Log.DoLog($"{prefixStr} JCXZ {addr:X}");
@@ -1661,6 +1690,8 @@ internal class P8086
             short offset = (short)GetPcWord();
 
             _ip = (ushort)(_ip + offset);
+
+            cycle_count += 15;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} JMP {_ip:X} ({offset:X4})");
@@ -1916,7 +1947,7 @@ internal class P8086
 
             SetFlagC(false);
 
-            cycle_count += cycles;
+            cycle_count += 3 + cycles;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} TEST {name1},{name2}");
@@ -1985,6 +2016,8 @@ internal class P8086
 
             PutRegister(reg_nr, true, old_ax);
 
+            cycle_count += 3;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} XCHG AX,{name_other}");
 #endif
@@ -1999,6 +2032,8 @@ internal class P8086
 
             SetAX(new_value);
 
+            cycle_count += 2;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} CBW");
 #endif
@@ -2010,6 +2045,8 @@ internal class P8086
                 SetDX(0xffff);
             else
                 SetDX(0);
+
+            cycle_count += 5;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} CDW");
@@ -2026,6 +2063,8 @@ internal class P8086
 
             _ip = temp_ip;
             _cs = temp_cs;
+
+            cycle_count += 37;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} CALL ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
@@ -2065,6 +2104,8 @@ internal class P8086
             else
                 _si++;
 
+            cycle_count += 5;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} LODSB");
 #endif
@@ -2079,6 +2120,8 @@ internal class P8086
             else
                 _si += 2;
 
+            cycle_count += 5;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} LODSW");
 #endif
@@ -2092,6 +2135,8 @@ internal class P8086
 
             _sp += nToRelease;
 
+            cycle_count += 16;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} RET ${nToRelease:X4}");
 #endif
@@ -2100,6 +2145,8 @@ internal class P8086
         {
             // RET
             _ip = pop();
+
+            cycle_count += 16;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} RET");
@@ -2130,7 +2177,7 @@ internal class P8086
 
             string affected = PutRegister(reg, true, val);
 
-            cycle_count += get_cycles;
+            cycle_count += 7 + get_cycles;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} {name} {affected},{name_from}");
@@ -2153,6 +2200,8 @@ internal class P8086
                 _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
             }
 
+            cycle_count += 51;  // 71
+
 #if DEBUG
             Log.DoLog($"{prefixStr} INT {@int:X2} -> ${_cs * 16 + _ip:X6} (from {addr:X4})");
 #endif
@@ -2165,6 +2214,8 @@ internal class P8086
 
             _flags = pop();
             FixFlags();
+
+            cycle_count += 32;  // 44
 
 #if DEBUG
             Log.DoLog($"{prefixStr} IRET");
@@ -2195,6 +2246,8 @@ internal class P8086
             {
                 result = r1 + r2;
 
+                cycle_count += 4;
+
                 name = "ADD";
             }
             else if (opcode >= 0x10 && opcode <= 0x13)
@@ -2202,6 +2255,8 @@ internal class P8086
                 use_flag_c = true;
 
                 result = r1 + r2 + (GetFlagC() ? 1 : 0);
+
+                cycle_count += 4;
 
                 name = "ADC";
             }
@@ -2231,6 +2286,8 @@ internal class P8086
 
                     name = "SBB";
                 }
+
+                cycle_count += 4;
             }
 
             if (direction)
@@ -2279,6 +2336,8 @@ internal class P8086
 
             ushort r1 = 0;
             ushort r2 = 0;
+
+            cycle_count += 4;
 
             if (opcode == 0x3d)
             {
@@ -2329,6 +2388,8 @@ internal class P8086
             ushort result = 0;
 
             int function = opcode >> 4;
+
+            cycle_count += 3;
 
             if (function == 0)
             {
@@ -2422,6 +2483,8 @@ internal class P8086
 
             SetFlagP(_al);
 
+            cycle_count += 4;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} {name} {tgt_name},${bHigh:X2}{bLow:X2}");
 #endif
@@ -2435,6 +2498,8 @@ internal class P8086
 
             _ip = (ushort)(a + _ip);
 
+            cycle_count += 16;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} CALL {a:X4} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
 #endif
@@ -2447,6 +2512,8 @@ internal class P8086
 
             _ip = temp_ip;
             _cs = temp_cs;
+
+            cycle_count += 15;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
@@ -2583,6 +2650,8 @@ internal class P8086
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented");
             }
 
+            cycle_count += 4;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} {cmd_name} {name1}{name2}");
 #endif
@@ -2591,6 +2660,8 @@ internal class P8086
         {
             // CLI
             ClearFlagBit(9); // IF
+
+            cycle_count += 2;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} CLI");
@@ -2610,6 +2681,8 @@ internal class P8086
 
             string name = PutRegister(reg, word, v);
 
+            cycle_count += 2;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV {name},${v:X}");
 #endif
@@ -2620,6 +2693,8 @@ internal class P8086
             ushort a = GetPcWord();
 
             _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, a);
+
+            cycle_count += 2;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV AL,[${a:X4}]");
@@ -2632,6 +2707,8 @@ internal class P8086
 
             SetAX(ReadMemWord(_segment_override_set ? _segment_override : _ds, a));
 
+            cycle_count += 2;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV AX,[${a:X4}]");
 #endif
@@ -2643,6 +2720,8 @@ internal class P8086
 
             WriteMemByte(_segment_override_set ? _segment_override : _ds, a, _al);
 
+            cycle_count += 2;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV [${a:X4}],AL");
 #endif
@@ -2653,6 +2732,8 @@ internal class P8086
             ushort a = GetPcWord();
 
             WriteMemWord(_segment_override_set ? _segment_override : _ds, a, GetAX());
+
+            cycle_count += 2;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} MOV [${a:X4}],AX");
@@ -2669,6 +2750,8 @@ internal class P8086
 
             SetFlagC(false);
 
+            cycle_count += 3;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} TEST AL,${v:X2}");
 #endif
@@ -2683,6 +2766,8 @@ internal class P8086
             SetLogicFuncFlags(true, result);
 
             SetFlagC(false);
+
+            cycle_count += 3;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} TEST AX,${v:X4}");
@@ -2702,6 +2787,8 @@ internal class P8086
 
             if (sreg)
                 word = true;
+
+            cycle_count += 2;
 
             // Log.DoLog($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}, sreg {sreg}");
 
@@ -2749,6 +2836,8 @@ internal class P8086
                 Log.DoLog($"{prefixStr} MOV {toName},{fromName} ({v:X4})");
 #endif
             }
+
+            cycle_count += 3;
         }
         else if (opcode == 0x8d)
         {
@@ -2757,6 +2846,8 @@ internal class P8086
             int mod = o1 >> 6;
             int reg = (o1 >> 3) & 7;
             int rm = o1 & 7;
+
+            cycle_count += 3;
 
             // might introduce problems when the dereference of *addr reads from i/o even
             // when it is not required
@@ -2780,6 +2871,8 @@ internal class P8086
 
             FixFlags();
 
+            cycle_count += 4;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} SAHF (set to {GetFlagsAsString()})");
 #endif
@@ -2788,6 +2881,8 @@ internal class P8086
         {
             // LAHF
             _ah = (byte)_flags;
+
+            cycle_count += 2;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} LAHF");
@@ -2824,6 +2919,8 @@ internal class P8086
 
             PutRegister(reg, true, v);
 
+            cycle_count += 3;
+
 #if DEBUG
             if (isDec)
                 Log.DoLog($"{prefixStr} DEC {name}");
@@ -2838,6 +2935,8 @@ internal class P8086
 
             _di += (ushort)(GetFlagD() ? -1 : 1);
 
+            cycle_count += 11;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} STOSB");
 #endif
@@ -2848,6 +2947,8 @@ internal class P8086
             WriteMemWord(_es, _di, GetAX());
 
             _di += (ushort)(GetFlagD() ? -2 : 2);
+
+            cycle_count += 11;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} STOSW");
@@ -2863,6 +2964,8 @@ internal class P8086
             SetAddSubFlags(false, _al, v, result, true, false);
 
             _di += (ushort)(GetFlagD() ? -1 : 1);
+
+            cycle_count += 15;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} SCASB");
@@ -2880,6 +2983,8 @@ internal class P8086
 
             _di += (ushort)(GetFlagD() ? -2 : 2);
 
+            cycle_count += 15;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} SCASW");
 #endif
@@ -2894,6 +2999,8 @@ internal class P8086
             int mod = o1 >> 6;
 
             int mreg = o1 & 7;
+
+            cycle_count += 2;  // base (correct?)
 
             // get address to write to ('seg, addr')
             (ushort dummy, string name, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(mreg, mod, word);
@@ -2939,6 +3046,8 @@ internal class P8086
             {
                 _sp += nToRelease;
 
+                cycle_count += 16;
+
 #if DEBUG
                 Log.DoLog($"{prefixStr} RETF ${nToRelease:X4}");
 #endif
@@ -2947,6 +3056,8 @@ internal class P8086
             else
             {
                 Log.DoLog($"{prefixStr} RETF");
+
+                cycle_count += 26;
             }
 #endif
         }
@@ -3006,6 +3117,8 @@ internal class P8086
                 if (count_1_of)
                     SetFlagO(GetFlagC() ^ ((v1 & check_bit) == check_bit));
 
+                cycle_count += 2;
+
 #if DEBUG
                 Log.DoLog($"{prefixStr} ROL {vName},{countName}");
 #endif
@@ -3027,6 +3140,8 @@ internal class P8086
 
                 if (count_1_of)
                     SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
+
+                cycle_count += 2;
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} ROR {vName},{countName}");
@@ -3051,6 +3166,8 @@ internal class P8086
                 if (count_1_of)
                     SetFlagO(GetFlagC() ^ ((v1 & check_bit) == check_bit));
 
+                cycle_count += 2;
+
 #if DEBUG
                 Log.DoLog($"{prefixStr} RCL {vName},{countName}");
 #endif
@@ -3073,6 +3190,8 @@ internal class P8086
 
                 if (count_1_of)
                     SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
+
+                cycle_count += 2;
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} RCR {vName},{countName}");
@@ -3110,6 +3229,8 @@ internal class P8086
 
                 set_flags = count != 0;
 
+                cycle_count += 2;
+
 #if DEBUG
                 Log.DoLog($"{prefixStr} SAL {vName},{countName}");
 #endif
@@ -3130,6 +3251,8 @@ internal class P8086
                 }
 
                 set_flags = count != 0;
+
+                cycle_count += 2;
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} SHR {vName},{countName}");
@@ -3154,6 +3277,8 @@ internal class P8086
                 SetFlagO(false);
 
                 set_flags = count != 0;
+
+                cycle_count += 2;
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} SAR {vName},{countName}");
@@ -3294,6 +3419,8 @@ internal class P8086
 
             _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, (ushort)(GetBX() + _al));
 
+            cycle_count += 11;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} XLATB ({_ds:X4}:{GetBX():X4} + {old_al:X2})");
 #endif
@@ -3312,10 +3439,17 @@ internal class P8086
             ushort newAddresses = (ushort)(_ip + (sbyte)to);
 
             if (cx > 0 && GetFlagZ() == false)
+            {
                 _ip = newAddresses;
+                cycle_count += 8;
+            }
+            else
+            {
+                cycle_count += 4;
+            }
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} LOOP {to} ({newAddresses:X4} -> {_ip:X4})");
+            Log.DoLog($"{prefixStr} LOOPNZ {to} ({newAddresses:X4} -> {_ip:X4})");
 #endif
         }
         else if (opcode == 0xe1 || opcode == 0xe2)
@@ -3385,6 +3519,8 @@ internal class P8086
 
             SetAX(_io.In(_scheduled_interrupts, @from));
 
+            cycle_count += 10;  // or 14
+
 #if DEBUG
             Log.DoLog($"{prefixStr} IN AX,${from:X2}");
 #endif
@@ -3407,6 +3543,8 @@ internal class P8086
             // IN AL,DX
             _al = _io.In(_scheduled_interrupts, GetDX());
 
+            cycle_count += 8;  // or 12
+
 #if DEBUG
             Log.DoLog($"{prefixStr} IN AL,DX");
 #endif
@@ -3415,6 +3553,8 @@ internal class P8086
         {
             // OUT
             _io.Out(_scheduled_interrupts, GetDX(), _al);
+
+            cycle_count += 8;  // or 12
 
 #if DEBUG
             Log.DoLog($"{prefixStr} OUT DX,AL");
@@ -3426,6 +3566,8 @@ internal class P8086
             byte to = GetPcByte();
 
             _ip = (ushort)(_ip + (sbyte)to);
+
+            cycle_count += 15;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} JP ${_ip:X4} ({_cs * 16 + _ip:X6})");
@@ -3457,6 +3599,8 @@ internal class P8086
             // CMC
             SetFlagC(! GetFlagC());
 
+            cycle_count += 2;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} CMC");
 #endif
@@ -3465,6 +3609,8 @@ internal class P8086
         {
             // CLC
             SetFlagC(false);
+
+            cycle_count += 2;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} CLC");
@@ -3475,6 +3621,8 @@ internal class P8086
             // STC
             SetFlagC(true);
 
+            cycle_count += 2;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} STC");
 #endif
@@ -3483,6 +3631,8 @@ internal class P8086
         {
             // STI
             SetFlagBit(9); // IF
+
+            cycle_count += 2;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} STI");
@@ -3493,6 +3643,8 @@ internal class P8086
             // CLD
             SetFlagD(false);
 
+            cycle_count += 2;
+
 #if DEBUG
             Log.DoLog($"{prefixStr} CLD");
 #endif
@@ -3501,6 +3653,8 @@ internal class P8086
         {
             // STD
             SetFlagD(true);
+
+            cycle_count += 2;
 
 #if DEBUG
             Log.DoLog($"{prefixStr} STD");
@@ -3529,6 +3683,8 @@ internal class P8086
                 // INC
                 v++;
 
+                cycle_count += 3;
+
                 SetFlagO(word ? v == 0x8000 : v == 0x80);
                 SetFlagA((v & 15) == 0);
 
@@ -3544,6 +3700,8 @@ internal class P8086
             {
                 // DEC
                 v--;
+
+                cycle_count += 3;
 
                 SetFlagO(word ? v == 0x7fff : v == 0x7f);
                 SetFlagA((v & 15) == 15);
@@ -3564,6 +3722,8 @@ internal class P8086
                 _rep = false;
                 _ip = v;
 
+                cycle_count += 16;
+
 #if DEBUG
                 Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
 #endif
@@ -3579,6 +3739,8 @@ internal class P8086
                 _ip = v;
                 _cs = ReadMemWord(seg, (ushort)(addr + 2));
 
+                cycle_count += 37;
+
 #if DEBUG
                 Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
 #endif
@@ -3587,6 +3749,8 @@ internal class P8086
             {
                 // JMP NEAR
                 _ip = v;
+
+                cycle_count += 18;
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} JMP {name} ({_cs * 16 + _ip:X6})");
@@ -3597,6 +3761,8 @@ internal class P8086
                 // JMP
                 _cs = ReadMemWord(seg, (ushort)(addr + 2));
                 _ip = ReadMemWord(seg, addr);
+
+                cycle_count += 18;  // TODO
 
 #if DEBUG
                 Log.DoLog($"{prefixStr} JMP {_cs:X4}:{_ip:X4}");
