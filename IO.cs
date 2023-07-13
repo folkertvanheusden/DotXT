@@ -781,6 +781,9 @@ class IO
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
 
+        if (addr == 0x03ba)  // horizontal drive (crt)
+            return 0x01;
+
         if (addr >= 0x03f0 && addr <= 0x3f7)
             return _fd.In(scheduled_interrupts, addr);
 
