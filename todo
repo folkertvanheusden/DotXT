@@ -33,3 +33,30 @@ bochs 'romimage: file=ru/jmpmov.bin'
 05/09/86 bios:
 - FE289 is the check for a CGA card
   if AL = 30h at that point, it's an MDA card.  If AL = 10h or 20h it's a CGA card
+
+
+- 8253, discussion on discord
+	gloriouscow — Today at 10:09 PM
+	it's reading the timer in a loop, so as the timer value changes more bits get set with OR
+	Folkert — Today at 10:10 PM
+	@gloriouscow but isn't it resetting the counter at C12?
+	gloriouscow — Today at 10:10 PM
+	no? where
+	Folkert — Today at 10:10 PM
+	oh wait, that's it: that latching means not neccessariyl reloading & restarting the counter, it  means retrieving the count. 
+	gloriouscow — Today at 10:11 PM
+	it means freezing the latch register
+	why they bother to do that in LSB mode i don't know
+	its usually only useful for reading in LSBMSB
+	i dunno how you've implemented your pit, but the way the hardware works is that all reads are through the latch register
+	every tick the counting element is copied into the latch register
+	until the latch command is received, then the latch register stops updating, 'freezing' the current value
+	until it is read out, when it starts updating again
+	so you really only have to handle the latch command in one place in you code - whether or not you update it on a tick. pretty simple
+	Folkert — Today at 10:15 PM
+	yes, I think I misunderstood the "latch" part. I thought that it meant something like: set value & start timer. "lost in translation" so to say.
+	thanks for the explanation
+	gloriouscow — Today at 10:15 PM
+	also the count element is 16 bit, lsb mode doesn't change that 
+	so if you set a reload value of 0 it will tick over to 65535
+
