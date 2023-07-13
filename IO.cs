@@ -734,15 +734,12 @@ class IO
 
     private Dictionary <ushort, Device> _io_map = new Dictionary <ushort, Device>();
 
-    public IO(ref List<Device> devices)
-    {
-        foreach(var device in devices)
-            device.RegisterDevice(_io_map);
-    }
-
-    public IO(Bus b)
+    public IO(Bus b, ref List<Device> devices)
     {
         _b = b;
+
+        foreach(var device in devices)
+            device.RegisterDevice(_io_map);
 
         _i8237 = new(_b);
         _i8253.SetDma(_i8237);

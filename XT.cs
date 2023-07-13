@@ -63,7 +63,7 @@ internal class P8086
     {
         _b = b;
 
-        _io = new IO(ref devices);
+        _io = new IO(b, ref devices);
 
         // intercept also other ints besides keyboard/console access
         _intercept_int_flag = intercept_int_flag;

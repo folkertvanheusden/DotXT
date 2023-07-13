@@ -25,7 +25,6 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-i        intercept some of the BIOS calls");
         Console.WriteLine("-B        disable loading of the BIOS ROM images");
         Console.WriteLine("-d        enable debugger");
-        Console.WriteLine("-e        emulate terminal");
         Console.WriteLine("-o cs,ip  start address (in hexadecimal)");
         System.Environment.Exit(0);
     }
