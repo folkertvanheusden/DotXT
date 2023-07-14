@@ -55,7 +55,7 @@ class CGA : Device
 
     public new void IO_Write(ushort port, byte value)
     {
-        Log.DoLog("CGA::IO_Write");
+        Log.DoLog("CGA::IO_Write {port:X4} {value:X2}");
 
         if (port == 0x3d4 || port == 0x3d6)
             _m6845_reg = value;
