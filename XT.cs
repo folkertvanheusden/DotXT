@@ -1066,12 +1066,12 @@ internal class P8086
         if (word)
         {
             for(uint o=0; o<32; o += 2)
-                s += $" {_b.ReadByte(addr + o) + (_b.ReadByte(addr + o + 1) << 8):X4}";
+                s += $" {_b.ReadByte((addr + o) & 0xfffff) + (_b.ReadByte((addr + o + 1) & 0xfffff) << 8):X4}";
         }
         else
         {
             for(uint o=0; o<32; o++)
-                s += $" {_b.ReadByte(addr + o):X2}";
+                s += $" {_b.ReadByte((addr + o) & 0xfffff):X2}";
         }
 
         return s;
