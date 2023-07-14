@@ -794,18 +794,8 @@ class IO
         if (addr == 0x0210)  // verify expansion bus data
             return 0xa5;
 
-        if (addr == 0x03ba)  // horizontal drive (crt)
-        {
-            byte rc = (byte)(horizontal_drive ? 0x01 : 0x00);
-            horizontal_drive = !horizontal_drive;
-            return rc;
-        }
-
         if (addr >= 0x03f0 && addr <= 0x3f7)
             return _fd.In(scheduled_interrupts, addr);
-
-        if (_io_map.ContainsKey(addr))
-            return _io_map[addr].IO_Read(addr);
 
         if (_io_map.ContainsKey(addr))
             return _io_map[addr].IO_Read(addr);
