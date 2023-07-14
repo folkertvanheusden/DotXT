@@ -8,6 +8,10 @@ class MDA : Device
 
     public new void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
+        Log.DoLog("CGA::RegisterDevice");
+
+        for(ushort port=0x3b0; port<=0x3c0; port++)
+            mappings[port] = this;
     }
 
     public new bool HasAddress(uint addr)
@@ -17,10 +21,13 @@ class MDA : Device
 
     public new void IO_Write(ushort port, byte value)
     {
+        Log.DoLog("MDA::IO_Write {port:X4} {value:X2}");
     }
 
     public new byte IO_Read(ushort port)
     {
+        Log.DoLog("MDA::IO_Read {port:X4}");
+
         return 0;
     }
 
