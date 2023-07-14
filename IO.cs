@@ -785,10 +785,12 @@ class IO
             if (_values.ContainsKey(0x61))
                  mode = _values[0x61];
 
-            if ((mode & 8) == 0)
-                return 0x3f;  // ~(LOOP IN POST, COPROCESSOR INSTALLED)
+            byte switches = 0b00111100;  // 1 floppy, MDA, 640kB, nocopro/noloop
 
-            return 0b00100000 ^ 0xff;  // 1 floppy drive, 80x25 color, 64kB, reserved=00
+            if ((mode & 8) == 0)
+                return (byte)((switches & 0x0f) ^ 255);
+
+            return (byte)((switches >> 4) ^ 255);
         }
 
         if (addr == 0x0210)  // verify expansion bus data
