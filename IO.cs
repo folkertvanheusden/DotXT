@@ -122,7 +122,9 @@ internal class i8253
     {
         clock += ticks;
 
+#if DEBUG
         Log.DoLog($"i8253: {clock} cycles, {ticks} added");
+#endif
 
         bool interrupt = false;
 
@@ -151,8 +153,10 @@ internal class i8253
 
             clock -= 4;
 
+#if DEBUG
             if (interrupt)
                 Log.DoLog($"i8253: interrupt");
+#endif
         }
 
         return interrupt;
@@ -388,7 +392,9 @@ internal class i8237
     public void TickChannel0()
     {
         // RAM refresh
+#if DEBUG
         Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}");
+#endif
 
         _channel_address_register[0].SetValue((ushort)(_channel_address_register[0].GetValue() + 1));
 
@@ -745,7 +751,9 @@ class IO
 
     private Dictionary <ushort, Device> _io_map = new Dictionary <ushort, Device>();
 
-    private bool horizontal_drive;
+    private List<Device> _devices;
+
+    private int _clock;
 
     public IO(Bus b, ref List<Device> devices)
     {
@@ -753,6 +761,8 @@ class IO
 
         foreach(var device in devices)
             device.RegisterDevice(_io_map);
+
+        _devices = devices;
 
         _i8237 = new(_b);
         _i8253.SetDma(_i8237);
@@ -771,6 +781,9 @@ class IO
     public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
     {
         Log.DoLog($"IN: {addr:X4}");
+
+        foreach(var device in _devices)
+            device.SyncClock(_clock);
 
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2)
             return _i8237.In(scheduled_interrupts, addr);
@@ -827,12 +840,14 @@ class IO
         return 0;
     }
 
-    public void Tick(Dictionary <int, int> scheduled_interrupts, int ticks)
+    public void Tick(Dictionary <int, int> scheduled_interrupts, int ticks, int clock)
     {
         if (_i8253.Tick(ticks))
             scheduled_interrupts[_pic.get_interrupt_offset() + 0] = 2;
 
         _i8237.Tick(ticks);
+
+        _clock = clock;
     }
 
     public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)

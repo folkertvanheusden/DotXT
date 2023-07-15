@@ -1213,13 +1213,13 @@ internal class P8086
         }
 
 #if DEBUG
-        string mem = HexDump(address, false);
-        string stk = HexDump((uint)(_ss * 16 + _sp), true);
+//        string mem = HexDump(address, false);
+//        string stk = HexDump((uint)(_ss * 16 + _sp), true);
 
-        Log.DoLog($"{address:X6}: {mem}");
-        Log.DoLog($"{_ss * 16 + _sp:X6}: {stk}");
+//        Log.DoLog($"{address:X6}: {mem}");
+//        Log.DoLog($"{_ss * 16 + _sp:X6}: {stk}");
 
-        Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}");
+//        Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}");
 
         string prefixStr =
             $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{instr_start:X4} | ";
@@ -3869,7 +3869,7 @@ internal class P8086
             cycle_count = 1;  // TODO workaround
 
         // tick I/O
-        _io.Tick(_scheduled_interrupts, cycle_count);
+        _io.Tick(_scheduled_interrupts, cycle_count, clock);
 
         clock += cycle_count;
 

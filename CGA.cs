@@ -23,7 +23,8 @@ class CGA : Device
 
     private M6845 _m6845 = new();
     private byte _m6845_reg;
-    private uint display_address = 0;
+    private uint _display_address = 0;
+    private int _clock;
 
     public CGA()
     {
@@ -34,6 +35,11 @@ class CGA : Device
     {
         Console.Write((char)27);  // clear screen
         Console.Write($"[2J");
+    }
+
+    public override void SyncClock(int clock)
+    {
+        _clock = clock;
     }
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
@@ -64,7 +70,7 @@ class CGA : Device
         {
             _m6845.Write(_m6845_reg, value);
 
-            display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
+            _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
         }
     }
 
@@ -86,7 +92,7 @@ class CGA : Device
 
         _ram[use_offset] = value;
 
-        if (use_offset >= display_address && use_offset < display_address + 80 * 25 * 2)
+        if (use_offset >= _display_address && use_offset < _display_address + 80 * 25 * 2)
         {
             if ((use_offset & 1) == 0)
             {

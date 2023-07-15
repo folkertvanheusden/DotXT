@@ -1,10 +1,17 @@
 class MDA : Device
 {
     private byte [] _ram = new byte[16384];
-    bool hsync;
+    private bool _hsync;
+    private int _clock;
+    private int _last_hsync;
 
     public MDA()
     {
+    }
+
+    public override void SyncClock(int clock)
+    {
+        _clock = clock;
     }
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
@@ -31,8 +38,11 @@ class MDA : Device
 
         if (port == 0x03ba)
         {
-            // TODO: add a sync() -method to each device (or so) which retrieves the cycle count
-            hsync = !hsync;
+            // 14318180Hz system clock
+            // 18432Hz mda clock
+            // 50Hz refreshes per second
+            bool hsync = Math.Abs(_clock - _last_hsync) >= (14318180 / 18432 / 50);
+            _last_hsync = _clock;
 
             return (byte)(hsync ? 1 : 0);
         }

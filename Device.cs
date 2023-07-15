@@ -7,4 +7,6 @@ abstract class Device
     public abstract bool HasAddress(uint addr);
     public abstract void WriteByte(uint offset, byte value);
     public abstract byte ReadByte(uint offset);
+
+    public abstract void SyncClock(int clock);
 }
