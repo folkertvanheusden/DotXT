@@ -1,6 +1,7 @@
 class MDA : Device
 {
     private byte [] _ram = new byte[16384];
+    bool hsync;
 
     public MDA()
     {
@@ -27,6 +28,14 @@ class MDA : Device
     public override byte IO_Read(ushort port)
     {
         Log.DoLog($"MDA::IO_Read {port:X4}");
+
+        if (port == 0x03ba)
+        {
+            // TODO: add a sync() -method to each device (or so) which retrieves the cycle count
+            hsync = !hsync;
+
+            return (byte)(hsync ? 1 : 0);
+        }
 
         return 0;
     }
