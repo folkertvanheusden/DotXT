@@ -118,31 +118,28 @@ internal class i8253
 
         bool interrupt = false;
 
-        while(clock >= 4)
+        for(int i=0; i<3; i++)
         {
-            for(int i=0; i<3; i++)
+            if (_timers[i].is_running == false)
+                continue;
+
+            _timers[i].counter_cur--;
+
+            if (_timers[i].counter_cur == 0)
             {
-                if (_timers[i].is_running == false)
-                    continue;
+                // timer 1 is RAM refresh counter
+                if (i == 1)
+                    _i8237.TickChannel0();
 
-                _timers[i].counter_cur--;
+                _timers[i].counter_cur = _timers[i].counter_ini;
 
-                if (_timers[i].counter_cur == 0)
-                {
-                    // timer 1 is RAM refresh counter
-                    if (i == 1)
-                        _i8237.TickChannel0();
-
-                    _timers[i].counter_cur = _timers[i].counter_ini;
-
-                    // mode 0 generates an interrupt
-                    if (_timers[i].mode == 0)
-                        interrupt = true;
-                }   
-            }
-
-            clock -= 4;
+                // mode 0 generates an interrupt
+                if (_timers[i].mode == 0)
+                    interrupt = true;
+            }   
         }
+
+        clock -= 4;
 
         if (interrupt)
             Log.DoLog($"i8253: interrupt");
