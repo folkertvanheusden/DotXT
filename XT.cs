@@ -1060,6 +1060,8 @@ internal class P8086
         push(_cs);
         push(instr_start);
 
+        SetFlagI(false);
+
         uint addr = (uint)(interrupt_nr * 4);
 
         _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
@@ -2218,6 +2220,8 @@ internal class P8086
                 push(_flags);
                 push(_cs);
                 push(_ip);
+
+                SetFlagI(false);
 
                 _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
                 _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
