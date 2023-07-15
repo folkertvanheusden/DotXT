@@ -8,9 +8,9 @@ class MDA : Device
 
     public new void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
-        Log.DoLog("CGA::RegisterDevice");
+        Log.DoLog("MDA::RegisterDevice");
 
-        for(ushort port=0x3b0; port<=0x3c0; port++)
+        for(ushort port=0x3b0; port<0x3c0; port++)
             mappings[port] = this;
     }
 
