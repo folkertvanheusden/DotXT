@@ -56,15 +56,12 @@ class MDA : Device
                 uint x = (use_offset % (80 * 2)) / 2;
 
                 // attribute, character
-                if ((x & 1) == 1)
-                {
-                    Log.DoLog($"MDA::WriteByte {x},{y} = {(char)value}");
+                Log.DoLog($"MDA::WriteByte {x},{y} = {(char)value}");
 
-                    Console.Write((char)27);  // position cursor
-                    Console.Write($"[{y + 1};{x + 1}H");
+                Console.Write((char)27);  // position cursor
+                Console.Write($"[{y + 1};{x + 1}H");
 
-                    Console.Write((char)value);
-                }
+                Console.Write((char)value);
             }
         }
     }
