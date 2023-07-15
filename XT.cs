@@ -1087,8 +1087,18 @@ internal class P8086
         // check for interrupt
         if (GetFlag(9) == true)
         {
+            int enabled_interrupts = _io.GetCachedValue(0x0021) ^ 255;  // the xor is because they're inverted in the register
+
             foreach (var pair in _scheduled_interrupts)
             {
+                // Log.DoLog($"Checking interrupt {pair.Key} ({pair.Value})");
+
+                if (pair.Key >= 8 && pair.Key < 16)
+                {
+                    if ((enabled_interrupts & (1 << (pair.Key - 8))) == 0)
+                        continue;
+                }
+
                 int new_count = _scheduled_interrupts[pair.Key] = pair.Value - 1;
 
                 if (new_count == 0)
@@ -1101,6 +1111,8 @@ internal class P8086
 
                     break;
                 }
+
+                Assert(new_count > 0);
             }
         }
 

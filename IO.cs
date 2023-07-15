@@ -752,6 +752,14 @@ class IO
         _fd = new(_i8237, _pic);
     }
 
+    public byte GetCachedValue(ushort addr)
+    {
+        if (_values.ContainsKey(addr))
+            return _values[addr];
+
+        return 0;
+    }
+
     public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
     {
         Log.DoLog($"IN: {addr:X4}");
