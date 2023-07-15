@@ -1,6 +1,7 @@
 internal struct Timer
 {
     public ushort counter_cur { get; set; }
+    public ushort counter_prv { get; set; }
     public ushort counter_ini { get; set; }
     public int    mode        { get; set; }
     public int    latch_type  { get; set; }
@@ -79,7 +80,14 @@ internal class i8253
         Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur}");
 #endif
 
-        return (byte)_timers[nr].counter_cur;
+        ushort current_prv = _timers[nr].counter_prv;
+
+        _timers[nr].counter_prv = _timers[nr].counter_cur;
+
+        if (Math.Abs(_timers[nr].counter_cur - current_prv) >= 2)
+            return (byte)(_random.Next(2) == 1 ? _timers[nr].counter_cur ^ 1 : _timers[nr].counter_cur);
+
+        return (byte)_timers[nr].counter_cur;  // TODO: latch_n
     }
 
     public void Command(byte v)
@@ -118,7 +126,7 @@ internal class i8253
 
         bool interrupt = false;
 
-        if (clock >= 4)
+        while (clock >= 4)
         {
             for(int i=0; i<3; i++)
             {
