@@ -6,7 +6,7 @@ class MDA : Device
     {
     }
 
-    public new void RegisterDevice(Dictionary <ushort, Device> mappings)
+    public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
         Log.DoLog("MDA::RegisterDevice");
 
@@ -14,35 +14,53 @@ class MDA : Device
             mappings[port] = this;
     }
 
-    public new bool HasAddress(uint addr)
+    public override bool HasAddress(uint addr)
     {
         return addr >= 0xb0000 && addr < 0xb8000;
     }
 
-    public new void IO_Write(ushort port, byte value)
+    public override void IO_Write(ushort port, byte value)
     {
-        Log.DoLog("MDA::IO_Write {port:X4} {value:X2}");
+        Log.DoLog($"MDA::IO_Write {port:X4} {value:X2}");
     }
 
-    public new byte IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
-        Log.DoLog("MDA::IO_Read {port:X4}");
+        Log.DoLog($"MDA::IO_Read {port:X4}");
 
         return 0;
     }
 
-    public new void WriteByte(uint offset, byte value)
+    public override void WriteByte(uint offset, byte value)
     {
-        Log.DoLog($"MDA::WriteByte({offset:X6}, {value:X2}");
+        Log.DoLog($"MDA::WriteByte({offset:X6}, {value:X2})");
 
         uint use_offset = (offset - 0xb0000) & 0x3fff;
 
         _ram[use_offset] = value;
 
-        Console.Write((char)value);
+        if (use_offset < 80 * 25 * 2)
+        {
+            if ((use_offset & 1) == 0)
+            {
+                uint y = use_offset / (80 * 2);
+                uint x = (use_offset % (80 * 2)) / 2;
+
+                // attribute, character
+                if ((x & 1) == 1)
+                {
+                    Log.DoLog($"MDA::WriteByte {x},{y} = {(char)value}");
+
+                    Console.Write((char)27);  // position cursor
+                    Console.Write($"[{y + 1};{x + 1}H");
+
+                    Console.Write((char)value);
+                }
+            }
+        }
     }
 
-    public new byte ReadByte(uint offset)
+    public override byte ReadByte(uint offset)
     {
         Log.DoLog($"MDA::ReadByte({offset:X6}");
 

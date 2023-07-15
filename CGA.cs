@@ -36,16 +36,17 @@ class CGA : Device
         Console.Write($"[2J");
     }
 
-    public new void RegisterDevice(Dictionary <ushort, Device> mappings)
+    public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
         Log.DoLog("CGA::RegisterDevice");
+
         mappings[0x3d4] = this;
         mappings[0x3d5] = this;
         mappings[0x3d6] = this;
         mappings[0x3d7] = this;
     }
 
-    public new bool HasAddress(uint addr)
+    public override bool HasAddress(uint addr)
     {
         if (addr >= 0xb8000 && addr < 0xc0000)
             return true;
@@ -53,9 +54,9 @@ class CGA : Device
         return false;
     }
 
-    public new void IO_Write(ushort port, byte value)
+    public override void IO_Write(ushort port, byte value)
     {
-        Log.DoLog("CGA::IO_Write {port:X4} {value:X2}");
+        Log.DoLog($"CGA::IO_Write {port:X4} {value:X2}");
 
         if (port == 0x3d4 || port == 0x3d6)
             _m6845_reg = value;
@@ -67,7 +68,7 @@ class CGA : Device
         }
     }
 
-    public new byte IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
         Log.DoLog("CGA::IO_Read");
 
@@ -77,7 +78,7 @@ class CGA : Device
         return 0xee;
     }
 
-    public new void WriteByte(uint offset, byte value)
+    public override void WriteByte(uint offset, byte value)
     {
         Log.DoLog($"CGA::WriteByte({offset:X6}, {value:X2}");
 
@@ -106,7 +107,7 @@ class CGA : Device
         }
     }
 
-    public new byte ReadByte(uint offset)
+    public override byte ReadByte(uint offset)
     {
         Log.DoLog($"CGA::ReadByte({offset:X6}");
 
