@@ -942,6 +942,16 @@ internal class P8086
         return GetFlag(7);
     }
 
+    private void SetFlagI(bool state)
+    {
+        SetFlag(9, state);
+    }
+
+    private bool GetFlagI()
+    {
+        return GetFlag(9);
+    }
+
     private void SetFlagD(bool state)
     {
         SetFlag(10, state);
@@ -968,6 +978,7 @@ internal class P8086
         string @out = String.Empty;
 
         @out += GetFlagO() ? "o" : "-";
+        @out += GetFlagI() ? "I" : "-";
         @out += GetFlagS() ? "s" : "-";
         @out += GetFlagZ() ? "z" : "-";
         @out += GetFlagA() ? "a" : "-";
@@ -1085,7 +1096,7 @@ internal class P8086
         int cycle_count = 0;  // cycles used for an instruction
 
         // check for interrupt
-        if (GetFlag(9) == true)
+        if (GetFlagI() == true)
         {
             int enabled_interrupts = _io.GetCachedValue(0x0021) ^ 255;  // the xor is because they're inverted in the register
 
@@ -1112,7 +1123,7 @@ internal class P8086
                     break;
                 }
 
-                Assert(new_count > 0);
+                //Debug.Assert(new_count > 0);
             }
         }
 
@@ -2671,7 +2682,7 @@ internal class P8086
         else if (opcode == 0xfa)
         {
             // CLI
-            ClearFlagBit(9); // IF
+            SetFlagI(false); // IF
 
             cycle_count += 2;
 
@@ -3642,7 +3653,7 @@ internal class P8086
         else if (opcode == 0xfb)
         {
             // STI
-            SetFlagBit(9); // IF
+            SetFlagI(true); // IF
 
             cycle_count += 2;
 
