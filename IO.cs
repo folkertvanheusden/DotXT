@@ -793,9 +793,9 @@ class IO
             byte switches = 0b00111100;  // 1 floppy, MDA, 640kB, nocopro/noloop
 
             if ((mode & 8) == 0)
-                return (byte)((switches & 0x0f) ^ 255);
+                return (byte)((switches & 0x0f) ^ 0x0f);
 
-            return (byte)((switches >> 4) ^ 255);
+            return (byte)((switches >> 4) ^ 0x0f);
         }
 
         if (addr == 0x0210)  // verify expansion bus data
