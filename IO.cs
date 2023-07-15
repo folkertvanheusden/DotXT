@@ -118,31 +118,34 @@ internal class i8253
 
         bool interrupt = false;
 
-        for(int i=0; i<3; i++)
+        if (clock >= 4)
         {
-            if (_timers[i].is_running == false)
-                continue;
-
-            _timers[i].counter_cur--;
-
-            if (_timers[i].counter_cur == 0)
+            for(int i=0; i<3; i++)
             {
-                // timer 1 is RAM refresh counter
-                if (i == 1)
-                    _i8237.TickChannel0();
+                if (_timers[i].is_running == false)
+                    continue;
 
-                _timers[i].counter_cur = _timers[i].counter_ini;
+                _timers[i].counter_cur--;
 
-                // mode 0 generates an interrupt
-                if (_timers[i].mode == 0)
-                    interrupt = true;
-            }   
+                if (_timers[i].counter_cur == 0)
+                {
+                    // timer 1 is RAM refresh counter
+                    if (i == 1)
+                        _i8237.TickChannel0();
+
+                    _timers[i].counter_cur = _timers[i].counter_ini;
+
+                    // mode 0 generates an interrupt
+                    if (_timers[i].mode == 0)
+                        interrupt = true;
+                }   
+            }
+
+            clock -= 4;
+
+            if (interrupt)
+                Log.DoLog($"i8253: interrupt");
         }
-
-        clock -= 4;
-
-        if (interrupt)
-            Log.DoLog($"i8253: interrupt");
 
         return interrupt;
     }
@@ -784,7 +787,6 @@ class IO
 
         if (addr == 0x0062)  // PPI (XT only)
         {
-            // note: the switch bits are inverted when read through the PPI
             byte mode = 0;
 
             if (_values.ContainsKey(0x61))
@@ -793,9 +795,9 @@ class IO
             byte switches = 0b00111100;  // 1 floppy, MDA, 640kB, nocopro/noloop
 
             if ((mode & 8) == 0)
-                return (byte)((switches & 0x0f) ^ 0x0f);
+                return (byte)(switches & 0x0f);
 
-            return (byte)((switches >> 4) ^ 0x0f);
+            return (byte)(switches >> 4);
         }
 
         if (addr == 0x0210)  // verify expansion bus data
@@ -807,9 +809,9 @@ class IO
         if (_io_map.ContainsKey(addr))
             return _io_map[addr].IO_Read(addr);
 
-//#if DEBUG
+#if DEBUG
         Log.DoLog($"IN: I/O port {addr:X4} not implemented");
-//#endif
+#endif
 
         if (_values.ContainsKey(addr))
             return _values[addr];
