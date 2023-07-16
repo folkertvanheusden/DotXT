@@ -2,6 +2,7 @@ class Log
 {
     private static string logfile = "logfile.txt";
     private static bool echo = false;
+    private static int nr = 0;
 
     public static void SetLogFile(string file)
     {
@@ -15,7 +16,9 @@ class Log
 
     public static void DoLog(string what)
     {
-        File.AppendAllText(logfile, what + Environment.NewLine);
+        File.AppendAllText(logfile, $"[{nr}] " + what + Environment.NewLine);
+
+        nr++;
 
         if (echo)
             Console.WriteLine(what);

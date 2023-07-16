@@ -1,3 +1,9 @@
+internal class PendingInterrupt
+{
+    public bool pending { get; set; }
+    public int  int_vec { get; set; }
+}
+
 internal struct Timer
 {
     public ushort counter_cur { get; set; }
@@ -10,9 +16,10 @@ internal struct Timer
     public bool   is_running  { get; set; }
 }
 
-internal class i8253
+internal class i8253 : Device
 {
     Timer [] _timers = new Timer[3];
+    PendingInterrupt [] _pi = new PendingInterrupt[3];
     i8237 _i8237 = null;
     int clock = 0;
 
@@ -24,7 +31,87 @@ internal class i8253
     public i8253()
     {
         for(int i=0; i<_timers.Length; i++)
+        {
             _timers[i] = new Timer();
+
+            _pi[i] = new PendingInterrupt();
+            _pi[i].int_vec = 8;
+        }
+    }
+
+    public override String GetName()
+    {
+        return "i8253";
+    }
+
+    public override void RegisterDevice(Dictionary <ushort, Device> mappings)
+    {
+        mappings[0x0040] = this;
+        mappings[0x0041] = this;
+        mappings[0x0042] = this;
+        mappings[0x0043] = this;
+    }
+
+    public override List<PendingInterrupt> GetPendingInterrupts()
+    {
+        List<PendingInterrupt> rc = new();
+
+        for(int i=0; i<_timers.Length; i++)
+        {
+            if (_pi[i].pending)
+                rc.Add(_pi[i]);
+        }
+
+        if (rc.Count > 0)
+            return rc;
+
+        return null;
+    }
+
+    public override (byte, bool) IO_Read(ushort port)
+    {
+        if (port == 0x0040)
+            return (GetCounter(0), _pi[0].pending);
+
+        if (port == 0x0041)
+            return (GetCounter(1), _pi[1].pending);
+
+        if (port == 0x0042)
+            return (GetCounter(2), _pi[2].pending);
+
+        return (0xaa, false);
+    }
+
+    public override bool IO_Write(ushort port, byte value)
+    {
+        if (port == 0x0040)
+            LatchCounter(0, value);
+        else if (port == 0x0041)
+            LatchCounter(1, value);
+        else if (port == 0x0042)
+            LatchCounter(2, value);
+        else if (port == 0x0043)
+            Command(value);
+
+        return _pi[0].pending || _pi[1].pending || _pi[2].pending;
+    }
+
+    public override void SyncClock(int clock)
+    {
+    }
+
+    public override bool HasAddress(uint addr)
+    {
+        return false;
+    }
+
+    public override void WriteByte(uint offset, byte value)
+    {
+    }
+
+    public override byte ReadByte(uint offset)
+    {
+        return 0xee;
     }
 
     public void SetDma(i8237 dma_instance)
@@ -32,7 +119,7 @@ internal class i8253
         _i8237 = dma_instance;
     }
 
-    public void LatchCounter(int nr, byte v)
+    private void LatchCounter(int nr, byte v)
     {
 #if DEBUG
         Log.DoLog($"OUT 8253: latch_counter {nr} to {v} (type {_timers[nr].latch_type}, {_timers[nr].latch_n_cur} out of {_timers[nr].latch_n})");
@@ -45,18 +132,18 @@ internal class i8253
                 _timers[nr].counter_ini &= 0xff00;
                 _timers[nr].counter_ini |= v;
             }
-            else if (_timers[nr].latch_n_cur == 1 && _timers[nr].latch_type == 3)
+            else if (_timers[nr].latch_n_cur == 1)
             {
-                _timers[nr].counter_ini &= 0x00ff;
-                _timers[nr].counter_ini |= (ushort)(v << 8);
-            }
-            else if (_timers[nr].latch_type == 1)
-            {
-                _timers[nr].counter_ini = v;
-            }
-            else if (_timers[nr].latch_type == 2)
-            {
-                _timers[nr].counter_ini = (ushort)(v << 8);
+                if (_timers[nr].latch_type == 1 || _timers[nr].latch_type == 3)
+                {
+                    _timers[nr].counter_ini &= 0x00ff;
+                    _timers[nr].counter_ini |= (ushort)(v << 8);
+                }
+                else
+                {
+                    _timers[nr].counter_ini &= 0xff00;
+                    _timers[nr].counter_ini |= v;
+                }
             }
 
             _timers[nr].latch_n_cur--;
@@ -70,11 +157,13 @@ internal class i8253
                 _timers[nr].counter_cur = _timers[nr].counter_ini;
 
                 _timers[nr].is_running = true;
+
+                _pi[nr].pending = false;
             }
         }
     }
 
-    public byte GetCounter(int nr)
+    private byte GetCounter(int nr)
     {
 #if DEBUG
         Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur}");
@@ -90,19 +179,18 @@ internal class i8253
         return (byte)_timers[nr].counter_cur;  // TODO: latch_n
     }
 
-    public void Command(byte v)
+    private void Command(byte v)
     {
         int nr    = v >> 6;
         int latch = (v >> 4) & 3;
         int mode  = (v >> 1) & 7;
         int type  = v & 1;
 
-#if DEBUG
-        Log.DoLog($"OUT 8253: command counter {nr}, latch {latch}, mode {mode}, type {type}");
-#endif
-
         if (latch != 0)
         {
+#if DEBUG
+            Log.DoLog($"OUT 8253: command counter {nr}, latch {latch}, mode {mode}, type {type}");
+#endif
             _timers[nr].mode       = mode;
             _timers[nr].latch_type = latch;
             _timers[nr].is_running = false;
@@ -116,9 +204,15 @@ internal class i8253
 
             _timers[nr].latch_n_cur = _timers[nr].latch_n;
         }
+        else
+        {
+#if DEBUG
+            Log.DoLog($"OUT 8253: query counter {nr} (reset value: {_timers[nr].counter_ini}, current value: {_timers[nr].counter_cur})");
+#endif
+        }
     }
 
-    public bool Tick(int ticks)
+    public override bool Tick(int ticks)
     {
         clock += ticks;
 
@@ -148,9 +242,11 @@ internal class i8253
                     // mode 0 generates an interrupt
                     if (_timers[i].mode == 0)
                     {
+                        _pi[i].pending = true;
+
                         interrupt = true;
 #if DEBUG
-                        Log.DoLog($"i8253: interrupt for timer {i} fires");
+                        Log.DoLog($"i8253: interrupt for timer {i} fires ({_timers[i].counter_ini})");
 #endif
                     }
                 }   
@@ -182,7 +278,7 @@ internal class pic8259
     {
     }
 
-    public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
+    public (byte, bool) In(ushort addr)
     {
         if (_is_ocw)
         {
@@ -191,17 +287,17 @@ internal class pic8259
             if (_ocw_nr == 0)
             {
                 _ocw_nr++;
-                return _OCW1;
+                return (_OCW1, false);
             }
             else if (_ocw_nr == 1)
             {
                 _ocw_nr++;
-                return _OCW2;
+                return (_OCW2, false);
             }
             else if (_ocw_nr == 2)
             {
                 _ocw_nr++;
-                return _OCW3;
+                return (_OCW3, false);
             }
             else
             {
@@ -210,15 +306,17 @@ internal class pic8259
             }
         }
 
-        return register_cache[addr];
+        return (register_cache[addr], false);
     }
 
-    public void Tick(Dictionary <int, int> scheduled_interrupts)
+    public void Tick()
     {
     }
 
-    public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
+    public bool Out(ushort addr, byte value)
     {
+        bool rc = false;
+
         Log.DoLog($"8259 OUT port {addr} value {value:X2}");
 
         register_cache[addr] = value;
@@ -290,6 +388,8 @@ internal class pic8259
         {
             Log.DoLog($"8259 OUT has no port {addr:X2}");
         }
+
+        return rc;
     }
 
     public int get_interrupt_offset()
@@ -385,8 +485,9 @@ internal class i8237
         _b = b;
     }
 
-    public void Tick(int ticks)
+    public bool Tick(int ticks)
     {
+        return false;
     }
 
     public void TickChannel0()
@@ -401,7 +502,7 @@ internal class i8237
         _channel_word_count[0].SetValue((ushort)(_channel_word_count[0].GetValue() - 1));
     }
 
-    public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
+    public (byte, bool) In(ushort addr)
     {
         string prefix = $"8237_IN: {addr:X4}";
 
@@ -439,7 +540,7 @@ internal class i8237
             Log.DoLog($"{prefix} ?");
         }
 
-        return v;
+        return (v, false);
     }
 
     void reset_masks(bool state)
@@ -448,7 +549,7 @@ internal class i8237
             _channel_mask[i] = state;
     }
 
-    public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
+    public bool Out(ushort addr, byte value)
     {
         Log.DoLog($"8237_OUT: {addr:X4} {value:X2}");
 
@@ -507,6 +608,8 @@ internal class i8237
         {
             _channel_page[3] = (byte)(value & 0x0f);
         }
+
+        return false;
     }
 
     // used by devices, e.g. floppy
@@ -554,194 +657,31 @@ class FloppyDisk
         _pic = pic;
     }
 
-    public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
+    public (byte, bool) In(ushort addr)
     {
         Log.DoLog($"Floppy-IN {addr:X4}");
 
         if (addr == 0x3f4)
-            return 128;
+            return (128, false);
 
-        return 0x00;
+        return (0x00, false);
     }
 
-    public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
+    public bool Out(ushort addr, byte value)
     {
         Log.DoLog($"Floppy-OUT {addr:X4} {value:X2}");
 
-        if (addr == 0x3f2)
-            scheduled_interrupts[_pic.get_interrupt_offset() + 6] = 10;  // FDC enable (controller reset) (IRQ 6)
-    }
-}
+//FIXME        if (addr == 0x3f2)
+//FIXME            scheduled_interrupts[_pic.get_interrupt_offset() + 6] = 10;  // FDC enable (controller reset) (IRQ 6)
 
-class Terminal
-{
-    private byte [,,] _chars = new byte[8, 25, 80];
-    private byte [,,] _meta = new byte[8, 25, 80];
-    private int _page = 0;
-    private int _x = 0;
-    private int _y = 0;
-
-    public Terminal()
-    {
-    //    TerminalClear();
-    }
-
-    private void TerminalClear()
-    {
-        Console.Write((char)27);  // clear screen
-        Console.Write($"[2J");
-    }
-
-    private void Redraw()
-    {
-        TerminalClear();
-
-        for(int y=0; y<25; y++)
-        {
-            for(int x=0; x<80; x++)
-                DrawChar(x, y);
-        }
-    }
-
-    public void Clear()
-    {
-        for(int y=0; y<25; y++)
-        {
-            for(int x=0; x<80; x++)
-            {
-                _chars[_page, y, x] = 0;
-                _meta[_page, y, x] = 0;
-            }
-        }
-
-        Redraw();
-    }
-
-    public void SetPage(int page)
-    {
-        _page = page;
-
-        Redraw();
-    }
-
-    private void DrawChar(int x, int y)
-    {
-        Console.Write((char)27);  // position cursor
-        Console.Write($"[{y + 1};{x + 1}H");
-
-        byte m = _meta[_page, y, x];
-        int bg_col = m >> 4;
-        int fg_col = m & 15;
-
-        if (fg_col >= 8)
-        {
-            Console.Write((char)27);  // set to increased intensity
-            Console.Write($"[1m");
-        }
-        else
-        {
-            Console.Write((char)27);  // set to normal
-            Console.Write($"[22m");
-        }
-
-        Console.Write((char)27);  // set color
-        Console.Write($"[{30 + (fg_col & 7)};{40 + (bg_col & 7)}m");
-
-        char c = (char)_chars[_page, y, x];
-
-        if (c == 0x00)
-            c = ' ';
-
-        Console.Write(c);  // emit character
-    }
-
-    public (int, int) GetXY()
-    {
-        return (_x, _y);
-    }
-
-    public int GetX()
-    {
-        return _x;
-    }
-
-    public int GetY()
-    {
-        return _y;
-    }
-
-    public void SetXY(int x, int y)
-    {
-        if (x < 80)
-            _x = x;
-
-        if (y < 25)
-            _y = y;
-    }
-
-    public (int, int) GetText(int x, int y)
-    {
-        return (_meta[_page, y, x], _chars[_page, y, x]);
-    }
-
-    public void PutText(byte m, byte c)
-    {
-        if (c == 13)
-            _x = 0;
-        else if (c == 10)
-            _y++;
-        else
-        {
-            _chars[_page, _y, _x] = c;
-            _meta[_page, _y, _x] = m;
-
-            DrawChar(_x, _y);
-
-            _x++;
-        }
-
-        if (_x == 80)
-        {
-            _x = 0;
-
-            _y++;
-        }
-
-        if (_y == 25)
-        {
-            // move
-            for(int y=1; y<25; y++)
-            {
-                for(int x=0; x<80; x++)
-                {
-                    _chars[_page, y - 1, x] = _chars[_page, y, x];
-                    _meta[_page, y - 1, x] = _meta[_page, y, x];
-
-                    DrawChar(x, y - 1);
-                }
-            }
-
-            // clear last line
-            for(int x=0; x<80; x++)
-            {
-                _chars[_page, 24, x] = 0;
-                _meta[_page, 24, x] = 0;
-
-                DrawChar(x, 24);
-            }
-
-            _y = 24;
-        }
+        return false;  // FIXME
     }
 }
 
 class IO
 {
-    private i8253 _i8253 = new();
     private pic8259 _pic = new();
     private i8237 _i8237;
-
-    private Terminal _t = new();
 
     private Bus _b;
 
@@ -759,13 +699,17 @@ class IO
     {
         _b = b;
 
+        _i8237 = new(_b);
+
         foreach(var device in devices)
+        {
             device.RegisterDevice(_io_map);
 
-        _devices = devices;
+            if (device is i8253)
+                ((i8253)device).SetDma(_i8237);
+        }
 
-        _i8237 = new(_b);
-        _i8253.SetDma(_i8237);
+        _devices = devices;
 
         _fd = new(_i8237, _pic);
     }
@@ -778,7 +722,7 @@ class IO
         return 0;
     }
 
-    public byte In(Dictionary <int, int> scheduled_interrupts, ushort addr)
+    public (byte, bool) In(ushort addr)
     {
         Log.DoLog($"IN: {addr:X4}");
 
@@ -786,25 +730,16 @@ class IO
             device.SyncClock(_clock);
 
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2)
-            return _i8237.In(scheduled_interrupts, addr);
+            return _i8237.In(addr);
 
         if (addr == 0x0008)  // DMA status register
-            return 0x0f;  // 'transfer complete'
+            return (0x0f, false);  // 'transfer complete'
 
         if (addr == 0x0020 || addr == 0x0021)  // PIC
-            return _pic.In(scheduled_interrupts, (ushort)(addr - 0x0020));
-
-        if (addr == 0x0040)
-            return _i8253.GetCounter(0);
-
-        if (addr == 0x0041)
-            return _i8253.GetCounter(1);
-
-        if (addr == 0x0042)
-            return _i8253.GetCounter(2);
+            return _pic.In((ushort)(addr - 0x0020));
 
         if (addr == 0x0061)  // "system control port for compatibility with 8255"
-            return 0;
+            return (0, false);
 
         if (addr == 0x0062)  // PPI (XT only)
         {
@@ -816,16 +751,16 @@ class IO
             byte switches = 0b00111100;  // 1 floppy, MDA, 640kB, nocopro/noloop
 
             if ((mode & 8) == 0)
-                return (byte)(switches & 0x0f);
+                return ((byte)(switches & 0x0f), false);
 
-            return (byte)(switches >> 4);
+            return ((byte)(switches >> 4), false);
         }
 
         if (addr == 0x0210)  // verify expansion bus data
-            return 0xa5;
+            return (0xa5, false);
 
         if (addr >= 0x03f0 && addr <= 0x3f7)
-            return _fd.In(scheduled_interrupts, addr);
+            return _fd.In(addr);
 
         if (_io_map.ContainsKey(addr))
             return _io_map[addr].IO_Read(addr);
@@ -835,44 +770,36 @@ class IO
 #endif
 
         if (_values.ContainsKey(addr))
-            return _values[addr];
+            return (_values[addr], false);
 
-        return 0;
+        return (0, false);
     }
 
-    public void Tick(Dictionary <int, int> scheduled_interrupts, int ticks, int clock)
+    public bool Tick(int ticks, int clock)
     {
-        if (_i8253.Tick(ticks))
-            scheduled_interrupts[_pic.get_interrupt_offset() + 0] = 2;
+        bool rc = false;
+
+        foreach(var device in _devices)
+            rc |= device.Tick(ticks);
 
         _i8237.Tick(ticks);
 
         _clock = clock;
+
+        return rc;
     }
 
-    public void Out(Dictionary <int, int> scheduled_interrupts, ushort addr, byte value)
+    public bool Out(ushort addr, byte value)
     {
         Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})");
 
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2) // 8237
-            _i8237.Out(scheduled_interrupts, addr, value);
+            return _i8237.Out(addr, value);
 
-        else if (addr == 0x0020 || addr == 0x0021)  // PIC
-            _pic.Out(scheduled_interrupts, (ushort)(addr - 0x0020), value);
+        if (addr == 0x0020 || addr == 0x0021)  // PIC
+            return _pic.Out((ushort)(addr - 0x0020), value);
 
-        else if (addr == 0x0040)
-            _i8253.LatchCounter(0, value);
-
-        else if (addr == 0x0041)
-            _i8253.LatchCounter(1, value);
-
-        else if (addr == 0x0042)
-            _i8253.LatchCounter(2, value);
-
-        else if (addr == 0x0043)
-            _i8253.Command(value);
-
-        else if (addr == 0x0080)
+        if (addr == 0x0080)
             Console.WriteLine($"Manufacturer systems checkpoint {value:X2}");
 
         else if (addr == 0x0080)
@@ -882,8 +809,8 @@ class IO
         {
             int harddisk_interrupt_nr = _pic.get_interrupt_offset() + 14;
 
-            if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
-                scheduled_interrupts[harddisk_interrupt_nr] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
+//FIXME            if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
+//FIXME                scheduled_interrupts[harddisk_interrupt_nr] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
 
 #if DEBUG
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) generate controller select pulse");
@@ -891,16 +818,12 @@ class IO
         }
 
         else if (addr >= 0x03f0 && addr <= 0x3f7)
-            _fd.Out(scheduled_interrupts, addr, value);
+            _fd.Out(addr, value);
 
         else
         {
             if (_io_map.ContainsKey(addr))
-            {
-                _io_map[addr].IO_Write(addr, value);
-
-                return;
-            }
+                return _io_map[addr].IO_Write(addr, value);
 
 //#if DEBUG
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
@@ -908,5 +831,7 @@ class IO
         }
 
         _values[addr] = value;
+
+        return false;
     }
 }

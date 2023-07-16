@@ -69,13 +69,16 @@ if (test == "")
 Console.WriteLine("Debug mode");
 #endif
 
-CGA cga = new CGA();
+CGA cga = new();
 
-MDA mda = new MDA();
+MDA mda = new();
+
+i8253 _i8253 = new();
 
 List<Device> devices = new();
 devices.Add(cga);
 devices.Add(mda);
+devices.Add(_i8253);
 
 uint ram_size = 64 * 1024;  // if 64, then tweak i/o register 63
 if (test != "")

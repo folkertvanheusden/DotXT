@@ -9,9 +9,19 @@ class MDA : Device
     {
     }
 
+    public override String GetName()
+    {
+        return "MDA";
+    }
+
     public override void SyncClock(int clock)
     {
         _clock = clock;
+    }
+
+    public override List<PendingInterrupt> GetPendingInterrupts()
+    {
+        return null;
     }
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
@@ -27,12 +37,14 @@ class MDA : Device
         return addr >= 0xb0000 && addr < 0xb8000;
     }
 
-    public override void IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, byte value)
     {
         Log.DoLog($"MDA::IO_Write {port:X4} {value:X2}");
+
+        return false;
     }
 
-    public override byte IO_Read(ushort port)
+    public override (byte, bool) IO_Read(ushort port)
     {
         Log.DoLog($"MDA::IO_Read {port:X4}");
 
@@ -44,10 +56,10 @@ class MDA : Device
             bool hsync = Math.Abs(_clock - _last_hsync) >= (14318180 / 18432 / 50);
             _last_hsync = _clock;
 
-            return (byte)(hsync ? 1 : 0);
+            return ((byte)(hsync ? 1 : 0), false);
         }
 
-        return 0;
+        return (0, false);
     }
 
     public override void WriteByte(uint offset, byte value)
@@ -81,5 +93,10 @@ class MDA : Device
         Log.DoLog($"MDA::ReadByte({offset:X6}");
 
         return _ram[(offset - 0xb0000) & 0x3fff];
+    }
+
+    public override bool Tick(int cycles)
+    {
+        return false;
     }
 }

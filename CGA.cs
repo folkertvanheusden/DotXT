@@ -31,6 +31,11 @@ class CGA : Device
         TerminalClear();
     }
 
+    public override String GetName()
+    {
+        return "CGA";
+    }
+
     private void TerminalClear()
     {
         Console.Write((char)27);  // clear screen
@@ -40,6 +45,11 @@ class CGA : Device
     public override void SyncClock(int clock)
     {
         _clock = clock;
+    }
+
+    public override List<PendingInterrupt> GetPendingInterrupts()
+    {
+        return null;
     }
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
@@ -60,7 +70,7 @@ class CGA : Device
         return false;
     }
 
-    public override void IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, byte value)
     {
         Log.DoLog($"CGA::IO_Write {port:X4} {value:X2}");
 
@@ -72,16 +82,18 @@ class CGA : Device
 
             _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
         }
+
+        return false;
     }
 
-    public override byte IO_Read(ushort port)
+    public override (byte, bool) IO_Read(ushort port)
     {
         Log.DoLog("CGA::IO_Read");
 
         if ((port == 0x3d5 || port == 0x3d7) && _m6845_reg >= 0x0c)
-            return _m6845.Read(_m6845_reg);
+            return (_m6845.Read(_m6845_reg), false);
 
-        return 0xee;
+        return (0xee, false);
     }
 
     public override void WriteByte(uint offset, byte value)
@@ -115,5 +127,10 @@ class CGA : Device
         Log.DoLog($"CGA::ReadByte({offset:X6}");
 
         return _ram[(offset - 0xb8000) & 0x3fff];
+    }
+
+    public override bool Tick(int cycles)
+    {
+        return false;
     }
 }

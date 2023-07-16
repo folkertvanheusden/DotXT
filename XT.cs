@@ -40,7 +40,12 @@ internal class P8086
 
     private readonly IO _io;
 
-    private Dictionary<int, int> _scheduled_interrupts = new Dictionary<int, int>();
+    // TODO: make it into a Device, tick_count so that the Device tells which source
+    // triggerd the timer so that it can be reset. dus; tick_count = 0, vraag device
+    // of die int nog gezet is: device heeft een vlag per source (bijv. timer x van
+    // de 8255) die gezet wordt, bij een reconfigure van die 8255-timer wordt dan
+    // die vlag gereset
+    private bool _scheduled_interrupts = false;
 
     private bool _rep;
     private RepMode _rep_mode;
@@ -59,9 +64,13 @@ internal class P8086
 
     private int clock;
 
+    private List<Device> _devices;
+
     public P8086(ref Bus b, string test, bool is_floppy, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, ref List<Device> devices)
     {
         _b = b;
+
+        _devices = devices;
 
         _io = new IO(b, ref devices);
 
@@ -240,7 +249,7 @@ internal class P8086
                 SetFlagC(false);
                 _ah = 0x00;  // no error
 
-                _scheduled_interrupts[0x0e] = 50;
+//FIXME                _scheduled_interrupts[0x0e] = 50;
 
                 return true;
             }
@@ -1098,35 +1107,51 @@ internal class P8086
         int cycle_count = 0;  // cycles used for an instruction
 
         // check for interrupt
-        if (GetFlagI() == true)
+        if (GetFlagI() == true && _scheduled_interrupts)
         {
+            Log.DoLog("Scanning for interrupts");
+
             int enabled_interrupts = _io.GetCachedValue(0x0021) ^ 255;  // the xor is because they're inverted in the register
 
-            foreach (var pair in _scheduled_interrupts)
+            bool processed_any = false;
+
+            foreach (var device in _devices)
             {
-                // Log.DoLog($"Checking interrupt {pair.Key} ({pair.Value})");
+                List<PendingInterrupt> interrupts = device.GetPendingInterrupts();
 
-                if (pair.Key >= 8 && pair.Key < 16)
+                if (interrupts == null)
+                    continue;
+
+                Log.DoLog($"{device.GetName()} has {interrupts.Count} pending interrupts");
+
+                foreach (var interrupt in interrupts)
                 {
-                    if ((enabled_interrupts & (1 << (pair.Key - 8))) == 0)
+                    if (interrupt.pending == false)
+                    {
+                        Log.DoLog("Interrupt was cleared");
                         continue;
-                }
+                    }
 
-                int new_count = _scheduled_interrupts[pair.Key] = pair.Value - 1;
+                    if (interrupt.int_vec >= 8 && interrupt.int_vec < 16)
+                    {
+                        if ((enabled_interrupts & (1 << (interrupt.int_vec - 8))) == 0)
+                            continue;
+                    }
 
-                if (new_count == 0)
-                {
-                    InvokeInterrupt(_ip, pair.Key);
+                    InvokeInterrupt(_ip, interrupt.int_vec);
 
-                    _scheduled_interrupts.Remove(pair.Key);
+                    interrupt.pending = false;
 
-                    cycle_count += 4;  // TODO: guess (1 bus cycle)
+                    processed_any = true;
+
+                    cycle_count += 60;
 
                     break;
                 }
-
-                //Debug.Assert(new_count > 0);
             }
+
+            if (processed_any == false)
+                _scheduled_interrupts = false;
         }
 
 #if DEBUG
@@ -3531,7 +3556,9 @@ internal class P8086
             // IN AL,ib
             byte @from = GetPcByte();
 
-            _al = _io.In(_scheduled_interrupts, @from);
+            (_al, bool i) = _io.In(@from);
+
+            _scheduled_interrupts |= i;
 
             cycle_count += 10;  // or 14
 
@@ -3544,7 +3571,11 @@ internal class P8086
             // IN AX,ib
             byte @from = GetPcByte();
 
-            SetAX(_io.In(_scheduled_interrupts, @from));
+            (ushort val, bool i) = _io.In(@from);
+
+            SetAX(val);
+
+            _scheduled_interrupts |= i;
 
             cycle_count += 10;  // or 14
 
@@ -3557,7 +3588,7 @@ internal class P8086
             // OUT
             byte to = GetPcByte();
 
-            _io.Out(_scheduled_interrupts, @to, _al);
+            _scheduled_interrupts |= _io.Out(@to, _al);
 
             cycle_count += 10;  // max 14
 
@@ -3568,7 +3599,9 @@ internal class P8086
         else if (opcode == 0xec)
         {
             // IN AL,DX
-            _al = _io.In(_scheduled_interrupts, GetDX());
+            (_al, bool i) = _io.In(GetDX());
+
+            _scheduled_interrupts |= i;
 
             cycle_count += 8;  // or 12
 
@@ -3579,7 +3612,7 @@ internal class P8086
         else if (opcode == 0xee)
         {
             // OUT
-            _io.Out(_scheduled_interrupts, GetDX(), _al);
+            _scheduled_interrupts |= _io.Out(GetDX(), _al);
 
             cycle_count += 8;  // or 12
 
@@ -3873,7 +3906,7 @@ internal class P8086
             cycle_count = 1;  // TODO workaround
 
         // tick I/O
-        _io.Tick(_scheduled_interrupts, cycle_count, clock);
+        _scheduled_interrupts |= _io.Tick(cycle_count, clock);
 
         clock += cycle_count;
 
