@@ -130,10 +130,10 @@ class Keyboard : Device
 
             _keyboard_buffer_lock.WaitOne();
 
-            scan_code = 0;
-
-            if (_keyboard_buffer.Count > 0)
+            if (_keyboard_buffer.Count > 0 && scan_code == 0)
                 scan_code = (byte)_keyboard_buffer.Dequeue();
+            else
+                scan_code = 0;
 
             _keyboard_buffer_lock.ReleaseMutex();
 
