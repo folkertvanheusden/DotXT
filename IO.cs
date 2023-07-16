@@ -147,16 +147,16 @@ internal class i8253
 
                     // mode 0 generates an interrupt
                     if (_timers[i].mode == 0)
+                    {
                         interrupt = true;
+#if DEBUG
+                        Log.DoLog($"i8253: interrupt for timer {i} fires");
+#endif
+                    }
                 }   
             }
 
             clock -= 4;
-
-#if DEBUG
-            if (interrupt)
-                Log.DoLog($"i8253: interrupt");
-#endif
         }
 
         return interrupt;
