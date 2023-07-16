@@ -60,3 +60,8 @@ bochs 'romimage: file=ru/jmpmov.bin'
 	also the count element is 16 bit, lsb mode doesn't change that 
 	so if you set a reload value of 0 it will tick over to 65535
 
+
+91d5f6d8d3903bf64d24368358d8248e501ca75c fails at E37C (check if timer goes too slow)
+when re-setting timer, clear pending interrupts, but only for the timer that gets reset
+
+9b09458f5ebfee987be906750a02fd2d07e925ed fails at E4DF

@@ -80,7 +80,8 @@ devices.Add(cga);
 devices.Add(mda);
 devices.Add(_i8253);
 
-uint ram_size = 64 * 1024;  // if 64, then tweak i/o register 63
+uint ram_size = 256 * 1024;
+
 if (test != "")
     ram_size = 1024 * 1024;
 
