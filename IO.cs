@@ -122,7 +122,7 @@ internal class i8253 : Device
     private void LatchCounter(int nr, byte v)
     {
 #if DEBUG
-        Log.DoLog($"OUT 8253: latch_counter {nr} to {v} (type {_timers[nr].latch_type}, {_timers[nr].latch_n_cur} out of {_timers[nr].latch_n})");
+        Log.DoLog($"OUT 8253: timer {nr} to {v} (type {_timers[nr].latch_type}, {_timers[nr].latch_n_cur} out of {_timers[nr].latch_n})");
 #endif
 
         if (_timers[nr].latch_n_cur > 0)
@@ -150,7 +150,7 @@ internal class i8253 : Device
 
             if (_timers[nr].latch_n_cur == 0)
             {
-                Log.DoLog($"OUT 8253: counter {nr} started (count start: {_timers[nr].counter_ini})");
+                Log.DoLog($"OUT 8253: timer {nr} started (count start: {_timers[nr].counter_ini})");
 
                 _timers[nr].latch_n_cur = _timers[nr].latch_n;  // restart setup
 
@@ -189,7 +189,7 @@ internal class i8253 : Device
         if (latch != 0)
         {
 #if DEBUG
-            Log.DoLog($"OUT 8253: command counter {nr}, latch {latch}, mode {mode}, type {type}");
+            Log.DoLog($"OUT 8253: command timer {nr}, latch {latch}, mode {mode}, type {type}");
 #endif
             _timers[nr].mode       = mode;
             _timers[nr].latch_type = latch;
@@ -207,7 +207,7 @@ internal class i8253 : Device
         else
         {
 #if DEBUG
-            Log.DoLog($"OUT 8253: query counter {nr} (reset value: {_timers[nr].counter_ini}, current value: {_timers[nr].counter_cur})");
+            Log.DoLog($"OUT 8253: query timer {nr} (reset value: {_timers[nr].counter_ini}, current value: {_timers[nr].counter_cur})");
 #endif
         }
     }
@@ -217,7 +217,7 @@ internal class i8253 : Device
         clock += ticks;
 
 #if DEBUG
-        Log.DoLog($"i8253: {clock} cycles, {ticks} added");
+//        Log.DoLog($"i8253: {clock} cycles, {ticks} added");
 #endif
 
         bool interrupt = false;
@@ -231,6 +231,8 @@ internal class i8253 : Device
 
                 _timers[i].counter_cur--;
 
+                Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}");
+
                 if (_timers[i].counter_cur == 0)
                 {
                     // timer 1 is RAM refresh counter
@@ -240,7 +242,7 @@ internal class i8253 : Device
                     _timers[i].counter_cur = _timers[i].counter_ini;
 
                     // mode 0 generates an interrupt
-                    if (_timers[i].mode == 0)
+                    if (_timers[i].mode == 0 || _timers[i].mode == 3)
                     {
                         _pi[i].pending = true;
 
