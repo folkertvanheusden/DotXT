@@ -231,7 +231,9 @@ internal class i8253 : Device
 
                 _timers[i].counter_cur--;
 
+#if DEBUG
                 Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}");
+#endif
 
                 if (_timers[i].counter_cur == 0)
                 {
