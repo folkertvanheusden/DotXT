@@ -1111,7 +1111,7 @@ internal class P8086
         {
             Log.DoLog("Scanning for interrupts");
 
-            int enabled_interrupts = _io.GetCachedValue(0x0021) ^ 255;  // the xor is because they're inverted in the register
+            int enabled_interrupts = _io.GetInterruptMask();
 
             bool processed_any = false;
 
@@ -1132,10 +1132,15 @@ internal class P8086
                         continue;
                     }
 
+                    Log.DoLog($"{device.GetName()} triggers vector {interrupt.int_vec}, mask: {enabled_interrupts:X2}");
+
                     if (interrupt.int_vec >= 8 && interrupt.int_vec < 16)
                     {
-                        if ((enabled_interrupts & (1 << (interrupt.int_vec - 8))) == 0)
+                        if ((enabled_interrupts & (1 << (interrupt.int_vec - 8))) != 0)
+                        {
+                            Log.DoLog($"{device.GetName()} interrupt {interrupt.int_vec} masked off");
                             continue;
+                        }
                     }
 
                     InvokeInterrupt(_ip, interrupt.int_vec);

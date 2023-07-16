@@ -274,7 +274,7 @@ internal class pic8259
     int _int_offset = 8;
     byte _interrupt_mask = 0xff;
 
-    byte [] register_cache = new byte[2];
+    byte [] _register_cache = new byte[2];
 
     public pic8259()
     {
@@ -308,7 +308,7 @@ internal class pic8259
             }
         }
 
-        return (register_cache[addr], false);
+        return (_register_cache[addr], false);
     }
 
     public void Tick()
@@ -321,7 +321,7 @@ internal class pic8259
 
         Log.DoLog($"8259 OUT port {addr} value {value:X2}");
 
-        register_cache[addr] = value;
+        _register_cache[addr] = value;
 
         if (addr == 0)
         {
@@ -394,9 +394,14 @@ internal class pic8259
         return rc;
     }
 
-    public int get_interrupt_offset()
+    public int GetInterruptOffset()
     {
         return _int_offset;
+    }
+
+    public byte GetInterruptMask()
+    {
+        return _register_cache[1];
     }
 }
 
@@ -674,7 +679,7 @@ class FloppyDisk
         Log.DoLog($"Floppy-OUT {addr:X4} {value:X2}");
 
 //FIXME        if (addr == 0x3f2)
-//FIXME            scheduled_interrupts[_pic.get_interrupt_offset() + 6] = 10;  // FDC enable (controller reset) (IRQ 6)
+//FIXME            scheduled_interrupts[_pic.GetInterruptOffset() + 6] = 10;  // FDC enable (controller reset) (IRQ 6)
 
         return false;  // FIXME
     }
@@ -716,12 +721,9 @@ class IO
         _fd = new(_i8237, _pic);
     }
 
-    public byte GetCachedValue(ushort addr)
+    public byte GetInterruptMask()
     {
-        if (_values.ContainsKey(addr))
-            return _values[addr];
-
-        return 0;
+        return _pic.GetInterruptMask();
     }
 
     public (byte, bool) In(ushort addr)
@@ -809,7 +811,7 @@ class IO
 
         else if (addr == 0x0322)
         {
-            int harddisk_interrupt_nr = _pic.get_interrupt_offset() + 14;
+            int harddisk_interrupt_nr = _pic.GetInterruptOffset() + 14;
 
 //FIXME            if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
 //FIXME                scheduled_interrupts[harddisk_interrupt_nr] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
