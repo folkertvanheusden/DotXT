@@ -59,11 +59,25 @@ class Keyboard : Device
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
         mappings[0x60] = this;
+        mappings[0x61] = this;
         mappings[0x64] = this;
     }
 
     public override bool IO_Write(ushort port, byte value)
     {
+        if (port == 0x0061)
+        {
+            if ((value & 0x40) == 0x00)
+            {
+                _keyboard_buffer_lock.WaitOne();
+
+                _keyboard_buffer.Clear();
+                _keyboard_buffer.Enqueue(0xaa);
+
+                _keyboard_buffer_lock.ReleaseMutex();
+            }
+        }
+
         return false;
     }
 
@@ -75,7 +89,7 @@ class Keyboard : Device
 
             scan_code = 0;
 
-            Log.DoLog($"Keyboard: scan code {rc}");
+            Log.DoLog($"Keyboard: scan code {rc:X2}");
 
             return (rc, false);
         }

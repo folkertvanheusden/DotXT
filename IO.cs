@@ -733,9 +733,6 @@ class IO
         if (addr == 0x0020 || addr == 0x0021)  // PIC
             return _pic.In((ushort)(addr - 0x0020));
 
-        if (addr == 0x0061)  // "system control port for compatibility with 8255"
-            return (0, false);
-
         if (addr == 0x0062)  // PPI (XT only)
         {
             byte mode = 0;
