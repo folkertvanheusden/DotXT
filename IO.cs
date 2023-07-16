@@ -773,7 +773,7 @@ class IO
             if (_values.ContainsKey(0x61))
                  mode = _values[0x61];
 
-            byte switches = 0b00110000;  // 1 floppy, MDA, 256kB, nocopro/noloop
+            byte switches = 0b00110011;  // 1 floppy, MDA, 256kB, nocopro/noloop
 
             if ((mode & 8) == 0)
                 return ((byte)(switches & 0x0f), false);

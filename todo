@@ -65,3 +65,5 @@ bochs 'romimage: file=ru/jmpmov.bin'
 when re-setting timer, clear pending interrupts, but only for the timer that gets reset
 
 9b09458f5ebfee987be906750a02fd2d07e925ed fails at E4DF
+
+ae2d1c35c052e61f3b19d030cf5419f5780db9ad loops on post due to switch setting
