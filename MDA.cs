@@ -64,7 +64,7 @@ class MDA : Device
 
     public override (byte, bool) IO_Read(ushort port)
     {
-        Log.DoLog($"MDA::IO_Read {port:X4}");
+        byte rc = 0;
 
         if (port == 0x03ba)
         {
@@ -74,10 +74,12 @@ class MDA : Device
             bool hsync = Math.Abs(_clock - _last_hsync) >= (14318180 / 18432 / 50);
             _last_hsync = _clock;
 
-            return ((byte)(hsync ? 1 : 0), false);
+            rc = (byte)(hsync ? 9 : 8);
         }
 
-        return (0, false);
+        Log.DoLog($"MDA::IO_Read {port:X4}: {rc:X2}");
+
+        return (rc, false);
     }
 
     public override void WriteByte(uint offset, byte value)
