@@ -674,46 +674,12 @@ internal class i8237
     }
 }
 
-class FloppyDisk
-{
-    i8237 _dma_controller;
-    pic8259 _pic;
-
-    public FloppyDisk(i8237 dma_controller, pic8259 pic)
-    {
-        _dma_controller = dma_controller;
-        _pic = pic;
-    }
-
-    public (byte, bool) In(ushort addr)
-    {
-        Log.DoLog($"Floppy-IN {addr:X4}");
-
-        if (addr == 0x3f4)
-            return (128, false);
-
-        return (0x00, false);
-    }
-
-    public bool Out(ushort addr, byte value)
-    {
-        Log.DoLog($"Floppy-OUT {addr:X4} {value:X2}");
-
-//FIXME        if (addr == 0x3f2)
-//FIXME            scheduled_interrupts[_pic.GetInterruptOffset() + 6] = 10;  // FDC enable (controller reset) (IRQ 6)
-
-        return false;  // FIXME
-    }
-}
-
 class IO
 {
     private pic8259 _pic = new();
     private i8237 _i8237;
 
     private Bus _b;
-
-    private FloppyDisk _fd;
 
     private Dictionary <ushort, byte> _values = new Dictionary <ushort, byte>();
 
@@ -735,11 +701,15 @@ class IO
 
             if (device is i8253)
                 ((i8253)device).SetDma(_i8237);
+
+            if (device is FloppyDisk)
+            {
+                ((FloppyDisk)device).SetDma(_i8237);
+                ((FloppyDisk)device).SetPic(_pic);
+            }
         }
 
         _devices = devices;
-
-        _fd = new(_i8237, _pic);
     }
 
     public byte GetInterruptMask()
@@ -784,9 +754,6 @@ class IO
         if (addr == 0x0210)  // verify expansion bus data
             return (0xa5, false);
 
-        if (addr >= 0x03f0 && addr <= 0x3f7)
-            return _fd.In(addr);
-
         if (_io_map.ContainsKey(addr))
             return _io_map[addr].IO_Read(addr);
 
@@ -821,11 +788,8 @@ class IO
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2) // 8237
             return _i8237.Out(addr, value);
 
-        if (addr == 0x0020 || addr == 0x0021)  // PIC
+        else if (addr == 0x0020 || addr == 0x0021)  // PIC
             return _pic.Out((ushort)(addr - 0x0020), value);
-
-        if (addr == 0x0080)
-            Console.WriteLine($"Manufacturer systems checkpoint {value:X2}");
 
         else if (addr == 0x0080)
             Console.WriteLine($"Manufacturer systems checkpoint {value:X2}");
@@ -841,9 +805,6 @@ class IO
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) generate controller select pulse");
 #endif
         }
-
-        else if (addr >= 0x03f0 && addr <= 0x3f7)
-            _fd.Out(addr, value);
 
         else
         {

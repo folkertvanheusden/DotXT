@@ -69,16 +69,11 @@ if (test == "")
 Console.WriteLine("Debug mode");
 #endif
 
-CGA cga = new();
-
-MDA mda = new();
-
-i8253 _i8253 = new();
-
 List<Device> devices = new();
-devices.Add(cga);
-devices.Add(mda);
-devices.Add(_i8253);
+devices.Add(new MDA());
+devices.Add(new CGA());
+devices.Add(new i8253());
+devices.Add(new FloppyDisk());
 
 uint ram_size = 256 * 1024;
 
