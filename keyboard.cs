@@ -92,7 +92,7 @@ class Keyboard : Device
         }
         else if (port == 0x64)
         {
-            return ((byte)(irq ? 5 : 4), irq);
+            return ((byte)(irq ? 21 : 20), irq);
         }
 
         return (0xff, irq);
