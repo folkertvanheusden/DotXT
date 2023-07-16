@@ -74,6 +74,7 @@ devices.Add(new MDA());
 devices.Add(new CGA());
 devices.Add(new i8253());
 devices.Add(new FloppyDisk());
+devices.Add(new Keyboard());
 
 uint ram_size = 256 * 1024;
 
