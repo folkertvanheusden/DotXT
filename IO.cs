@@ -159,7 +159,9 @@ internal class i8253 : Device
 
             if (_timers[nr].latch_n_cur == 0)
             {
+#if DEBUG
                 Log.DoLog($"OUT 8253: timer {nr} started (count start: {_timers[nr].counter_ini})");
+#endif
 
                 _timers[nr].latch_n_cur = _timers[nr].latch_n;  // restart setup
 
@@ -241,19 +243,16 @@ internal class i8253 : Device
                 _timers[i].counter_cur--;
 
 #if DEBUG
-                if (i == 1)
-                Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}");
+//                Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}");
 #endif
 
                 if (_timers[i].counter_cur == 0)
                 {
-                    Log.DoLog($"i8253 reset counter");
+//                    Log.DoLog($"i8253 reset counter");
 
                     // timer 1 is RAM refresh counter
-                    if (i == 1) {
-                    Log.DoLog($"i8253 tick channel 0");
+                    if (i == 1)
                         _i8237.TickChannel0();
-                    }
 
                     _timers[i].counter_cur = _timers[i].counter_ini;
 
@@ -300,7 +299,9 @@ internal class pic8259
     {
         if (_is_ocw)
         {
+#if DEBUG
             Log.DoLog($"8259 IN: is ocw {_ocw_nr}, read nr {_ocw_nr}");
+#endif
 
             if (_ocw_nr == 0)
             {
