@@ -127,23 +127,32 @@ internal class i8253 : Device
 
         if (_timers[nr].latch_n_cur > 0)
         {
-            if (_timers[nr].latch_n_cur == 2)
+            if (_timers[nr].latch_type == 1)
             {
                 _timers[nr].counter_ini &= 0xff00;
                 _timers[nr].counter_ini |= v;
+                // assert _timers[nr].latch_n_cur == 1
             }
-            else if (_timers[nr].latch_n_cur == 1)
+            else if (_timers[nr].latch_type == 2)
             {
-                if (_timers[nr].latch_type == 1 || _timers[nr].latch_type == 3)
-                {
-                    _timers[nr].counter_ini &= 0x00ff;
-                    _timers[nr].counter_ini |= (ushort)(v << 8);
-                }
-                else
+                _timers[nr].counter_ini &= 0x00ff;
+                _timers[nr].counter_ini |= (ushort)(v << 8);
+                // assert _timers[nr].latch_n_cur == 1
+            }
+            else if (_timers[nr].latch_type == 3)
+            {
+                if (_timers[nr].latch_n_cur == 2)
                 {
                     _timers[nr].counter_ini &= 0xff00;
                     _timers[nr].counter_ini |= v;
                 }
+                else
+                {
+                    _timers[nr].counter_ini &= 0x00ff;
+                    _timers[nr].counter_ini |= (ushort)(v << 8);
+                }
+
+                // assert _timers[nr].latch_n_cur >= 1
             }
 
             _timers[nr].latch_n_cur--;
@@ -195,7 +204,7 @@ internal class i8253 : Device
             _timers[nr].latch_type = latch;
             _timers[nr].is_running = false;
 
-            _timers[nr].counter_cur = 0;
+            _timers[nr].counter_ini = 0;
 
             if (_timers[nr].latch_type == 1 || _timers[nr].latch_type == 2)
                 _timers[nr].latch_n = 1;
@@ -232,14 +241,19 @@ internal class i8253 : Device
                 _timers[i].counter_cur--;
 
 #if DEBUG
-//                Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}");
+                if (i == 1)
+                Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}");
 #endif
 
                 if (_timers[i].counter_cur == 0)
                 {
+                    Log.DoLog($"i8253 reset counter");
+
                     // timer 1 is RAM refresh counter
-                    if (i == 1)
+                    if (i == 1) {
+                    Log.DoLog($"i8253 tick channel 0");
                         _i8237.TickChannel0();
+                    }
 
                     _timers[i].counter_cur = _timers[i].counter_ini;
 
@@ -502,33 +516,34 @@ internal class i8237
     public void TickChannel0()
     {
         // RAM refresh
-#if DEBUG
-        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}");
-#endif
-
         _channel_address_register[0].SetValue((ushort)(_channel_address_register[0].GetValue() + 1));
 
-        _channel_word_count[0].SetValue((ushort)(_channel_word_count[0].GetValue() - 1));
+        ushort count = _channel_word_count[0].GetValue();
+
+        count--;
+
+#if DEBUG
+        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}, {count}");
+#endif
+
+        _channel_word_count[0].SetValue(count);
+
+         if (count == 0xffff)
+             _reached_tc[0] = true;
     }
 
     public (byte, bool) In(ushort addr)
     {
-        string prefix = $"8237_IN: {addr:X4}";
-
         byte v = 0;
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
             v = _channel_address_register[addr / 2].Get();
-
-            Log.DoLog($"{prefix} {v:X2}");
         }
 
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
         {
             v = _channel_word_count[addr / 2].Get();
-
-            Log.DoLog($"{prefix} {v:X2}");
         }
 
         else if (addr == 8)  // status register
@@ -544,10 +559,7 @@ internal class i8237
             }
         }
 
-        else
-        {
-            Log.DoLog($"{prefix} ?");
-        }
+        Log.DoLog($"8237_IN: {addr:X4} {v:X2}");
 
         return (v, false);
     }
@@ -563,10 +575,16 @@ internal class i8237
         Log.DoLog($"8237_OUT: {addr:X4} {value:X2}");
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
+        {
             _channel_address_register[addr / 2].Put(value);
+            Log.DoLog($"8237 set channel {addr / 2} to address {value}");
+        }
 
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
+        {
             _channel_word_count[addr / 2].Put(value);
+            Log.DoLog($"8237 set channel {addr / 2} to count {value}");
+        }
 
         else if (addr == 8)
         {
