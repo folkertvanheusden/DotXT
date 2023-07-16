@@ -7,7 +7,7 @@ class MDA : Device
     private int _prev_clock;
     private int _clock;
 
-    private int _last_hsync;
+    private bool hsync;
 
     public MDA()
     {
@@ -68,13 +68,9 @@ class MDA : Device
 
         if (port == 0x03ba)
         {
-            // 14318180Hz system clock
-            // 18432Hz mda clock
-            // 50Hz refreshes per second
-            bool hsync = Math.Abs(_clock - _last_hsync) >= (14318180 / 18432 / 50);
-            _last_hsync = _clock;
+            rc = (byte)(_hsync ? 9 : 0);
 
-            rc = (byte)(hsync ? 9 : 8);
+            _hsync = !_hsync;
         }
 
         Log.DoLog($"MDA::IO_Read {port:X4}: {rc:X2}");

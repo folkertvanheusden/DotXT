@@ -1153,6 +1153,9 @@ internal class P8086
 
                     break;
                 }
+
+                if (processed_any)
+                    break;
             }
 
             if (processed_any == false)

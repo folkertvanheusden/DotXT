@@ -9,6 +9,8 @@ class Keyboard : Device
 
     private PendingInterrupt _pi = new();
 
+    private byte scan_code;
+
     public Keyboard()
     {
         _pi.int_vec = 9;  // IRQ 9
@@ -67,35 +69,24 @@ class Keyboard : Device
 
     public override (byte, bool) IO_Read(ushort port)
     {
-        bool irq = false;
-
-        _keyboard_buffer_lock.WaitOne();
-
-        irq = _keyboard_buffer.Count > 0;
-
-        _keyboard_buffer_lock.ReleaseMutex();
-
         if (port == 0x60)
         {
-            _keyboard_buffer_lock.WaitOne();
-            byte scan_code = 0;
+            byte rc = scan_code;
 
-            if (_keyboard_buffer.Count > 0)
-                scan_code = (byte)_keyboard_buffer.Dequeue();
+            scan_code = 0;
 
-            // again, because one character has been dequeued
-            irq = _keyboard_buffer.Count > 0;
+            Log.DoLog($"Keyboard: scan code {rc}");
 
-            _keyboard_buffer_lock.ReleaseMutex();
-
-            return (scan_code, irq);
+            return (rc, false);
         }
         else if (port == 0x64)
         {
-            return ((byte)(irq ? 21 : 20), irq);
+            Log.DoLog($"Keyboard: 0x64");
+
+            return ((byte)(scan_code != 0 ? 21 : 20), false);
         }
 
-        return (0xff, irq);
+        return (0x00, false);
     }
 
     public override bool HasAddress(uint addr)
@@ -136,6 +127,15 @@ class Keyboard : Device
             List<PendingInterrupt> rc = new();
 
             rc.Add(_pi);
+
+            _keyboard_buffer_lock.WaitOne();
+
+            scan_code = 0;
+
+            if (_keyboard_buffer.Count > 0)
+                scan_code = (byte)_keyboard_buffer.Dequeue();
+
+            _keyboard_buffer_lock.ReleaseMutex();
 
             return rc;
         }
