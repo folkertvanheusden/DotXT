@@ -2,7 +2,11 @@ class MDA : Device
 {
     private byte [] _ram = new byte[16384];
     private bool _hsync;
+
+    private DateTime _prev_ts = DateTime.UtcNow;
+    private int _prev_clock;
     private int _clock;
+
     private int _last_hsync;
 
     public MDA()
@@ -16,6 +20,20 @@ class MDA : Device
 
     public override void SyncClock(int clock)
     {
+        DateTime now_ts = DateTime.UtcNow;
+        TimeSpan elapsed_time = now_ts.Subtract(_prev_ts);
+        _prev_ts = now_ts;
+
+        double target_cycles = 14318180 * elapsed_time.TotalMilliseconds / 3000;
+        int done_cycles = clock - _prev_clock;
+
+        int speed_percentage = (int)(done_cycles * 100.0 / target_cycles);
+
+        Console.Write((char)27);
+        Console.Write($"[1;82H{speed_percentage}%  ");
+
+        _prev_clock = _clock;
+
         _clock = clock;
     }
 
