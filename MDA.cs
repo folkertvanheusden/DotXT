@@ -1,13 +1,7 @@
-class MDA : Device
+class MDA : Display
 {
     private byte [] _ram = new byte[16384];
     private bool _hsync;
-
-    private DateTime _prev_ts = DateTime.UtcNow;
-    private int _prev_clock;
-    private int _clock;
-
-    private int _last_hsync;
 
     public MDA()
     {
@@ -16,30 +10,6 @@ class MDA : Device
     public override String GetName()
     {
         return "MDA";
-    }
-
-    public override void SyncClock(int clock)
-    {
-        DateTime now_ts = DateTime.UtcNow;
-        TimeSpan elapsed_time = now_ts.Subtract(_prev_ts);
-        _prev_ts = now_ts;
-
-        double target_cycles = 14318180 * elapsed_time.TotalMilliseconds / 3000;
-        int done_cycles = clock - _prev_clock;
-
-        int speed_percentage = (int)(done_cycles * 100.0 / target_cycles);
-
-        Console.Write((char)27);
-        Console.Write($"[1;82H{speed_percentage}%  ");
-
-        _prev_clock = _clock;
-
-        _clock = clock;
-    }
-
-    public override List<PendingInterrupt> GetPendingInterrupts()
-    {
-        return null;
     }
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
@@ -67,15 +37,7 @@ class MDA : Device
         Log.DoLog($"MDA::IO_Read {port:X4}");
 
         if (port == 0x03ba)
-        {
-            // 14318180Hz system clock
-            // 18432Hz mda clock
-            // 50Hz refreshes per second
-            bool hsync = Math.Abs(_clock - _last_hsync) >= (14318180 / 18432 / 50);
-            _last_hsync = _clock;
-
-            return ((byte)(hsync ? 1 : 0), false);
-        }
+            return ((byte)(IsHsync() ? 1 : 0), false);
 
         return (0, false);
     }
@@ -90,19 +52,13 @@ class MDA : Device
 
         if (use_offset < 80 * 25 * 2)
         {
-            if ((use_offset & 1) == 0)
-            {
-                uint y = use_offset / (80 * 2);
-                uint x = (use_offset % (80 * 2)) / 2;
+            uint y = use_offset / (80 * 2);
+            uint x = (use_offset % (80 * 2)) / 2;
 
-                // attribute, character
-                Log.DoLog($"MDA::WriteByte {x},{y} = {(char)value}");
+            uint mask = uint.MaxValue - 1;
+            uint char_base_offset = use_offset & mask;
 
-                Console.Write((char)27);  // position cursor
-                Console.Write($"[{y + 1};{x + 1}H");
-
-                Console.Write((char)value);
-            }
+            EmulateTextDisplay(x, y, _ram[char_base_offset + 0], _ram[char_base_offset + 1]);
         }
     }
 

@@ -17,7 +17,7 @@ class M6845
     }
 }
 
-class CGA : Device
+class CGA : Display
 {
     private byte [] _ram = new byte[16384];
 
@@ -28,28 +28,11 @@ class CGA : Device
 
     public CGA()
     {
-        TerminalClear();
     }
 
     public override String GetName()
     {
         return "CGA";
-    }
-
-    private void TerminalClear()
-    {
-        Console.Write((char)27);  // clear screen
-        Console.Write($"[2J");
-    }
-
-    public override void SyncClock(int clock)
-    {
-        _clock = clock;
-    }
-
-    public override List<PendingInterrupt> GetPendingInterrupts()
-    {
-        return null;
     }
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
@@ -106,19 +89,13 @@ class CGA : Device
 
         if (use_offset >= _display_address && use_offset < _display_address + 80 * 25 * 2)
         {
-            if ((use_offset & 1) == 0)
-            {
-                uint y = use_offset / (80 * 2);
-                uint x = (use_offset % (80 * 2)) / 2;
+            uint y = use_offset / (80 * 2);
+            uint x = (use_offset % (80 * 2)) / 2;
 
-                // attribute, character
-                Log.DoLog($"CGA::WriteByte {x},{y} = {(char)value}");
+            uint mask = uint.MaxValue - 1;
+            uint char_base_offset = use_offset & mask;
 
-                Console.Write((char)27);  // position cursor
-                Console.Write($"[{y + 1};{x + 1}H");
-
-                Console.Write((char)value);
-            }
+            EmulateTextDisplay(x, y, _ram[char_base_offset + 0], _ram[char_base_offset + 1]);
         }
     }
 
