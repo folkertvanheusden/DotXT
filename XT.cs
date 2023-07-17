@@ -414,7 +414,7 @@ internal class P8086
         uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
 
 #if DEBUG
-        Log.DoLog($"WriteMemWord {segment:X4}:{offset:X4}: a1:{a1:X6}/a2:{a2:X6}, v:{v:X4}");
+//        Log.DoLog($"WriteMemWord {segment:X4}:{offset:X4}: a1:{a1:X6}/a2:{a2:X6}, v:{v:X4}");
 #endif
 
        _b.WriteByte(a1, (byte)v);
@@ -438,7 +438,7 @@ internal class P8086
         ushort v = (ushort)(_b.ReadByte(a1) | (_b.ReadByte(a2) << 8));
 
 #if DEBUG
-        Log.DoLog($"ReadMemWord {segment:X4}:{offset:X4}: {a1:X6}/{a2:X6}, value: {v:X4}");
+//        Log.DoLog($"ReadMemWord {segment:X4}:{offset:X4}: {a1:X6}/{a2:X6}, value: {v:X4}");
 #endif
 
         return v;
@@ -798,7 +798,7 @@ internal class P8086
     // name, cycles
     private (string, int) PutRegisterMem(int reg, int mod, bool w, ushort val)
     {
-        Log.DoLog($"PutRegisterMem {mod},{w}");
+//        Log.DoLog($"PutRegisterMem {mod},{w}");
 
         if (mod == 0)
         {
