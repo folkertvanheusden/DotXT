@@ -325,7 +325,9 @@ internal class pic8259
             }
         }
 
-        return (_register_cache[addr], false);
+        Log.DoLog($"8259 IN: read cache for addr {addr:X4}");
+
+        return (_register_cache[addr - 0x0020], false);
     }
 
     public void Tick()
@@ -338,7 +340,7 @@ internal class pic8259
 
         Log.DoLog($"8259 OUT port {addr} value {value:X2}");
 
-        _register_cache[addr] = value;
+        _register_cache[addr - 0x0020] = value;
 
         if (addr == 0)
         {
