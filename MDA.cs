@@ -70,7 +70,7 @@ class MDA : Display
 
     public override byte ReadByte(uint offset)
     {
-        Log.DoLog($"MDA::ReadByte({offset:X6}");
+        Log.DoLog($"MDA::ReadByte({offset:X6})");
 
         return _ram[(offset - 0xb0000) & 0x3fff];
     }
