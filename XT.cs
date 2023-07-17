@@ -1442,44 +1442,41 @@ internal class P8086
         else if (opcode == 0x27)
         {
             // DAA
-            // from https://stackoverflow.com/questions/8119577/z80-daa-instruction/8119836
-            int t = 0;
+            // https://www.felixcloutier.com/x86/daa
+            byte old_al = _al;
+            bool old_cf = GetFlagC();
 
-            t += GetFlagA() || (_al & 0x0f) > 9 ? 1 : 0;
+            SetFlagC(false);
 
-            if (GetFlagC() || _al > 0x99)
+            if (((_al & 0x0f) > 9) || GetFlagA() == true)
             {
-                t += 2;
-                SetFlagC(true);
-            }
+                bool add_carry = (_al & 0x0f) + 6 > 15;  // TODO or should add_carry be set if _al became > 255?
 
-            if (GetFlagS() && !GetFlagA())
-                SetFlagA(false);
+                _al += 6;
+
+                SetFlagC(old_cf || add_carry);
+
+                SetFlagA(true);
+            }
             else
             {
-                if (GetFlagS() && GetFlagA())
-                    SetFlagA((_al & 0x0F) < 6);
-                else
-                    SetFlagA((_al & 0x0F) >= 0x0A);
+                SetFlagA(false);
             }
 
-            bool n = GetFlagS();
-    
-            if (t == 1)
-                _al += (byte)(n ? 0xFA:0x06); // -6:6
-            else if (t == 2)
-                _al += (byte)(n ? 0xA0:0x60); // -0x60:0x60
-            else if (t == 3)
-                _al += (byte)(n ? 0x9A:0x66); // -0x66:0x66
-
-            SetFlagS((_al & 0x80) == 0x80);
-            SetFlagZ(_al != 0);
-            SetFlagP(_al);
+            if (old_al > 0x99 || old_cf)
+            {
+                _al += 0x60;
+                SetFlagC(true);
+            }
+            else
+            {
+                SetFlagC(false);
+            }
 
             cycle_count += 4;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} DAA");
+            Log.DoLog($"{prefixStr} DAA {old_al:X2} -> {_al:X2}");
 #endif
         }
         else if (opcode == 0x2c)
