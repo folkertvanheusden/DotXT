@@ -349,6 +349,8 @@ internal class pic8259
             }
         }
 
+        Log.DoLog($"8259 IN: read cache for addr {addr:X4}");
+
         return (_register_cache[addr], false);
     }
 
@@ -364,7 +366,7 @@ internal class pic8259
 
         _register_cache[addr] = value;
 
-        if (addr == 0)
+        if (addr == 0x0020)
         {
             if ((value & 128) == 0)
             {
@@ -381,7 +383,7 @@ internal class pic8259
                 _ocw_nr = 0;
             }
         }
-        else if (addr == 1)
+        else if (addr == 0x0021)
         {
             if (_init)
             {
@@ -757,7 +759,7 @@ class IO
             return (0x0f, false);  // 'transfer complete'
 
         if (addr == 0x0020 || addr == 0x0021)  // PIC
-            return _pic.In((ushort)(addr - 0x0020));
+            return _pic.In(addr);
 
         if (addr == 0x0062)  // PPI (XT only)
         {
@@ -812,7 +814,7 @@ class IO
             return _i8237.Out(addr, value);
 
         else if (addr == 0x0020 || addr == 0x0021)  // PIC
-            return _pic.Out((ushort)(addr - 0x0020), value);
+            return _pic.Out(addr, value);
 
         else if (addr == 0x0080)
             Console.WriteLine($"Manufacturer systems checkpoint {value:X2}");

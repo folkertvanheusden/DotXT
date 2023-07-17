@@ -99,7 +99,10 @@ class MDA : Device
                 Console.Write((char)27);  // position cursor
                 Console.Write($"[{y + 1};{x + 1}H");
 
-                Console.Write((char)value);
+                if (value < 32 || value == 127)
+                    Console.Write((char)32);
+                else
+                    Console.Write((char)value);
             }
         }
     }

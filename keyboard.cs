@@ -79,7 +79,6 @@ class Keyboard : Device
                 _keyboard_buffer_lock.WaitOne();
 
                 _keyboard_buffer.Clear();
-//                _keyboard_buffer.Enqueue(0xfa);  // ack
                 _keyboard_buffer.Enqueue(0xaa);  // power on reset reply
 
                 _keyboard_buffer_lock.ReleaseMutex();
@@ -133,6 +132,9 @@ class Keyboard : Device
     {
         _keyboard_buffer_lock.WaitOne();
 
+        // TODO: replace by a flag that indicates wether
+        // a new key has been queued and return that for
+        // interrupt flag
         bool any_keys = _keyboard_buffer.Count > 0;
 
         _keyboard_buffer_lock.ReleaseMutex();
@@ -150,6 +152,7 @@ class Keyboard : Device
         {
             List<PendingInterrupt> rc = new();
 
+            // TODO: only when Count > 0
             rc.Add(_pi);
 
             // queue key for retrieval
