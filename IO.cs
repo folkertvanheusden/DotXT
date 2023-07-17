@@ -360,8 +360,6 @@ internal class pic8259
 
     public bool Out(ushort addr, byte value)
     {
-        bool rc = false;
-
         Log.DoLog($"8259 OUT port {addr} value {value:X2}");
 
         _register_cache[addr - 0x0020] = value;
@@ -434,7 +432,8 @@ internal class pic8259
             Log.DoLog($"8259 OUT has no port {addr:X2}");
         }
 
-        return rc;
+        // when reconfiguring the PIC8259, force an interrupt recheck
+        return true;
     }
 
     public int GetInterruptOffset()
