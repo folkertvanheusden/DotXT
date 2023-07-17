@@ -1,8 +1,8 @@
 class FloppyDisk : Device
 {
-    i8237 _dma_controller;
-    pic8259 _pic;
-    PendingInterrupt _pi = new();
+    private i8237 _dma_controller = null;
+    private pic8259 _pic = null;
+    private PendingInterrupt _pi = new();
 
     public FloppyDisk()
     {
