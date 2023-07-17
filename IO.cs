@@ -174,12 +174,8 @@ internal class i8253 : Device
         }
     }
 
-    private byte GetCounter(int nr)
+    private byte AddNoiseToLSB(int nr)
     {
-#if DEBUG
-        Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur}");
-#endif
-
         ushort current_prv = _timers[nr].counter_prv;
 
         _timers[nr].counter_prv = _timers[nr].counter_cur;
@@ -187,7 +183,35 @@ internal class i8253 : Device
         if (Math.Abs(_timers[nr].counter_cur - current_prv) >= 2)
             return (byte)(_random.Next(2) == 1 ? _timers[nr].counter_cur ^ 1 : _timers[nr].counter_cur);
 
-        return (byte)_timers[nr].counter_cur;  // TODO: latch_n
+        return (byte)_timers[nr].counter_cur;
+    }
+
+    private byte GetCounter(int nr)
+    {
+#if DEBUG
+        Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur} ({_timers[nr].latch_type}|{_timers[nr].latch_n_cur}/{_timers[nr].latch_n})");
+#endif
+
+        byte rc = 0;
+
+        if (_timers[nr].latch_type == 1)
+            rc = AddNoiseToLSB(nr);
+        else if (_timers[nr].latch_type == 2)
+            rc = (byte)(_timers[nr].counter_cur >> 8);
+        else if (_timers[nr].latch_type == 3)
+        {
+            if (_timers[nr].latch_n_cur == 2)
+                rc = AddNoiseToLSB(nr);
+            else
+                rc = (byte)(_timers[nr].counter_cur >> 8);
+        }
+
+        _timers[nr].latch_n_cur--;
+
+        if (_timers[nr].latch_n_cur == 0)
+            _timers[nr].latch_n_cur = _timers[nr].latch_n;
+
+        return rc;
     }
 
     private void Command(byte v)
@@ -816,7 +840,7 @@ class IO
             return _pic.Out(addr, value);
 
         else if (addr == 0x0080)
-            Console.WriteLine($"Manufacturer systems checkpoint {value:X2}");
+            Log.DoLog($"Manufacturer systems checkpoint {value:X2}");
 
         else if (addr == 0x0322)
         {
