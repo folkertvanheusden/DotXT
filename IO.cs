@@ -279,20 +279,44 @@ internal class i8253 : Device
 // programmable interrupt controller (PIC)
 internal class pic8259
 {
-    bool _init = false;
-    byte _init_data = 0;
-    byte _ICW1, _ICW2, _ICW3, _ICW4;
-    bool _is_ocw = false;
-    int _ocw_nr = 0;
-    byte _OCW1, _OCW2, _OCW3;
+    private bool _init = false;
+    private byte _init_data = 0;
+    private byte _ICW1, _ICW2, _ICW3, _ICW4;
+    private bool _is_ocw = false;
+    private int _ocw_nr = 0;
+    private byte _OCW1, _OCW2, _OCW3;
 
-    int _int_offset = 8;
-    byte _interrupt_mask = 0xff;
+    private int _int_offset = 8;
+    private byte _interrupt_mask = 0xff;
 
-    byte [] _register_cache = new byte[2];
+    private byte [] _register_cache = new byte[2];
 
-    public pic8259()
+    private List<Device> _devices;
+
+    public pic8259(ref List<Device> devices)
     {
+        _devices = devices;
+    }
+
+    private byte GetPendingInterrupts()
+    {
+        byte bitmap = 0;
+
+        foreach (var device in _devices)
+        {
+            List<PendingInterrupt> interrupts = device.GetPendingInterrupts();
+
+            if (interrupts == null)
+                continue;
+
+            foreach (var interrupt in interrupts)
+            {
+                if (interrupt.pending && interrupt.int_vec >= 8 && interrupt.int_vec < 16)
+                    bitmap |= (byte)(1 << (interrupt.int_vec - 8));
+            }
+        }
+
+        return bitmap;
     }
 
     public (byte, bool) In(ushort addr)
@@ -316,7 +340,7 @@ internal class pic8259
             else if (_ocw_nr == 2)
             {
                 _ocw_nr++;
-                return (_OCW3, false);
+                return (GetPendingInterrupts(), false);
             }
             else
             {
@@ -676,7 +700,7 @@ internal class i8237
 
 class IO
 {
-    private pic8259 _pic = new();
+    private pic8259 _pic;
     private i8237 _i8237;
 
     private Bus _b;
@@ -692,6 +716,8 @@ class IO
     public IO(Bus b, ref List<Device> devices)
     {
         _b = b;
+
+        _pic = new(ref devices);
 
         _i8237 = new(_b);
 

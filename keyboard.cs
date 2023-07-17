@@ -9,7 +9,9 @@ class Keyboard : Device
 
     private PendingInterrupt _pi = new();
 
-    private byte scan_code;
+    private byte _scan_code = 0;
+
+    private bool _reset_trigger = false;
 
     public Keyboard()
     {
@@ -68,11 +70,17 @@ class Keyboard : Device
         if (port == 0x0061)
         {
             if ((value & 0x40) == 0x00)
+                _reset_trigger = true;
+
+            else if (_reset_trigger)
             {
+                _reset_trigger = false;
+
                 _keyboard_buffer_lock.WaitOne();
 
                 _keyboard_buffer.Clear();
-                _keyboard_buffer.Enqueue(0xaa);
+//                _keyboard_buffer.Enqueue(0xfa);  // ack
+                _keyboard_buffer.Enqueue(0xaa);  // power on reset reply
 
                 _keyboard_buffer_lock.ReleaseMutex();
             }
@@ -85,9 +93,9 @@ class Keyboard : Device
     {
         if (port == 0x60)
         {
-            byte rc = scan_code;
+            byte rc = _scan_code;
 
-            scan_code = 0;
+            _scan_code = 0;
 
             Log.DoLog($"Keyboard: scan code {rc:X2}");
 
@@ -97,7 +105,7 @@ class Keyboard : Device
         {
             Log.DoLog($"Keyboard: 0x64");
 
-            return ((byte)(scan_code != 0 ? 21 : 20), false);
+            return ((byte)(_scan_code != 0 ? 21 : 20), false);
         }
 
         return (0x00, false);
@@ -136,18 +144,21 @@ class Keyboard : Device
 
     public override List<PendingInterrupt> GetPendingInterrupts()
     {
+        Log.DoLog("keyboard::GetPendingInterrupts");
+
         if (_pi.pending)
         {
             List<PendingInterrupt> rc = new();
 
             rc.Add(_pi);
 
+            // queue key for retrieval
             _keyboard_buffer_lock.WaitOne();
 
-            if (_keyboard_buffer.Count > 0 && scan_code == 0)
-                scan_code = (byte)_keyboard_buffer.Dequeue();
+            if (_keyboard_buffer.Count > 0 && _scan_code == 0)
+                _scan_code = (byte)_keyboard_buffer.Dequeue();
             else
-                scan_code = 0;
+                _scan_code = 0;
 
             _keyboard_buffer_lock.ReleaseMutex();
 
