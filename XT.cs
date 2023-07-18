@@ -1473,6 +1473,10 @@ internal class P8086
                 SetFlagC(false);
             }
 
+            SetFlagS((_al & 0x80) == 0x80);
+            SetFlagZ(_al == 0);
+            SetFlagP(_al);
+
             cycle_count += 4;
 
 #if DEBUG
