@@ -78,6 +78,8 @@ class Keyboard : Device
 
                 _keyboard_buffer_lock.WaitOne();
 
+                _scan_code = 0;
+
                 _keyboard_buffer.Clear();
                 _keyboard_buffer.Enqueue(0xaa);  // power on reset reply
 
