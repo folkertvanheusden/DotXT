@@ -185,9 +185,10 @@ internal class P8086
                 else
                 {
                     Log.DoLog($"CONSOLE-CHR: {(char)_al}");
-                }
 
-                tty_output += (char)_al;
+                    if (_al >= 32 && _al != 127)
+                        tty_output += (char)_al;
+                }
 
                 if (_al == 13)
                     Console.WriteLine("");
