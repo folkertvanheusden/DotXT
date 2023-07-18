@@ -573,7 +573,7 @@ internal class i8237
         count--;
 
 #if DEBUG
-        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}, {count}");
+//        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}, {count}");
 #endif
 
         _channel_word_count[0].SetValue(count);
