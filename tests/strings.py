@@ -193,5 +193,29 @@ fh.write(f'\tjz {label}_ok_end2\n')
 fh.write('\thlt\n')
 fh.write(f'{label}_ok_end2:\n')
 
+# LODSB (or any other) starting with CX==0
+fh.write('''
+    mov cx,#$0000
+    mov ax,#$1000
+    mov si,ax
+    mov di,ax
+    rep
+    lodsb
+    cmp cx,#$0000
+    beq cx0_rep_ok1
+    hlt
+cx0_rep_ok1:
+    mov bx,si
+    cmp bx,#$1000
+    beq cx0_rep_ok2
+    hlt
+cx0_rep_ok2:
+    mov bx,di
+    cmp bx,#$1000
+    beq cx0_rep_ok3
+    hlt
+cx0_rep_ok3:
+''')
+
 emit_tail()
 fh.close()
