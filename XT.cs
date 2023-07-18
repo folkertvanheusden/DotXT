@@ -3472,34 +3472,7 @@ internal class P8086
             Log.DoLog($"{prefixStr} XLATB ({_ds:X4}:{GetBX():X4} + {old_al:X2})");
 #endif
         }
-        else if (opcode == 0xe0)
-        {
-            // LOOPNZ
-            byte to = GetPcByte();
-
-            ushort cx = GetCX();
-
-            cx--;
-
-            SetCX(cx);
-
-            ushort newAddresses = (ushort)(_ip + (sbyte)to);
-
-            if (cx > 0 && GetFlagZ() == false)
-            {
-                _ip = newAddresses;
-                cycle_count += 8;
-            }
-            else
-            {
-                cycle_count += 4;
-            }
-
-#if DEBUG
-            Log.DoLog($"{prefixStr} LOOPNZ {to} ({newAddresses:X4} -> {_ip:X4})");
-#endif
-        }
-        else if (opcode == 0xe1 || opcode == 0xe2)
+        else if (opcode == 0xe0 || opcode == 0xe1 || opcode == 0xe2)
         {
             // LOOP
             byte to = GetPcByte();
@@ -3534,6 +3507,16 @@ internal class P8086
                 }
 
                 name = "LOOPZ";
+            }
+            else if (opcode == 0xe0)
+            {
+                if (cx > 0 && GetFlagZ() == false)
+                {
+                    _ip = newAddresses;
+                    cycle_count += 4;
+                }
+
+                name = "LOOPNZ";
             }
 #if DEBUG
             else
