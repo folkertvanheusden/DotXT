@@ -194,6 +194,15 @@ internal class P8086
 
                 return true;
             }
+            else if (_ah == 0x00)
+            {
+                // get video mode
+                _al = 7;
+
+                SetFlagC(false);
+
+                return true;
+            }
 
 #if DEBUG
             Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");

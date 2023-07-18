@@ -79,7 +79,7 @@ devices.Add(new Keyboard());
 uint ram_size = 256 * 1024;
 
 if (test != "")
-    ram_size = 1024 * 1024;
+    ram_size = 640 * 1024;
 
 // Bus gets the devices for memory mapped i/o
 Bus b = new Bus(ram_size, load_bios, ref devices);
