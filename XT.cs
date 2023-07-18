@@ -1626,16 +1626,8 @@ internal class P8086
                 Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_name} {segment * 16 + _si:X6} -> {_es * 16 + _di:X6}");
 #endif
 
-                if (GetFlagD())
-                {
-                    _si--;
-                    _di--;
-                }
-                else
-                {
-                    _si++;
-                    _di++;
-                }
+                _si += (ushort)(GetFlagD() ? -1 : 1);
+                _di += (ushort)(GetFlagD() ? -1 : 1);
 
                 cycle_count += 18;
             }
@@ -1647,16 +1639,8 @@ internal class P8086
                 // MOVSW
                 WriteMemWord(_es, _di, ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
 
-                if (GetFlagD())
-                {
-                    _si -= 2;
-                    _di -= 2;
-                }
-                else
-                {
-                    _si += 2;
-                    _di += 2;
-                }
+                _si += (ushort)(GetFlagD() ? -2 : 2);
+                _di += (ushort)(GetFlagD() ? -2 : 2);
 
                 cycle_count += 18;
 
@@ -1675,16 +1659,8 @@ internal class P8086
 
                 int result = v1 - v2;
 
-                if (GetFlagD())
-                {
-                    _si--;
-                    _di--;
-                }
-                else
-                {
-                    _si++;
-                    _di++;
-                }
+                _si += (ushort)(GetFlagD() ? -1 : 1);
+                _di += (ushort)(GetFlagD() ? -1 : 1);
 
                 SetAddSubFlags(false, v1, v2, result, true, false);
 
@@ -1705,16 +1681,8 @@ internal class P8086
 
                 int result = v1 - v2;
 
-                if (GetFlagD())
-                {
-                    _si -= 2;
-                    _di -= 2;
-                }
-                else
-                {
-                    _si += 2;
-                    _di += 2;
-                }
+                _si += (ushort)(GetFlagD() ? -2 : 2);
+                _di += (ushort)(GetFlagD() ? -2 : 2);
 
                 SetAddSubFlags(true, v1, v2, result, true, false);
 
@@ -2163,10 +2131,7 @@ internal class P8086
                 // LODSB
                 _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
 
-                if (GetFlagD())
-                    _si--;
-                else
-                    _si++;
+                _si += (ushort)(GetFlagD() ? -1 : 1);
 
                 cycle_count += 5;
 
@@ -2182,10 +2147,7 @@ internal class P8086
                 // LODSW
                 SetAX(ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
 
-                if (GetFlagD())
-                    _si -= 2;
-                else
-                    _si += 2;
+                _si += (ushort)(GetFlagD() ? -2 : 2);
 
                 cycle_count += 5;
 
