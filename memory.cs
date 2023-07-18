@@ -45,7 +45,11 @@ class Bus
     private Memory _m;
 
     private readonly Rom _bios = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
+
     // private readonly Rom _bios = new("roms/ruuds_diagnostic_rom_32kb_2022-12-12.bin");
+    // private readonly Rom _bios = new("roms/DiagROM/DiagROM");
+    // private readonly Rom _bios = new("roms/diagrom201212/DIAGROMV2.bin");
+
     // private readonly Rom _bios = new("roms/Supersoft_PCXT_8KB.bin");
     private readonly Rom _basic = new("roms/BIOS_5160_16AUG82_U19_5000027.BIN");
     // private readonly Rom _bios = new("roms/GLABIOS_0.2.4_8T.ROM");
