@@ -48,6 +48,8 @@ internal class P8086
     private bool _scheduled_interrupts = false;
 
     private bool _rep;
+    private bool _rep_do_nothing;
+    private bool _remember_rep_for_irq;
     private RepMode _rep_mode;
     private ushort _rep_addr;
     private byte _rep_opcode;
@@ -183,12 +185,22 @@ internal class P8086
                 else
                 {
                     Log.DoLog($"CONSOLE-CHR: {(char)_al}");
-                }
 
-                tty_output += (char)_al;
+                    if (_al >= 32 && _al != 127)
+                        tty_output += (char)_al;
+                }
 
                 if (_al == 13)
                     Console.WriteLine("");
+
+                return true;
+            }
+            else if (_ah == 0x00)
+            {
+                // get video mode
+                _al = 7;
+
+                SetFlagC(false);
 
                 return true;
             }
@@ -414,7 +426,7 @@ internal class P8086
         uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
 
 #if DEBUG
-        Log.DoLog($"WriteMemWord {segment:X4}:{offset:X4}: a1:{a1:X6}/a2:{a2:X6}, v:{v:X4}");
+//        Log.DoLog($"WriteMemWord {segment:X4}:{offset:X4}: a1:{a1:X6}/a2:{a2:X6}, v:{v:X4}");
 #endif
 
        _b.WriteByte(a1, (byte)v);
@@ -438,7 +450,7 @@ internal class P8086
         ushort v = (ushort)(_b.ReadByte(a1) | (_b.ReadByte(a2) << 8));
 
 #if DEBUG
-        Log.DoLog($"ReadMemWord {segment:X4}:{offset:X4}: {a1:X6}/{a2:X6}, value: {v:X4}");
+//        Log.DoLog($"ReadMemWord {segment:X4}:{offset:X4}: {a1:X6}/{a2:X6}, value: {v:X4}");
 #endif
 
         return v;
@@ -798,7 +810,7 @@ internal class P8086
     // name, cycles
     private (string, int) PutRegisterMem(int reg, int mod, bool w, ushort val)
     {
-        Log.DoLog($"PutRegisterMem {mod},{w}");
+//        Log.DoLog($"PutRegisterMem {mod},{w}");
 
         if (mod == 0)
         {
@@ -1063,6 +1075,8 @@ internal class P8086
     {
         _segment_override_set = false;
         _segment_override_name = "";
+
+        _remember_rep_for_irq = _rep;
         _rep = false;
 
         push(_flags);
@@ -1153,6 +1167,9 @@ internal class P8086
 
                     break;
                 }
+
+                if (processed_any)
+                    break;
             }
 
             if (processed_any == false)
@@ -1200,8 +1217,10 @@ internal class P8086
             {
                 _rep = true;
                 _rep_mode = RepMode.NotSet;
-                cycle_count += 2;
+                cycle_count += 3;
                 Log.DoLog($"set _rep_addr to {_rep_addr:X4}");
+
+                _rep_do_nothing = GetCX() == 0;
             }
             else
             {
@@ -1439,44 +1458,45 @@ internal class P8086
         else if (opcode == 0x27)
         {
             // DAA
-            // from https://stackoverflow.com/questions/8119577/z80-daa-instruction/8119836
-            int t = 0;
+            // https://www.felixcloutier.com/x86/daa
+            byte old_al = _al;
+            bool old_cf = GetFlagC();
 
-            t += GetFlagA() || (_al & 0x0f) > 9 ? 1 : 0;
+            SetFlagC(false);
 
-            if (GetFlagC() || _al > 0x99)
+            if (((_al & 0x0f) > 9) || GetFlagA() == true)
             {
-                t += 2;
-                SetFlagC(true);
-            }
+                bool add_carry = (_al & 0x0f) + 6 > 15;  // TODO or should add_carry be set if _al became > 255?
 
-            if (GetFlagS() && !GetFlagA())
-                SetFlagA(false);
+                _al += 6;
+
+                SetFlagC(old_cf || add_carry);
+
+                SetFlagA(true);
+            }
             else
             {
-                if (GetFlagS() && GetFlagA())
-                    SetFlagA((_al & 0x0F) < 6);
-                else
-                    SetFlagA((_al & 0x0F) >= 0x0A);
+                SetFlagA(false);
             }
 
-            bool n = GetFlagS();
-    
-            if (t == 1)
-                _al += (byte)(n ? 0xFA:0x06); // -6:6
-            else if (t == 2)
-                _al += (byte)(n ? 0xA0:0x60); // -0x60:0x60
-            else if (t == 3)
-                _al += (byte)(n ? 0x9A:0x66); // -0x66:0x66
+            if (old_al > 0x99 || old_cf)
+            {
+                _al += 0x60;
+                SetFlagC(true);
+            }
+            else
+            {
+                SetFlagC(false);
+            }
 
             SetFlagS((_al & 0x80) == 0x80);
-            SetFlagZ(_al != 0);
+            SetFlagZ(_al == 0);
             SetFlagP(_al);
 
             cycle_count += 4;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} DAA");
+            Log.DoLog($"{prefixStr} DAA {old_al:X2} -> {_al:X2}");
 #endif
         }
         else if (opcode == 0x2c)
@@ -1605,118 +1625,83 @@ internal class P8086
         }
         else if (opcode == 0xa4)
         {
-            // MOVSB
-            ushort segment = _segment_override_set ? _segment_override : _ds;
-            byte v = ReadMemByte(segment, _si);
-            WriteMemByte(_es, _di, v);
+            if (!_rep_do_nothing)
+            {
+                // MOVSB
+                ushort segment = _segment_override_set ? _segment_override : _ds;
+                byte v = ReadMemByte(segment, _si);
+                WriteMemByte(_es, _di, v);
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_name} {segment * 16 + _si:X6} -> {_es * 16 + _di:X6}");
+                Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_name} {segment * 16 + _si:X6} -> {_es * 16 + _di:X6}");
 #endif
 
-            if (GetFlagD())
-            {
-                _si--;
-                _di--;
-            }
-            else
-            {
-                _si++;
-                _di++;
-            }
+                _si += (ushort)(GetFlagD() ? -1 : 1);
+                _di += (ushort)(GetFlagD() ? -1 : 1);
 
-            cycle_count += 18;
+                cycle_count += 18;
+            }
         }
         else if (opcode == 0xa5)
         {
-            // MOVSW
-            WriteMemWord(_es, _di, ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
-
-            if (GetFlagD())
+            if (!_rep_do_nothing)
             {
-                _si -= 2;
-                _di -= 2;
-            }
-            else
-            {
-                _si += 2;
-                _di += 2;
-            }
+                // MOVSW
+                WriteMemWord(_es, _di, ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
 
-            cycle_count += 18;
+                _si += (ushort)(GetFlagD() ? -2 : 2);
+                _di += (ushort)(GetFlagD() ? -2 : 2);
+
+                cycle_count += 18;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} MOVSW");
+                Log.DoLog($"{prefixStr} MOVSW");
 #endif
+            }
         }
         else if (opcode == 0xa6)
         {
-            // CMPSB
-            byte v1 = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
-            byte v2 = ReadMemByte(_es, _di);
+            if (!_rep_do_nothing)
+            {
+                // CMPSB
+                byte v1 = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
+                byte v2 = ReadMemByte(_es, _di);
 
-            int result = v1 - v2;
+                int result = v1 - v2;
+
+                _si += (ushort)(GetFlagD() ? -1 : 1);
+                _di += (ushort)(GetFlagD() ? -1 : 1);
+
+                SetAddSubFlags(false, v1, v2, result, true, false);
+
+                cycle_count += 22;
 
 #if DEBUG
-            if (result != 0)
-            {
-                string s1 = "";
-                for(int i=0; i<11; i++)
-                    s1 += (char)ReadMemByte(_ds, (ushort)(_si + i));
-
-                string s2 = "";
-                for(int i=0; i<11; i++)
-                    s2 += (char)ReadMemByte(_es, (ushort)(_di + i));
-
-                Log.DoLog($"{s1}/{s2}");
-            }
+                Log.DoLog($"{prefixStr} CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')})");
 #endif
-
-            if (GetFlagD())
-            {
-                _si--;
-                _di--;
             }
-            else
-            {
-                _si++;
-                _di++;
-            }
-
-            SetAddSubFlags(false, v1, v2, result, true, false);
-
-            cycle_count += 22;
-
-#if DEBUG
-            Log.DoLog($"{prefixStr} CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')})");
-#endif
         }
         else if (opcode == 0xa7)
         {
-            // CMPSW
-            ushort v1 = ReadMemWord(_segment_override_set ? _segment_override : _ds, _si);
-            ushort v2 = ReadMemWord(_es, _di);
-
-            int result = v1 - v2;
-
-            if (GetFlagD())
+            if (!_rep_do_nothing)
             {
-                _si -= 2;
-                _di -= 2;
-            }
-            else
-            {
-                _si += 2;
-                _di += 2;
-            }
+                // CMPSW
+                ushort v1 = ReadMemWord(_segment_override_set ? _segment_override : _ds, _si);
+                ushort v2 = ReadMemWord(_es, _di);
 
-            SetAddSubFlags(true, v1, v2, result, true, false);
+                int result = v1 - v2;
 
-            cycle_count += 22;
+                _si += (ushort)(GetFlagD() ? -2 : 2);
+                _di += (ushort)(GetFlagD() ? -2 : 2);
+
+                SetAddSubFlags(true, v1, v2, result, true, false);
+
+                cycle_count += 22;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} CMPSW (${v1:X4},${v2:X4})");
+                Log.DoLog($"{prefixStr} CMPSW (${v1:X4},${v2:X4})");
 #endif
+            }
         }
         else if (opcode == 0xe3)
         {
@@ -2151,35 +2136,35 @@ internal class P8086
         }
         else if (opcode == 0xac)
         {
-            // LODSB
-            _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
+            if (!_rep_do_nothing)
+            {
+                // LODSB
+                _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
 
-            if (GetFlagD())
-                _si--;
-            else
-                _si++;
+                _si += (ushort)(GetFlagD() ? -1 : 1);
 
-            cycle_count += 5;
+                cycle_count += 5;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} LODSB");
+                Log.DoLog($"{prefixStr} LODSB");
 #endif
+            }
         }
         else if (opcode == 0xad)
         {
-            // LODSW
-            SetAX(ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
+            if (!_rep_do_nothing)
+            {
+                // LODSW
+                SetAX(ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
 
-            if (GetFlagD())
-                _si -= 2;
-            else
-                _si += 2;
+                _si += (ushort)(GetFlagD() ? -2 : 2);
 
-            cycle_count += 5;
+                cycle_count += 5;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} LODSW");
+                Log.DoLog($"{prefixStr} LODSW");
 #endif
+            }
         }
         else if (opcode == 0xc2)
         {
@@ -2271,6 +2256,9 @@ internal class P8086
 
             _flags = pop();
             FixFlags();
+
+            _rep = _remember_rep_for_irq;
+            _remember_rep_for_irq = false;
 
             cycle_count += 32;  // 44
 
@@ -2987,64 +2975,76 @@ internal class P8086
         }
         else if (opcode == 0xaa)
         {
-            // STOSB
-            WriteMemByte(_es, _di, _al);
+            if (!_rep_do_nothing)
+            {
+                // STOSB
+                WriteMemByte(_es, _di, _al);
 
-            _di += (ushort)(GetFlagD() ? -1 : 1);
+                _di += (ushort)(GetFlagD() ? -1 : 1);
 
-            cycle_count += 11;
+                cycle_count += 11;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} STOSB");
+                Log.DoLog($"{prefixStr} STOSB");
 #endif
+            }
         }
         else if (opcode == 0xab)
         {
-            // STOSW
-            WriteMemWord(_es, _di, GetAX());
+            if (!_rep_do_nothing)
+            {
+                // STOSW
+                WriteMemWord(_es, _di, GetAX());
 
-            _di += (ushort)(GetFlagD() ? -2 : 2);
+                _di += (ushort)(GetFlagD() ? -2 : 2);
 
-            cycle_count += 11;
+                cycle_count += 11;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} STOSW");
+                Log.DoLog($"{prefixStr} STOSW");
 #endif
+            }
         }
         else if (opcode == 0xae)
         {
-            // SCASB
-            byte v = ReadMemByte(_es, _di);
+            if (!_rep_do_nothing)
+            {
+                // SCASB
+                byte v = ReadMemByte(_es, _di);
 
-            int result = _al - v;
+                int result = _al - v;
 
-            SetAddSubFlags(false, _al, v, result, true, false);
+                SetAddSubFlags(false, _al, v, result, true, false);
 
-            _di += (ushort)(GetFlagD() ? -1 : 1);
+                _di += (ushort)(GetFlagD() ? -1 : 1);
 
-            cycle_count += 15;
+                cycle_count += 15;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} SCASB");
+                Log.DoLog($"{prefixStr} SCASB");
 #endif
+            }
         }
         else if (opcode == 0xaf)
         {
-            // SCASW
-            ushort ax = GetAX();
-            ushort v = ReadMemWord(_es, _di);
+            if (!_rep_do_nothing)
+            {
+                // SCASW
+                ushort ax = GetAX();
+                ushort v = ReadMemWord(_es, _di);
 
-            int result = ax - v;
+                int result = ax - v;
 
-            SetAddSubFlags(true, ax, v, result, true, false);
+                SetAddSubFlags(true, ax, v, result, true, false);
 
-            _di += (ushort)(GetFlagD() ? -2 : 2);
+                _di += (ushort)(GetFlagD() ? -2 : 2);
 
-            cycle_count += 15;
+                cycle_count += 15;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} SCASW");
+                Log.DoLog($"{prefixStr} SCASW");
 #endif
+            }
         }
         else if (opcode == 0xc6 || opcode == 0xc7)
         {
@@ -3482,34 +3482,7 @@ internal class P8086
             Log.DoLog($"{prefixStr} XLATB ({_ds:X4}:{GetBX():X4} + {old_al:X2})");
 #endif
         }
-        else if (opcode == 0xe0)
-        {
-            // LOOPNZ
-            byte to = GetPcByte();
-
-            ushort cx = GetCX();
-
-            cx--;
-
-            SetCX(cx);
-
-            ushort newAddresses = (ushort)(_ip + (sbyte)to);
-
-            if (cx > 0 && GetFlagZ() == false)
-            {
-                _ip = newAddresses;
-                cycle_count += 8;
-            }
-            else
-            {
-                cycle_count += 4;
-            }
-
-#if DEBUG
-            Log.DoLog($"{prefixStr} LOOPNZ {to} ({newAddresses:X4} -> {_ip:X4})");
-#endif
-        }
-        else if (opcode == 0xe1 || opcode == 0xe2)
+        else if (opcode == 0xe0 || opcode == 0xe1 || opcode == 0xe2)
         {
             // LOOP
             byte to = GetPcByte();
@@ -3544,6 +3517,16 @@ internal class P8086
                 }
 
                 name = "LOOPZ";
+            }
+            else if (opcode == 0xe0)
+            {
+                if (cx > 0 && GetFlagZ() == false)
+                {
+                    _ip = newAddresses;
+                    cycle_count += 4;
+                }
+
+                name = "LOOPNZ";
             }
 #if DEBUG
             else
@@ -3863,36 +3846,42 @@ internal class P8086
         if (_rep)
         {
             ushort cx = GetCX();
-            cx--;
-            SetCX(cx);
 
-            if (_rep_mode == RepMode.REPE_Z)
-            {
-                // REPE/REPZ
-                if (cx > 0 && GetFlagZ() == true)
-                    _ip = _rep_addr;
-                else
-                    _rep = false;
-            }
-            else if (_rep_mode == RepMode.REPNZ)
-            {
-                // REPNZ
-                if (cx > 0 && GetFlagZ() == false)
-                    _ip = _rep_addr;
-                else
-                    _rep = false;
-            }
-            else if (_rep_mode == RepMode.REP)
-            {
-                if (cx > 0)
-                    _ip = _rep_addr;
-                else
-                    _rep = false;
-            }
+            if (_rep_do_nothing)
+                _rep = false;
             else
             {
-                Log.DoLog($"{prefixStr} unknown _rep_mode {(int)_rep_mode}");
-                _rep = false;
+                cx--;
+                SetCX(cx);
+
+                if (_rep_mode == RepMode.REPE_Z)
+                {
+                    // REPE/REPZ
+                    if (cx > 0 && GetFlagZ() == true)
+                        _ip = _rep_addr;
+                    else
+                        _rep = false;
+                }
+                else if (_rep_mode == RepMode.REPNZ)
+                {
+                    // REPNZ
+                    if (cx > 0 && GetFlagZ() == false)
+                        _ip = _rep_addr;
+                    else
+                        _rep = false;
+                }
+                else if (_rep_mode == RepMode.REP)
+                {
+                    if (cx > 0)
+                        _ip = _rep_addr;
+                    else
+                        _rep = false;
+                }
+                else
+                {
+                    Log.DoLog($"{prefixStr} unknown _rep_mode {(int)_rep_mode}");
+                    _rep = false;
+                }
             }
 
             if (_rep == false)

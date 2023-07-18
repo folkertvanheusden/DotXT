@@ -1,7 +1,7 @@
 class MDA : Display
 {
     private byte [] _ram = new byte[16384];
-    private bool _hsync;
+    private bool _hsync = false;
 
     public MDA()
     {
@@ -34,12 +34,18 @@ class MDA : Display
 
     public override (byte, bool) IO_Read(ushort port)
     {
-        Log.DoLog($"MDA::IO_Read {port:X4}");
+        byte rc = 0;
 
         if (port == 0x03ba)
-            return ((byte)(IsHsync() ? 1 : 0), false);
+        {
+            rc = (byte)(_hsync ? 9 : 0);
 
-        return (0, false);
+            _hsync = !_hsync;
+        }
+
+        Log.DoLog($"MDA::IO_Read {port:X4}: {rc:X2}");
+
+        return (rc, false);
     }
 
     public override void WriteByte(uint offset, byte value)
@@ -64,7 +70,7 @@ class MDA : Display
 
     public override byte ReadByte(uint offset)
     {
-        Log.DoLog($"MDA::ReadByte({offset:X6}");
+        Log.DoLog($"MDA::ReadByte({offset:X6})");
 
         return _ram[(offset - 0xb0000) & 0x3fff];
     }

@@ -174,12 +174,8 @@ internal class i8253 : Device
         }
     }
 
-    private byte GetCounter(int nr)
+    private byte AddNoiseToLSB(int nr)
     {
-#if DEBUG
-        Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur}");
-#endif
-
         ushort current_prv = _timers[nr].counter_prv;
 
         _timers[nr].counter_prv = _timers[nr].counter_cur;
@@ -187,7 +183,35 @@ internal class i8253 : Device
         if (Math.Abs(_timers[nr].counter_cur - current_prv) >= 2)
             return (byte)(_random.Next(2) == 1 ? _timers[nr].counter_cur ^ 1 : _timers[nr].counter_cur);
 
-        return (byte)_timers[nr].counter_cur;  // TODO: latch_n
+        return (byte)_timers[nr].counter_cur;
+    }
+
+    private byte GetCounter(int nr)
+    {
+#if DEBUG
+        Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur} ({_timers[nr].latch_type}|{_timers[nr].latch_n_cur}/{_timers[nr].latch_n})");
+#endif
+
+        byte rc = 0;
+
+        if (_timers[nr].latch_type == 1)
+            rc = AddNoiseToLSB(nr);
+        else if (_timers[nr].latch_type == 2)
+            rc = (byte)(_timers[nr].counter_cur >> 8);
+        else if (_timers[nr].latch_type == 3)
+        {
+            if (_timers[nr].latch_n_cur == 2)
+                rc = AddNoiseToLSB(nr);
+            else
+                rc = (byte)(_timers[nr].counter_cur >> 8);
+        }
+
+        _timers[nr].latch_n_cur--;
+
+        if (_timers[nr].latch_n_cur == 0)
+            _timers[nr].latch_n_cur = _timers[nr].latch_n;
+
+        return rc;
     }
 
     private void Command(byte v)
@@ -279,20 +303,44 @@ internal class i8253 : Device
 // programmable interrupt controller (PIC)
 internal class pic8259
 {
-    bool _init = false;
-    byte _init_data = 0;
-    byte _ICW1, _ICW2, _ICW3, _ICW4;
-    bool _is_ocw = false;
-    int _ocw_nr = 0;
-    byte _OCW1, _OCW2, _OCW3;
+    private bool _init = false;
+    private byte _init_data = 0;
+    private byte _ICW1, _ICW2, _ICW3, _ICW4;
+    private bool _is_ocw = false;
+    private int _ocw_nr = 0;
+    private byte _OCW1, _OCW2, _OCW3;
 
-    int _int_offset = 8;
-    byte _interrupt_mask = 0xff;
+    private int _int_offset = 8;
+    private byte _interrupt_mask = 0xff;
 
-    byte [] _register_cache = new byte[2];
+    private byte [] _register_cache = new byte[2];
 
-    public pic8259()
+    private List<Device> _devices;
+
+    public pic8259(ref List<Device> devices)
     {
+        _devices = devices;
+    }
+
+    private byte GetPendingInterrupts()
+    {
+        byte bitmap = 0;
+
+        foreach (var device in _devices)
+        {
+            List<PendingInterrupt> interrupts = device.GetPendingInterrupts();
+
+            if (interrupts == null)
+                continue;
+
+            foreach (var interrupt in interrupts)
+            {
+                if (interrupt.pending && interrupt.int_vec >= 8 && interrupt.int_vec < 16)
+                    bitmap |= (byte)(1 << (interrupt.int_vec - 8));
+            }
+        }
+
+        return bitmap;
     }
 
     public (byte, bool) In(ushort addr)
@@ -316,7 +364,7 @@ internal class pic8259
             else if (_ocw_nr == 2)
             {
                 _ocw_nr++;
-                return (_OCW3, false);
+                return (GetPendingInterrupts(), false);
             }
             else
             {
@@ -336,13 +384,11 @@ internal class pic8259
 
     public bool Out(ushort addr, byte value)
     {
-        bool rc = false;
-
         Log.DoLog($"8259 OUT port {addr} value {value:X2}");
 
         _register_cache[addr - 0x0020] = value;
 
-        if (addr == 0)
+        if (addr == 0x0020)
         {
             if ((value & 128) == 0)
             {
@@ -359,7 +405,7 @@ internal class pic8259
                 _ocw_nr = 0;
             }
         }
-        else if (addr == 1)
+        else if (addr == 0x0021)
         {
             if (_init)
             {
@@ -410,7 +456,8 @@ internal class pic8259
             Log.DoLog($"8259 OUT has no port {addr:X2}");
         }
 
-        return rc;
+        // when reconfiguring the PIC8259, force an interrupt recheck
+        return true;
     }
 
     public int GetInterruptOffset()
@@ -526,7 +573,7 @@ internal class i8237
         count--;
 
 #if DEBUG
-        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}, {count}");
+//        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}, {count}");
 #endif
 
         _channel_word_count[0].SetValue(count);
@@ -678,7 +725,7 @@ internal class i8237
 
 class IO
 {
-    private pic8259 _pic = new();
+    private pic8259 _pic;
     private i8237 _i8237;
 
     private Bus _b;
@@ -694,6 +741,8 @@ class IO
     public IO(Bus b, ref List<Device> devices)
     {
         _b = b;
+
+        _pic = new(ref devices);
 
         _i8237 = new(_b);
 
@@ -733,10 +782,7 @@ class IO
             return (0x0f, false);  // 'transfer complete'
 
         if (addr == 0x0020 || addr == 0x0021)  // PIC
-            return _pic.In((ushort)(addr - 0x0020));
-
-        if (addr == 0x0061)  // "system control port for compatibility with 8255"
-            return (0, false);
+            return _pic.In(addr);
 
         if (addr == 0x0062)  // PPI (XT only)
         {
@@ -791,10 +837,10 @@ class IO
             return _i8237.Out(addr, value);
 
         else if (addr == 0x0020 || addr == 0x0021)  // PIC
-            return _pic.Out((ushort)(addr - 0x0020), value);
+            return _pic.Out(addr, value);
 
         else if (addr == 0x0080)
-            Console.WriteLine($"Manufacturer systems checkpoint {value:X2}");
+            Log.DoLog($"Manufacturer systems checkpoint {value:X2}");
 
         else if (addr == 0x0322)
         {

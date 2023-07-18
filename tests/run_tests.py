@@ -60,10 +60,10 @@ start_t = time.time()
 #run('python3 mov.py', TEMP)
 #run('python3 neg.py', TEMP)
 #run('python3 or_and_xor_test.py', TEMP)
-run('python3 or_and_xor_test_16.py', TEMP)
+#run('python3 or_and_xor_test_16.py', TEMP)
 #run('python3 push_pop.py', TEMP)
 #run('python3 rcl_rcr_rol_ror_sal_sar.py', TEMP)
-#run('python3 strings.py', TEMP)
+run('python3 strings.py', TEMP)
 do_special_cases = False
 print(f'Script generation took {time.time() - start_t:.3f} seconds')
 
@@ -89,10 +89,10 @@ def dotest(i):
     rc = None
 
     if CC:
-        rc = run_path('../../', f'dotnet-coverage collect "dotnet run -c Debug -t {TEST_BIN} -l {LOGFILE} -e" -o {COVERAGE}', 123)
+        rc = run_path('../../', f'dotnet-coverage collect "dotnet run -c Debug -t {TEST_BIN} -l {LOGFILE}" -o {COVERAGE}', 123)
 
     else:
-        rc = run_path('../../', f'dotnet run -c Debug -l {LOGFILE} -t {TEST_BIN} -e', 123)
+        rc = run_path('../../', f'dotnet run -c Debug -l {LOGFILE} -t {TEST_BIN}', 123)
 
     if rc == 123:
         if LF:

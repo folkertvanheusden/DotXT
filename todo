@@ -67,3 +67,7 @@ when re-setting timer, clear pending interrupts, but only for the timer that get
 9b09458f5ebfee987be906750a02fd2d07e925ed fails at E4DF
 
 ae2d1c35c052e61f3b19d030cf5419f5780db9ad loops on post due to switch setting
+
+f2a6cde41174139bb6eb19416db72cace8407813 PIC OCW3: "active request for corresponding interrupt line" is required
+
+f84604782603839b59f110cf1ebc32292dbe7420 fails at memory check 0x8000, subroutine E4EE (routine label E21A)
