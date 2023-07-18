@@ -137,7 +137,7 @@ class Keyboard : Device
         // TODO: replace by a flag that indicates wether
         // a new key has been queued and return that for
         // interrupt flag
-        bool any_keys = _keyboard_buffer.Count > 0 || _scan_code != 0;
+        bool any_keys = _keyboard_buffer.Count > 0;
 
         _keyboard_buffer_lock.ReleaseMutex();
 
