@@ -96,9 +96,9 @@ class Keyboard : Device
         {
             byte rc = _scan_code;
 
-            _scan_code = 0;
-
             Log.DoLog($"Keyboard: scan code {rc:X2}");
+
+            _scan_code = 0;
 
             return (rc, false);
         }
