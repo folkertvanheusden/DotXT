@@ -72,4 +72,28 @@ f2a6cde41174139bb6eb19416db72cace8407813 PIC OCW3: "active request for correspon
 
 f84604782603839b59f110cf1ebc32292dbe7420 fails at memory check 0x8000, subroutine E4EE (routine label E21A)
 
-since 8c56c4572d25ad7ce933265dda1533c2ee518a2c, memory counting fails at 32kB
+since 8c56c4572d25ad7ce933265dda1533c2ee518a2c, memory counting fails at 32kB also scan_code returned after reset is 0x00 (yet bios does not complain?)
+	[1079823] -Is-apc 0FFA33 B0 AX:EE08 BX:0000 CX:0000 DX:C800 SP:00FE BP:0000 SI:FFFF DI:0050 flags:0297, ES:B000, CS:F000, SS:0030, DS:0000 IP:FA33 |  MOV AL,$C8
+	[1079824] OUT: I/O port 0061 (C8)
+	[1079825] -Is-apc 0FFA35 E6 AX:EEC8 BX:0000 CX:0000 DX:C800 SP:00FE BP:0000 SI:FFFF DI:0050 flags:0297, ES:B000, CS:F000, SS:0030, DS:0000 IP:FA35 |  OUT $61,AL
+	[1079826] Scanning for interrupts
+	[1079827] keyboard::GetPendingInterrupts
+	[1079828] Keyboard has 1 pending interrupts
+	[1079829] Keyboard triggers vector 9, mask: FF
+	[1079830] Keyboard interrupt 9 masked off
+	[1079831] -Is-apc 0FFA37 B0 AX:EEC8 BX:0000 CX:0000 DX:C800 SP:00FE BP:0000 SI:FFFF DI:0050 flags:0297, ES:B000, CS:F000, SS:0030, DS:0000 IP:FA37 |  MOV AL,$48
+	[1079832] OUT: I/O port 0061 (48)
+	[1079833] -Is-apc 0FFA39 E6 AX:EE48 BX:0000 CX:0000 DX:C800 SP:00FE BP:0000 SI:FFFF DI:0050 flags:0297, ES:B000, CS:F000, SS:0030, DS:0000 IP:FA39 |  OUT $61,AL
+	[1079834] -Is-apc 0FFA3B B0 AX:EE48 BX:0000 CX:0000 DX:C800 SP:00FE BP:0000 SI:FFFF DI:0050 flags:0297, ES:B000, CS:F000, SS:0030, DS:0000 IP:FA3B |  MOV AL,$FD
+	[1079835] OUT: I/O port 0021 (FD)
+	[1079836] 8259 OUT port 33 value FD 
+	[1079837] -Is-apc 0FFA3D E6 AX:EEFD BX:0000 CX:0000 DX:C800 SP:00FE BP:0000 SI:FFFF DI:0050 flags:0297, ES:B000, CS:F000, SS:0030, DS:0000 IP:FA3D |  OUT $21,AL
+	[1079838] Scanning for interrupts
+	[1079839] keyboard::GetPendingInterrupts
+	[1079840] -Is-apc 0FFA3F C6 AX:EEFD BX:0000 CX:0000 DX:C800 SP:00FE BP:0000 SI:FFFF DI:0050 flags:0297, ES:B000, CS:F000, SS:0030, DS:0000 IP:FA3F |  MOV byte [$046B] (:$00046B -> 0000),$00
+	[1079841] -Is-apc 0FFA44 FB AX:EEFD BX:0000 CX:0000 DX:C800 SP:00FE BP:0000 SI:FFFF DI:0050 flags:0297, ES:B000, CS:F000, SS:0030, DS:0000 IP:FA44 |  STI
+	[1079842] word True, r1 0, r2 0, result 0, issub True
+	[1079843] -Is-apc 0FFA45 2B AX:EEFD BX:0000 CX:0000 DX:C800 SP:00FE BP:0000 SI:FFFF DI:0050 flags:0297, ES:B000, CS:F000, SS:0030, DS:0000 IP:FA45 |  SUB CX,CX
+	[1079844] -I-z-p- 0FFA47 F6 AX:EEFD BX:0000 CX:0000 DX:C800 SP:00FE BP:0000 SI:FFFF DI:0050 flags:0246, ES:B000, CS:F000, SS:0030, DS:0000 IP:FA47 |  TEST [$046B] (:$00046B -> 0000),02
+
+        ---> interrupt fires too soon - mask is removed from pic but interrupt-flag of cpu is still off - and then the interrupt is lost
