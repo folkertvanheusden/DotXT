@@ -48,6 +48,7 @@ internal class P8086
     private bool _scheduled_interrupts = false;
 
     private bool _rep;
+    private bool _remember_rep_for_irq;
     private RepMode _rep_mode;
     private ushort _rep_addr;
     private byte _rep_opcode;
@@ -1063,6 +1064,8 @@ internal class P8086
     {
         _segment_override_set = false;
         _segment_override_name = "";
+
+        _remember_rep_for_irq = _rep;
         _rep = false;
 
         push(_flags);
@@ -2275,6 +2278,9 @@ internal class P8086
 
             _flags = pop();
             FixFlags();
+
+            _rep = _remember_rep_for_irq;
+            _remember_rep_for_irq = false;
 
             cycle_count += 32;  // 44
 
