@@ -1460,13 +1460,14 @@ internal class P8086
             // DAA
             // https://www.felixcloutier.com/x86/daa
             byte old_al = _al;
+            bool old_af = GetFlagA();
             bool old_cf = GetFlagC();
 
             SetFlagC(false);
 
             if (((_al & 0x0f) > 9) || GetFlagA() == true)
             {
-                bool add_carry = (_al & 0x0f) + 6 > 15;  // TODO or should add_carry be set if _al became > 255?
+                bool add_carry = _al + 6 > 255;
 
                 _al += 6;
 
@@ -1479,7 +1480,9 @@ internal class P8086
                 SetFlagA(false);
             }
 
-            if (old_al > 0x99 || old_cf)
+            byte upper_nibble_check = (byte)(old_af ? 0x9f : 0x99);
+
+            if (old_al > upper_nibble_check || old_cf)
             {
                 _al += 0x60;
                 SetFlagC(true);
@@ -1496,7 +1499,7 @@ internal class P8086
             cycle_count += 4;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} DAA {old_al:X2} -> {_al:X2}");
+            Log.DoLog($"{prefixStr} DAA");
 #endif
         }
         else if (opcode == 0x2c)
@@ -1514,6 +1517,44 @@ internal class P8086
 
 #if DEBUG
             Log.DoLog($"{prefixStr} SUB ${v:X2}");
+#endif
+        }
+        else if (opcode == 0x2f)
+        {
+            // DAS
+            byte old_al = _al;
+            bool old_af = GetFlagA();
+            bool old_cf = GetFlagC();
+
+            SetFlagC(false);
+
+            if ((_al & 0x0f) > 9 || GetFlagA() == true)
+            {
+                _al -= 6;
+
+                SetFlagA(true);
+            }
+            else
+            {
+                SetFlagA(false);
+            }
+
+            byte upper_nibble_check = (byte)(old_af ? 0x9f : 0x99);
+
+            if (old_al > upper_nibble_check || old_cf)
+            {
+                _al -= 0x60;
+                SetFlagC(true);
+            }
+
+            SetFlagS((_al & 0x80) == 0x80);
+            SetFlagZ(_al == 0);
+            SetFlagP(_al);
+
+            cycle_count += 4;
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} DAS");
 #endif
         }
         else if (opcode == 0x2d)
