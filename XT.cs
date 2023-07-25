@@ -1387,6 +1387,17 @@ internal class P8086
             Log.DoLog($"{prefixStr} PUSH SS");
 #endif
         }
+        else if (opcode == 0x17)
+        {
+            // POP SS
+            _ss = pop();
+
+            cycle_count += 11;  // 15
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} POP SS");
+#endif
+        }
         else if (opcode == 0x1c)
         {
             // SBB AL,ib
@@ -1825,7 +1836,10 @@ internal class P8086
         else if (opcode == 0x54)
         {
             // PUSH SP
-            push(_sp);
+            // special case, see:
+            // https://c9x.me/x86/html/file_module_x86_id_269.html
+            _sp -= 2;
+            WriteMemWord(_ss, _sp, _sp);
 
             cycle_count += 11;  // 15
 
