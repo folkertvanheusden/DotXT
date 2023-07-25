@@ -2710,7 +2710,7 @@ internal class P8086
                     uint dx_ax = (uint)((GetDX() << 16) | GetAX());
 
                     if (r1 == 0 || dx_ax / r1 >= 0x10000)
-                        InvokeInterrupt(instr_start, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                        InvokeInterrupt(_ip, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
                     else
                     {
                         SetAX((ushort)(dx_ax / r1));
@@ -2721,7 +2721,7 @@ internal class P8086
                     ushort ax = GetAX();
 
                     if (r1 == 0 || ax / r1 > 0x100)
-                        InvokeInterrupt(instr_start, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                        InvokeInterrupt(_ip, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
                     else
                     {
                         _al = (byte)(ax / r1);
