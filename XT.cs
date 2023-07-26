@@ -2278,10 +2278,10 @@ internal class P8086
             Log.DoLog($"{prefixStr} {name} {affected},{name_from}");
 #endif
         }
-        else if (opcode == 0xcd)
+        else if (opcode == 0xcc || opcode == 0xcd)
         {
             // INT 0x..
-            byte @int = GetPcByte();
+            byte @int = (byte)(opcode == 0xcc ? 3 : GetPcByte());
 
             uint addr = (uint)(@int * 4);
 
