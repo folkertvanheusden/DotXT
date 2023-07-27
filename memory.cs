@@ -26,9 +26,55 @@ internal class Rom
 {
     private readonly byte[] _contents;
 
+    private Dictionary <uint, string> _annotations = new();
+
     public Rom(string filename)
     {
         _contents = File.ReadAllBytes(filename);
+
+        string annotations_file = filename + ".ann";
+
+        if (File.Exists(annotations_file))
+        {
+            Console.WriteLine($"Loading annotations file {annotations_file}");
+
+            int n = 0;
+
+            using(StreamReader sr = File.OpenText(annotations_file))
+            {
+                for(;;)
+                {
+                    string s = sr.ReadLine();
+                    if (s == null)
+                        break;
+
+                    int pipe = s.IndexOf("|");
+                    if (pipe == -1)
+                        continue;
+
+                    string key = s.Substring(0, pipe);
+                    string val = s.Substring(pipe + 1);
+
+                    uint key_uint = Convert.ToUInt32(key, 16);
+
+                    _annotations[key_uint] = val;
+
+                    n++;
+
+                    // Console.WriteLine($"{n} {key_uint} {val}");
+                }
+            }
+
+            Console.WriteLine($"Loaded {n} annotations for {filename}");
+        }
+    }
+
+    public string GetAnnotation(uint address)
+    {
+        if (_annotations.ContainsKey(address))
+                return _annotations[address];
+
+        return null;
     }
 
     public byte ReadByte(uint address)
@@ -68,6 +114,20 @@ class Bus
         _use_bios = use_bios;
 
         _devices = devices;
+    }
+
+    public string GetAnnotation(uint address)
+    {
+        if (address < 640 * 1024 || _use_bios == false)
+            return null;
+
+        if (address is >= 0x000f8000 and <= 0x000fffff)
+            return _bios.GetAnnotation(address);
+
+        if (address is >= 0x000f0000 and <= 0x000f7fff)
+            return _basic.GetAnnotation(address);
+
+        return null;
     }
 
     public byte ReadByte(uint address)

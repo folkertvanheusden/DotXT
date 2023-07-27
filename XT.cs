@@ -1264,6 +1264,11 @@ internal class P8086
         }
 
 #if DEBUG
+        string annotation = _b.GetAnnotation(address);
+
+        if (annotation != null)
+            Log.DoLog($"; Annotation: {annotation}");
+
 //        string mem = HexDump(address, false);
 //        string stk = HexDump((uint)(_ss * 16 + _sp), true);
 
