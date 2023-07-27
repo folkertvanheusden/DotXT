@@ -1,3 +1,4 @@
 [submodule "tests"]
 	path = tests
 	url = https://github.com/folkertvanheusden/8086-processor-emulation-validation-testset
+	#branch = work3
