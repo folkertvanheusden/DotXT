@@ -1,1 +1,47 @@
-E6CB|rom error
+0FE6CB|rom error
+0FFA2A|software reset keyboard
+0FFF23|temporary isr
+0FE66F|r/w storage test on a block of memory
+0FE6F2|bootsector loader
+0FE729|rs232_io
+0FE7F2|wait for rs232 status routine
+0FE82E|keyboard_io wait for keyboard
+0FEC59|disk i/o
+0FF206|set cursor position, ax: row/col
+0FF1D8|OUTPUTS THE REGISTER TO THE 6845 REGS NAMED IN AH
+0FF285|calculates the regen buffer address of a character in the alpha mode
+0FF99C|prt_hex (part of "f98b: convert and print ascii code")
+0FF9A9|print a message on the display
+0FF9CA|p_msg
+0FFA59|DDS
+0FE021|mfg_boot (load test code through keyboard interface)
+0FE05B|8088 processor test
+0FE0AE|rom checksum test 1
+0FE0D9|disable dma controller (dma init test)
+0FE0E1|verify that timer 1 works (dma init test)
+0FE10E|initialize timer 1 to refresh ram
+0FE114|wrap dma channels address and count registers
+0FE135|initialize and start dma for memory refresh
+0FE165|determine memory size and fill memory with data
+0FE1CE|initialize the 8259 interrupt controller chip
+0FE1DE|setup interrupt vectors to temporary routine
+0FE202|determine configuration and mfg mode
+0FE242|initialize and start crt controller (6845)
+0FE2AA|setup video data on screen for video line test
+0FE2CD|crt interface lines test
+0FE329|8259 interrupt controller test
+0FE32A|test the imr register
+0FE343|check for hot interrupts (should not occure any)
+0FE35D|8253 timer checkout
+0FE394|setup timer 0 to mode 3
+0FE3A2|keyboard test
+0FE3C2|check for stuck keys
+0FE3DE|setup hardware int. vector table
+0FE407|setup timer 0 to blink led if manufacturing test mode
+0FE418|expansion i/o box test, determine if present
+0FE430|expansion i/o box test, check address bus
+0FE44D|expansion i/o box test, check data bus
+0FE46A|additional read/write storage test
+0FE518|rom scan
+0FE53B|basic rom scan
+0FE551|disk attachment test
