@@ -9,8 +9,6 @@ class Keyboard : Device
 
     private PendingInterrupt _pi = new();
 
-    private byte _scan_code = 0;
-
     private bool _reset_trigger = false;
 
     public Keyboard()
@@ -78,8 +76,6 @@ class Keyboard : Device
 
                 _keyboard_buffer_lock.WaitOne();
 
-                _scan_code = 0;
-
                 _keyboard_buffer.Clear();
                 _keyboard_buffer.Enqueue(0xaa);  // power on reset reply
 
@@ -94,11 +90,16 @@ class Keyboard : Device
     {
         if (port == 0x60)
         {
-            byte rc = _scan_code;
+            _keyboard_buffer_lock.WaitOne();
+
+            byte rc = 0;
+
+            if (_keyboard_buffer.Count > 0)
+                rc = (byte)_keyboard_buffer.Dequeue();
+
+            _keyboard_buffer_lock.ReleaseMutex();
 
             Log.DoLog($"Keyboard: scan code {rc:X2}", true);
-
-            _scan_code = 0;
 
             return (rc, false);
         }
@@ -106,7 +107,13 @@ class Keyboard : Device
         {
             Log.DoLog($"Keyboard: 0x64", true);
 
-            return ((byte)(_scan_code != 0 ? 21 : 20), false);
+            _keyboard_buffer_lock.WaitOne();
+
+            bool keys_pending = _keyboard_buffer.Count > 0;
+
+            _keyboard_buffer_lock.ReleaseMutex();
+
+            return ((byte)(keys_pending ? 21 : 20), false);
         }
 
         return (0x00, false);
@@ -148,7 +155,7 @@ class Keyboard : Device
 
     public override List<PendingInterrupt> GetPendingInterrupts()
     {
-        Log.DoLog("keyboard::GetPendingInterrupts");
+        // Log.DoLog("keyboard::GetPendingInterrupts");
 
         if (_pi.pending)
         {
@@ -156,16 +163,6 @@ class Keyboard : Device
 
             // TODO: only when Count > 0
             rc.Add(_pi);
-
-            // queue key for retrieval
-            _keyboard_buffer_lock.WaitOne();
-
-            if (_keyboard_buffer.Count > 0 && _scan_code == 0)
-                _scan_code = (byte)_keyboard_buffer.Dequeue();
-            else
-                _scan_code = 0;
-
-            _keyboard_buffer_lock.ReleaseMutex();
 
             return rc;
         }
