@@ -1113,6 +1113,65 @@ internal class P8086
         return s;
     }
 
+    public string GetTerminatedString(ushort segment, ushort p, char terminator)
+    {
+        string out_ = "";
+
+        for(;;)
+        {
+            byte byte_ = ReadMemByte(segment, p);
+
+            if (byte_ == terminator)
+                break;
+
+            out_ += (char)byte_;
+
+            p++;
+
+            if (p == 0)  // stop at end of segment
+                break;
+        }
+
+        return out_;
+    }
+
+    public ushort GetRegisterByName(string name)
+    {
+        if (name == "si")
+            return _si;
+
+        if (name == "cs")
+            return _cs;
+
+        return 0xffff;
+    }
+
+    public void RunScript(string script)
+    {
+        string[] lines = script.Split(';');
+
+        int line_nr = 1;
+
+        foreach (var line in lines)
+        {
+            string[] tokens = line.Split(' ');
+
+            if (tokens[0] == "print*")
+            {
+                string[] registers = tokens[1].Split(',');
+
+                Log.DoLog($"{line_nr} {tokens[0]}: {GetTerminatedString(GetRegisterByName(registers[0]), GetRegisterByName(registers[1]), '\n')}");
+            }
+            else
+            {
+                Log.DoLog($"Script token {tokens[0]} (line {line_nr}) not understood");
+                break;
+            }
+            
+            line_nr++;
+        }
+    }
+
     // cycle counts from https://zsmith.co/intel_i.php
     public bool Tick()
     {
@@ -1268,6 +1327,11 @@ internal class P8086
 
         if (annotation != null)
             Log.DoLog($"; Annotation: {annotation}");
+
+        string script = _b.GetScript(address);
+
+        if (script != null)
+            RunScript(script);
 
 //        string mem = HexDump(address, false);
 //        string stk = HexDump((uint)(_ss * 16 + _sp), true);

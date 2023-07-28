@@ -27,6 +27,7 @@ internal class Rom
     private readonly byte[] _contents;
 
     private Dictionary <uint, string> _annotations = new();
+    private Dictionary <uint, string> _scripts = new();
 
     public Rom(string filename)
     {
@@ -54,8 +55,20 @@ internal class Rom
 
                     string key = s.Substring(0, pipe);
                     string val = s.Substring(pipe + 1);
+                    string scr = null;
 
                     uint key_uint = Convert.ToUInt32(key, 16);
+
+                    int val_pipe = val.IndexOf("|");
+
+                    if (val_pipe != -1)
+                    {
+                        scr = val.Substring(val_pipe + 1);
+
+                        _scripts[key_uint] = scr;
+
+                        val = val.Substring(0, val_pipe);
+                    }
 
                     _annotations[key_uint] = val;
 
@@ -73,6 +86,14 @@ internal class Rom
     {
         if (_annotations.ContainsKey(address))
                 return _annotations[address];
+
+        return null;
+    }
+
+    public string GetScript(uint address)
+    {
+        if (_scripts.ContainsKey(address))
+                return _scripts[address];
 
         return null;
     }
@@ -126,6 +147,20 @@ class Bus
 
         if (address is >= 0x000f0000 and <= 0x000f7fff)
             return _basic.GetAnnotation(address);
+
+        return null;
+    }
+
+    public string GetScript(uint address)
+    {
+        if (address < 640 * 1024 || _use_bios == false)
+            return null;
+
+        if (address is >= 0x000f8000 and <= 0x000fffff)
+            return _bios.GetScript(address);
+
+        if (address is >= 0x000f0000 and <= 0x000f7fff)
+            return _basic.GetScript(address);
 
         return null;
     }
