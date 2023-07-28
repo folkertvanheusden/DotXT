@@ -3334,7 +3334,7 @@ internal class P8086
                     bool b6 = (prev_v1 & check_bit2) != 0;
 
 #if DEBUG
-                    Log.DoLog($"b6: {b6}, b7: {b7}: flagO: {b7 != b6}");
+                    // Log.DoLog($"b6: {b6}, b7: {b7}: flagO: {b7 != b6}");
 #endif
 
                     SetFlagO(b7 != b6);
