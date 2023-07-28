@@ -1164,7 +1164,7 @@ internal class P8086
         // check for interrupt
         if (GetFlagI() == true && _scheduled_interrupts)
         {
-            Log.DoLog("Scanning for interrupts", true);
+            // Log.DoLog("Scanning for interrupts", true);
 
             int enabled_interrupts = _io.GetInterruptMask();
 
@@ -1177,26 +1177,26 @@ internal class P8086
                 if (interrupts == null)
                     continue;
 
-                Log.DoLog($"{device.GetName()} has {interrupts.Count} pending interrupts");
+                // Log.DoLog($"{device.GetName()} has {interrupts.Count} pending interrupts");
 
                 foreach (var interrupt in interrupts)
                 {
                     if (interrupt.pending == false)
                     {
-                        Log.DoLog("Interrupt was cleared");
+                        Log.DoLog("Interrupt was cleared", true);
                         continue;
                     }
-
-                    Log.DoLog($"{device.GetName()} triggers vector {interrupt.int_vec}, mask: {enabled_interrupts:X2}");
 
                     if (interrupt.int_vec >= 8 && interrupt.int_vec < 16)
                     {
                         if ((enabled_interrupts & (1 << (interrupt.int_vec - 8))) != 0)
                         {
-                            Log.DoLog($"{device.GetName()} interrupt {interrupt.int_vec} masked off", true);
+                            // Log.DoLog($"{device.GetName()} interrupt {interrupt.int_vec} masked off", true);
                             continue;
                         }
                     }
+
+                    Log.DoLog($"{device.GetName()} triggers vector {interrupt.int_vec}, mask: {enabled_interrupts:X2}", true);
 
                     InvokeInterrupt(_ip, interrupt.int_vec);
 
@@ -3791,6 +3791,8 @@ internal class P8086
             SetFlagI(true); // IF
 
             cycle_count += 2;
+
+            _scheduled_interrupts = true;  // TODO temp?
 
 #if DEBUG
             Log.DoLog($"{prefixStr} STI");
