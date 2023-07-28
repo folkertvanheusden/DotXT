@@ -81,7 +81,7 @@ class CGA : Display
 
     public override void WriteByte(uint offset, byte value)
     {
-        Log.DoLog($"CGA::WriteByte({offset:X6}, {value:X2})", true);
+        // Log.DoLog($"CGA::WriteByte({offset:X6}, {value:X2})", true);
 
         uint use_offset = (offset - 0xb8000) & 0x3fff;
 

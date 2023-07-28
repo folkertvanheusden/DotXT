@@ -50,7 +50,7 @@ class MDA : Display
 
     public override void WriteByte(uint offset, byte value)
     {
-        Log.DoLog($"MDA::WriteByte({offset:X6}, {value:X2})", true);
+        // Log.DoLog($"MDA::WriteByte({offset:X6}, {value:X2})", true);
 
         uint use_offset = (offset - 0xb0000) & 0x3fff;
 
