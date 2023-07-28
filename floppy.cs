@@ -70,7 +70,7 @@ class FloppyDisk : Device
 
     public override (byte, bool) IO_Read(ushort port)
     {
-        Log.DoLog($"Floppy-IN {port:X4}");
+        Log.DoLog($"Floppy-IN {port:X4}", true);
 
         if (port == 0x3f4)
             return (128, _pi.pending);
@@ -80,7 +80,7 @@ class FloppyDisk : Device
 
     public override bool IO_Write(ushort port, byte value)
     {
-        Log.DoLog($"Floppy-OUT {port:X4} {value:X2}");
+        Log.DoLog($"Floppy-OUT {port:X4} {value:X2}", true);
 
         if (port == 0x3f2)
             _pi.pending = true;  // FDC enable (controller reset) (IRQ 6)

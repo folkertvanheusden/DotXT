@@ -24,7 +24,7 @@ class Keyboard : Device
 
     public void PushKeyboardScancode(int scan_code)
     {
-        Log.DoLog($"PushKeyboardScancode({scan_code})");
+        Log.DoLog($"PushKeyboardScancode({scan_code})", true);
 
         _keyboard_buffer_lock.WaitOne();
 
@@ -35,7 +35,7 @@ class Keyboard : Device
 
     public static void KeyboardThread(object o_kb)
     {
-        Log.DoLog("KeyboardThread started");
+        Log.DoLog("KeyboardThread started", true);
 
         Keyboard kb = (Keyboard)o_kb;
 
@@ -44,13 +44,13 @@ class Keyboard : Device
             ConsoleKeyInfo cki = Console.ReadKey(true);
             ConsoleKey ck = cki.Key;
 
-            Log.DoLog($"Key pressed: {cki.Key.ToString()}");
+            Log.DoLog($"Key pressed: {cki.Key.ToString()}", true);
 
             if (ck == ConsoleKey.F1)  // F1
                 kb.PushKeyboardScancode(0x3a);
         }
 
-        Log.DoLog("KeyboardThread terminating");
+        Log.DoLog("KeyboardThread terminating", true);
     }
 
     public override String GetName()
@@ -96,7 +96,7 @@ class Keyboard : Device
         {
             byte rc = _scan_code;
 
-            Log.DoLog($"Keyboard: scan code {rc:X2}");
+            Log.DoLog($"Keyboard: scan code {rc:X2}", true);
 
             _scan_code = 0;
 
@@ -104,7 +104,7 @@ class Keyboard : Device
         }
         else if (port == 0x64)
         {
-            Log.DoLog($"Keyboard: 0x64");
+            Log.DoLog($"Keyboard: 0x64", true);
 
             return ((byte)(_scan_code != 0 ? 21 : 20), false);
         }

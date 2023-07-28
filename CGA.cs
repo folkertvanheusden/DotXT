@@ -37,7 +37,7 @@ class CGA : Display
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
-        Log.DoLog("CGA::RegisterDevice");
+        Log.DoLog("CGA::RegisterDevice", true);
 
         mappings[0x3d4] = this;
         mappings[0x3d5] = this;
@@ -55,7 +55,7 @@ class CGA : Display
 
     public override bool IO_Write(ushort port, byte value)
     {
-        Log.DoLog($"CGA::IO_Write {port:X4} {value:X2}");
+        Log.DoLog($"CGA::IO_Write {port:X4} {value:X2}", true);
 
         if (port == 0x3d4 || port == 0x3d6)
             _m6845_reg = value;
@@ -71,7 +71,7 @@ class CGA : Display
 
     public override (byte, bool) IO_Read(ushort port)
     {
-        Log.DoLog("CGA::IO_Read");
+        Log.DoLog("CGA::IO_Read", true);
 
         if ((port == 0x3d5 || port == 0x3d7) && _m6845_reg >= 0x0c)
             return (_m6845.Read(_m6845_reg), false);
@@ -81,7 +81,7 @@ class CGA : Display
 
     public override void WriteByte(uint offset, byte value)
     {
-        Log.DoLog($"CGA::WriteByte({offset:X6}, {value:X2})");
+        Log.DoLog($"CGA::WriteByte({offset:X6}, {value:X2})", true);
 
         uint use_offset = (offset - 0xb8000) & 0x3fff;
 
@@ -101,7 +101,7 @@ class CGA : Display
 
     public override byte ReadByte(uint offset)
     {
-        Log.DoLog($"CGA::ReadByte({offset:X6}");
+        Log.DoLog($"CGA::ReadByte({offset:X6}", true);
 
         return _ram[(offset - 0xb8000) & 0x3fff];
     }

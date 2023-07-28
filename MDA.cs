@@ -14,7 +14,7 @@ class MDA : Display
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
-        Log.DoLog("MDA::RegisterDevice");
+        Log.DoLog("MDA::RegisterDevice", true);
 
         for(ushort port=0x3b0; port<0x3c0; port++)
             mappings[port] = this;
@@ -27,7 +27,7 @@ class MDA : Display
 
     public override bool IO_Write(ushort port, byte value)
     {
-        Log.DoLog($"MDA::IO_Write {port:X4} {value:X2}");
+        Log.DoLog($"MDA::IO_Write {port:X4} {value:X2}", true);
 
         return false;
     }
@@ -43,14 +43,14 @@ class MDA : Display
             _hsync = !_hsync;
         }
 
-        Log.DoLog($"MDA::IO_Read {port:X4}: {rc:X2}");
+        Log.DoLog($"MDA::IO_Read {port:X4}: {rc:X2}", true);
 
         return (rc, false);
     }
 
     public override void WriteByte(uint offset, byte value)
     {
-        Log.DoLog($"MDA::WriteByte({offset:X6}, {value:X2})");
+        Log.DoLog($"MDA::WriteByte({offset:X6}, {value:X2})", true);
 
         uint use_offset = (offset - 0xb0000) & 0x3fff;
 
@@ -70,7 +70,7 @@ class MDA : Display
 
     public override byte ReadByte(uint offset)
     {
-        Log.DoLog($"MDA::ReadByte({offset:X6})");
+        Log.DoLog($"MDA::ReadByte({offset:X6})", true);
 
         return _ram[(offset - 0xb0000) & 0x3fff];
     }

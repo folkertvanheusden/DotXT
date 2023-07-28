@@ -93,7 +93,7 @@ internal class P8086
 
             uint addr = load_test_at == 0xffffffff ? 0 : load_test_at;
 
-            Log.DoLog($"Load {test} at {addr:X6}");
+            Log.DoLog($"Load {test} at {addr:X6}", true);
 
             using(Stream source = File.Open(test, FileMode.Open))
             {
@@ -154,7 +154,7 @@ internal class P8086
 
     public void set_ip(ushort cs, ushort ip)
     {
-        Log.DoLog($"Set CS/IP to {cs:X4}:{ip:X4}");
+        Log.DoLog($"Set CS/IP to {cs:X4}:{ip:X4}", true);
 
         _cs = cs;
         _ip = ip;
@@ -165,7 +165,7 @@ internal class P8086
         if (!_intercept_int_flag)
             return false;
 
-        Log.DoLog($"INT {nr:X2} {_ah:X2}");
+        Log.DoLog($"INT {nr:X2} {_ah:X2}", true);
 
         if (nr == 0x10)
         {
@@ -178,13 +178,13 @@ internal class P8086
 
                 if (_al == 13 || _al == 10)
                 {
-                    Log.DoLog($"CONSOLE-STR: {tty_output}");
+                    Log.DoLog($"CONSOLE-STR: {tty_output}", true);
 
                     tty_output = "";
                 }
                 else
                 {
-                    Log.DoLog($"CONSOLE-CHR: {(char)_al}");
+                    Log.DoLog($"CONSOLE-CHR: {(char)_al}", true);
 
                     if (_al >= 32 && _al != 127)
                         tty_output += (char)_al;
@@ -256,7 +256,7 @@ internal class P8086
             if (_ah == 0x00)
             {
                 // reset disk system
-                Log.DoLog("INT $13: reset disk system");
+                Log.DoLog("INT $13: reset disk system", true);
 
                 SetFlagC(false);
                 _ah = 0x00;  // no error
@@ -281,7 +281,7 @@ internal class P8086
 
                 if (disk_offset + bytes_per_sector <= floppy.Count)
                 {
-                    Log.DoLog(base_str);
+                    Log.DoLog(base_str, true);
 
                 //    string s = "";
 
@@ -290,7 +290,7 @@ internal class P8086
                         WriteMemByte(_es, (ushort)(_bx + i), floppy[disk_offset + i]);
                 //        s += $" {floppy[disk_offset + i]:X2}";
                     }
-                //    Log.DoLog($"SECTOR: {s}");
+                //    Log.DoLog($"SECTOR: {s}", true);
 
                     SetFlagC(false);
                     _ah = 0x00;  // no error
@@ -298,7 +298,7 @@ internal class P8086
                     return true;
                 }
 
-                Log.DoLog(base_str + " FAILED");
+                Log.DoLog(base_str + " FAILED", true);
             }
             else if (_ah == 0x41)
             {
@@ -313,7 +313,7 @@ internal class P8086
         else if (nr == 0x19)
         {
             // reboot (to bootloader)
-            Log.DoLog("INT 19, Reboot");
+            Log.DoLog("INT 19, Reboot", true);
             Console.WriteLine("REBOOT");
             System.Environment.Exit(1);
         }
@@ -351,11 +351,7 @@ internal class P8086
     {
         uint address = (uint)(_cs * 16 + _ip++) & MemMask;
 
-        byte val = _b.ReadByte(address);
-
-        // Log.DoLog($"{address:X} {val:X}");
-
-        return val;
+        return _b.ReadByte(address);
     }
 
     private ushort GetPcWord()
@@ -415,8 +411,6 @@ internal class P8086
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
 
-        // Log.DoLog($"WriteMemByte {segment:X4}:{offset:X4}: a:{a:X6}, v:{v:X2}");
-
        _b.WriteByte(a, v);
     }
 
@@ -424,10 +418,6 @@ internal class P8086
     {
         uint a1 = (uint)(((segment << 4) + offset) & MemMask);
         uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
-
-#if DEBUG
-//        Log.DoLog($"WriteMemWord {segment:X4}:{offset:X4}: a1:{a1:X6}/a2:{a2:X6}, v:{v:X4}");
-#endif
 
        _b.WriteByte(a1, (byte)v);
        _b.WriteByte(a2, (byte)(v >> 8));
@@ -437,8 +427,6 @@ internal class P8086
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
 
-        // Log.DoLog($"ReadMemByte {segment:X4}:{offset:X4}: {a:X6}");
-
         return _b.ReadByte(a);
     } 
 
@@ -447,13 +435,7 @@ internal class P8086
         uint a1 = (uint)(((segment << 4) + offset) & MemMask);
         uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
 
-        ushort v = (ushort)(_b.ReadByte(a1) | (_b.ReadByte(a2) << 8));
-
-#if DEBUG
-//        Log.DoLog($"ReadMemWord {segment:X4}:{offset:X4}: {a1:X6}/{a2:X6}, value: {v:X4}");
-#endif
-
-        return v;
+        return (ushort)(_b.ReadByte(a1) | (_b.ReadByte(a2) << 8));
     } 
 
     private (ushort, string) GetRegister(int reg, bool w)
@@ -497,7 +479,7 @@ internal class P8086
                 return (_bh, "BH");
         }
 
-        Log.DoLog($"reg {reg} w {w} not supported for {nameof(GetRegister)}");
+        Log.DoLog($"reg {reg} w {w} not supported for {nameof(GetRegister)}", true);
 
         return (0, "error");
     }
@@ -513,7 +495,7 @@ internal class P8086
         if (reg == 0b011)
             return (_ds, "DS");
 
-        Log.DoLog($"reg {reg} not supported for {nameof(GetSRegister)}");
+        Log.DoLog($"reg {reg} not supported for {nameof(GetSRegister)}", true);
 
         return (0, "error");
     }
@@ -575,7 +557,7 @@ internal class P8086
         }
         else
         {
-            Log.DoLog($"{nameof(GetDoubleRegisterMod00)} {reg} not implemented");
+            Log.DoLog($"{nameof(GetDoubleRegisterMod00)} {reg} not implemented", true);
         }
 
         return (a, name, cycles);
@@ -652,7 +634,7 @@ internal class P8086
             return (v, name, false, 0, 0, 0);
         }
 
-        Log.DoLog($"reg {reg} mod {mod} w {w} not supported for {nameof(GetRegisterMem)}");
+        Log.DoLog($"reg {reg} mod {mod} w {w} not supported for {nameof(GetRegisterMem)}", true);
 
         return (0, "error", false, 0, 0, 0);
     }
@@ -771,7 +753,7 @@ internal class P8086
             return "BH";
         }
 
-        Log.DoLog($"reg {reg} w {w} not supported for {nameof(PutRegister)} ({val:X})");
+        Log.DoLog($"reg {reg} w {w} not supported for {nameof(PutRegister)} ({val:X})", true);
 
         return "error";
     }
@@ -802,7 +784,7 @@ internal class P8086
             return "DS";
         }
 
-        Log.DoLog($"reg {reg} not supported for {nameof(PutSRegister)}");
+        Log.DoLog($"reg {reg} not supported for {nameof(PutSRegister)}", true);
 
         return "error";
     }
@@ -810,7 +792,7 @@ internal class P8086
     // name, cycles
     private (string, int) PutRegisterMem(int reg, int mod, bool w, ushort val)
     {
-//        Log.DoLog($"PutRegisterMem {mod},{w}");
+//        Log.DoLog($"PutRegisterMem {mod},{w}", true);
 
         if (mod == 0)
         {
@@ -859,7 +841,7 @@ internal class P8086
         if (mod == 3)
             return (PutRegister(reg, w, val), 0);
 
-        Log.DoLog($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(PutRegisterMem)}");
+        Log.DoLog($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(PutRegisterMem)}", true);
 
         return ("error", 0);
     }
@@ -1012,7 +994,7 @@ internal class P8086
     private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub, bool flag_c)
     {
 #if DEBUG
-        // Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result:X}, issub {issub}");
+        // Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result:X}, issub {issub}", true);
 #endif
 
         ushort in_reg_result = word ? (ushort)result : (byte)result;
@@ -1055,7 +1037,7 @@ internal class P8086
     {
         _sp -= 2;
 
-        // Log.DoLog($"push({v:X4}) write @ {_ss:X4}:{_sp:X4}");
+        // Log.DoLog($"push({v:X4}) write @ {_ss:X4}:{_sp:X4}", true);
 
         WriteMemWord(_ss, _sp, v);
     }
@@ -1064,7 +1046,7 @@ internal class P8086
     {
         ushort v = ReadMemWord(_ss, _sp);
 
-        // Log.DoLog($"pop({v:X4}) read @ {_ss:X4}:{_sp:X4}");
+        // Log.DoLog($"pop({v:X4}) read @ {_ss:X4}:{_sp:X4}", true);
 
         _sp += 2;
 
@@ -1091,7 +1073,7 @@ internal class P8086
         _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
 
 #if DEBUG
-        Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs:X4}:{_ip:X4})");
+        Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs:X4}:{_ip:X4})", true);
 #endif
     }
 
@@ -1160,11 +1142,11 @@ internal class P8086
             {
                 string[] registers = tokens[1].Split(',');
 
-                Log.DoLog($"{line_nr} {tokens[0]}: {GetTerminatedString(GetRegisterByName(registers[0]), GetRegisterByName(registers[1]), '\n')}");
+                Log.DoLog($"{line_nr} {tokens[0]}: {GetTerminatedString(GetRegisterByName(registers[0]), GetRegisterByName(registers[1]), '\n')}", true);
             }
             else
             {
-                Log.DoLog($"Script token {tokens[0]} (line {line_nr}) not understood");
+                Log.DoLog($"Script token {tokens[0]} (line {line_nr}) not understood", true);
                 break;
             }
             
@@ -1182,7 +1164,7 @@ internal class P8086
         // check for interrupt
         if (GetFlagI() == true && _scheduled_interrupts)
         {
-            Log.DoLog("Scanning for interrupts");
+            Log.DoLog("Scanning for interrupts", true);
 
             int enabled_interrupts = _io.GetInterruptMask();
 
@@ -1211,7 +1193,7 @@ internal class P8086
                     {
                         if ((enabled_interrupts & (1 << (interrupt.int_vec - 8))) != 0)
                         {
-                            Log.DoLog($"{device.GetName()} interrupt {interrupt.int_vec} masked off");
+                            Log.DoLog($"{device.GetName()} interrupt {interrupt.int_vec} masked off", true);
                             continue;
                         }
                     }
@@ -1241,6 +1223,8 @@ internal class P8086
 
         ushort instr_start = _ip;
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
+        Log.SetAddress(address);
+
         byte opcode = GetPcByte();
 
         // ^ address must increase!
@@ -1277,16 +1261,18 @@ internal class P8086
                 _rep = true;
                 _rep_mode = RepMode.NotSet;
                 cycle_count += 3;
-                Log.DoLog($"set _rep_addr to {_rep_addr:X4}");
+                Log.DoLog($"set _rep_addr to {_rep_addr:X4}", true);
 
                 _rep_do_nothing = GetCX() == 0;
             }
             else
             {
-                Log.DoLog($"------ {address:X6} prefix {opcode:X2} not implemented");
+                Log.DoLog($"------ prefix {opcode:X2} not implemented", true);
             }
 
             address = (uint)(_cs * 16 + _ip) & MemMask;
+            Log.SetAddress(address);
+
             byte next_opcode = GetPcByte();
 
             _rep_opcode = next_opcode;  // TODO: only allow for certain instructions
@@ -1326,7 +1312,7 @@ internal class P8086
         string annotation = _b.GetAnnotation(address);
 
         if (annotation != null)
-            Log.DoLog($"{address:X6}; Annotation: {annotation}");
+            Log.DoLog($"; Annotation: {annotation}", true);
 
         string script = _b.GetScript(address);
 
@@ -1336,13 +1322,13 @@ internal class P8086
 //        string mem = HexDump(address, false);
 //        string stk = HexDump((uint)(_ss * 16 + _sp), true);
 
-//        Log.DoLog($"{address:X6}: {mem}");
-//        Log.DoLog($"{_ss * 16 + _sp:X6}: {stk}");
+//        Log.DoLog($"{mem}", true);
+//        Log.DoLog($"{_ss * 16 + _sp:X6}: {stk}", true);
 
-//        Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}");
+//        Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}", true);
 
         string prefixStr =
-            $"{flagStr} {address:X6} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{instr_start:X4} | ";
+            $"{flagStr} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{instr_start:X4} | ";
 #else
         string prefixStr = "";
 #endif

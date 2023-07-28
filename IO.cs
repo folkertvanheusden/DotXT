@@ -122,7 +122,7 @@ internal class i8253 : Device
     private void LatchCounter(int nr, byte v)
     {
 #if DEBUG
-        Log.DoLog($"OUT 8253: timer {nr} to {v} (type {_timers[nr].latch_type}, {_timers[nr].latch_n_cur} out of {_timers[nr].latch_n})");
+        Log.DoLog($"OUT 8253: timer {nr} to {v} (type {_timers[nr].latch_type}, {_timers[nr].latch_n_cur} out of {_timers[nr].latch_n})", true);
 #endif
 
         if (_timers[nr].latch_n_cur > 0)
@@ -160,7 +160,7 @@ internal class i8253 : Device
             if (_timers[nr].latch_n_cur == 0)
             {
 #if DEBUG
-                Log.DoLog($"OUT 8253: timer {nr} started (count start: {_timers[nr].counter_ini})");
+                Log.DoLog($"OUT 8253: timer {nr} started (count start: {_timers[nr].counter_ini})", true);
 #endif
 
                 _timers[nr].latch_n_cur = _timers[nr].latch_n;  // restart setup
@@ -189,7 +189,7 @@ internal class i8253 : Device
     private byte GetCounter(int nr)
     {
 #if DEBUG
-        Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur} ({_timers[nr].latch_type}|{_timers[nr].latch_n_cur}/{_timers[nr].latch_n})");
+        Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur} ({_timers[nr].latch_type}|{_timers[nr].latch_n_cur}/{_timers[nr].latch_n})", true);
 #endif
 
         byte rc = 0;
@@ -224,7 +224,7 @@ internal class i8253 : Device
         if (latch != 0)
         {
 #if DEBUG
-            Log.DoLog($"OUT 8253: command timer {nr}, latch {latch}, mode {mode}, type {type}");
+            Log.DoLog($"OUT 8253: command timer {nr}, latch {latch}, mode {mode}, type {type}", true);
 #endif
             _timers[nr].mode       = mode;
             _timers[nr].latch_type = latch;
@@ -242,7 +242,7 @@ internal class i8253 : Device
         else
         {
 #if DEBUG
-            Log.DoLog($"OUT 8253: query timer {nr} (reset value: {_timers[nr].counter_ini}, current value: {_timers[nr].counter_cur})");
+            Log.DoLog($"OUT 8253: query timer {nr} (reset value: {_timers[nr].counter_ini}, current value: {_timers[nr].counter_cur})", true);
 #endif
         }
     }
@@ -252,7 +252,7 @@ internal class i8253 : Device
         clock += ticks;
 
 #if DEBUG
-//        Log.DoLog($"i8253: {clock} cycles, {ticks} added");
+//        Log.DoLog($"i8253: {clock} cycles, {ticks} added", true);
 #endif
 
         bool interrupt = false;
@@ -267,12 +267,12 @@ internal class i8253 : Device
                 _timers[i].counter_cur--;
 
 #if DEBUG
-//                Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}");
+//                Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}", true);
 #endif
 
                 if (_timers[i].counter_cur == 0)
                 {
-//                    Log.DoLog($"i8253 reset counter");
+//                    Log.DoLog($"i8253 reset counter", true);
 
                     // timer 1 is RAM refresh counter
                     if (i == 1)
@@ -287,7 +287,7 @@ internal class i8253 : Device
 
                         interrupt = true;
 #if DEBUG
-                        Log.DoLog($"i8253: interrupt for timer {i} fires ({_timers[i].counter_ini})");
+                        Log.DoLog($"i8253: interrupt for timer {i} fires ({_timers[i].counter_ini})", true);
 #endif
                     }
                 }   
@@ -573,7 +573,7 @@ internal class i8237
         count--;
 
 #if DEBUG
-//        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}, {count}");
+//        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}, {count}", true);
 #endif
 
         _channel_word_count[0].SetValue(count);
@@ -609,7 +609,7 @@ internal class i8237
             }
         }
 
-        // Log.DoLog($"8237_IN: {addr:X4} {v:X2}");
+        // Log.DoLog($"8237_IN: {addr:X4} {v:X2}", true);
 
         return (v, false);
     }
@@ -622,18 +622,18 @@ internal class i8237
 
     public bool Out(ushort addr, byte value)
     {
-        // Log.DoLog($"8237_OUT: {addr:X4} {value:X2}");
+        // Log.DoLog($"8237_OUT: {addr:X4} {value:X2}", true);
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
             _channel_address_register[addr / 2].Put(value);
-            Log.DoLog($"8237 set channel {addr / 2} to address {value}");
+            Log.DoLog($"8237 set channel {addr / 2} to address {value}", true);
         }
 
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
         {
             _channel_word_count[addr / 2].Put(value);
-            Log.DoLog($"8237 set channel {addr / 2} to count {value}");
+            Log.DoLog($"8237 set channel {addr / 2} to count {value}", true);
         }
 
         else if (addr == 8)
@@ -770,7 +770,7 @@ class IO
 
     public (byte, bool) In(ushort addr)
     {
-        // Log.DoLog($"IN: {addr:X4}");
+        // Log.DoLog($"IN: {addr:X4}", true);
 
         foreach(var device in _devices)
             device.SyncClock(_clock);
@@ -806,7 +806,7 @@ class IO
             return _io_map[addr].IO_Read(addr);
 
 #if DEBUG
-        Log.DoLog($"IN: I/O port {addr:X4} not implemented");
+        Log.DoLog($"IN: I/O port {addr:X4} not implemented", true);
 #endif
 
         if (_values.ContainsKey(addr))
@@ -831,7 +831,7 @@ class IO
 
     public bool Out(ushort addr, byte value)
     {
-        // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})");
+        // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})", true);
 
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2) // 8237
             return _i8237.Out(addr, value);
@@ -840,7 +840,7 @@ class IO
             return _pic.Out(addr, value);
 
         else if (addr == 0x0080)
-            Log.DoLog($"Manufacturer systems checkpoint {value:X2}");
+            Log.DoLog($"Manufacturer systems checkpoint {value:X2}", true);
 
         else if (addr == 0x0322)
         {
@@ -860,7 +860,7 @@ class IO
                 return _io_map[addr].IO_Write(addr, value);
 
 #if DEBUG
-            // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
+            // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", true);
 #endif
         }
 

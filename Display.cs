@@ -65,7 +65,7 @@ abstract class Display : Device
     protected void EmulateTextDisplay(uint x, uint y, byte character, byte attributes)
     {
         // attribute, character
-        Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}");
+        Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", true);
 
         Console.Write((char)27);  // position cursor
         Console.Write($"[{y + 1};{x + 1}H");
