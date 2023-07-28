@@ -39,11 +39,17 @@
 0FF1D8|OUTPUTS THE REGISTER TO THE 6845 REGS NAMED IN AH
 0FF206|set cursor position, ax: row/col
 0FF285|calculates the regen buffer address of a character in the alpha mode
+0FF8F2|rom checksum
+0FF93C|blink led
+0FF953|rom_check (optional roms)
 0FF99C|prt_hex (part of "f98b: convert and print ascii code")
+0FF98B|convert and print ascii code
 0FF9A9|print a message on the display
 0FF9CA|p_msg
 0FF9D8|error beep
 0FFA2A|software reset keyboard
+0FFA31|software reset keyboard: hold clk low for 20ms
+0FFA47|software reset keyboard: wait for kb interrupt
 0FFA59|DDS
 0FFE6E|read clock
 0FFEA5|timer interrupt channel 0 (18.2Hz)
