@@ -62,7 +62,7 @@
 0FF9CA|p_msg
 0FF9D8|error beep
 0FFA2A|software reset keyboard
-0FFA47|software reset keyboard: wait for kb interrupt
+0FFA45|software reset keyboard: wait for kb interrupt
 0FFA59|DDS
 0FFE6E|read clock
 0FFEA5|timer interrupt channel 0 (18.2Hz)
