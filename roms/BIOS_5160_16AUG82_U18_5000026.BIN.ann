@@ -13,8 +13,14 @@
 0FE242|initialize and start crt controller (6845)
 0FE2AA|setup video data on screen for video line test
 0FE2CD|crt interface lines test
+0FE308|call video i/o for set mode and display cursor
 0FE329|8259 interrupt controller test
 0FE32A|test the imr register
+0FE335|imr = 0?
+0FE337|go to error routine if not 0
+0FE339|disable device interrupts
+0FE33F|all IMR bit on?
+0FE341|no, no to error routine
 0FE343|check for hot interrupts (should not occure any)
 0FE35D|8253 timer checkout
 0FE394|setup timer 0 to mode 3
