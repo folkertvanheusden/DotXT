@@ -609,7 +609,7 @@ internal class i8237
             }
         }
 
-        Log.DoLog($"8237_IN: {addr:X4} {v:X2}");
+        // Log.DoLog($"8237_IN: {addr:X4} {v:X2}");
 
         return (v, false);
     }
@@ -622,7 +622,7 @@ internal class i8237
 
     public bool Out(ushort addr, byte value)
     {
-        Log.DoLog($"8237_OUT: {addr:X4} {value:X2}");
+        // Log.DoLog($"8237_OUT: {addr:X4} {value:X2}");
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
@@ -770,7 +770,7 @@ class IO
 
     public (byte, bool) In(ushort addr)
     {
-        Log.DoLog($"IN: {addr:X4}");
+        // Log.DoLog($"IN: {addr:X4}");
 
         foreach(var device in _devices)
             device.SyncClock(_clock);
@@ -831,7 +831,7 @@ class IO
 
     public bool Out(ushort addr, byte value)
     {
-        Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})");
+        // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})");
 
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2) // 8237
             return _i8237.Out(addr, value);
@@ -859,9 +859,9 @@ class IO
             if (_io_map.ContainsKey(addr))
                 return _io_map[addr].IO_Write(addr, value);
 
-//#if DEBUG
-            Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
-//#endif
+#if DEBUG
+            // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented");
+#endif
         }
 
         _values[addr] = value;

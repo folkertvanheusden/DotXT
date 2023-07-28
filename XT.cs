@@ -3780,7 +3780,7 @@ internal class P8086
 
             int function = (o1 >> 3) & 7;
 
-            Log.DoLog($"mod {mod} reg {reg} function {function}");
+            // Log.DoLog($"mod {mod} reg {reg} function {function}");
 
             (ushort v, string name, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg, mod, word);
 
