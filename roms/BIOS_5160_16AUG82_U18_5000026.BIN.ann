@@ -10,6 +10,7 @@
 0FE1CE|initialize the 8259 interrupt controller chip
 0FE1DE|setup interrupt vectors to temporary routine
 0FE202|determine configuration and mfg mode
+0FE228|jump if keyboard present
 0FE242|initialize and start crt controller (6845)
 0FE2AA|setup video data on screen for video line test
 0FE2CD|crt interface lines test
@@ -33,6 +34,7 @@
 0FE35D|8253 timer checkout
 0FE394|setup timer 0 to mode 3
 0FE3A2|keyboard test
+0FE3B7|no interrupt? print error message
 0FE3C2|check for stuck keys
 0FE3DE|setup hardware int. vector table
 0FE407|setup timer 0 to blink led if manufacturing test mode
@@ -50,6 +52,7 @@
 0FE7F2|wait for rs232 status routine
 0FE82E|keyboard_io wait for keyboard
 0FEC59|disk i/o
+0FF173|clear screen buffer
 0FF1D8|OUTPUTS THE REGISTER TO THE 6845 REGS NAMED IN AH
 0FF206|set cursor position, ax: row/col
 0FF285|calculates the regen buffer address of a character in the alpha mode
@@ -62,7 +65,13 @@
 0FF9CA|p_msg
 0FF9D8|error beep
 0FFA2A|software reset keyboard
+0FFA2E|hold kbd clk low for 20ms
+0FFA33|set kbd clk high
+0FFA44|enable interrupts
 0FFA45|software reset keyboard: wait for kb interrupt
+0FFA50|received a keyboard scan-code, read it
+0FFA54|clear buffer of keyboard
+0FFA58|end of kbd_reset routine
 0FFA59|DDS
 0FFE6E|read clock
 0FFEA5|timer interrupt channel 0 (18.2Hz)
