@@ -1326,7 +1326,7 @@ internal class P8086
         string annotation = _b.GetAnnotation(address);
 
         if (annotation != null)
-            Log.DoLog($"; Annotation: {annotation}");
+            Log.DoLog($"{address:X6}; Annotation: {annotation}");
 
         string script = _b.GetScript(address);
 
