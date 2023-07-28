@@ -48,7 +48,6 @@
 0FF9CA|p_msg
 0FF9D8|error beep
 0FFA2A|software reset keyboard
-0FFA31|software reset keyboard: hold clk low for 20ms
 0FFA47|software reset keyboard: wait for kb interrupt
 0FFA59|DDS
 0FFE6E|read clock
