@@ -1,7 +1,6 @@
 class FloppyDisk : Device
 {
     private i8237 _dma_controller = null;
-    private pic8259 _pic = null;
     private PendingInterrupt _pi = new();
 
     public FloppyDisk()
@@ -13,7 +12,7 @@ class FloppyDisk : Device
         _dma_controller = dma_instance;
     }
 
-    public void SetPic(pic8259 pic_instance)
+    public override void SetPic(pic8259 pic_instance)
     {
         _pic = pic_instance;
 

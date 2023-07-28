@@ -1200,6 +1200,8 @@ internal class P8086
 
                     InvokeInterrupt(_ip, interrupt.int_vec);
 
+                    _io.ClearPendingInterrupt(interrupt.int_vec);
+
                     interrupt.pending = false;
 
                     processed_any = true;

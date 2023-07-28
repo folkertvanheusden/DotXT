@@ -141,14 +141,15 @@ class Keyboard : Device
     {
         _keyboard_buffer_lock.WaitOne();
 
-        // TODO: replace by a flag that indicates wether
-        // a new key has been queued and return that for
-        // interrupt flag
         bool any_keys = _keyboard_buffer.Count > 0;
 
         _keyboard_buffer_lock.ReleaseMutex();
 
+        // TODO set flag in 8259
+
         _pi.pending = any_keys;
+
+        _pic.SetPendingInterrupt(_pi.int_vec);
 
         return any_keys;
     }

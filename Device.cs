@@ -1,5 +1,7 @@
 abstract class Device
 {
+    protected pic8259 _pic = null;
+
     public abstract String GetName();
 
     public abstract void RegisterDevice(Dictionary <ushort, Device> mappings);
@@ -15,4 +17,9 @@ abstract class Device
     public abstract bool Tick(int cycles);
 
     public abstract List<PendingInterrupt> GetPendingInterrupts();
+
+    public virtual void SetPic(pic8259 pic_instance)
+    {
+        _pic = pic_instance;
+    }
 }

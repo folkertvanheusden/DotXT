@@ -315,32 +315,31 @@ internal class pic8259
 
     private byte [] _register_cache = new byte[2];
 
-    private List<Device> _devices;
+    private byte _pending_interrupts = 0;
 
-    public pic8259(ref List<Device> devices)
+    public pic8259()
     {
-        _devices = devices;
     }
 
     private byte GetPendingInterrupts()
     {
-        byte bitmap = 0;
+        return _pending_interrupts;
+    }
 
-        foreach (var device in _devices)
-        {
-            List<PendingInterrupt> interrupts = device.GetPendingInterrupts();
+    public void SetPendingInterrupt(int interrupt_nr)
+    {
+        if (interrupt_nr < _int_offset || interrupt_nr >= _int_offset + 8)
+            return;
 
-            if (interrupts == null)
-                continue;
+        _pending_interrupts |= (byte)(1 << (interrupt_nr - _int_offset));
+    }
 
-            foreach (var interrupt in interrupts)
-            {
-                if (interrupt.pending && interrupt.int_vec >= 8 && interrupt.int_vec < 16)
-                    bitmap |= (byte)(1 << (interrupt.int_vec - 8));
-            }
-        }
+    public void ClearPendingInterrupt(int interrupt_nr)
+    {
+        if (interrupt_nr < _int_offset || interrupt_nr >= _int_offset + 8)
+            return;
 
-        return bitmap;
+        _pending_interrupts &= (byte)(255 ^ (byte)(1 << (interrupt_nr - _int_offset)));
     }
 
     public (byte, bool) In(ushort addr)
@@ -742,7 +741,7 @@ class IO
     {
         _b = b;
 
-        _pic = new(ref devices);
+        _pic = new();
 
         _i8237 = new(_b);
 
@@ -754,13 +753,17 @@ class IO
                 ((i8253)device).SetDma(_i8237);
 
             if (device is FloppyDisk)
-            {
                 ((FloppyDisk)device).SetDma(_i8237);
-                ((FloppyDisk)device).SetPic(_pic);
-            }
+
+            device.SetPic(_pic);
         }
 
         _devices = devices;
+    }
+
+    public void ClearPendingInterrupt(int nr)
+    {
+        _pic.ClearPendingInterrupt(nr);
     }
 
     public byte GetInterruptMask()
