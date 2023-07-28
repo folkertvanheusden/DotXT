@@ -101,7 +101,7 @@ class CGA : Display
 
     public override byte ReadByte(uint offset)
     {
-        Log.DoLog($"CGA::ReadByte({offset:X6}", true);
+        // Log.DoLog($"CGA::ReadByte({offset:X6}", true);
 
         return _ram[(offset - 0xb8000) & 0x3fff];
     }
