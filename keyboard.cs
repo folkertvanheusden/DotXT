@@ -9,7 +9,6 @@ class Keyboard : Device
 
     private PendingInterrupt _pi = new();
 
-    private bool _reset_trigger = false;
 
     public Keyboard()
     {
@@ -68,12 +67,7 @@ class Keyboard : Device
         if (port == 0x0061)
         {
             if ((value & 0x40) == 0x00)
-                _reset_trigger = true;
-
-            else if (_reset_trigger)
             {
-                _reset_trigger = false;
-
                 _keyboard_buffer_lock.WaitOne();
 
                 _keyboard_buffer.Clear();
