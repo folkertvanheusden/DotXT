@@ -139,8 +139,6 @@ class Keyboard : Device
 
         _keyboard_buffer_lock.ReleaseMutex();
 
-        // TODO set flag in 8259
-
         _pi.pending = any_keys;
 
         _pic.SetPendingInterrupt(_pi.int_vec);
