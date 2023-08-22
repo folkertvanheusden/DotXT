@@ -1,7 +1,8 @@
 using DotXT;
 
 string test = "";
-bool t_is_floppy = false;
+
+TMode mode = TMode.NotSet;
 
 bool intercept_int = false;
 
@@ -20,7 +21,7 @@ for(int i=0; i<args.Length; i++)
     if (args[i] == "-h") {
         Console.WriteLine("-t file   load 'file' in RAM");
         Console.WriteLine("-T addr   sets the load-address for -t");
-        Console.WriteLine("-F        -t parameter is a floppy image");
+        Console.WriteLine("-x type   set type for -T: floppy, binary");
         Console.WriteLine("-l file   log to file");
         Console.WriteLine("-i        intercept some of the BIOS calls");
         Console.WriteLine("-B        disable loading of the BIOS ROM images");
@@ -32,8 +33,19 @@ for(int i=0; i<args.Length; i++)
         test = args[++i];
     else if (args[i] == "-T")
         load_test_at = (uint)Convert.ToInt32(args[++i], 16);
-    else if (args[i] == "-F")
-        t_is_floppy = true;
+    else if (args[i] == "-x") {
+        string type = args[++i];
+
+        if (type == "floppy")
+            mode = TMode.Floppy;
+        else if (type == "binary")
+            mode = TMode.Binary;
+        else {
+            Console.WriteLine($"{type} is not understood");
+
+            System.Environment.Exit(1);
+        }
+    }
     else if (args[i] == "-l")
         Log.SetLogFile(args[++i]);
     else if (args[i] == "-i")
@@ -84,7 +96,7 @@ if (test != "")
 // Bus gets the devices for memory mapped i/o
 Bus b = new Bus(ram_size, load_bios, ref devices);
 
-var p = new P8086(ref b, test, t_is_floppy, load_test_at, intercept_int, !debugger, ref devices);
+var p = new P8086(ref b, test, mode, load_test_at, intercept_int, !debugger, ref devices);
 
 if (set_initial_ip)
     p.set_ip(initial_cs, initial_ip);
@@ -122,6 +134,103 @@ if (debugger)
                 int address = Convert.ToInt32(parts[1], 16);
 
                 Console.WriteLine($"{address:X6} {p.HexDump((uint)address, false)}");
+            }
+        }
+        else if (parts[0] == "set")
+        {
+            if (parts.Length != 4)
+                Console.WriteLine("usage: set [reg|ram] [regname|address] value");
+            else if (parts[1] == "reg")
+            {
+                string regname = parts[2];
+                ushort value = (ushort)Convert.ToInt32(parts[3], 10);
+
+                if (regname == "ax")
+                    p.SetAX(value);
+                else if (regname == "bx")
+                    p.SetBX(value);
+                else if (regname == "cx")
+                    p.SetCX(value);
+                else if (regname == "dx")
+                    p.SetDX(value);
+                else if (regname == "ss")
+                    p.SetSS(value);
+                else if (regname == "ds")
+                    p.SetDS(value);
+                else if (regname == "es")
+                    p.SetES(value);
+                else if (regname == "sp")
+                    p.SetSP(value);
+                else if (regname == "bp")
+                    p.SetBP(value);
+                else if (regname == "si")
+                    p.SetSI(value);
+                else if (regname == "di")
+                    p.SetDI(value);
+                else if (regname == "ip")
+                    p.SetIP(value);
+                else if (regname == "flags")
+                    p.SetFlags(value);
+                else
+                    Console.WriteLine($"Register {regname} not known");
+            }
+            else if (parts[2] == "ram")
+            {
+                uint addr  = (uint)Convert.ToInt32(parts[2], 10);
+                byte value = (byte)Convert.ToInt32(parts[3], 10);
+
+                b.WriteByte(addr, value);
+            }
+        }
+        else if (parts[0] == "get")
+        {
+            if (parts.Length != 3)
+                Console.WriteLine("usage: get [reg|ram] [regname|address]");
+            else if (parts[1] == "reg")
+            {
+                string regname = parts[2];
+                ushort value   = 0;
+
+                if (regname == "ax")
+                    value = p.GetAX();
+                else if (regname == "bx")
+                    value = p.GetBX();
+                else if (regname == "cx")
+                    value = p.GetCX();
+                else if (regname == "dx")
+                    value = p.GetDX();
+                else if (regname == "ss")
+                    value = p.GetSS();
+                else if (regname == "ds")
+                    value = p.GetDS();
+                else if (regname == "es")
+                    value = p.GetES();
+                else if (regname == "sp")
+                    value = p.GetSP();
+                else if (regname == "bp")
+                    value = p.GetBP();
+                else if (regname == "si")
+                    value = p.GetSI();
+                else if (regname == "di")
+                    value = p.GetDI();
+                else if (regname == "ip")
+                    value = p.GetIP();
+                else if (regname == "flags")
+                    value = p.GetFlags();
+                else
+                {
+                    Console.WriteLine($"Register {regname} not known");
+                    continue;
+                }
+
+                Console.WriteLine($"{regname} {value}");
+            }
+            else if (parts[2] == "ram")
+            {
+                uint addr  = (uint)Convert.ToInt32(parts[2], 10);
+                byte value = (byte)Convert.ToInt32(parts[3], 10);
+
+                b.WriteByte(addr, value);
             }
         }
         else if (line == "c")
