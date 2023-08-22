@@ -23,7 +23,7 @@ def docmd(p, str, wait=True):
         if idx != -1:
             return line[idx + 5:]
 
-process = Popen(['dotnet', 'run', '-d', '-P', '-l', 'logfile.dat', '-x', 'blank', '-B'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
+process = Popen(['dotnet', 'run', '-c', 'Debug', '--', '-d', '-P', '-l', 'logfile.dat', '-x', 'blank', '-B'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
 
 process.stdin.write('echo\r\n'.encode('ascii'))  # disable echo
 

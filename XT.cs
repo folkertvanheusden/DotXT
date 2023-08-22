@@ -672,17 +672,22 @@ internal class P8086
     }
 
     // value, name, cycles
-    private (ushort, string, int) GetDoubleRegisterMod01_02(int reg, bool word)
+    private (ushort, string, int, bool, ushort) GetDoubleRegisterMod01_02(int reg, bool word)
     {
         ushort a = 0;
         string name = "error";
         int cycles = 0;
+        bool override_segment = false;
+        ushort new_segment = 0;
 
         if (reg == 6)
         {
+            Log.DoLog("HIERO");
             a = _bp;
             name = "[BP]";
             cycles = 5;
+            override_segment = true;
+            new_segment = _ss;
         }
         else
         {
@@ -691,7 +696,7 @@ internal class P8086
 
         short disp = word ? (short)GetPcWord() : (sbyte)GetPcByte();
 
-        return ((ushort)(a + disp), name + $" disp {disp:X4}", cycles);
+        return ((ushort)(a + disp), name + $" disp {disp:X4}", cycles, override_segment, new_segment);
     }
 
     // value, name_of_source, segment_a_valid, segment/, address of value, number of cycles
@@ -703,8 +708,12 @@ internal class P8086
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
-            if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            if (_segment_override_set == false && (reg == 2 || reg == 3)) {  // BP uses SS
                 segment = _ss;
+#if DEBUG
+                Log.DoLog($"BP SS-override ${_ss:X4}");
+#endif
+            }
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
@@ -719,12 +728,25 @@ internal class P8086
         {
             bool word = mod == 2;
 
-            (ushort a, string name, int cycles) = GetDoubleRegisterMod01_02(reg, word);
+            (ushort a, string name, int cycles, bool override_segment, ushort new_segment) = GetDoubleRegisterMod01_02(reg, word);
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
+            if (_segment_override_set == false && override_segment)
+            {
+                segment = new_segment;
+#if DEBUG
+                Log.DoLog($"BP SS-override ${_ss:X4}");
+#endif
+            }
+
             if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            {
                 segment = _ss;
+#if DEBUG
+                Log.DoLog($"BP SS-override ${_ss:X4}");
+#endif
+            }
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
@@ -908,8 +930,12 @@ internal class P8086
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
-            if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            if (_segment_override_set == false && (reg == 2 || reg == 3)) {  // BP uses SS
                 segment = _ss;
+#if DEBUG
+                Log.DoLog($"BP SS-override ${_ss:X4}");
+#endif
+            }
 
             name += $" ({_segment_override_name}:${segment * 16 + a:X6})";
 
@@ -925,12 +951,25 @@ internal class P8086
 
         if (mod == 1 || mod == 2)
         {
-            (ushort a, string name, int cycles) = GetDoubleRegisterMod01_02(reg, mod == 2);
+            (ushort a, string name, int cycles, bool override_segment, ushort new_segment) = GetDoubleRegisterMod01_02(reg, mod == 2);
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
+            if (_segment_override_set == false && override_segment)
+            {
+                segment = new_segment;
+#if DEBUG
+                Log.DoLog($"BP SS-override ${_ss:X4}");
+#endif
+            }
+
             if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            {
                 segment = _ss;
+#if DEBUG
+                Log.DoLog($"BP SS-override ${_ss:X4}");
+#endif
+            }
 
 #if DEBUG
             name += $" ({_segment_override_name}:${segment * 16 + a:X6})";
@@ -956,6 +995,8 @@ internal class P8086
 
     (string, int) UpdateRegisterMem(int reg, int mod, bool a_valid, ushort seg, ushort addr, bool word, ushort v)
     {
+        Log.DoLog($"UpdateRegisterMem {reg} {mod} {a_valid} {seg:X4}:{addr:X4} -> {seg * 16 + addr}/{seg * 16 + addr:X4} {word} {v}");
+
         if (a_valid)
         {
             if (word)
@@ -2573,6 +2614,14 @@ internal class P8086
                 }
                 else
                 {
+                    if (a_valid && reg2 == 5)
+                    {
+                        seg = _ss;
+#if DEBUG
+                        Log.DoLog($"BP SS-override ${_ss:X4}");
+#endif
+                    }
+
                     (string dummy, int put_cycles) = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result);
 
                     cycle_count += put_cycles;
