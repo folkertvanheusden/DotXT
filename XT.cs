@@ -1,5 +1,12 @@
 namespace DotXT;
 
+internal enum TMode
+{
+    NotSet,
+    Floppy,
+    Binary
+}
+
 internal enum RepMode
 {
     NotSet,
@@ -68,7 +75,7 @@ internal class P8086
 
     private List<Device> _devices;
 
-    public P8086(ref Bus b, string test, bool is_floppy, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, ref List<Device> devices)
+    public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, ref List<Device> devices)
     {
         _b = b;
 
@@ -84,7 +91,7 @@ internal class P8086
 
         _terminate_on_hlt = terminate_on_hlt;
 
-        if (test != "" && is_floppy == false)
+        if (test != "" && t_mode == TMode.Binary)
         {
             _is_test = true;
 
@@ -114,7 +121,7 @@ internal class P8086
                 }
             }
         }
-        else if (test != "" && is_floppy == true)
+        else if (test != "" && t_mode == TMode.Floppy)
         {
             _cs = 0;
             _ip = 0x7c00;
@@ -363,48 +370,138 @@ internal class P8086
         return v;
     }
 
-    private ushort GetAX()
+    public ushort GetAX()
     {
         return (ushort)((_ah << 8) | _al);
     }
 
-    private void SetAX(ushort v)
+    public void SetAX(ushort v)
     {
         _ah = (byte)(v >> 8);
         _al = (byte)v;
     }
 
-    private ushort GetBX()
+    public ushort GetBX()
     {
         return (ushort)((_bh << 8) | _bl);
     }
 
-    private void SetBX(ushort v)
+    public void SetBX(ushort v)
     {
         _bh = (byte)(v >> 8);
         _bl = (byte)v;
     }
 
-    private ushort GetCX()
+    public ushort GetCX()
     {
         return (ushort)((_ch << 8) | _cl);
     }
 
-    private void SetCX(ushort v)
+    public void SetCX(ushort v)
     {
         _ch = (byte)(v >> 8);
         _cl = (byte)v;
     }
 
-    private ushort GetDX()
+    public ushort GetDX()
     {
         return (ushort)((_dh << 8) | _dl);
     }
 
-    private void SetDX(ushort v)
+    public void SetDX(ushort v)
     {
         _dh = (byte)(v >> 8);
         _dl = (byte)v;
+    }
+
+    public void SetSS(ushort v)
+    {
+        _ss = v;
+    }
+
+    public void SetDS(ushort v)
+    {
+        _ds = v;
+    }
+
+    public void SetES(ushort v)
+    {
+        _es = v;
+    }
+
+    public void SetSP(ushort v)
+    {
+        _sp = v;
+    }
+
+    public void SetBP(ushort v)
+    {
+        _bp = v;
+    }
+
+    public void SetSI(ushort v)
+    {
+        _si = v;
+    }
+
+    public void SetDI(ushort v)
+    {
+        _di = v;
+    }
+
+    public void SetIP(ushort v)
+    {
+        _ip = v;
+    }
+
+    public void SetFlags(ushort v)
+    {
+        _flags = v;
+    }
+
+    public ushort GetSS()
+    {
+        return _ss;
+    }
+
+    public ushort GetDS()
+    {
+        return _ds;
+    }
+
+    public ushort GetES()
+    {
+        return _es;
+    }
+
+    public ushort GetSP()
+    {
+        return _sp;
+    }
+
+    public ushort GetBP()
+    {
+        return _bp;
+    }
+
+    public ushort GetSI()
+    {
+        return _si;
+    }
+
+    public ushort GetDI()
+    {
+        return _di;
+    }
+
+    public ushort GetIP()
+    {
+        return _ip;
+    }
+
+    public ushort GetFlags()
+    {
+        return _flags;
     }
 
     private void WriteMemByte(ushort segment, ushort offset, byte v)
