@@ -34,6 +34,7 @@ class Keyboard : Device
     {
         Log.DoLog("KeyboardThread started", true);
 
+        /* TODO disable in debugger
         Keyboard kb = (Keyboard)o_kb;
 
         for(;;)
@@ -46,6 +47,7 @@ class Keyboard : Device
             if (ck == ConsoleKey.F1)  // F1
                 kb.PushKeyboardScancode(0x3a);
         }
+        */
 
         Log.DoLog("KeyboardThread terminating", true);
     }

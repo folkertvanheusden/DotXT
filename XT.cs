@@ -4,7 +4,8 @@ internal enum TMode
 {
     NotSet,
     Floppy,
-    Binary
+    Binary,
+    Blank
 }
 
 internal enum RepMode
@@ -148,7 +149,7 @@ internal class P8086
             for(int i=0; i<512; i++)
                 _b.WriteByte((ushort)(_ip + i), floppy[i]);
         }
-        else
+        else if (t_mode != TMode.Blank)
         {
             _cs = 0xf000;
             _ip = 0xfff0;
@@ -419,6 +420,11 @@ internal class P8086
         _ss = v;
     }
 
+    public void SetCS(ushort v)
+    {
+        _cs = v;
+    }
+
     public void SetDS(ushort v)
     {
         _ds = v;
@@ -462,6 +468,11 @@ internal class P8086
     public ushort GetSS()
     {
         return _ss;
+    }
+
+    public ushort GetCS()
+    {
+        return _cs;
     }
 
     public ushort GetDS()

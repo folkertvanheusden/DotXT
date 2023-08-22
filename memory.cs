@@ -128,13 +128,21 @@ class Bus
 
     private bool _use_bios;
 
+    private uint _size;
+
     public Bus(uint size, bool use_bios, ref List<Device> devices)
     {
+        _size = size;
         _m = new Memory(size);
 
         _use_bios = use_bios;
 
         _devices = devices;
+    }
+
+    public void ClearMemory()
+    {
+        _m = new Memory(_size);
     }
 
     public string GetAnnotation(uint address)
@@ -167,9 +175,6 @@ class Bus
 
     public byte ReadByte(uint address)
     {
-        if (address < 640 * 1024)
-            return _m.ReadByte(address);
-
         if (_use_bios)
         {
             if (address is >= 0x000f8000 and <= 0x000fffff)
@@ -185,21 +190,24 @@ class Bus
                 return device.ReadByte(address);
         }
 
+        if (address < 1024 * 1024)
+            return _m.ReadByte(address);
+
         return 0xee;
     }
 
     public void WriteByte(uint address, byte v)
     {
-        if (address < 640 * 1024)
-            _m.WriteByte(address, v);
-
         foreach(var device in _devices)
         {
             if (device.HasAddress(address))
             {
                 device.WriteByte(address, v);
-                break;
+                return;
             }
         }
+
+        if (address < 1024 * 1024)
+            _m.WriteByte(address, v);
     }
 }
