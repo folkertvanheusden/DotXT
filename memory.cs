@@ -10,7 +10,12 @@ internal class Memory
     public byte ReadByte(uint address)
     {
         if (address >= _m.Length)
+        {
+#if DEBUG
+            Log.DoLog($"Memory::ReadByte: {address} > {_m.Length}");
+#endif
             return 0xee;
+        }
 
         return _m[address];
     }
@@ -103,6 +108,10 @@ internal class Rom
         if (address < _contents.Length)
             return _contents[address];
 
+#if DEBUG
+        Log.DoLog($"Rom::ReadByte: {address} > {_contents.Length}");
+#endif
+
         return 0xee;
     }
 }
@@ -147,6 +156,8 @@ class Bus
 
     public string GetAnnotation(uint address)
     {
+        address &= 0x000fffff;
+
         if (address < 640 * 1024 || _use_bios == false)
             return null;
 
@@ -161,6 +172,8 @@ class Bus
 
     public string GetScript(uint address)
     {
+        address &= 0x000fffff;
+
         if (address < 640 * 1024 || _use_bios == false)
             return null;
 
@@ -175,6 +188,8 @@ class Bus
 
     public byte ReadByte(uint address)
     {
+        address &= 0x000fffff;
+
         if (_use_bios)
         {
             if (address is >= 0x000f8000 and <= 0x000fffff)
@@ -193,11 +208,16 @@ class Bus
         if (address < 1024 * 1024)
             return _m.ReadByte(address);
 
+#if DEBUG
+        Log.DoLog($"Bus::ReadByte: {address} > {_size}");
+#endif
         return 0xee;
     }
 
     public void WriteByte(uint address, byte v)
     {
+        address &= 0x000fffff;
+
         foreach(var device in _devices)
         {
             if (device.HasAddress(address))
