@@ -1177,8 +1177,11 @@ internal class P8086
         SetFlagO(false);
         SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
         SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
-        SetFlagA(false);
         SetFlagP((byte)result);
+
+        SetFlagA(false);  // undefined
+
+        SetFlagC(false);
     }
 
     public void push(ushort v)
@@ -2729,7 +2732,6 @@ internal class P8086
             {
                 result = (ushort)(r2 & r1);
                 name = "AND";
-                SetFlagC(false);
             }
             else if (function == 3)
             {
