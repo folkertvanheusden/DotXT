@@ -711,7 +711,7 @@ internal class P8086
             if (_segment_override_set == false && (reg == 2 || reg == 3)) {  // BP uses SS
                 segment = _ss;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4}");
+                Log.DoLog($"BP SS-override ${_ss:X4} [1]");
 #endif
             }
 
@@ -736,7 +736,7 @@ internal class P8086
             {
                 segment = new_segment;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4}");
+                Log.DoLog($"BP SS-override ${_ss:X4} [2]");
 #endif
             }
 
@@ -744,7 +744,7 @@ internal class P8086
             {
                 segment = _ss;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4}");
+                Log.DoLog($"BP SS-override ${_ss:X4} [3]");
 #endif
             }
 
@@ -933,7 +933,7 @@ internal class P8086
             if (_segment_override_set == false && (reg == 2 || reg == 3)) {  // BP uses SS
                 segment = _ss;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4}");
+                Log.DoLog($"BP SS-override ${_ss:X4} [4]");
 #endif
             }
 
@@ -959,7 +959,7 @@ internal class P8086
             {
                 segment = new_segment;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4}");
+                Log.DoLog($"BP SS-override ${_ss:X4} [5]");
 #endif
             }
 
@@ -967,7 +967,7 @@ internal class P8086
             {
                 segment = _ss;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4}");
+                Log.DoLog($"BP SS-override ${_ss:X4} [6]");
 #endif
             }
 
@@ -2614,11 +2614,11 @@ internal class P8086
                 }
                 else
                 {
-                    if (a_valid && reg2 == 5)
+                    if (a_valid && reg2 == 5 && word)
                     {
                         seg = _ss;
 #if DEBUG
-                        Log.DoLog($"BP SS-override ${_ss:X4}");
+                        Log.DoLog($"BP SS-override ${_ss:X4} [7]");
 #endif
                     }
 
