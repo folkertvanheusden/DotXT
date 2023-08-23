@@ -56,8 +56,11 @@ for set in j:
 
     # verify registers
     regs = final['regs']
+    is_ = dict()
     for reg in regs:
         result = int(docmd(process, f'get reg {reg}').split()[1])
+
+        is_[reg] = result
 
         if result != regs[reg]:
             print(f' *** {reg} failed ***')
@@ -75,6 +78,6 @@ for set in j:
 
     if not ok:
         for reg in regs:
-            print(f'{reg} was at start {initial["regs"][reg]}, should have become {final["regs"][reg]}')
+            print(f'{reg} was at start {initial["regs"][reg]}, should have become {final["regs"][reg]}, is: {is_[reg]}')
 
         break
