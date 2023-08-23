@@ -682,7 +682,6 @@ internal class P8086
 
         if (reg == 6)
         {
-            Log.DoLog("HIERO");
             a = _bp;
             name = "[BP]";
             cycles = 5;
@@ -2614,7 +2613,12 @@ internal class P8086
                 }
                 else
                 {
-                    if (a_valid && reg2 == 5 && word)
+                    bool override_to_ss = a_valid && word && _segment_override_set == false &&
+                        (
+                         ((reg2 == 2 || reg2 == 3) && mod == 0)
+                        );
+
+                    if (override_to_ss)
                     {
                         seg = _ss;
 #if DEBUG
