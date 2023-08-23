@@ -29,12 +29,22 @@ process.stdin.write('echo\r\n'.encode('ascii'))  # disable echo
 
 j = json.loads(open(sys.argv[1], 'rb').read())
 
+jm = json.loads(open(sys.argv[2], 'rb').read())
+
 for set in j:
     print(set['name'])
 
     process.stdin.write(f'reset\r\n'.encode('ascii'))
 
     process.stdin.write(f'dolog {set["name"]}\r\n'.encode('ascii'))
+
+    b = set['bytes']
+
+    flags_mask = 65535
+
+    if '08' in jm:
+        if 'flags-mask' in jm['08']:
+            flags_mask = int(jm['08']['flags-mask'])
 
     initial = set['initial']
 
@@ -59,10 +69,14 @@ for set in j:
     is_ = dict()
     for reg in regs:
         result = int(docmd(process, f'get reg {reg}').split()[1])
-
         is_[reg] = result
 
-        if result != regs[reg]:
+        compare = regs[reg]
+
+        result &= flags_mask
+        compare &= flags_mask
+
+        if result != compare:
             print(f' *** {reg} failed ***')
             print(f': {result} (emulator) != {regs[reg]} (test set)')
             ok = False
