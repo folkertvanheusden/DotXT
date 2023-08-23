@@ -1581,6 +1581,17 @@ internal class P8086
             Log.DoLog($"{prefixStr} PUSH CS");
 #endif
         }
+        else if (opcode == 0x0f)
+        {
+            // POP CS
+            _cs = pop();
+
+            cycle_count += 8;
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} POP CS");
+#endif
+        }
         else if (opcode == 0x16)
         {
             // PUSH SS
