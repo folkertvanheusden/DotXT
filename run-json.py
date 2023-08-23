@@ -80,4 +80,8 @@ for set in j:
         for reg in regs:
             print(f'{reg} was at start {initial["regs"][reg]}, should have become {final["regs"][reg]}, is: {is_[reg]}')
 
-        break
+        print('Test set: {sys.argv[1]}')
+
+        sys.exit(1)
+
+sys.exit(0)
