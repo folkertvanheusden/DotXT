@@ -594,6 +594,8 @@ internal class P8086
 
     private (ushort, string) GetSRegister(int reg)
     {
+        reg &= 3;
+
         if (reg == 0b000)
             return (_es, "ES");
         if (reg == 0b001)
