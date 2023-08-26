@@ -52,8 +52,6 @@ for set in j:
     if first_byte in jm:
         if 'flags-mask' in jm[first_byte]:
             flags_mask = int(jm[first_byte]['flags-mask'])
-        else:
-            print(first_byte, jm[first_byte])
 
     initial = set['initial']
 
