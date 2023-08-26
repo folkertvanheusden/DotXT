@@ -47,7 +47,7 @@ for set in j:
     while b[byte_offset] in (0x26, 0x2e, 0x36, 0x3e, 0xf2, 0xf3):
         byte_offset += 1
 
-    first_byte = f'{b[byte_offset]:02x}'
+    first_byte = f'{b[byte_offset]:02X}'
 
     if first_byte in jm:
         if 'flags-mask' in jm[first_byte]:
