@@ -42,9 +42,18 @@ for set in j:
 
     flags_mask = 65535
 
-    if '08' in jm:
-        if 'flags-mask' in jm['08']:
-            flags_mask = int(jm['08']['flags-mask'])
+    byte_offset = 0
+
+    while b[byte_offset] in (0x26, 0x2e, 0x36, 0x3e, 0xf2, 0xf3):
+        byte_offset += 1
+
+    first_byte = f'{b[byte_offset]:02x}'
+
+    if first_byte in jm:
+        if 'flags-mask' in jm[first_byte]:
+            flags_mask = int(jm[first_byte]['flags-mask'])
+        else:
+            print(first_byte, jm[first_byte])
 
     initial = set['initial']
 
