@@ -2101,7 +2101,7 @@ internal class P8086
             Log.DoLog($"{prefixStr} PUSH DI");
 #endif
         }
-        else if (opcode is (0x80 or 0x81 or 0x83))
+        else if (opcode is (0x80 or 0x81 or 0x82 or 0x83))
         {
             // CMP and others
             byte o1 = GetPcByte();
@@ -2141,6 +2141,12 @@ internal class P8086
                 r2 = GetPcWord();
 
                 word = true;
+            }
+            else if (opcode == 0x82)
+            {
+                (r1, name1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, false);
+
+                r2 = GetPcByte();
             }
             else if (opcode == 0x83)
             {
