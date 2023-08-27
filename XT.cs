@@ -2956,6 +2956,35 @@ internal class P8086
 
                 cmd_name = "MUL";
             }
+            else if (function == 5)
+            {
+                // IMUL
+                if (word) {
+                    short ax = (short)GetAX();
+                    int resulti = ax * (short)r1;
+
+                    uint dx_ax = (uint)resulti;
+                    SetAX((ushort)dx_ax);
+                    SetDX((ushort)(dx_ax >> 16));
+
+                    bool flag = GetDX() != 0;
+                    SetFlagC(flag);
+                    SetFlagO(flag);
+
+                    name2 = name1;
+                    name1 = "DX:AX";
+                }
+                else {
+                    int result = _al * (short)r1;
+                    SetAX((ushort)result);
+
+                    bool flag = _ah != 0;
+                    SetFlagC(flag);
+                    SetFlagO(flag);
+                }
+
+                cmd_name = "IMUL";
+            }
             else if (function == 6)
             {
                 // DIV
