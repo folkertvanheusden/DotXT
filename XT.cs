@@ -594,7 +594,7 @@ internal class P8086
 
     private (ushort, string) GetSRegister(int reg)
     {
-        reg &= 3;
+        reg &= 0b00000011;
 
         if (reg == 0b000)
             return (_es, "ES");
@@ -3683,90 +3683,90 @@ internal class P8086
 
             cycle_count += put_cycles;
         }
-        else if ((opcode & 0xf0) == 0b01110000)
+        else if ((opcode & 0xf0) == 0x70 || (opcode & 0xf0) == 0x60)
         {
-            // J..., 0x70
+            // J..., 0x70/0x60
             byte to = GetPcByte();
 
             bool state = false;
             string name = String.Empty;
 
-            if (opcode == 0x70)
+            if (opcode == 0x70 || opcode == 0x60)
             {
                 state = GetFlagO();
                 name = "JO";
             }
-            else if (opcode == 0x71)
+            else if (opcode == 0x71 || opcode == 0x61)
             {
                 state = GetFlagO() == false;
                 name = "JNO";
             }
-            else if (opcode == 0x72)
+            else if (opcode == 0x72 || opcode == 0x62)
             {
                 state = GetFlagC();
                 name = "JC";
             }
-            else if (opcode == 0x73)
+            else if (opcode == 0x73 || opcode == 0x63)
             {
                 state = GetFlagC() == false;
                 name = "JNC";
             }
-            else if (opcode == 0x74)
+            else if (opcode == 0x74 || opcode == 0x64)
             {
                 state = GetFlagZ();
                 name = "JE/JZ";
             }
-            else if (opcode == 0x75)
+            else if (opcode == 0x75 || opcode == 0x65)
             {
                 state = GetFlagZ() == false;
                 name = "JNE/JNZ";
             }
-            else if (opcode == 0x76)
+            else if (opcode == 0x76 || opcode == 0x66)
             {
                 state = GetFlagC() || GetFlagZ();
                 name = "JBE/JNA";
             }
-            else if (opcode == 0x77)
+            else if (opcode == 0x77 || opcode == 0x67)
             {
                 state = GetFlagC() == false && GetFlagZ() == false;
                 name = "JA/JNBE";
             }
-            else if (opcode == 0x78)
+            else if (opcode == 0x78 || opcode == 0x68)
             {
                 state = GetFlagS();
                 name = "JS";
             }
-            else if (opcode == 0x79)
+            else if (opcode == 0x79 || opcode == 0x69)
             {
                 state = GetFlagS() == false;
                 name = "JNS";
             }
-            else if (opcode == 0x7a)
+            else if (opcode == 0x7a || opcode == 0x6a)
             {
                 state = GetFlagP();
                 name = "JNP/JPO";
             }
-            else if (opcode == 0x7b)
+            else if (opcode == 0x7b || opcode == 0x6b)
             {
                 state = GetFlagP() == false;
                 name = "JNP/JPO";
             }
-            else if (opcode == 0x7c)
+            else if (opcode == 0x7c || opcode == 0x6c)
             {
                 state = GetFlagS() != GetFlagO();
                 name = "JNGE";
             }
-            else if (opcode == 0x7d)
+            else if (opcode == 0x7d || opcode == 0x6d)
             {
                 state = GetFlagS() == GetFlagO();
                 name = "JNL";
             }
-            else if (opcode == 0x7e)
+            else if (opcode == 0x7e || opcode == 0x6e)
             {
                 state = GetFlagZ() == true || GetFlagS() != GetFlagO();
                 name = "JLE";
             }
-            else if (opcode == 0x7f)
+            else if (opcode == 0x7f || opcode == 0x6f)
             {
                 state = GetFlagZ() == false && GetFlagS() == GetFlagO();
                 name = "JNLE";
