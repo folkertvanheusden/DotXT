@@ -36,6 +36,9 @@ j = json.loads(open(test_file, 'rb').read())
 jm = json.loads(open(sys.argv[2], 'rb').read())
 
 for set in j:
+    if not 'name' in set:
+        continue
+
     print(set['name'])
 
     process.stdin.write(f'reset\r\n'.encode('ascii'))
