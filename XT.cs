@@ -891,6 +891,8 @@ internal class P8086
 
     private string PutSRegister(int reg, ushort v)
     {
+        reg &= 0b00000011;
+
         if (reg == 0b000)
         {
             _es = v;
