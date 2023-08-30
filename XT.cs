@@ -1789,6 +1789,30 @@ internal class P8086
             Log.DoLog($"{prefixStr} DAS");
 #endif
         }
+        else if (opcode == 0x37)
+        {
+            if ((_al & 0x0f) > 9 || GetFlagA())
+            {
+                _ah += 1;
+
+                _al += 6;
+
+                SetFlagA(true);
+                SetFlagC(true);
+            }
+            else
+            {
+                SetFlagA(false);
+                SetFlagC(false);
+            }
+
+            _al &= 0x0f;
+
+            cycle_count += 4;  // FIXME
+#if DEBUG
+            Log.DoLog($"{prefixStr} AAA");
+#endif
+        }
         else if (opcode == 0x2d)
         {
             // SUB AX,iw
@@ -2448,7 +2472,7 @@ internal class P8086
 #endif
             }
         }
-        else if (opcode == 0xc2)
+        else if (opcode == 0xc2 || opcode == 0xc0)
         {
             ushort nToRelease = GetPcWord();
 
@@ -2463,7 +2487,7 @@ internal class P8086
             Log.DoLog($"{prefixStr} RET ${nToRelease:X4}");
 #endif
         }
-        else if (opcode == 0xc3)
+        else if (opcode == 0xc3 || opcode == 0xc1)
         {
             // RET
             _ip = pop();
@@ -3905,6 +3929,19 @@ internal class P8086
 
 #if DEBUG
             Log.DoLog($"{prefixStr} OUT ${to:X2},AL");
+#endif
+        }
+        else if (opcode == 0xe7)
+        {
+            // OUT
+            byte to = GetPcByte();
+
+            _scheduled_interrupts |= _io.Out(@to, GetAX());
+
+            cycle_count += 10;  // max 14
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} OUT ${to:X2},AX");
 #endif
         }
         else if (opcode == 0xec)

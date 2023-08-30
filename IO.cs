@@ -662,15 +662,15 @@ class IO
         return rc;
     }
 
-    public bool Out(ushort addr, byte value)
+    public bool Out(ushort addr, ushort value)
     {
         // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})", true);
 
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2) // 8237
-            return _i8237.Out(addr, value);
+            return _i8237.Out(addr, (byte)value);
 
         else if (addr == 0x0020 || addr == 0x0021)  // PIC
-            return _pic.Out(addr, value);
+            return _pic.Out(addr, (byte)value);
 
         else if (addr == 0x0080)
             Log.DoLog($"Manufacturer systems checkpoint {value:X2}", true);
@@ -690,14 +690,14 @@ class IO
         else
         {
             if (_io_map.ContainsKey(addr))
-                return _io_map[addr].IO_Write(addr, value);
+                return _io_map[addr].IO_Write(addr, (byte)value);
 
 #if DEBUG
             // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", true);
 #endif
         }
 
-        _values[addr] = value;
+        _values[addr] = (byte)value;
 
         return false;
     }
