@@ -1813,6 +1813,29 @@ internal class P8086
             Log.DoLog($"{prefixStr} AAA");
 #endif
         }
+        else if (opcode == 0x3f)
+        {
+            if ((_al & 0x0f) > 9 || GetFlagA())
+            {
+                _al -= 6;
+                _ah -= 1;
+
+                SetFlagA(true);
+                SetFlagC(true);
+            }
+            else
+            {
+                SetFlagA(false);
+                SetFlagC(false);
+            }
+
+            _al &= 0x0f;
+
+            cycle_count += 4;  // FIXME
+#if DEBUG
+            Log.DoLog($"{prefixStr} AAS");
+#endif
+        }
         else if (opcode == 0x2d)
         {
             // SUB AX,iw
