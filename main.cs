@@ -127,7 +127,7 @@ if (debugger)
 
         string line = Console.ReadLine();
 
-        Log.DoLog(line);
+        //Log.DoLog(line);
 
         string[] parts = line.Split(' ');
 

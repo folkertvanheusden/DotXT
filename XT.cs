@@ -351,8 +351,9 @@ internal class P8086
 
     private void FixFlags()
     {
-            _flags &= 0b0000111111010101;
-            _flags |= 2;
+            _flags &= 0b1111111111010101;
+            _flags |= 2;  // bit 1 is always set
+            _flags |= 0xf000;  // upper 4 bits are always 1
     }
 
     private byte GetPcByte()
