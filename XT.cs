@@ -4298,6 +4298,8 @@ internal class P8086
             _segment_override_name = "";
         }
 
+        _rep_do_nothing = false;
+
         if (cycle_count == 0)
             cycle_count = 1;  // TODO workaround
 
