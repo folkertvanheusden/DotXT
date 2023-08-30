@@ -127,10 +127,21 @@ if (debugger)
 
         string line = Console.ReadLine();
 
+        Log.DoLog(line);
+
         string[] parts = line.Split(' ');
 
         if (line == "s")
             p.Tick();
+        else if (line == "S")
+        {
+            do {
+                p.Tick();
+            }
+            while(p.IsProcessingRep());
+        }
+        else if (line == "q")
+            break;
         else if (line == "echo")
         {
             echo_state = !echo_state;

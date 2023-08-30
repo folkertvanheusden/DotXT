@@ -79,7 +79,7 @@ for set in j:
     for addr, value in initial['ram']:
         docmd(process, f'set ram {addr} {value}')
 
-    docmd(process, 's', False)  # step
+    docmd(process, 'S', False)  # step
 
     # verify
     final = set['final']
@@ -117,6 +117,8 @@ for set in j:
             print(f'{reg} was at start {initial["regs"][reg]}, should have become {final["regs"][reg]}, is: {is_[reg]}')
 
         print(f'Test set: {sys.argv[1]}')
+
+        process.stdin.write(f'q\r\n'.encode('ascii'))
 
         sys.exit(1)
 

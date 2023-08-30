@@ -1309,6 +1309,11 @@ internal class P8086
         }
     }
 
+    public bool IsProcessingRep()
+    {
+        return _rep;
+    }
+
     // cycle counts from https://zsmith.co/intel_i.php
     public bool Tick()
     {
@@ -1418,7 +1423,6 @@ internal class P8086
                 _rep = true;
                 _rep_mode = RepMode.NotSet;
                 cycle_count += 3;
-                Log.DoLog($"set _rep_addr to {_rep_addr:X4}", true);
 
                 _rep_do_nothing = GetCX() == 0;
             }
@@ -1436,9 +1440,16 @@ internal class P8086
 
             if (opcode == 0xf2)
             {
-                _rep_mode = RepMode.REPNZ;
+                if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
+                {
+                    _rep_mode = RepMode.REPNZ;
 
-                Log.DoLog($"REPNZ: {_cs:X4}:{_rep_addr:X4}");
+                    Log.DoLog($"REPNZ: {_cs:X4}:{_rep_addr:X4}");
+                }
+                else
+                {
+                    _rep_mode = RepMode.REP;
+                }
             }
             else if (opcode == 0xf3)
             {
@@ -1461,6 +1472,9 @@ internal class P8086
 
             if (_segment_override_set)
                 Log.DoLog($"segment override to {_segment_override_name}: {_ds:X4}, opcode(s): {opcode:X2} {HexDump(address, false):X2}");
+
+            if (_rep)
+                Log.DoLog($"repetition mode {_rep_mode}, addr {_rep_addr:X4}");
 
             opcode = next_opcode;
         }
@@ -4241,10 +4255,14 @@ internal class P8086
                 cx--;
                 SetCX(cx);
 
-                if (_rep_mode == RepMode.REPE_Z)
+                if (cx == 0)
+                {
+                    _rep = false;
+                }
+                else if (_rep_mode == RepMode.REPE_Z)
                 {
                     // REPE/REPZ
-                    if (cx > 0 && GetFlagZ() == true)
+                    if (GetFlagZ() == true)
                         _ip = _rep_addr;
                     else
                         _rep = false;
@@ -4252,17 +4270,14 @@ internal class P8086
                 else if (_rep_mode == RepMode.REPNZ)
                 {
                     // REPNZ
-                    if (cx > 0 && GetFlagZ() == false)
+                    if (GetFlagZ() == false)
                         _ip = _rep_addr;
                     else
                         _rep = false;
                 }
                 else if (_rep_mode == RepMode.REP)
                 {
-                    if (cx > 0)
-                        _ip = _rep_addr;
-                    else
-                        _rep = false;
+                    _ip = _rep_addr;
                 }
                 else
                 {
