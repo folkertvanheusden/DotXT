@@ -355,6 +355,20 @@ internal class P8086
             SetFlagC(false);
             return true;
         }
+        else if (nr == 0x1a) {
+            if (_ah == 0x02) {
+                DateTime now = DateTime.Now;
+
+                // convert to BCD
+                _ch = (byte)(((now.Hour / 10) << 4) | (now.Hour % 10));
+                _cl = (byte)(((now.Minute / 10) << 4) | (now.Minute % 10));
+                _dh = (byte)(((now.Second / 10) << 4) | (now.Second % 10));
+                _dl = 0;
+
+                SetFlagC(false);
+                return true;
+            }
+        }
         else
         {
 #if DEBUG
