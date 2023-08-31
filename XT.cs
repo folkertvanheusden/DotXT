@@ -237,6 +237,13 @@ internal class P8086
                 SetFlagC(false);
                 return true;
             }
+            else if (_ah == 0x01)
+            {
+                // check for key stroke
+                SetFlagZ(true);  // nothing waiting
+                SetFlagC(false);
+                return true;
+            }
         }
         else if (nr == 0x29)
         {
@@ -338,6 +345,15 @@ internal class P8086
                 _ah = 0x00;  // no error
                 return true;
             }
+        }
+        else if (nr == 0x11) {
+#if DEBUG
+            Console.WriteLine($"INT NR {nr:X2} get bios equipment list");
+#endif
+
+            SetAX(0b0000000000100001);
+            SetFlagC(false);
+            return true;
         }
         else
         {
@@ -2942,7 +2958,7 @@ internal class P8086
 
             int function = (o1 >> 3) & 7;
 
-            if (function == 0)
+            if (function == 0 || function == 1)
             {
                 // TEST
                 if (word) {
