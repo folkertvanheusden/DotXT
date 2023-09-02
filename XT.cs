@@ -4038,6 +4038,17 @@ internal class P8086
             Log.DoLog($"{prefixStr} OUT DX,AL");
 #endif
         }
+        else if (opcode == 0xef)
+        {
+            // OUT
+            _scheduled_interrupts |= _io.Out(GetDX(), GetAX());
+
+            cycle_count += 8;  // or 12 TODO
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} OUT DX,AX");
+#endif
+        }
         else if (opcode == 0xeb)
         {
             // JMP
