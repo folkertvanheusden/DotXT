@@ -3573,10 +3573,6 @@ internal class P8086
             //bool count_1_of = opcode is (0xd0 or 0xd1);
             bool count_1_of = count == 1;
 
-            count &= 31;  // masked to 5 bits
-            // only since 286?
-            // count %= (word ? 17 : 9);  // from documentation ( https://www.felixcloutier.com/x86/rcl:rcr:rol:ror )
-
             bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
             bool set_flags = false;
@@ -3744,6 +3740,42 @@ internal class P8086
 #if DEBUG
                 Log.DoLog($"{prefixStr} SHR {vName},{countName}");
 #endif
+            }
+            else if (mode == 6)
+            {
+                if (opcode >= 0xd2)
+                {
+                    if (_cl != 0)
+                    {
+                        SetFlagC(false);
+                        SetFlagA(false);
+                        SetFlagZ(false);
+                        SetFlagO(false);
+                        SetFlagP(0xff);
+                        SetFlagS(true);
+
+                        v1 = (ushort)(word ? 0xffff : 0xff);
+                    }
+
+#if DEBUG
+                    Log.DoLog($"{prefixStr} SETMOC");
+#endif
+                }
+                else
+                {
+                    SetFlagC(false);
+                    SetFlagA(false);
+                    SetFlagZ(false);
+                    SetFlagO(false);
+                    SetFlagP(0xff);
+                    SetFlagS(true);
+
+                    v1 = (ushort)(word ? 0xffff : 0xff);
+
+#if DEBUG
+                    Log.DoLog($"{prefixStr} SETMO");
+#endif
+                }
             }
             else if (mode == 7)
             {
