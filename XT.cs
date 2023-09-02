@@ -3521,7 +3521,7 @@ internal class P8086
 #endif
             }
         }
-        else if (opcode >= 0xc8 || opcode <= 0xcb)
+        else if (opcode >= 0xc8 && opcode <= 0xcb)
         {
             // RETF n / RETF
             ushort nToRelease = (opcode == 0xca || opcode == 0xc8) ? GetPcWord() : (ushort)0;
