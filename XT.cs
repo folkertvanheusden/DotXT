@@ -2599,30 +2599,43 @@ internal class P8086
             Log.DoLog($"{prefixStr} {name} {affected},{name_from}");
 #endif
         }
-        else if (opcode == 0xcc || opcode == 0xcd)
+        else if (opcode == 0xcc || opcode == 0xcd || opcode == 0xce)
         {
             // INT 0x..
-            byte @int = (byte)(opcode == 0xcc ? 3 : GetPcByte());
-
-            uint addr = (uint)(@int * 4);
-
-            if (InterceptInt(@int) == false)
+            if (opcode != 0xce || GetFlagO())
             {
-                push(_flags);
-                push(_cs);
-                push(_ip);
+                byte @int = 0;
 
-                SetFlagI(false);
+                if (opcode == 0xcc)
+                    @int = 3;
+                else if (opcode == 0xce)
+                    @int = 4;
+                else
+                    @int = GetPcByte();
 
-                _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
-                _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
-            }
+                uint addr = (uint)(@int * 4);
 
-            cycle_count += 51;  // 71
+                if (InterceptInt(@int) == false)
+                {
+                    push(_flags);
+                    push(_cs);
+                    push(_ip);
+
+                    SetFlagI(false);
+
+                    _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
+                    _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
+                }
+
+                cycle_count += 51;  // 71  TODO
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} INT {@int:X2} -> ${_cs * 16 + _ip:X6} (from {addr:X4})");
+                if (opcode == 0xce)
+                    Log.DoLog($"{prefixStr} INTO {@int:X2} -> ${_cs * 16 + _ip:X6} (from {addr:X4})");
+                else
+                    Log.DoLog($"{prefixStr} INT {@int:X2} -> ${_cs * 16 + _ip:X6} (from {addr:X4})");
 #endif
+            }
         }
         else if (opcode == 0xcf)
         {
@@ -3508,15 +3521,15 @@ internal class P8086
 #endif
             }
         }
-        else if (opcode == 0xca || opcode == 0xcb)
+        else if (opcode >= 0xc8 || opcode <= 0xcb)
         {
             // RETF n / RETF
-            ushort nToRelease = opcode == 0xca ? GetPcWord() : (ushort)0;
+            ushort nToRelease = (opcode == 0xca || opcode == 0xc8) ? GetPcWord() : (ushort)0;
 
             _ip = pop();
             _cs = pop();
 
-            if (opcode == 0xca)
+            if (opcode == 0xca || opcode == 0xc8)
             {
                 _sp += nToRelease;
 
