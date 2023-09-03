@@ -3873,6 +3873,20 @@ internal class P8086
             Log.DoLog($"{prefixStr} AAD");
 #endif
         }
+        else if (opcode == 0xd6)
+        {
+            // SALC
+            if (GetFlagC())
+                _al = 0xff;
+            else
+                _al = 0x00;
+
+            cycle_count += 2;  // TODO
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} SALC");
+#endif
+        }
         else if ((opcode & 0xf0) == 0x70 || (opcode & 0xf0) == 0x60)
         {
             // J..., 0x70/0x60
