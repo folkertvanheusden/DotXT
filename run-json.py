@@ -4,6 +4,8 @@ import json
 from subprocess import Popen, PIPE
 import sys
 
+debug = False
+
 def docmd(p, str, wait=True):
     p.stdin.write((str + "\r\n").encode('ascii'))
 
@@ -11,6 +13,9 @@ def docmd(p, str, wait=True):
         line = p.stdout.readline()
 
         line = line.decode('ascii', 'ignore').rstrip('\n')
+
+        if debug:
+            print(line)
 
         if len(line) < 5:
             continue
