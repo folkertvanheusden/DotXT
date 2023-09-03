@@ -3855,6 +3855,24 @@ internal class P8086
             Log.DoLog($"{prefixStr} AAM");
 #endif
         }
+        else if (opcode == 0xd5)
+        {
+            // AAD
+            byte b2 = GetPcByte();
+
+            _al = (byte)(_al + _ah * b2);
+            _ah = 0;
+
+            SetFlagS((_al & 128) == 128);
+            SetFlagZ(_al == 0);
+            SetFlagP(_al);
+
+            cycle_count += 2;  // TODO
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} AAD");
+#endif
+        }
         else if ((opcode & 0xf0) == 0x70 || (opcode & 0xf0) == 0x60)
         {
             // J..., 0x70/0x60
