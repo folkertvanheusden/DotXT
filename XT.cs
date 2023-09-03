@@ -3822,6 +3822,39 @@ internal class P8086
 
             cycle_count += put_cycles;
         }
+        else if (opcode == 0xd4)
+        {
+            // AAM
+            byte b2 = GetPcByte();
+
+            if (b2 != 0)
+            {
+                _ah = (byte)(_al / b2);
+                _al %= b2;
+
+                SetFlagS((_al & 128) == 128);
+                SetFlagZ(_al == 0);
+                SetFlagP(_al);
+            }
+            else
+            {
+                SetFlagS(false);
+                SetFlagZ(true);
+                SetFlagP(0);
+
+                SetFlagO(false);
+                SetFlagA(false);
+                SetFlagC(false);
+
+                InvokeInterrupt(_ip, 0x00);
+            }
+
+            cycle_count += 2;  // TODO
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} AAM");
+#endif
+        }
         else if ((opcode & 0xf0) == 0x70 || (opcode & 0xf0) == 0x60)
         {
             // J..., 0x70/0x60
