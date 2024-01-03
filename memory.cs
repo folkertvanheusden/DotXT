@@ -87,6 +87,11 @@ internal class Rom
         }
     }
 
+    public uint GetSize()
+    {
+        return (uint)_contents.Length;
+    }
+
     public string GetAnnotation(uint address)
     {
         if (_annotations.ContainsKey(address))
@@ -120,7 +125,8 @@ class Bus
 {
     private Memory _m;
 
-    private readonly Rom _bios = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
+//    private readonly Rom _bios = new("roms/BIOS_5160_16AUG82_U18_5000026.BIN");
+    private readonly Rom _bios = new("roms/glabios/GLaBIOS/src/GLABIOS.ROM");
 
     // private readonly Rom _bios = new("roms/ruuds_diagnostic_rom_32kb_2022-12-12.bin");
     // private readonly Rom _bios = new("roms/DiagROM/DiagROM");
@@ -138,6 +144,7 @@ class Bus
     private bool _use_bios;
 
     private uint _size;
+    private uint _bios_base;
 
     public Bus(uint size, bool use_bios, ref List<Device> devices)
     {
@@ -145,6 +152,8 @@ class Bus
         _m = new Memory(size);
 
         _use_bios = use_bios;
+
+        _bios_base = 0x00100000 - _bios.GetSize();
 
         _devices = devices;
     }
@@ -161,7 +170,7 @@ class Bus
         if (address < 640 * 1024 || _use_bios == false)
             return null;
 
-        if (address is >= 0x000f8000 and <= 0x000fffff)
+        if (address >= _bios_base && address <= 0x000fffff)
             return _bios.GetAnnotation(address);
 
         if (address is >= 0x000f0000 and <= 0x000f7fff)
@@ -177,7 +186,7 @@ class Bus
         if (address < 640 * 1024 || _use_bios == false)
             return null;
 
-        if (address is >= 0x000f8000 and <= 0x000fffff)
+        if (address >= _bios_base && address <= 0x000fffff)
             return _bios.GetScript(address);
 
         if (address is >= 0x000f0000 and <= 0x000f7fff)
@@ -192,8 +201,8 @@ class Bus
 
         if (_use_bios)
         {
-            if (address is >= 0x000f8000 and <= 0x000fffff)
-                return _bios.ReadByte(address - 0x000f8000);
+            if (address >= _bios_base && address <= 0x000fffff)
+                return _bios.ReadByte(address - _bios_base);
 
             if (address is >= 0x000f0000 and <= 0x000f7fff)
                 return _basic.ReadByte(address - 0x000f0000);
