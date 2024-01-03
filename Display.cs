@@ -11,6 +11,11 @@ abstract class Display : Device
         TerminalClear();
     }
 
+    public override int GetIRQNumber()
+    {
+        return -1;
+    }
+
     protected void TerminalClear()
     {
         Console.Write((char)27);  // clear screen

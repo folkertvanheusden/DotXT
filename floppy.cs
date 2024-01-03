@@ -1,10 +1,15 @@
 class FloppyDisk : Device
 {
     private i8237 _dma_controller = null;
-    protected int _irq_nr = 6;
+    protected new int _irq_nr = 6;
 
     public FloppyDisk()
     {
+    }
+
+    public override int GetIRQNumber()
+    {
+        return _irq_nr;
     }
 
     public void SetDma(i8237 dma_instance)
@@ -65,10 +70,9 @@ class FloppyDisk : Device
     {
         Log.DoLog($"Floppy-OUT {port:X4} {value:X2}", true);
 
-//        if (port == 0x3f2)
- //           _pi.pending = true;  // FDC enable (controller reset) (IRQ 6)
-// TODO
-  //      return _pi.pending;
-        return false;
+        if (port == 0x3f2)
+            _pic.RequestInterrupt(_irq_nr);  // FDC enable (controller reset) (IRQ 6)
+
+        return false;  // TODO
     }
 }

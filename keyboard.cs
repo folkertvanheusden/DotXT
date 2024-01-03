@@ -3,7 +3,7 @@ using System.Threading;
 class Keyboard : Device
 {
     private Thread _keyboard_thread;
-    protected int _irq_nr = 1;
+    protected new int _irq_nr = 1;
     private Mutex _keyboard_buffer_lock = new();
     private Queue<int> _keyboard_buffer = new();
 
@@ -12,6 +12,11 @@ class Keyboard : Device
         _keyboard_thread = new Thread(Keyboard.KeyboardThread);
         _keyboard_thread.Name = "keyboard_thread";
         _keyboard_thread.Start(this);
+    }
+
+    public override int GetIRQNumber()
+    {
+        return _irq_nr;
     }
 
     public void PushKeyboardScancode(int scan_code)

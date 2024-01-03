@@ -1353,42 +1353,46 @@ internal class P8086
         int cycle_count = 0;  // cycles used for an instruction
 
         // check for interrupt
-        if (GetFlagI() == true && _scheduled_interrupts)
+        if (GetFlagI() == true) // TODO && _scheduled_interrupts)
         {
-            // Log.DoLog("Scanning for interrupts", true);
-
             byte isr = _io.GetPendingInterrupts();
 
-            bool processed_any = false;
+            if (isr != 0) {
+                Log.DoLog($"Scanning for interrupts {isr:X2}", true);
 
-            for(int irq=0; irq<8; irq++)
-            {
-                byte mask = (byte)(1 << irq);
-                if ((isr & mask) == 0)
-                    continue;
+                bool processed_any = false;
 
-                foreach (var device in _devices)
+                for(int irq=0; irq<8; irq++)
                 {
-                    if (device.GetIRQNumber() != irq)
+                    byte mask = (byte)(1 << irq);
+                    Log.DoLog($"Testing IRQ {irq} (ISR: {isr:X2}, mask: {mask:X2})");
+                    if ((isr & mask) == 0)
                         continue;
 
-                    Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
+                    foreach (var device in _devices)
+                    {
+                        Log.DoLog($"Testing device {device.GetName()} with irq {device.GetIRQNumber()}");
+                        if (device.GetIRQNumber() != irq)
+                            continue;
 
-                    InvokeInterrupt(_ip, 8 + irq);
-                    _io.ClearPendingInterrupt(irq);
+                        Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
 
-                    processed_any = true;
-                    cycle_count += 60;
+                        InvokeInterrupt(_ip, 8 + irq);
+                        _io.ClearPendingInterrupt(irq);
 
-                    break;
+                        processed_any = true;
+                        cycle_count += 60;
+
+                        break;
+                    }
+
+                    if (processed_any)
+                        break;
                 }
 
-                if (processed_any)
-                    break;
+                if (processed_any == false)
+                    _scheduled_interrupts = false;
             }
-
-            if (processed_any == false)
-                _scheduled_interrupts = false;
         }
 
 #if DEBUG

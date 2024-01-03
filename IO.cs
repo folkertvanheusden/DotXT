@@ -14,7 +14,7 @@ internal struct Timer
 internal class i8253 : Device
 {
     Timer [] _timers = new Timer[3];
-    protected int _irq_nr = 8;
+    protected new int _irq_nr = 0;
     i8237 _i8237 = null;
     int clock = 0;
 
@@ -27,6 +27,11 @@ internal class i8253 : Device
     {
         for(int i=0; i<_timers.Length; i++)
             _timers[i] = new Timer();
+    }
+
+    public override int GetIRQNumber()
+    {
+        return _irq_nr;
     }
 
     public override String GetName()
@@ -265,6 +270,9 @@ internal class i8253 : Device
 
             clock -= 4;
         }
+
+        if (interrupt)
+            _pic.RequestInterrupt(_irq_nr);  // Timers are on IRQ0
 
         return interrupt;
     }

@@ -1,7 +1,7 @@
 // programmable interrupt controller (PIC)
 class pic8259
 {
-    private int _int_offset = 8;
+    private int _int_offset = 0;  // TODO updaten bij ICW (OCW?) en dan XT::Tick() de juiste vector
     private byte _irr = 0;  // which irqs are requested
     private byte _isr = 0;  // ...and which are allowed (see imr)
     private byte _imr = 255;  // all irqs masked (disabled)
@@ -33,20 +33,35 @@ class pic8259
     public void RequestInterrupt(int interrupt_nr)
     {
         if (interrupt_nr < _int_offset || interrupt_nr >= _int_offset + 8)
+        {
+            Log.DoLog($"i8259 interrupt {interrupt_nr} out of range");
             return;
+        }
 
-        byte bit = Bit(interrupt_nr);
+        byte mask = Bit(interrupt_nr);
 
-        _irr |= bit;
+        _irr |= mask;
 
-        if ((_imr & bit) == bit)
-            _isr |= bit;
+        if ((_imr & mask) == 0)
+        {
+            _isr |= mask;
+            Log.DoLog($"i8259 interrupt {interrupt_nr} requested");
+        }
+        else
+        {
+            Log.DoLog($"i8259 interrupt {interrupt_nr} masked off ({_imr:X2})");
+        }
     }
 
     public void ClearPendingInterrupt(int interrupt_nr)
     {
         if (interrupt_nr < _int_offset || interrupt_nr >= _int_offset + 8)
+        {
+            Log.DoLog($"i8259 interrupt {interrupt_nr} out of range");
             return;
+        }
+
+        Log.DoLog($"i8259 interrupt {interrupt_nr} cleared");
 
         byte bit = (byte)(255 ^ Bit(interrupt_nr));
         _isr &= bit;
@@ -55,7 +70,7 @@ class pic8259
 
     public (byte, bool) In(ushort addr)
     {
-        Log.DoLog($"8259 IN: read addr {addr:X4}");
+        Log.DoLog($"i8259 IN: read addr {addr:X4}");
 
         if (addr == 0x0020)
         {
@@ -78,7 +93,7 @@ class pic8259
 
     public bool Out(ushort addr, byte value)
     {
-        Log.DoLog($"8259 OUT port {addr} value {value:X2}");
+        Log.DoLog($"i8259 OUT port {addr:X2} value {value:X2}");
 
         if (addr == 0x0020)
         {
@@ -91,12 +106,13 @@ class pic8259
                 _ii_icw4 = false;
                 _ii_icw4_req = (value & 1) == 1;
 
-                Log.DoLog($"8259 OUT: is init");
+                Log.DoLog($"i8259 OUT: is init (start ICW)");
             }
             else  // OCW 2/3
             {
                 if ((value & 8) == 8)  // OCW3
                 {
+                    _read_irr = (value & 1) == 1;
                 }
                 else  // OCW2
                 {
@@ -109,27 +125,32 @@ class pic8259
         {
             if (_in_init)
             {
-                Log.DoLog($"8259 OUT: is ICW");
-
                 if (_ii_icw2 == false)
                 {
+                    Log.DoLog($"i8259 OUT: is ICW2");
+
                     _ii_icw2 = true;
-                    if (value != 0)
-                        Log.DoLog($"8259 OUT: ICW2 should be 0x00, not 0x{value:X2}");
+                    if (value != 0x00 && value != 0x08)
+                        Log.DoLog($"i8259 OUT: ICW2 assigned strange value: 0x{value:X2}");
                 }
                 else if (_ii_icw3 == false)
                 {
-                    _ii_icw3 = true;
-                    if (value != 0)  // slaves are not supported in this emulator
-                        Log.DoLog($"8259 OUT: ICW3 should be 0x00, not 0x{value:X2}");
+                    Log.DoLog($"i8259 OUT: is ICW3");
 
-                    _read_irr = (value & 1) == 1;
+                    _ii_icw3 = true;
+
+                    // ignore value: slave-devices are not supported in this emulator
 
                     if (_ii_icw4_req == false)
+                    {
                         _in_init = false;
+                        Log.DoLog($"i8259 OUT: end of ICW");
+                    }
                 }
                 else if (_ii_icw4 == false)
                 {
+                    Log.DoLog($"i8259 OUT: is ICW4");
+
                     _ii_icw4 = true;
                     _in_init = false;
                     _auto_eoi = (value & 2) == 2;
@@ -137,13 +158,13 @@ class pic8259
             }
             else
             {
-                Log.DoLog($"8259 OUT: is OCW1, value {value:X2}");
+                Log.DoLog($"i8259 OUT: is OCW1, value {value:X2}");
                 _imr = value;
             }
         }
         else
         {
-            Log.DoLog($"8259 OUT has no port {addr:X2}");
+            Log.DoLog($"i8259 OUT has no port {addr:X2}");
         }
 
         // when reconfiguring the PIC8259, force an interrupt recheck
