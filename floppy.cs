@@ -1,7 +1,7 @@
 class FloppyDisk : Device
 {
     private i8237 _dma_controller = null;
-    private PendingInterrupt _pi = new();
+    protected int _irq_nr = 6;
 
     public FloppyDisk()
     {
@@ -15,8 +15,6 @@ class FloppyDisk : Device
     public override void SetPic(pic8259 pic_instance)
     {
         _pic = pic_instance;
-
-        _pi.int_vec = _pic.GetInterruptOffset() + 6;
     }
 
     public override String GetName()
@@ -53,37 +51,24 @@ class FloppyDisk : Device
         return false;
     }
 
-    public override List<PendingInterrupt> GetPendingInterrupts()
-    {
-        if (_pi.pending)
-        {
-            List<PendingInterrupt> rc = new();
-
-            rc.Add(_pi);
-
-            return rc;
-        }
-
-        return null;
-    }
-
     public override (byte, bool) IO_Read(ushort port)
     {
         Log.DoLog($"Floppy-IN {port:X4}", true);
 
         if (port == 0x3f4)
-            return (128, _pi.pending);
+            return (128, false);
 
-        return (0x00, _pi.pending);
+        return (0x00, false);
     }
 
     public override bool IO_Write(ushort port, byte value)
     {
         Log.DoLog($"Floppy-OUT {port:X4} {value:X2}", true);
 
-        if (port == 0x3f2)
-            _pi.pending = true;  // FDC enable (controller reset) (IRQ 6)
-
-        return _pi.pending;
+//        if (port == 0x3f2)
+ //           _pi.pending = true;  // FDC enable (controller reset) (IRQ 6)
+// TODO
+  //      return _pi.pending;
+        return false;
     }
 }

@@ -1,9 +1,3 @@
-internal class PendingInterrupt
-{
-    public bool pending { get; set; }
-    public int  int_vec { get; set; }
-}
-
 internal struct Timer
 {
     public ushort counter_cur { get; set; }
@@ -14,12 +8,13 @@ internal struct Timer
     public int    latch_n     { get; set; }
     public int    latch_n_cur { get; set; }
     public bool   is_running  { get; set; }
+    public bool   is_pending  { get; set; }
 }
 
 internal class i8253 : Device
 {
     Timer [] _timers = new Timer[3];
-    PendingInterrupt [] _pi = new PendingInterrupt[3];
+    protected int _irq_nr = 8;
     i8237 _i8237 = null;
     int clock = 0;
 
@@ -31,12 +26,7 @@ internal class i8253 : Device
     public i8253()
     {
         for(int i=0; i<_timers.Length; i++)
-        {
             _timers[i] = new Timer();
-
-            _pi[i] = new PendingInterrupt();
-            _pi[i].int_vec = 8;
-        }
     }
 
     public override String GetName()
@@ -52,32 +42,16 @@ internal class i8253 : Device
         mappings[0x0043] = this;
     }
 
-    public override List<PendingInterrupt> GetPendingInterrupts()
-    {
-        List<PendingInterrupt> rc = new();
-
-        for(int i=0; i<_timers.Length; i++)
-        {
-            if (_pi[i].pending)
-                rc.Add(_pi[i]);
-        }
-
-        if (rc.Count > 0)
-            return rc;
-
-        return null;
-    }
-
     public override (byte, bool) IO_Read(ushort port)
     {
         if (port == 0x0040)
-            return (GetCounter(0), _pi[0].pending);
+            return (GetCounter(0), _timers[0].is_pending);
 
         if (port == 0x0041)
-            return (GetCounter(1), _pi[1].pending);
+            return (GetCounter(1), _timers[1].is_pending);
 
         if (port == 0x0042)
-            return (GetCounter(2), _pi[2].pending);
+            return (GetCounter(2), _timers[2].is_pending);
 
         return (0xaa, false);
     }
@@ -93,7 +67,7 @@ internal class i8253 : Device
         else if (port == 0x0043)
             Command(value);
 
-        return _pi[0].pending || _pi[1].pending || _pi[2].pending;
+        return _timers[0].is_pending || _timers[1].is_pending || _timers[2].is_pending;
     }
 
     public override void SyncClock(int clock)
@@ -164,12 +138,9 @@ internal class i8253 : Device
 #endif
 
                 _timers[nr].latch_n_cur = _timers[nr].latch_n;  // restart setup
-
                 _timers[nr].counter_cur = _timers[nr].counter_ini;
-
                 _timers[nr].is_running = true;
-
-                _pi[nr].pending = false;
+                _timers[nr].is_pending = false;
             }
         }
     }
@@ -283,8 +254,7 @@ internal class i8253 : Device
                     // mode 0 generates an interrupt
                     if (_timers[i].mode == 0 || _timers[i].mode == 3)
                     {
-                        _pi[i].pending = true;
-
+                        _timers[i].is_pending = true;
                         interrupt = true;
 #if DEBUG
                         Log.DoLog($"i8253: interrupt for timer {i} fires ({_timers[i].counter_ini})", true);
@@ -596,9 +566,9 @@ class IO
         _pic.ClearPendingInterrupt(nr);
     }
 
-    public byte GetInterruptMask()
+    public byte GetPendingInterrupts()
     {
-        return _pic.GetInterruptMask();
+        return _pic.GetPendingInterrupts();
     }
 
     public (byte, bool) In(ushort addr)
@@ -642,8 +612,8 @@ class IO
         Log.DoLog($"IN: I/O port {addr:X4} not implemented", true);
 #endif
 
-        if (_values.ContainsKey(addr))
-            return (_values[addr], false);
+//        if (_values.ContainsKey(addr))
+ //           return (_values[addr], false);
 
         return (0, false);
     }

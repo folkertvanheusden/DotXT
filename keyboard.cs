@@ -3,17 +3,12 @@ using System.Threading;
 class Keyboard : Device
 {
     private Thread _keyboard_thread;
-
+    protected int _irq_nr = 1;
     private Mutex _keyboard_buffer_lock = new();
     private Queue<int> _keyboard_buffer = new();
 
-    private PendingInterrupt _pi = new();
-
-
     public Keyboard()
     {
-        _pi.int_vec = 9;  // IRQ 9
-
         _keyboard_thread = new Thread(Keyboard.KeyboardThread);
         _keyboard_thread.Name = "keyboard_thread";
         _keyboard_thread.Start(this);
@@ -24,9 +19,7 @@ class Keyboard : Device
         Log.DoLog($"PushKeyboardScancode({scan_code})", true);
 
         _keyboard_buffer_lock.WaitOne();
-
         _keyboard_buffer.Enqueue(scan_code);
-
         _keyboard_buffer_lock.ReleaseMutex();
     }
 
@@ -71,10 +64,8 @@ class Keyboard : Device
             if ((value & 0x40) == 0x00)
             {
                 _keyboard_buffer_lock.WaitOne();
-
                 _keyboard_buffer.Clear();
                 _keyboard_buffer.Enqueue(0xaa);  // power on reset reply
-
                 _keyboard_buffer_lock.ReleaseMutex();
             }
         }
@@ -104,9 +95,7 @@ class Keyboard : Device
             Log.DoLog($"Keyboard: 0x64", true);
 
             _keyboard_buffer_lock.WaitOne();
-
             bool keys_pending = _keyboard_buffer.Count > 0;
-
             _keyboard_buffer_lock.ReleaseMutex();
 
             return ((byte)(keys_pending ? 21 : 20), false);
@@ -136,32 +125,11 @@ class Keyboard : Device
     public override bool Tick(int cycles)
     {
         _keyboard_buffer_lock.WaitOne();
-
         bool any_keys = _keyboard_buffer.Count > 0;
-
         _keyboard_buffer_lock.ReleaseMutex();
 
-        _pi.pending = any_keys;
-
-        _pic.SetPendingInterrupt(_pi.int_vec);
+        _pic.RequestInterrupt(_irq_nr);  // Keyboard is on IRQ1
 
         return any_keys;
-    }
-
-    public override List<PendingInterrupt> GetPendingInterrupts()
-    {
-        // Log.DoLog("keyboard::GetPendingInterrupts");
-
-        if (_pi.pending)
-        {
-            List<PendingInterrupt> rc = new();
-
-            // TODO: only when Count > 0
-            rc.Add(_pi);
-
-            return rc;
-        }
-
-        return null;
     }
 }

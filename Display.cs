@@ -38,11 +38,6 @@ abstract class Display : Device
         _clock = clock;
     }
 
-    public override List<PendingInterrupt> GetPendingInterrupts()
-    {
-        return null;
-    }
-
     public abstract override void RegisterDevice(Dictionary <ushort, Device> mappings);
 
     public abstract override bool HasAddress(uint addr);

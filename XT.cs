@@ -1357,46 +1357,27 @@ internal class P8086
         {
             // Log.DoLog("Scanning for interrupts", true);
 
-            int enabled_interrupts = _io.GetInterruptMask();
+            byte isr = _io.GetPendingInterrupts();
 
             bool processed_any = false;
 
-            foreach (var device in _devices)
+            for(int irq=0; irq<8; irq++)
             {
-                List<PendingInterrupt> interrupts = device.GetPendingInterrupts();
-
-                if (interrupts == null)
+                byte mask = (byte)(1 << irq);
+                if ((isr & mask) == 0)
                     continue;
 
-                // Log.DoLog($"{device.GetName()} has {interrupts.Count} pending interrupts");
-
-                foreach (var interrupt in interrupts)
+                foreach (var device in _devices)
                 {
-                    if (interrupt.pending == false)
-                    {
-                        Log.DoLog("Interrupt was cleared", true);
+                    if (device.GetIRQNumber() != irq)
                         continue;
-                    }
 
-                    if (interrupt.int_vec >= 8 && interrupt.int_vec < 16)
-                    {
-                        if ((enabled_interrupts & (1 << (interrupt.int_vec - 8))) != 0)
-                        {
-                            // Log.DoLog($"{device.GetName()} interrupt {interrupt.int_vec} masked off", true);
-                            continue;
-                        }
-                    }
+                    Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
 
-                    Log.DoLog($"{device.GetName()} triggers vector {interrupt.int_vec}, mask: {enabled_interrupts:X2}", true);
-
-                    InvokeInterrupt(_ip, interrupt.int_vec);
-
-                    _io.ClearPendingInterrupt(interrupt.int_vec);
-
-                    interrupt.pending = false;
+                    InvokeInterrupt(_ip, 8 + irq);
+                    _io.ClearPendingInterrupt(irq);
 
                     processed_any = true;
-
                     cycle_count += 60;
 
                     break;

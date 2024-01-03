@@ -1,6 +1,7 @@
 abstract class Device
 {
     protected pic8259 _pic = null;
+    protected int _irq_nr = -1;
 
     public abstract String GetName();
 
@@ -16,7 +17,10 @@ abstract class Device
 
     public abstract bool Tick(int cycles);
 
-    public abstract List<PendingInterrupt> GetPendingInterrupts();
+    public virtual int GetIRQNumber()
+    {
+        return _irq_nr;
+    }
 
     public virtual void SetPic(pic8259 pic_instance)
     {
