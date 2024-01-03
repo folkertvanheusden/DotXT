@@ -3099,7 +3099,7 @@ internal class P8086
                     uint dx_ax = (uint)((GetDX() << 16) | GetAX());
 
                     if (r1 == 0 || dx_ax / r1 >= 0x10000)
-                        InvokeInterrupt(_ip, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                        InvokeInterrupt(_ip, 0x00);  // divide by zero or divisor too small
                     else
                     {
                         SetAX((ushort)(dx_ax / r1));
@@ -3109,8 +3109,10 @@ internal class P8086
                 else {
                     ushort ax = GetAX();
 
+                    Log.DoLog($"r1 {r1}, ax {ax}");
+
                     if (r1 == 0 || ax / r1 > 0x100)
-                        InvokeInterrupt(_ip, r1 == 0 ? 0x00 : 0x10);  // divide by zero or divisor too small
+                        InvokeInterrupt(_ip, 0x00);  // divide by zero or divisor too small
                     else
                     {
                         _al = (byte)(ax / r1);
@@ -3885,6 +3887,20 @@ internal class P8086
 
 #if DEBUG
             Log.DoLog($"{prefixStr} SALC");
+#endif
+        }
+        else if (opcode == 0xdb || opcode==0xdd)
+        {
+            byte o1 = GetPcByte();
+            int mod = o1 >> 6;
+            int reg1 = o1 & 7;
+            (ushort v1, string vName, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, false);
+            cycle_count += get_cycles;
+
+            cycle_count += 2;  // TODO
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} FPU - ignored");
 #endif
         }
         else if ((opcode & 0xf0) == 0x70 || (opcode & 0xf0) == 0x60)
