@@ -22,7 +22,7 @@ class pic8259
 
     public byte GetPendingInterrupts()
     {
-        return _isr;
+        return (byte)(_irr & (255 ^ _imr));
     }
 
     public byte Bit(int interrupt_nr)
@@ -39,18 +39,9 @@ class pic8259
         }
 
         byte mask = Bit(interrupt_nr);
-
         _irr |= mask;
 
-        if ((_imr & mask) == 0)
-        {
-            _isr |= mask;
-            Log.DoLog($"i8259 interrupt {interrupt_nr} requested");
-        }
-        else
-        {
-            Log.DoLog($"i8259 interrupt {interrupt_nr} masked off ({_imr:X2})");
-        }
+        Log.DoLog($"i8259 interrupt {interrupt_nr} requested");
     }
 
     public void ClearPendingInterrupt(int interrupt_nr)
@@ -70,21 +61,23 @@ class pic8259
 
     public (byte, bool) In(ushort addr)
     {
-        Log.DoLog($"i8259 IN: read addr {addr:X4}");
+        byte rc = 0;
 
         if (addr == 0x0020)
         {
             if (_read_irr)
-                return (_irr, false);
-
-            return (_isr, false);
+                rc = _irr;
+            else
+                rc = _isr;
         }
         else if (addr == 0x0021)
         {
-            return (_imr, false);
+            rc = _imr;
         }
 
-        return (0, false);
+        Log.DoLog($"i8259 IN: read addr {addr:X4}: {rc:X2}");
+
+        return (rc, false);
     }
 
     public void Tick()
