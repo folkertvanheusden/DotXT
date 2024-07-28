@@ -1,3 +1,15 @@
+5b8b12ac84c4cd32dfb11f1697b8268fbe7e8c95
+- ondanks geen EOI gedaan toch trigger
+
+- InvokeInterrupt wordt gedaan zonder offset
+- wordt de offset wel goed ingesteld?
+
+
+47b1cb6a62f3e21460d59d900b659624b7a8f518
+- interrupt produced (keyboard reset), unmask, STI -> interrupt is produced but mask is ff thus not triggered
+  -> i8259::_isr is not set?
+
+
 http://bitsavers.informatik.uni-stuttgart.de/pdf/ibm/pc/xt/1502237_PC_XT_Technical_Reference_Apr83.pdf
 
 

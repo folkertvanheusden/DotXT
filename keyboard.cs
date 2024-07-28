@@ -149,7 +149,7 @@ class Keyboard : Device
     public override bool Tick(int cycles)
     {
         if (CheckScheduledInterrupt(cycles))
-            _pic.RequestInterrupt(_irq_nr);  // Keyboard is on IRQ1
+            _pic.RequestInterrupt(_irq_nr + _pic.GetInterruptOffset());  // Keyboard is on IRQ1
 
         return false;
     }

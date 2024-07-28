@@ -7,9 +7,11 @@ class pic8259
     private byte _imr = 255;  // all irqs masked (disabled)
     private bool _auto_eoi = false;
     private byte _eoi_type = 0;
+    private byte _eoi_mask = 0;  // which bits to ignore as EOI was not done
     private int _irq_request_level = 7;  // default value? TODO
     private bool _read_irr = false;
     private bool _has_slave = false;
+    private int _int_in_service = -1;  // used by EOI
 
     private bool _in_init = false;
     private bool _ii_icw2 = false;
@@ -23,7 +25,16 @@ class pic8259
 
     public byte GetPendingInterrupts()
     {
-        return (byte)(_irr & (255 ^ _imr));
+        byte pending_ints = (byte)(_irr & (255 ^ _imr));
+        byte temp = pending_ints;
+
+        // any previous interrupts not acked via (auto-)EOI yet?
+        // them mask them off
+        pending_ints &= (byte)(~_eoi_mask);
+
+        Log.DoLog($"i8259 pending interrupts: {temp:X2}, after EOI-masking ({_eoi_mask:X2}): {pending_ints:X2}");
+
+        return pending_ints;
     }
 
     public byte Bit(int interrupt_nr)
@@ -58,6 +69,17 @@ class pic8259
         byte bit = (byte)(255 ^ Bit(interrupt_nr));
         _isr &= bit;
         _irr &= bit;
+    }
+
+    public void SetIRQBeingServiced(int interrupt_nr)
+    {
+        if (_int_in_service != -1)
+            Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service");
+
+        _int_in_service = interrupt_nr;
+
+        _eoi_mask |= Bit(interrupt_nr);
+        Log.DoLog($"i8259: EOI mask is now {_eoi_mask:X2} by {Bit(interrupt_nr)} for {interrupt_nr}");
     }
 
     public (byte, bool) In(ushort addr)
@@ -113,7 +135,18 @@ class pic8259
                 else  // OCW2
                 {
                     _irq_request_level = value & 7;
-                    _eoi_type = (byte)(value >> 5);
+    //                _eoi_type = (byte)(value >> 5);
+
+                    if (((value >> 5) & 1) == 1) {
+                        Log.DoLog($"i8259 EOI of {_int_in_service}");
+
+                        if (_int_in_service == -1)
+                            Log.DoLog($"i8259 EOI with no int in service?");
+                        else {
+                            _eoi_mask &= (byte)~Bit(_int_in_service);
+                            _int_in_service  = -1;
+                        }
+                    }
                 }
             }
         }
@@ -128,6 +161,7 @@ class pic8259
                     _ii_icw2 = true;
                     if (value != 0x00 && value != 0x08)
                         Log.DoLog($"i8259 OUT: ICW2 assigned strange value: 0x{value:X2}");
+                    _int_offset = value;
                 }
                 else if (_ii_icw3 == false && _has_slave)
                 {
