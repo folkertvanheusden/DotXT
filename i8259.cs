@@ -9,6 +9,7 @@ class pic8259
     private byte _eoi_type = 0;
     private int _irq_request_level = 7;  // default value? TODO
     private bool _read_irr = false;
+    private bool _has_slave = false;
 
     private bool _in_init = false;
     private bool _ii_icw2 = false;
@@ -92,6 +93,8 @@ class pic8259
         {
             _in_init = (value & 16) == 16;
 
+            _has_slave = (value & 2) == 0;
+
             if (_in_init)  // ICW
             {
                 _ii_icw2 = false;
@@ -126,7 +129,7 @@ class pic8259
                     if (value != 0x00 && value != 0x08)
                         Log.DoLog($"i8259 OUT: ICW2 assigned strange value: 0x{value:X2}");
                 }
-                else if (_ii_icw3 == false)
+                else if (_ii_icw3 == false && _has_slave)
                 {
                     Log.DoLog($"i8259 OUT: is ICW3");
 
