@@ -41,7 +41,7 @@ class pic8259
         byte mask = Bit(interrupt_nr);
         _irr |= mask;
 
-        Log.DoLog($"i8259 interrupt {interrupt_nr} requested");
+        Log.DoLog($"i8259 interrupt {interrupt_nr} requested, pending interrupts: {GetPendingInterrupts()}, mask: {GetInterruptMask():x2}");
     }
 
     public void ClearPendingInterrupt(int interrupt_nr)
