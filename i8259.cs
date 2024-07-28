@@ -76,9 +76,9 @@ class pic8259
         if (_int_in_service != -1)
             Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service");
 
-        _int_in_service = interrupt_nr;
+        _int_in_service = interrupt_nr - _int_offset;
+        _eoi_mask |= (byte)(1 << _int_in_service);
 
-        _eoi_mask |= Bit(interrupt_nr);
         Log.DoLog($"i8259: EOI mask is now {_eoi_mask:X2} by {Bit(interrupt_nr)} for {interrupt_nr}");
     }
 
@@ -135,15 +135,16 @@ class pic8259
                 else  // OCW2
                 {
                     _irq_request_level = value & 7;
-    //                _eoi_type = (byte)(value >> 5);
 
-                    if (((value >> 5) & 1) == 1) {
-                        Log.DoLog($"i8259 EOI of {_int_in_service}");
+                    if (((value >> 5) & 1) == 1)  // EOI set (in OCW2)?
+                    {
+                        Log.DoLog($"i8259 EOI of {_int_in_service}, level: {_irq_request_level}");
 
                         if (_int_in_service == -1)
                             Log.DoLog($"i8259 EOI with no int in service?");
-                        else {
-                            _eoi_mask &= (byte)~Bit(_int_in_service);
+                        else
+                        {
+                            _eoi_mask &= (byte)~(1 << _int_in_service);
                             _int_in_service  = -1;
                         }
                     }
