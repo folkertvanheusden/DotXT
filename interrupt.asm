@@ -238,6 +238,8 @@ wait_for_int:
 	call reset_keyboard
 	call wait_interrupt_none
 
+	mov progress,#$202
+
 	; ********* check if offset is taken care of ********
 	jmp skip_over_new_vector
 
