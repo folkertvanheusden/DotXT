@@ -1379,8 +1379,8 @@ internal class P8086
 
                         Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
 
-                        InvokeInterrupt(_ip, 8 + irq);
-                        _io.ClearPendingInterrupt(8 + irq);
+                        InvokeInterrupt(_ip, _io.GetInterruptOffset() + irq);
+                        _io.ClearPendingInterrupt(_io.GetInterruptOffset() + irq);
 
                         processed_any = true;
                         cycle_count += 60;
@@ -3086,7 +3086,7 @@ internal class P8086
                     uint dx_ax = (uint)((GetDX() << 16) | GetAX());
 
                     if (r1 == 0 || dx_ax / r1 >= 0x10000)
-                        InvokeInterrupt(_ip, 0x00);  // divide by zero or divisor too small
+                        InvokeInterrupt(_ip, _io.GetInterruptOffset() + 0x00);  // divide by zero or divisor too small
                     else
                     {
                         SetAX((ushort)(dx_ax / r1));
@@ -3099,7 +3099,7 @@ internal class P8086
                     Log.DoLog($"r1 {r1}, ax {ax}");
 
                     if (r1 == 0 || ax / r1 > 0x100)
-                        InvokeInterrupt(_ip, 0x00);  // divide by zero or divisor too small
+                        InvokeInterrupt(_ip, _io.GetInterruptOffset() + 0x00);  // divide by zero or divisor too small
                     else
                     {
                         _al = (byte)(ax / r1);
@@ -3835,7 +3835,7 @@ internal class P8086
                 SetFlagA(false);
                 SetFlagC(false);
 
-                InvokeInterrupt(_ip, 0x00);
+                InvokeInterrupt(_ip, _io.GetInterruptOffset() + 0x00);
             }
 
             cycle_count += 2;  // TODO

@@ -577,6 +577,11 @@ class IO
         _pic.ClearPendingInterrupt(nr);
     }
 
+    public int GetInterruptOffset()
+    {
+        return _pic.GetInterruptOffset();
+    }
+
     public byte GetPendingInterrupts()
     {
         return _pic.GetPendingInterrupts();

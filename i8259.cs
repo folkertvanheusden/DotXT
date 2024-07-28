@@ -46,7 +46,7 @@ class pic8259
     {
         if (interrupt_nr < _int_offset || interrupt_nr >= _int_offset + 8)
         {
-            Log.DoLog($"i8259 interrupt {interrupt_nr} out of range");
+            Log.DoLog($"i8259 interrupt {interrupt_nr} out of range (offset: {_int_offset})");
             return;
         }
 
@@ -60,7 +60,7 @@ class pic8259
     {
         if (interrupt_nr < _int_offset || interrupt_nr >= _int_offset + 8)
         {
-            Log.DoLog($"i8259 interrupt {interrupt_nr} out of range");
+            Log.DoLog($"i8259 interrupt {interrupt_nr} out of range (offset: {_int_offset})");
             return;
         }
 
@@ -119,21 +119,32 @@ class pic8259
 
             if (_in_init)  // ICW
             {
+                Log.DoLog($"i8259 OUT is init (start ICW)");
+
                 _ii_icw2 = false;
                 _ii_icw3 = false;
                 _ii_icw4 = false;
                 _ii_icw4_req = (value & 1) == 1;
 
-                Log.DoLog($"i8259 OUT: is init (start ICW)");
+                if (_int_in_service != -1)
+                    Log.DoLog($"i8259 implicit EOI of {_int_in_service + _int_offset}");
+
+                _isr = 0;
+                _imr = 0;  // TODO 255?
+
+                _eoi_mask = 0;
+                _int_in_service  = -1;
             }
             else  // OCW 2/3
             {
                 if ((value & 8) == 8)  // OCW3
                 {
+                    Log.DoLog($"i8259 OUT: OCW3");
                     _read_irr = (value & 1) == 1;
                 }
                 else  // OCW2
                 {
+                    Log.DoLog($"i8259 OUT: OCW2");
                     _irq_request_level = value & 7;
 
                     if (((value >> 5) & 1) == 1)  // EOI set (in OCW2)?
