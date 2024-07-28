@@ -53,6 +53,9 @@ class FloppyDisk : Device
 
     public override bool Tick(int cycles)
     {
+        if (CheckScheduledInterrupt(cycles))
+            _pic.RequestInterrupt(_irq_nr);
+
         return false;
     }
 
@@ -71,7 +74,7 @@ class FloppyDisk : Device
         Log.DoLog($"Floppy-OUT {port:X4} {value:X2}", true);
 
         if (port == 0x3f2)
-            _pic.RequestInterrupt(_irq_nr);  // FDC enable (controller reset) (IRQ 6)
+            ScheduleInterrupt(100);  // FDC enable (controller reset) (IRQ 6), 100 cycles is a guess
 
         return false;  // TODO
     }

@@ -1,6 +1,7 @@
 abstract class Device
 {
     protected pic8259 _pic = null;
+    private int next_interrupt = -1;
 
     public abstract String GetName();
 
@@ -17,6 +18,29 @@ abstract class Device
     public abstract bool Tick(int cycles);
 
     public abstract int GetIRQNumber();
+
+    protected void ScheduleInterrupt(int cycles_delay)
+    {
+        next_interrupt = cycles_delay;
+    }
+
+    protected bool CheckScheduledInterrupt(int cycles)
+    {
+        if (next_interrupt >= 0)
+        {
+            Log.DoLog($"CheckScheduledInterrupt {next_interrupt}, {cycles}");
+            next_interrupt -= cycles;
+
+            if (next_interrupt <= 0)
+            {
+                next_interrupt = -1;
+                Log.DoLog($"CheckScheduledInterrupt triggered");
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     public virtual void SetPic(pic8259 pic_instance)
     {

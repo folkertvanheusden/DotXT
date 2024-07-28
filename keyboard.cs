@@ -4,8 +4,11 @@ class Keyboard : Device
 {
     private Thread _keyboard_thread;
     protected new int _irq_nr = 1;
+    protected int _irq_trigger_delay = 4770;  // cycles for 1ms @ 4.77 MHz
     private Mutex _keyboard_buffer_lock = new();
     private Queue<int> _keyboard_buffer = new();
+    private bool _clock_low = false;
+    private byte _0x61_bits = 0;
 
     public Keyboard()
     {
@@ -26,6 +29,8 @@ class Keyboard : Device
         _keyboard_buffer_lock.WaitOne();
         _keyboard_buffer.Enqueue(scan_code);
         _keyboard_buffer_lock.ReleaseMutex();
+
+        ScheduleInterrupt(_irq_trigger_delay);  // the value is a guess, need to protect this with a mutex
     }
 
     public static void KeyboardThread(object o_kb)
@@ -66,12 +71,24 @@ class Keyboard : Device
     {
         if (port == 0x0061)
         {
+            _0x61_bits = value;
+
             if ((value & 0x40) == 0x00)
             {
+                Log.DoLog($"Keyboard::IO_Write: clock low ({value:X2})");
+                _clock_low = true;
+            }
+            else if (_clock_low)
+            {
+                _clock_low = false;
+
+                Log.DoLog($"Keyboard::IO_Write: reset triggered; clock high ({value:X2})");
                 _keyboard_buffer_lock.WaitOne();
                 _keyboard_buffer.Clear();
                 _keyboard_buffer.Enqueue(0xaa);  // power on reset reply
                 _keyboard_buffer_lock.ReleaseMutex();
+
+                ScheduleInterrupt(_irq_trigger_delay);  // the value is a guess, need to protect this with a mutex
             }
         }
 
@@ -95,6 +112,8 @@ class Keyboard : Device
 
             return (rc, false);
         }
+        else if (port == 0x61)
+            return (_0x61_bits, false);
         else if (port == 0x64)
         {
             Log.DoLog($"Keyboard: 0x64", true);
@@ -103,7 +122,7 @@ class Keyboard : Device
             bool keys_pending = _keyboard_buffer.Count > 0;
             _keyboard_buffer_lock.ReleaseMutex();
 
-            return ((byte)(keys_pending ? 21 : 20), false);
+            return ((byte)(keys_pending ? 21 : 20), false);  // TODO 0x21/0x20?
         }
 
         return (0x00, false);
@@ -129,12 +148,9 @@ class Keyboard : Device
 
     public override bool Tick(int cycles)
     {
-        _keyboard_buffer_lock.WaitOne();
-        bool any_keys = _keyboard_buffer.Count > 0;
-        _keyboard_buffer_lock.ReleaseMutex();
+        if (CheckScheduledInterrupt(cycles))
+            _pic.RequestInterrupt(_irq_nr);  // Keyboard is on IRQ1
 
-        _pic.RequestInterrupt(_irq_nr);  // Keyboard is on IRQ1
-
-        return any_keys;
+        return false;
     }
 }

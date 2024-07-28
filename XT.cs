@@ -1378,7 +1378,7 @@ internal class P8086
                         Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
 
                         InvokeInterrupt(_ip, 8 + irq);
-                        _io.ClearPendingInterrupt(irq);
+                        _io.ClearPendingInterrupt(irq);  // TODO dit moet de interrupt service routine doen toch? of iig wel doen bij auto_eop
 
                         processed_any = true;
                         cycle_count += 60;
