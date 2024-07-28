@@ -239,75 +239,76 @@
 00239 0915           E8         FF47            	call wait_interrupt_none
 00240                                           
 00241                                           	; ********* check if offset is taken care of ********
-00242 0918           EB           01            	jmp skip_over_new_vector
+00242 0918           EB           02            	jmp skip_over_new_vector
 00243                                           
 00244                       0000091A            hlt_vector:
-00245 091A           F4                         	hlt
-00246                                           
-00247                       0000091B            skip_over_new_vector:
-00248 091B           FA                         	cli
-00249                                           
-00250                                           	; error vector
-00251 091C           B8                   091A  	mov ax,#hlt_vector
-00252 091F           A3         0024            	mov [9 * 4 + 0],ax
-00253 0922           8CC8                       	mov ax,cs
-00254 0924           A3         0026            	mov [9 * 4 + 2],ax
-00255                                           	; all fine vector
-00256 0927           B8                   0825  	mov ax,#kb_int_vector
-00257 092A           A3         0044            	mov [17 * 4 + 0],ax
-00258 092D           8CC8                       	mov ax,cs
-00259 092F           A3         0046            	mov [17 * 4 + 2],ax
-00260                                           
-00261                                           	; * PUT ICW1
-00262                                           	; 8259 port 20
-00263 0932           B0                     13  	mov al,#$13
-00264                                           	; 00010011 -> ICW1, edge triggered, 8 byte int vector, single 8259, with ICW4
-00265 0934           E6                     20  	out $20,al
-00266                                           
-00267                                           	; * PUT ICW2?
-00268                                           	; 8259 port 21
-00269 0936           B0                     10  	mov al,#$10
-00270                                           	; interrupt vector starting at 16
-00271 0938           E6                     21  	out $21,al
-00272                                           
-00273                                           	; NO ICW3 because the system has no slaves
-00274                                           
-00275                                           	; * PUT ICW4
-00276                                           	; 00001101 -> sequential, buffered master, normal EOI, 80x86 mode
-00277 093A           B0                     0D  	mov al,#$0d
-00278 093C           E6                     21  	out $21,al
-00279                                           
-00280                                           	; go!
-00281                                           
-00282 093E           C706       081F      0300  	mov progress,#$300
-00283                                           
-00284 0944           C606       0822        01  	mov byte send_eoi,#$01
-00285                                           
-00286 0949           E8         FEEC            	call unmask_keyboard
-00287                                           
-00288 094C           C706       081F      0301  	mov progress,#$301
-00289                                           
-00290 0952           E8         FEF1            	call clear_interrupt_flag
-00291                                           
-00292 0955           FB                         	sti
-00293                                           
-00294 0956           C706       081F      0302  	mov progress,#$302
-00295                                           
-00296 095C           E8         FF13            	call reset_keyboard
-00297                                           
-00298 095F           C706       081F      0303  	mov progress,#$303
-00299                                           
-00300 0965           E8         FEE6            	call wait_interrupt_success
-00301                                           
-00302 0968           C706       081F      0304  	mov progress,#$304
-00303                                           
-00304                                           	; ***
-00305 096E           B8                   A5EE  	mov ax,#$a5ee
-00306 0971           89C6                       	mov si,ax
-00307 0973           B0                     FF  	mov al,#$ff
-00308 0975           E6                     80  	out $80,al
-00309 0977           FA                         	cli
-00310 0978           F4                         	hlt
+00245 091A           FA                         	cli
+00246 091B           F4                         	hlt
+00247                                           
+00248                       0000091C            skip_over_new_vector:
+00249 091C           FA                         	cli
+00250                                           
+00251                                           	; error vector
+00252 091D           B8                   091A  	mov ax,#hlt_vector
+00253 0920           A3         0024            	mov [9 * 4 + 0],ax
+00254 0923           8CC8                       	mov ax,cs
+00255 0925           A3         0026            	mov [9 * 4 + 2],ax
+00256                                           	; all fine vector
+00257 0928           B8                   0825  	mov ax,#kb_int_vector
+00258 092B           A3         0044            	mov [17 * 4 + 0],ax
+00259 092E           8CC8                       	mov ax,cs
+00260 0930           A3         0046            	mov [17 * 4 + 2],ax
+00261                                           
+00262                                           	; * PUT ICW1
+00263                                           	; 8259 port 20
+00264 0933           B0                     13  	mov al,#$13
+00265                                           	; 00010011 -> ICW1, edge triggered, 8 byte int vector, single 8259, with ICW4
+00266 0935           E6                     20  	out $20,al
+00267                                           
+00268                                           	; * PUT ICW2?
+00269                                           	; 8259 port 21
+00270 0937           B0                     10  	mov al,#$10
+00271                                           	; interrupt vector starting at 16
+00272 0939           E6                     21  	out $21,al
+00273                                           
+00274                                           	; NO ICW3 because the system has no slaves
+00275                                           
+00276                                           	; * PUT ICW4
+00277                                           	; 00001101 -> sequential, buffered master, normal EOI, 80x86 mode
+00278 093B           B0                     0D  	mov al,#$0d
+00279 093D           E6                     21  	out $21,al
+00280                                           
+00281                                           	; go!
+00282                                           
+00283 093F           C706       081F      0300  	mov progress,#$300
+00284                                           
+00285 0945           C606       0822        01  	mov byte send_eoi,#$01
+00286                                           
+00287 094A           E8         FEEB            	call unmask_keyboard
+00288                                           
+00289 094D           C706       081F      0301  	mov progress,#$301
+00290                                           
+00291 0953           E8         FEF0            	call clear_interrupt_flag
+00292                                           
+00293 0956           FB                         	sti
+00294                                           
+00295 0957           C706       081F      0302  	mov progress,#$302
+00296                                           
+00297 095D           E8         FF12            	call reset_keyboard
+00298                                           
+00299 0960           C706       081F      0303  	mov progress,#$303
+00300                                           
+00301 0966           E8         FEE5            	call wait_interrupt_success
+00302                                           
+00303 0969           C706       081F      0304  	mov progress,#$304
+00304                                           
+00305                                           	; ***
+00306 096F           B8                   A5EE  	mov ax,#$a5ee
+00307 0972           89C6                       	mov si,ax
+00308 0974           B0                     FF  	mov al,#$ff
+00309 0976           E6                     80  	out $80,al
+00310 0978           FA                         	cli
+00311 0979           F4                         	hlt
 
 Symbols:
 clear_interrupt_flag        0 0846 A   hlt_vector                  0 091A A   
@@ -318,7 +319,7 @@ loop_02                     0 0852 A   loop_win                    0 0863 A
 loop_win_ok                 0 0870 A   mask_keyboard               0 083F A   
 progress                    0 081F A   reset_keyboard              0 0872 A   
 send_eoi                    0 0822 A   skip_eoi                    0 0836 A   
-skip_over_interrupt_vector  0 0884 A   skip_over_new_vector        0 091B A   
+skip_over_interrupt_vector  0 0884 A   skip_over_new_vector        0 091C A   
 unmask_keyboard             0 0838 A   wait_for_int                0 08BF A   
 wait_interrupt_none         0 085F A   wait_interrupt_success      0 084E A   
 win_int_received2           0 086E A   

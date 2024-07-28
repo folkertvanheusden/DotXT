@@ -242,6 +242,7 @@ wait_for_int:
 	jmp skip_over_new_vector
 
 hlt_vector:
+	cli
 	hlt
 
 skip_over_new_vector:
