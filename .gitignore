@@ -2,3 +2,10 @@ bin
 obj
 .idea
 tests/test
+docs/
+roms/
+dos/
+covtest/
+t/
+work/
+ru/

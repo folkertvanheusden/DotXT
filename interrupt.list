@@ -1,0 +1,327 @@
+00001 0800                                      	org $0800
+00002                                           
+00003 0800           FA                         	cli
+00004                                           
+00005 0801           FC                         	cld
+00006                                           
+00007 0802           31C0                       	xor ax,ax
+00008 0804           89C6                       	mov si,ax
+00009                                           
+00010 0806           E6                     80  	out $80,al
+00011                                           
+00012 0808           8ED0                       	mov ss,ax
+00013 080A           B8                   0800  	mov ax,#$0800
+00014 080D           89C4                       	mov sp,ax
+00015                                           
+00016 080F           B8                   081C  	mov ax,#intvec
+00017 0812           A3         0004            	mov word [4],ax
+00018 0815           8CC8                       	mov ax,cs
+00019 0817           A3         0006            	mov word [6],ax
+00020 081A           EB           01            	jmp init_continue
+00021                       0000081C            intvec:
+00022 081C           CF                         	iret
+00023                       0000081D            init_continue:
+00024                                           
+00025                                           	; skip over interrupt vector
+00026 081D           EB           65            	jmp skip_over_interrupt_vector
+00027                                           
+00028                       0000081F            progress:
+00029 081F                      0000            	dw $0
+00030                                           
+00031                       00000821            interrupt_triggered:
+00032 0821                        00            	db $00
+00033                       00000822            send_eoi:
+00034 0822                        01            	db $01
+00035                                           
+00036 0823           90                         	nop
+00037 0824           90                         	nop
+00038                                           
+00039                       00000825            kb_int_vector:
+00040 0825           50                         	push ax
+00041                                           	; retrieve character from keybboard
+00042 0826           E4                     60  	in al,#$60
+00043                                           	; store
+00044 0828           A2         0821            	mov interrupt_triggered,al
+00045                                           	;
+00046 082B           803E       0822        01  	cmp byte send_eoi,#$01
+00047 0830           75           04            	jnz skip_eoi
+00048                                           	;
+00049 0832           B0                     20  	mov al,#$20  ; EOI code
+00050 0834           E6                     20  	out $20,al  ; send 'end of interrupt'
+00051                                           	;
+00052                       00000836            skip_eoi:
+00053 0836           58                         	pop ax
+00054 0837           CF                         	iret
+00055                                           
+00056                       00000838            unmask_keyboard:
+00057                                           	; * PUT OCW1
+00058 0838           50                         	push AX
+00059                                           	; 8259 port 21
+00060 0839           B0                     FD  	mov al,#$fd
+00061                                           	; IMR, interrupt mask register
+00062                                           	; only allow irq 1
+00063 083B           E6                     21  	out $21,al
+00064 083D           58                         	pop AX
+00065 083E           C3                         	ret
+00066                                           
+00067                       0000083F            mask_keyboard:
+00068                                           	; * PUT OCW1
+00069 083F           50                         	push AX
+00070                                           	; 8259 port 21
+00071 0840           B0                     FF  	mov al,#$ff
+00072                                           	; IMR, interrupt mask register
+00073                                           	; allow no interrupts
+00074 0842           E6                     21  	out $21,al
+00075 0844           58                         	pop AX
+00076 0845           C3                         	ret
+00077                                           
+00078                       00000846            clear_interrupt_flag:
+00079 0846           50                         	push ax
+00080 0847           31C0                       	xor ax,ax
+00081 0849           A2         0821            	mov interrupt_triggered,al
+00082 084C           58                         	pop ax
+00083 084D           C3                         	ret
+00084                                           
+00085                       0000084E            wait_interrupt_success:
+00086 084E           51                         	push cx
+00087 084F           B9                   0000  	mov cx,#0000
+00088                       00000852            loop_02:
+00089 0852           803E       0821        AA  	cmp byte interrupt_triggered,#$aa
+00090 0857           74           04            	jz int_received
+00091 0859           E2           F7            	loop loop_02
+00092 085B           FA                         	cli
+00093 085C           F4                         	hlt
+00094                       0000085D            int_received:
+00095 085D           59                         	pop cx
+00096 085E           C3                         	ret
+00097                                           
+00098                       0000085F            wait_interrupt_none:
+00099 085F           51                         	push cx
+00100 0860           B9                   0000  	mov cx,#0000
+00101                       00000863            loop_win:
+00102 0863           803E       0821        AA  	cmp byte interrupt_triggered,#$aa
+00103 0868           74           04            	jz win_int_received2
+00104 086A           E2           F7            	loop loop_win
+00105 086C           7A           02            	jp loop_win_ok
+00106                       0000086E            win_int_received2:
+00107 086E           FA                         	cli
+00108 086F           F4                         	hlt ; error!
+00109                       00000870            loop_win_ok:
+00110 0870           59                         	pop cx
+00111 0871           C3                         	ret
+00112                                           
+00113                       00000872            reset_keyboard:
+00114                                           	; trigger keyboard reset
+00115                                           	; set kbd clk line low
+00116 0872           B0                     08  	mov al,#$08
+00117 0874           E6                     61  	out $61,al
+00118                                           	; this is 20ms on a 4.77MHz PC
+00119 0876           B9                   2956  	mov cx,#10582
+00120                       00000879            loop_01:
+00121 0879           E2           FE            	loop loop_01
+00122                                           	; set clk, enable lines high
+00123 087B           B0                     C8  	mov al,#$c8
+00124 087D           E6                     61  	out $61,al
+00125                                           	; set clk high, enable low
+00126 087F           B0                     48  	mov al,#$48
+00127 0881           E6                     61  	out $61,al
+00128 0883           C3                         	ret
+00129                                           
+00130                                           ; *** MAIN ***
+00131                       00000884            skip_over_interrupt_vector:
+00132                                           	; set pointer to vector routine
+00133 0884           B8                   0825  	mov ax,#kb_int_vector
+00134 0887           A3         0024            	mov [9 * 4 + 0],ax
+00135                                           	; set segment register to this code
+00136 088A           8CC8                       	mov ax,cs
+00137 088C           A3         0026            	mov [9 * 4 + 2],ax
+00138                                           
+00139                                           	; * PUT ICW1
+00140                                           	; 8259 port 20
+00141 088F           B0                     13  	mov al,#$13
+00142                                           	; 00010011 -> ICW1, edge triggered, 8 byte int vector, single 8259, with ICW4
+00143 0891           E6                     20  	out $20,al
+00144                                           
+00145                                           	; * PUT ICW2?
+00146                                           	; 8259 port 21
+00147 0893           B0                     08  	mov al,#$08
+00148                                           	; interrupt vector starting at 8
+00149 0895           E6                     21  	out $21,al
+00150                                           
+00151                                           	; NO ICW3 because the system has no slaves
+00152                                           
+00153                                           	; * PUT ICW4
+00154                                           	; 00001101 -> sequential, buffered master, normal EOI, 80x86 mode
+00155 0897           B0                     0D  	mov al,#$0d
+00156 0899           E6                     21  	out $21,al
+00157                                           
+00158                                           	; ******** check if interrupts come when doing STI/CLI ********
+00159                                           
+00160 089B           C706       081F      0001  	mov progress,#$0001
+00161                                           
+00162 08A1           E8         FF94            	call unmask_keyboard
+00163                                           
+00164                                           	; just to be sure, redundant at this step
+00165 08A4           E8         FF9F            	call clear_interrupt_flag
+00166                                           
+00167 08A7           E8         FFC8            	call reset_keyboard
+00168                                           
+00169                                           	; enable interrupts
+00170 08AA           FB                         	sti
+00171                                           
+00172                                           	; wait a while for an interrupt
+00173 08AB           E8         FFA0            	call wait_interrupt_success
+00174                                           
+00175                                           	; disable interrupts
+00176 08AE           FA                         	cli
+00177                                           
+00178 08AF           E8         FF94            	call clear_interrupt_flag
+00179                                           
+00180 08B2           E8         FFBD            	call reset_keyboard
+00181                                           
+00182 08B5           C706       081F      0002  	mov progress,#$0002
+00183                                           
+00184                                           	; wait a while and make sure no interrupt comes in
+00185 08BB           E8         FFA1            	call wait_interrupt_none
+00186                                           
+00187                                           	; * flush interrupt
+00188 08BE           FB                         	sti  ; enable interrupts
+00189                       000008BF            wait_for_int:
+00190 08BF           803E       0821        AA  	cmp byte interrupt_triggered,#$aa
+00191 08C4           75           F9            	jne wait_for_int
+00192                                           	; disable interrupts
+00193 08C6           FA                         	cli
+00194                                           
+00195                                           	; ******** check if no interrupt comes in when doing STI and 8259 mask ********
+00196                                           
+00197 08C7           C706       081F      0100  	mov progress,#$100
+00198                                           
+00199 08CD           E8         FF6F            	call mask_keyboard
+00200                                           
+00201 08D0           C706       081F      0101  	mov progress,#$101
+00202                                           
+00203 08D6           E8         FF6D            	call clear_interrupt_flag
+00204                                           
+00205 08D9           C706       081F      0102  	mov progress,#$102
+00206                                           
+00207 08DF           FB                         	sti
+00208                                           
+00209 08E0           C706       081F      0103  	mov progress,#$103
+00210                                           
+00211 08E6           E8         FF89            	call reset_keyboard
+00212                                           
+00213 08E9           C706       081F      0104  	mov progress,#$104
+00214                                           
+00215                                           	; wait a while and make sure no interrupt comes in
+00216 08EF           E8         FF6D            	call wait_interrupt_none
+00217                                           
+00218                                           	; ******** check if no interrupt comes in when the previous is not EOId ********
+00219                                           
+00220 08F2           C706       081F      0200  	mov progress,#$200
+00221                                           
+00222 08F8           E8         FF3D            	call unmask_keyboard
+00223                                           
+00224                                           	; make sure no EOI is send to the 8259
+00225 08FB           C606       0822        00  	mov byte send_eoi,#$00
+00226                                           
+00227 0900           E8         FF43            	call clear_interrupt_flag
+00228                                           
+00229                                           	; generate an interrupt
+00230 0903           E8         FF6C            	call reset_keyboard
+00231                                           	; wait for the generated interrupt
+00232 0906           E8         FF45            	call wait_interrupt_success
+00233                                           
+00234 0909           C706       081F      0201  	mov progress,#$201
+00235                                           
+00236 090F           E8         FF34            	call clear_interrupt_flag
+00237                                           	; generate another interrupt
+00238 0912           E8         FF5D            	call reset_keyboard
+00239 0915           E8         FF47            	call wait_interrupt_none
+00240                                           
+00241                                           	; ********* check if offset is taken care of ********
+00242 0918           EB           01            	jmp skip_over_new_vector
+00243                                           
+00244                       0000091A            hlt_vector:
+00245 091A           F4                         	hlt
+00246                                           
+00247                       0000091B            skip_over_new_vector:
+00248 091B           FA                         	cli
+00249                                           
+00250                                           	; error vector
+00251 091C           B8                   091A  	mov ax,#hlt_vector
+00252 091F           A3         0024            	mov [9 * 4 + 0],ax
+00253 0922           8CC8                       	mov ax,cs
+00254 0924           A3         0026            	mov [9 * 4 + 2],ax
+00255                                           	; all fine vector
+00256 0927           B8                   0825  	mov ax,#kb_int_vector
+00257 092A           A3         0044            	mov [17 * 4 + 0],ax
+00258 092D           8CC8                       	mov ax,cs
+00259 092F           A3         0046            	mov [17 * 4 + 2],ax
+00260                                           
+00261                                           	; * PUT ICW1
+00262                                           	; 8259 port 20
+00263 0932           B0                     13  	mov al,#$13
+00264                                           	; 00010011 -> ICW1, edge triggered, 8 byte int vector, single 8259, with ICW4
+00265 0934           E6                     20  	out $20,al
+00266                                           
+00267                                           	; * PUT ICW2?
+00268                                           	; 8259 port 21
+00269 0936           B0                     10  	mov al,#$10
+00270                                           	; interrupt vector starting at 16
+00271 0938           E6                     21  	out $21,al
+00272                                           
+00273                                           	; NO ICW3 because the system has no slaves
+00274                                           
+00275                                           	; * PUT ICW4
+00276                                           	; 00001101 -> sequential, buffered master, normal EOI, 80x86 mode
+00277 093A           B0                     0D  	mov al,#$0d
+00278 093C           E6                     21  	out $21,al
+00279                                           
+00280                                           	; go!
+00281                                           
+00282 093E           C706       081F      0300  	mov progress,#$300
+00283                                           
+00284 0944           C606       0822        01  	mov byte send_eoi,#$01
+00285                                           
+00286 0949           E8         FEEC            	call unmask_keyboard
+00287                                           
+00288 094C           C706       081F      0301  	mov progress,#$301
+00289                                           
+00290 0952           E8         FEF1            	call clear_interrupt_flag
+00291                                           
+00292 0955           FB                         	sti
+00293                                           
+00294 0956           C706       081F      0302  	mov progress,#$302
+00295                                           
+00296 095C           E8         FF13            	call reset_keyboard
+00297                                           
+00298 095F           C706       081F      0303  	mov progress,#$303
+00299                                           
+00300 0965           E8         FEE6            	call wait_interrupt_success
+00301                                           
+00302 0968           C706       081F      0304  	mov progress,#$304
+00303                                           
+00304                                           	; ***
+00305 096E           B8                   A5EE  	mov ax,#$a5ee
+00306 0971           89C6                       	mov si,ax
+00307 0973           B0                     FF  	mov al,#$ff
+00308 0975           E6                     80  	out $80,al
+00309 0977           FA                         	cli
+00310 0978           F4                         	hlt
+
+Symbols:
+clear_interrupt_flag        0 0846 A   hlt_vector                  0 091A A   
+init_continue               0 081D A   int_received                0 085D A   
+interrupt_triggered         0 0821 A   intvec                      0 081C A   
+kb_int_vector               0 0825 A   loop_01                     0 0879 A   
+loop_02                     0 0852 A   loop_win                    0 0863 A   
+loop_win_ok                 0 0870 A   mask_keyboard               0 083F A   
+progress                    0 081F A   reset_keyboard              0 0872 A   
+send_eoi                    0 0822 A   skip_eoi                    0 0836 A   
+skip_over_interrupt_vector  0 0884 A   skip_over_new_vector        0 091B A   
+unmask_keyboard             0 0838 A   wait_for_int                0 08BF A   
+wait_interrupt_none         0 085F A   wait_interrupt_success      0 084E A   
+win_int_received2           0 086E A   
+
+00000 errors
+00000 warnings
