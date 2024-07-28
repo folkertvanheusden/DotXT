@@ -89,6 +89,7 @@ loop_02:
 	cmp byte interrupt_triggered,#$aa
 	jz int_received
 	loop loop_02
+	cli
 	hlt
 int_received:
 	pop cx
@@ -103,6 +104,7 @@ loop_win:
 	loop loop_win
 	jp loop_win_ok
 win_int_received2:
+	cli
 	hlt ; error!
 loop_win_ok:
 	pop cx
@@ -236,16 +238,16 @@ wait_for_int:
 	call reset_keyboard
 	call wait_interrupt_none
 
-    ; ********* check if offset is taken care of ********
-    jmp skip_over_new_vector
+	; ********* check if offset is taken care of ********
+	jmp skip_over_new_vector
 
 hlt_vector:
-    hlt
+	hlt
 
 skip_over_new_vector:
-    cli
+	cli
 
-    ; error vector
+	; error vector
 	mov ax,#hlt_vector
 	mov [9 * 4 + 0],ax
 	mov ax,cs
@@ -275,7 +277,7 @@ skip_over_new_vector:
 	mov al,#$0d
 	out $21,al
 
-    ; go!
+	; go!
 
 	mov progress,#$300
 
@@ -304,4 +306,5 @@ skip_over_new_vector:
 	mov si,ax
 	mov al,#$ff
 	out $80,al
+	cli
 	hlt
