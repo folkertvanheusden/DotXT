@@ -533,10 +533,102 @@ internal class i8237
     }
 }
 
+internal class PPI : Device
+{
+    byte _control = 0;
+    bool _dipswitches_high = false;
+    byte [] _cache = new byte[4];
+
+    public PPI()
+    {
+    }
+
+    public override int GetIRQNumber()
+    {
+        return -1;
+    }
+
+    public override String GetName()
+    {
+        return "PPI";
+    }
+
+    public override void RegisterDevice(Dictionary <ushort, Device> mappings)
+    {
+        mappings[0x0060] = this;
+        mappings[0x0061] = this;
+        mappings[0x0062] = this;
+        mappings[0x0063] = this;
+    }
+
+    public override (byte, bool) IO_Read(ushort port)
+    {
+        if (port == 0x0062)
+        {
+            byte switches = 0b00110000;  // 1 floppy, MDA, 256kB, reserved
+
+            if (_dipswitches_high == false)
+                return ((byte)(switches & 0x0f), false);
+
+            return ((byte)(switches >> 4), false);
+        }
+
+        return (_cache[port - 0x0060], false);
+    }
+
+    public override bool IO_Write(ushort port, byte value)
+    {
+        _cache[port - 0x0060] = value;
+
+        if (port == 0x0061)
+        {
+            if ((_control & 2) == 2)
+                return false;
+
+            if ((_control & 4) == 4)
+                _dipswitches_high = (value & 8) == 8;
+
+            return false;
+        }
+
+        if (port == 0x0063)
+        {
+            _control = value;
+            return false;
+        }
+
+        return false;
+    }
+
+    public override void SyncClock(int clock)
+    {
+    }
+
+    public override bool HasAddress(uint addr)
+    {
+        return false;
+    }
+
+    public override void WriteByte(uint offset, byte value)
+    {
+    }
+
+    public override byte ReadByte(uint offset)
+    {
+        return 0xee;
+    }
+
+    public override bool Tick(int ticks)
+    {
+        return false;
+    }
+}
+
 class IO
 {
     private pic8259 _pic;
     private i8237 _i8237;
+    private PPI _ppi;
 
     private Bus _b;
 
@@ -553,8 +645,8 @@ class IO
         _b = b;
 
         _pic = new();
-
         _i8237 = new(_b);
+        _ppi = new();
 
         foreach(var device in devices)
         {
@@ -607,21 +699,6 @@ class IO
 
         if (addr == 0x0020 || addr == 0x0021)  // PIC
             return _pic.In(addr);
-
-        if (addr == 0x0062)  // PPI (XT only)
-        {
-            byte mode = 0;
-
-            if (_values.ContainsKey(0x61))
-                 mode = _values[0x61];
-
-            byte switches = 0b00110011;  // 1 floppy, MDA, 256kB, nocopro/noloop
-
-            if ((mode & 8) == 0)
-                return ((byte)(switches & 0x0f), false);
-
-            return ((byte)(switches >> 4), false);
-        }
 
         if (addr == 0x0210)  // verify expansion bus data
             return (0xa5, false);
