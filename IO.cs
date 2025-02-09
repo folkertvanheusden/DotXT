@@ -254,10 +254,11 @@ internal class i8253 : Device
                     if (i == 1)
                         _i8237.TickChannel0();
 
-                    _timers[i].counter_cur = _timers[i].counter_ini;
+		    if (_timers[i].mode != 1)
+			    _timers[i].counter_cur = _timers[i].counter_ini;
 
-                    // mode 0 generates an interrupt
-                    if (_timers[i].mode == 0 || _timers[i].mode == 3)
+//                    // mode 0 generates an interrupt
+ //                   if (_timers[i].mode == 0 || _timers[i].mode == 3)
                     {
                         _timers[i].is_pending = true;
                         interrupt = true;
@@ -563,9 +564,11 @@ internal class PPI : Device
 
     public override (byte, bool) IO_Read(ushort port)
     {
+        Log.DoLog($"PPI::IO_Read: {port:X4}", true);
+
         if (port == 0x0062)
         {
-            byte switches = 0b00110000;  // 1 floppy, MDA, 256kB, reserved
+            byte switches = 0b00100000;  // 1 floppy, CGA80, 256kB, reserved
 
             if (_dipswitches_high == false)
                 return ((byte)(switches & 0x0f), false);
@@ -578,6 +581,8 @@ internal class PPI : Device
 
     public override bool IO_Write(ushort port, byte value)
     {
+        Log.DoLog($"PPI::IO_Write: {port:X4} {value:X2}", true);
+
         _cache[port - 0x0060] = value;
 
         if (port == 0x0061)
