@@ -96,6 +96,7 @@ if (mode != TMode.Blank)
     devices.Add(new i8253());
     devices.Add(new FloppyDisk());
     devices.Add(new Keyboard());
+    devices.Add(new PPI());
 }
 
 uint ram_size = 256 * 1024;
