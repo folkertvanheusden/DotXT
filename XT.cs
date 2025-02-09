@@ -4035,6 +4035,12 @@ internal class P8086
                     _ip = newAddresses;
                     cycle_count += 4;
                 }
+		else
+		{
+#if DEBUG
+		    Log.DoLog("LOOP end");
+#endif
+		}
 
                 name = "LOOP";
             }
