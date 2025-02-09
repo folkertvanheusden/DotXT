@@ -32,7 +32,8 @@ class pic8259
         // them mask them off
         pending_ints &= (byte)(~_eoi_mask);
 
-        Log.DoLog($"i8259 pending interrupts: {temp:X2}, after EOI-masking ({_eoi_mask:X2}): {pending_ints:X2}");
+	if (temp != 0)
+		Log.DoLog($"i8259 pending interrupts: {temp:X2}, after EOI-masking ({_eoi_mask:X2}): {pending_ints:X2}");
 
         return pending_ints;
     }
