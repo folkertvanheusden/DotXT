@@ -37,7 +37,6 @@ class Keyboard : Device
     {
         Log.DoLog("KeyboardThread started", true);
 
-        /* TODO disable in debugger
         Keyboard kb = (Keyboard)o_kb;
 
         for(;;)
@@ -49,8 +48,9 @@ class Keyboard : Device
 
             if (ck == ConsoleKey.F1)  // F1
                 kb.PushKeyboardScancode(0x3a);
+	    else
+                kb.PushKeyboardScancode(cki.KeyChar);
         }
-        */
 
         Log.DoLog("KeyboardThread terminating", true);
     }
@@ -100,12 +100,9 @@ class Keyboard : Device
         if (port == 0x60)
         {
             _keyboard_buffer_lock.WaitOne();
-
             byte rc = 0;
-
             if (_keyboard_buffer.Count > 0)
                 rc = (byte)_keyboard_buffer.Dequeue();
-
             _keyboard_buffer_lock.ReleaseMutex();
 
             Log.DoLog($"Keyboard: scan code {rc:X2}", true);
@@ -122,7 +119,7 @@ class Keyboard : Device
             bool keys_pending = _keyboard_buffer.Count > 0;
             _keyboard_buffer_lock.ReleaseMutex();
 
-            return ((byte)(keys_pending ? 21 : 20), false);  // TODO 0x21/0x20?
+            return ((byte)(keys_pending ? 0x21 : 0x20), false);  // TODO 0x21/0x20?
         }
 
         return (0x00, false);
