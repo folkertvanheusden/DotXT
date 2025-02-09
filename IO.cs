@@ -257,8 +257,8 @@ internal class i8253 : Device
 		    if (_timers[i].mode != 1)
 			    _timers[i].counter_cur = _timers[i].counter_ini;
 
-//                    // mode 0 generates an interrupt
- //                   if (_timers[i].mode == 0 || _timers[i].mode == 3)
+                    // mode 0 generates an interrupt
+                    if (_timers[i].mode == 0 || _timers[i].mode == 3)
                     {
                         _timers[i].is_pending = true;
                         interrupt = true;
@@ -570,7 +570,7 @@ internal class PPI : Device
         {
             byte switches = 0b00100000;  // 1 floppy, CGA80, 256kB, reserved
 
-            if (_dipswitches_high == false)
+            if (_dipswitches_high == true)
                 return ((byte)(switches & 0x0f), false);
 
             return ((byte)(switches >> 4), false);
