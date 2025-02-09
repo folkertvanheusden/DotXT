@@ -69,12 +69,17 @@ abstract class Display : Device
 
 	int [] colormap = { 0, 4, 2, 6, 1, 5, 3, 7 };
 
+	int fg = colormap[(attributes >> 4) & 7];
+	int bg = colormap[attributes & 7];
+
+	if (fg == bg) { fg = 7; bg = 0; }  // TODO temporary workaround
+
         Console.Write((char)27);  // set attributes
-        Console.Write($"[0;{40 + colormap[(attributes >> 4) & 7]};{30 + colormap[attributes & 7]}m");
+        Console.Write($"[0;{40 + fg};{30 + bg}m");  // BG & FG color
 	if ((attributes & 8) == 8)
 	{
 		Console.Write((char)27);  // set attributes
-		Console.Write($"[1m");
+		Console.Write($"[1m");  // bright
 	}
 
         Console.Write((char)27);  // position cursor
