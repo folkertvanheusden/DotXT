@@ -248,7 +248,6 @@ internal class P8086
         {
             // fast console output
             SetFlagC(false);
-
             Console.Write((char)_al);
 
             return true;
@@ -4197,8 +4196,6 @@ internal class P8086
 #if DEBUG
             Log.DoLog($"{prefixStr} HLT");
 #endif
-
-            Console.WriteLine($"{address:X6} HLT");
 
             if (_terminate_on_hlt)
             {
