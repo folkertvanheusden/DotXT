@@ -7,7 +7,7 @@ DotXT
   - `dotnet tool install --global dotnet-coverage`
   - `dotnet tool install -g dotnet-reportgenerator-globaltool`
 
-Tested with dotnet 8.0 on linux (apt install dotnet8).
+Tested with dotnet 9.0 on linux.
 
 In release mode (`dotnet run -c Release`) it is a lot faster.
 
