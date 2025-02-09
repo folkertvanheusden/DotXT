@@ -57,7 +57,6 @@ internal class P8086
 
     private bool _rep;
     private bool _rep_do_nothing;
-    private bool _remember_rep_for_irq;
     private RepMode _rep_mode;
     private ushort _rep_addr;
     private byte _rep_opcode;
@@ -1244,14 +1243,19 @@ internal class P8086
         _segment_override_set = false;
         _segment_override_name = "";
 
-        _remember_rep_for_irq = _rep;
-        _rep = false;
-
         _io.SetIRQBeingServiced(interrupt_nr);
 
         push(_flags);
         push(_cs);
-        push(instr_start);
+	if (_rep)
+	{
+		push(_rep_addr);
+		_rep = false;
+	}
+	else
+	{
+		push(instr_start);
+	}
 
         SetFlagI(false);
 
@@ -1414,8 +1418,6 @@ internal class P8086
         // handle prefixes
         while (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
         {
-            _rep_addr = _ip;
-
             if (opcode == 0x26)
             {
                 _segment_override = _es;
@@ -1458,6 +1460,7 @@ internal class P8086
 
             if (opcode == 0xf2)
             {
+		_rep_addr = instr_start;
                 if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
                 {
                     _rep_mode = RepMode.REPNZ;
@@ -1471,6 +1474,7 @@ internal class P8086
             }
             else if (opcode == 0xf3)
             {
+		_rep_addr = instr_start;
                 if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
                 {
                     _rep_mode = RepMode.REPE_Z;
@@ -2606,7 +2610,15 @@ internal class P8086
                 {
                     push(_flags);
                     push(_cs);
-                    push(_ip);
+		    if (_rep)
+		    {
+		        push(_rep_addr);
+			Log.DoLog($"INT from rep {_rep_addr:X04}");
+		    }
+		    else
+		    {
+			push(_ip);
+		    }
 
                     SetFlagI(false);
 
@@ -2629,12 +2641,8 @@ internal class P8086
             // IRET
             _ip = pop();
             _cs = pop();
-
             _flags = pop();
             FixFlags();
-
-            _rep = _remember_rep_for_irq;
-            _remember_rep_for_irq = false;
 
             cycle_count += 32;  // 44
 
