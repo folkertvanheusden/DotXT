@@ -67,6 +67,16 @@ abstract class Display : Device
         // attribute, character
         // Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", true);
 
+	int [] colormap = { 0, 4, 2, 6, 1, 5, 3, 7 };
+
+        Console.Write((char)27);  // set attributes
+        Console.Write($"[0;{40 + colormap[(attributes >> 4) & 7]};{30 + colormap[attributes & 7]}m");
+	if ((attributes & 8) == 8)
+	{
+		Console.Write((char)27);  // set attributes
+		Console.Write($"[1m");
+	}
+
         Console.Write((char)27);  // position cursor
         Console.Write($"[{y + 1};{x + 1}H");
 
