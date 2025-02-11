@@ -1,7 +1,7 @@
 // programmable interrupt controller (PIC)
 class pic8259
 {
-    private int _int_offset = 0;  // TODO updaten bij ICW (OCW?) en dan XT::Tick() de juiste vector
+    private int _int_offset = 8;  // TODO updaten bij ICW (OCW?) en dan XT::Tick() de juiste vector
     private byte _irr = 0;  // which irqs are requested
     private byte _isr = 0;  // ...and which are allowed (see imr)
     private byte _imr = 255;  // all irqs masked (disabled)
