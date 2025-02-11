@@ -380,13 +380,10 @@ internal class i8237
         _channel_address_register[0].SetValue((ushort)(_channel_address_register[0].GetValue() + 1));
 
         ushort count = _channel_word_count[0].GetValue();
-
         count--;
-
 #if DEBUG
 //        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}, {count}", true);
 #endif
-
         _channel_word_count[0].SetValue(count);
 
          if (count == 0xffff)
@@ -438,13 +435,13 @@ internal class i8237
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
             _channel_address_register[addr / 2].Put(value);
-            Log.DoLog($"8237 set channel {addr / 2} to address {value}", true);
+            Log.DoLog($"8237 set channel {addr / 2} to address {_channel_address_register[addr / 2].GetValue()}", true);
         }
 
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
         {
             _channel_word_count[addr / 2].Put(value);
-            Log.DoLog($"8237 set channel {addr / 2} to count {value}", true);
+            Log.DoLog($"8237 set channel {addr / 2} to count {_channel_word_count[addr / 2].GetValue()}", true);
         }
 
         else if (addr == 8)
@@ -500,7 +497,7 @@ internal class i8237
         return false;
     }
 
-    // used by devices, e.g. floppy
+    // used by devices (floppy etc) to send data to memory
     public bool SendToChannel(int channel, byte value)
     {
         if (_dma_enabled == false)
@@ -513,21 +510,16 @@ internal class i8237
             return false;
 
         ushort addr = _channel_address_register[channel].GetValue();
-
-        uint full_addr = (uint)((_channel_page[channel] << 16) | addr);
-
+        uint full_addr = (uint)((_channel_page[channel] * 16) | addr);
         _b.WriteByte(full_addr, value);
 
         addr++;
          _channel_address_register[channel].SetValue(addr);
 
          ushort count = _channel_word_count[channel].GetValue();
-
          count--;
-
          if (count == 0xffff)
              _reached_tc[channel] = true;
-
          _channel_word_count[channel].SetValue(count);
 
         return true;
