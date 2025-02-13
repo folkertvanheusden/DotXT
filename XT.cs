@@ -1237,12 +1237,15 @@ internal class P8086
         return v;
     }
 
-    void InvokeInterrupt(ushort instr_start, int interrupt_nr)
+    void InvokeInterrupt(ushort instr_start, int interrupt_nr, bool pic)
     {
         _segment_override_set = false;
         _segment_override_name = "";
 
-        _io.SetIRQBeingServiced(interrupt_nr);
+	if (pic)
+	{
+		_io.SetIRQBeingServiced(interrupt_nr);
+	}
 
         push(_flags);
         push(_cs);
@@ -1382,8 +1385,8 @@ internal class P8086
 
                         Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
 
-                        InvokeInterrupt(_ip, _io.GetInterruptOffset() + irq);
-                        _io.ClearPendingInterrupt(_io.GetInterruptOffset() + irq);
+                        InvokeInterrupt(_ip, irq, true);
+                        _io.ClearPendingInterrupt(irq);
 
                         processed_any = true;
                         cycle_count += 60;
@@ -3093,7 +3096,7 @@ internal class P8086
                     uint dx_ax = (uint)((GetDX() << 16) | GetAX());
 
                     if (r1 == 0 || dx_ax / r1 >= 0x10000)
-                        InvokeInterrupt(_ip, _io.GetInterruptOffset() + 0x00);  // divide by zero or divisor too small
+                        InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     else
                     {
                         SetAX((ushort)(dx_ax / r1));
@@ -3106,7 +3109,7 @@ internal class P8086
                     Log.DoLog($"r1 {r1}, ax {ax}");
 
                     if (r1 == 0 || ax / r1 > 0x100)
-                        InvokeInterrupt(_ip, _io.GetInterruptOffset() + 0x00);  // divide by zero or divisor too small
+                        InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     else
                     {
                         _al = (byte)(ax / r1);
@@ -3842,7 +3845,7 @@ internal class P8086
                 SetFlagA(false);
                 SetFlagC(false);
 
-                InvokeInterrupt(_ip, _io.GetInterruptOffset() + 0x00);
+                InvokeInterrupt(_ip, 0x00, false);
             }
 
             cycle_count += 2;  // TODO

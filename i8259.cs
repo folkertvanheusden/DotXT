@@ -38,17 +38,6 @@ class pic8259
         return pending_ints;
     }
 
-    public byte Bit(int interrupt_nr)
-    {
-        if (interrupt_nr < _int_offset || interrupt_nr >= _int_offset + 8)
-        {
-            Log.DoLog($"i8259 interrupt {interrupt_nr} out of range (offset: {_int_offset})");
-            return 0;
-        }
-
-        return (byte)(1 << (interrupt_nr - _int_offset));
-    }
-
     public void RequestInterruptPIC(int interrupt_nr)
     {
         byte mask = (byte)(1 << interrupt_nr);
@@ -61,7 +50,7 @@ class pic8259
     {
         Log.DoLog($"i8259 interrupt {interrupt_nr} cleared");
 
-        byte bit = (byte)(255 ^ Bit(interrupt_nr));
+        byte bit = (byte)(255 ^ (1 << interrupt_nr));
         _isr &= bit;
         _irr &= bit;
     }
@@ -72,9 +61,9 @@ class pic8259
             Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service");
 
         _int_in_service = interrupt_nr - _int_offset;
-        _eoi_mask |= Bit(interrupt_nr);
+        _eoi_mask |= (byte)(1 << interrupt_nr);
 
-        Log.DoLog($"i8259: EOI mask is now {_eoi_mask:X2} by {Bit(interrupt_nr)} for {interrupt_nr}");
+        Log.DoLog($"i8259: EOI mask is now {_eoi_mask:X2} by {interrupt_nr}");
     }
 
     public (byte, bool) In(ushort addr)
@@ -122,7 +111,7 @@ class pic8259
                 _ii_icw4_req = (value & 1) == 1;
 
                 if (_int_in_service != -1)
-                    Log.DoLog($"i8259 implicit EOI of {_int_in_service + _int_offset}");
+                    Log.DoLog($"i8259 implicit EOI of {_int_in_service}");
 
                 _isr = 0;
                 _imr = 0;  // TODO 255?

@@ -94,7 +94,7 @@ if (mode != TMode.Blank)
     devices.Add(new MDA());
     devices.Add(new CGA());
     devices.Add(new i8253());
-//    devices.Add(new FloppyDisk());
+    devices.Add(new FloppyDisk());
     devices.Add(new Keyboard());
     devices.Add(new PPI());
 }

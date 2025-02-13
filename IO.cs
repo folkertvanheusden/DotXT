@@ -742,7 +742,7 @@ class IO
 
         else if (addr == 0x0322)
         {
-            int harddisk_interrupt_nr = _pic.GetInterruptOffset() + 14;
+            int harddisk_interrupt_nr = 14;
 
 //FIXME            if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
 //FIXME                scheduled_interrupts[harddisk_interrupt_nr] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
