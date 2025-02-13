@@ -79,7 +79,7 @@ for(int i=0; i<args.Length; i++)
 
 if (test == "")
 {
-    Console.WriteLine("DotXT, (C) 2023 by Folkert van Heusden");
+    Console.WriteLine("DotXT, (C) 2023-2025 by Folkert van Heusden");
     Console.WriteLine("Released in the public domain");
 }
 

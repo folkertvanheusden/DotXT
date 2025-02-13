@@ -661,24 +661,9 @@ class IO
         _devices = devices;
     }
 
-    public void ClearPendingInterrupt(int nr)
+    public pic8259 GetPIC()
     {
-        _pic.ClearPendingInterrupt(nr);
-    }
-
-    public int GetInterruptOffset()
-    {
-        return _pic.GetInterruptOffset();
-    }
-
-    public byte GetPendingInterrupts()
-    {
-        return _pic.GetPendingInterrupts();
-    }
-
-    public void SetIRQBeingServiced(int nr)
-    {
-        _pic.SetIRQBeingServiced(nr);
+	    return _pic;
     }
 
     public (byte, bool) In(ushort addr)

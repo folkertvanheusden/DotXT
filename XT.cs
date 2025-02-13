@@ -1244,7 +1244,7 @@ internal class P8086
 
 	if (pic)
 	{
-		_io.SetIRQBeingServiced(interrupt_nr);
+		_io.GetPIC().SetIRQBeingServiced(interrupt_nr);
 	}
 
         push(_flags);
@@ -1267,7 +1267,7 @@ internal class P8086
         _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
 
 #if DEBUG
-        Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs:X4}:{_ip:X4})", true);
+        Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs:X4}:{_ip:X4}, PIC: {pic})", true);
 #endif
     }
 
@@ -1363,14 +1363,14 @@ internal class P8086
         // check for interrupt
         if (GetFlagI() == true) // TODO && _scheduled_interrupts)
         {
-            byte isr = _io.GetPendingInterrupts();
+            byte isr = _io.GetPIC().GetPendingInterrupts();
 
             if (isr != 0) {
-                Log.DoLog($"Scanning for interrupts {isr:X2}", true);
+                Log.DoLog($"Scanning for IRQs {isr:X2}", true);
 
                 bool processed_any = false;
 
-                for(int irq=0; irq<8; irq++)
+                for(int irq=0; irq<=_io.GetPIC().GetInterruptLevel(); irq++)
                 {
                     byte mask = (byte)(1 << irq);
                     Log.DoLog($"Testing IRQ {irq} (ISR: {isr:X2}, mask: {mask:X2})");
@@ -1379,14 +1379,14 @@ internal class P8086
 
                     foreach (var device in _devices)
                     {
-                        Log.DoLog($"Testing device {device.GetName()} with irq {device.GetIRQNumber()}");
+                        Log.DoLog($"Testing device {device.GetName()} with IRQ {device.GetIRQNumber()}");
                         if (device.GetIRQNumber() != irq)
                             continue;
 
                         Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
 
-                        InvokeInterrupt(_ip, irq, true);
-                        _io.ClearPendingInterrupt(irq);
+                        InvokeInterrupt(_ip, irq + _io.GetPIC().GetInterruptOffset(), true);
+                        _io.GetPIC().ClearPendingInterrupt(irq);
 
                         processed_any = true;
                         cycle_count += 60;

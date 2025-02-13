@@ -38,6 +38,11 @@ class pic8259
         return pending_ints;
     }
 
+    public int GetInterruptLevel()
+    {
+	    return _irq_request_level;
+    }
+
     public void RequestInterruptPIC(int interrupt_nr)
     {
         byte mask = (byte)(1 << interrupt_nr);
@@ -133,16 +138,30 @@ class pic8259
 
                     if (((value >> 5) & 1) == 1)  // EOI set (in OCW2)?
                     {
-                        Log.DoLog($"i8259 EOI of {_int_in_service}, level: {_irq_request_level}");
+			if ((value & 0x60) == 0x60)  // ack a certain level
+			{
+				int i = value & 7;
+				Log.DoLog($"i8259 EOI of {i}, level: {_irq_request_level}");
 
-                        if (_int_in_service == -1)
-                            Log.DoLog($"i8259 EOI with no int in service?");
-                        else
-                        {
-                            _eoi_mask &= (byte)~(1 << _int_in_service);
-                            _int_in_service  = -1;
-                        }
+			        _eoi_mask &= (byte)~(1 << i);
+			}
+			else
+			{
+				Log.DoLog($"i8259 EOI of {_int_in_service}, level: {_irq_request_level}");
+
+				if (_int_in_service == -1)
+				    Log.DoLog($"i8259 EOI with no int in service?");
+				else
+				{
+				    _eoi_mask &= (byte)~(1 << _int_in_service);
+				    _int_in_service  = -1;
+				}
+			}
                     }
+		    else
+		    {
+                        Log.DoLog($"i8259 set level to: {_irq_request_level}");
+		    }
                 }
             }
         }
@@ -179,7 +198,12 @@ class pic8259
 
                     _ii_icw4 = true;
                     _in_init = false;
-                    _auto_eoi = (value & 2) == 2;
+		    bool new_auto_eoi = (value & 2) == 2;
+		    if (new_auto_eoi != _auto_eoi)
+		    {
+			    Log.DoLog($"i8259 OUT: _auto_eoi is now {new_auto_eoi}");
+			    _auto_eoi = new_auto_eoi;
+		    }
                 }
             }
             else
