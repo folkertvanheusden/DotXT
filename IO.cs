@@ -150,6 +150,7 @@ internal class i8253 : Device
         }
     }
 
+    // TODO WHY?!?!
     private byte AddNoiseToLSB(int nr)
     {
         ushort current_prv = _timers[nr].counter_prv;
@@ -273,10 +274,7 @@ internal class i8253 : Device
         }
 
         if (interrupt)
-            ScheduleInterrupt(1);  // Timers are on IRQ0
-
-        if (CheckScheduledInterrupt(ticks))
-            _pic.RequestInterruptPIC(_irq_nr);
+            _pic.RequestInterruptPIC(_irq_nr); // Timers are on IRQ0
 
         return interrupt;
     }
