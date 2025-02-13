@@ -48,16 +48,12 @@ class pic8259
         byte mask = (byte)(1 << interrupt_nr);
         _irr |= mask;
 
-        Log.DoLog($"i8259 interrupt {interrupt_nr} requested, pending interrupts: {GetPendingInterrupts()}, mask: {GetInterruptMask():x2}");
+        Log.DoLog($"i8259 interrupt {interrupt_nr} requested, pending interrupts: {GetPendingInterrupts()}, mask: {GetInterruptMask():x2}, irr: {_irr:x2}");
     }
 
     public void ClearPendingInterrupt(int interrupt_nr)
     {
-        Log.DoLog($"i8259 interrupt {interrupt_nr} cleared");
-
-        byte bit = (byte)(255 ^ (1 << interrupt_nr));
-        _isr &= bit;
-        _irr &= bit;
+	    _int_in_service = -1;
     }
 
     public void SetIRQBeingServiced(int interrupt_nr)
@@ -65,8 +61,8 @@ class pic8259
         if (_int_in_service != -1)
             Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service");
 
-        _int_in_service = interrupt_nr - _int_offset;
-        _eoi_mask |= (byte)(1 << interrupt_nr);
+        _int_in_service = interrupt_nr;
+        _eoi_mask |= (byte)(1 << _int_in_service);
 
         Log.DoLog($"i8259: EOI mask is now {_eoi_mask:X2} by {interrupt_nr}");
     }
@@ -77,6 +73,7 @@ class pic8259
 
         if (addr == 0x0020)
         {
+	    Log.DoLog($"i8259 IN: read status register IRR: {_read_irr} (irr: {_irr:X2}, isr: {_isr:X2})");
             if (_read_irr)
                 rc = _irr;
             else
