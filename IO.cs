@@ -276,7 +276,7 @@ internal class i8253 : Device
             ScheduleInterrupt(1);  // Timers are on IRQ0
 
         if (CheckScheduledInterrupt(ticks))
-            _pic.RequestInterrupt(_irq_nr + _pic.GetInterruptOffset());
+            _pic.RequestInterruptPIC(_irq_nr);
 
         return interrupt;
     }

@@ -28,6 +28,20 @@
 	FLPYDSK_GAP3_LENGTH_5_14= 32
 	FLPYDSK_GAP3_LENGTH_3_5 = 27
 
+	FLPYDSK_DOR		=	0x3f2
+	FLPYDSK_MSR		=	0x3f4
+	FLPYDSK_FIFO		=	0x3f5
+	FLPYDSK_CTRL		=	0x3f7
+
+	FLPYDSK_MSR_MASK_DRIVE1_POS_MODE	=	1
+	FLPYDSK_MSR_MASK_DRIVE2_POS_MODE	=	2
+	FLPYDSK_MSR_MASK_DRIVE3_POS_MODE	=	4
+	FLPYDSK_MSR_MASK_DRIVE4_POS_MODE	=	8
+	FLPYDSK_MSR_MASK_BUSY			=	16
+	FLPYDSK_MSR_MASK_DMA			=	32
+	FLPYDSK_MSR_MASK_DATAIO			=	64
+	FLPYDSK_MSR_MASK_DATAREG		=	128
+
 	cli
 	cld
 
@@ -43,9 +57,29 @@
 
 	; set interrupt vector for floppy
 	mov ax,#intvec
-	mov word [6 * 4 + 0],ax
+	mov word [6 * 4 + $20],ax
 	mov ax,cs
-	mov word [6 * 4 + 2],ax
+	mov word [6 * 4 + $22],ax
+
+        ; * PUT ICW1
+        ; 8259 port 20
+        mov al,#$13
+        ; 00010011 -> ICW1, edge triggered, 8 byte int vector, single 8259, with ICW4
+        out $20,al
+
+        ; * PUT ICW2?
+        ; 8259 port 21
+        mov al,#$08
+        ; interrupt vector starting at 8
+        out $21,al
+
+        ; NO ICW3 because the system has no slaves
+
+        ; * PUT ICW4
+        ; 00001101 -> sequential, buffered master, normal EOI, 80x86 mode
+        mov al,#$0d
+        out $21,al
+
 	; skip over interrupt vector & data
 	jmp near init_continue
 interrupt_triggered:
@@ -122,7 +156,7 @@ loop_win_ok:
 
 reset_floppy:
 	; trigger floppy reset
-	mov dx,#$3f2
+	mov dx,#FLPYDSK_DOR
 	; ...enter
 	mov al,#$00
 	out dx,al
@@ -132,7 +166,7 @@ reset_floppy:
 	ret
 
 enable_motor0:
-	mov dx,#$3f2
+	mov dx,#FLPYDSK_DOR
 	mov al,#$10
 	out dx,al
 	ret
@@ -181,7 +215,7 @@ set_floppy_read:
 	out 0x0a, al      ; mask DMA channel 2 and 0 (assuming 0 is already masked)
 
 	mov al,#$56
-	out 0x0b, al      ; 01010110 single transfer, address increment, autoinit, read, channel2)
+	out 0x0b, al      ; 01010110 single transfer, address increment, autoinit, read, channel2
 
 	mov al,#$02
 	out 0x0a, al      ; unmask DMA channel 2
@@ -190,16 +224,16 @@ set_floppy_read:
 	; AH = cmd
 send_floppy_cmd:
 	mov cx,#500
-	mov dx,#$3f4
+	mov dx,#FLPYDSK_MSR
 send_floppy_cmd_loop:
 	in al,dx
-	and al,#128
+	and al,#FLPYDSK_MSR_MASK_DATAREG
 	test al,al
 	jnz send_floppy_cmd_ok
 	loop send_floppy_cmd_loop
 	hlt
 send_floppy_cmd_ok:
-	mov dx,#$3f5
+	mov dx,#FLPYDSK_FIFO
 	mov al,ah
 	out dx,al
 	ret
@@ -226,14 +260,15 @@ init_continue:
 	mov progress,#$0103
 
 	; * read sector *
+	call clear_interrupt_flag
 	; dma setup
 	mov progress,#$0201
+	mov bx,#$1000
 	call setup_dma_1_sector_read
 	mov progress,#$0202
 	call set_floppy_read
 	mov progress,#$0203
 	;
-	call clear_interrupt_flag
 	; floppy controller setup
 	mov ah, #(FDC_CMD_READ_SECT | FDC_CMD_EXT_MULTITRACK | FDC_CMD_EXT_SKIP | FDC_CMD_EXT_DENSITY)
 	call send_floppy_cmd
@@ -266,3 +301,6 @@ init_continue:
 	mov al,#$ff
 	out $80,al
 	hlt
+
+	org $fffe
+	dw $0

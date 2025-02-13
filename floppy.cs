@@ -65,7 +65,7 @@ class FloppyDisk : Device
     public override bool Tick(int cycles)
     {
         if (CheckScheduledInterrupt(cycles))
-            _pic.RequestInterrupt(_irq_nr + _pic.GetInterruptOffset());
+            _pic.RequestInterruptPIC(_irq_nr);
 
         return false;
     }
