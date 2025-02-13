@@ -1245,6 +1245,7 @@ internal class P8086
 	if (pic)
 	{
 		_io.GetPIC().SetIRQBeingServiced(interrupt_nr);
+		interrupt_nr += _io.GetPIC().GetInterruptOffset();
 	}
 
         push(_flags);
@@ -1385,7 +1386,7 @@ internal class P8086
 
                         Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
 
-                        InvokeInterrupt(_ip, irq + _io.GetPIC().GetInterruptOffset(), true);
+                        InvokeInterrupt(_ip, irq, true);
                         _io.GetPIC().ClearPendingInterrupt(irq);
 
                         processed_any = true;
@@ -2344,13 +2345,11 @@ internal class P8086
             if (word)
             {
                 ushort result = (ushort)(r1 & r2);
-
                 SetLogicFuncFlags(true, result);
             }
             else
             {
                 byte result = (byte)(r1 & r2);
-
                 SetLogicFuncFlags(false, result);
             }
 
@@ -2860,21 +2859,17 @@ internal class P8086
             if (direction)
             {
                 string affected = PutRegister(reg1, word, result);
-
-#if DEBUG
-                Log.DoLog($"{prefixStr} {name} {name1},{name2}");
-#endif
             }
             else
             {
                 (string affected, int put_cycles) = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, result);
 
                 cycle_count += put_cycles;
+            }
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} {name} {name2},{name1}");
+            Log.DoLog($"{prefixStr} {name} {name1},{name2}");
 #endif
-            }
         }
         else if (opcode is (0x34 or 0x35 or 0x24 or 0x25 or 0x0c or 0x0d))
         {
@@ -4028,9 +4023,7 @@ internal class P8086
             byte to = GetPcByte();
 
             ushort cx = GetCX();
-
             cx--;
-
             SetCX(cx);
 
             string name = "?";
