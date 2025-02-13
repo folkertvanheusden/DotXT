@@ -198,9 +198,9 @@ setup_dma_1_sector_read:
 	mov al,#$ff
 	out 0x0c, al      ; reset the master flip-flop (again!!!)
 
-	mov al,#$00
+	mov al,#$ff
 	out 0x05, al      ; count to 0x0200 (low byte)
-	mov al,#$02
+	mov al,#$01
 	out 0x05, al      ; count to 0x0200 (high byte),
 
 	mov al,#$00
@@ -258,6 +258,10 @@ init_continue:
 	mov progress,#$0102
 	call wait_motor0_spinup
 	mov progress,#$0103
+
+	; * sense interrupt *
+	mov ah, #$08
+	call send_floppy_cmd
 
 	; * read sector *
 	call clear_interrupt_flag
