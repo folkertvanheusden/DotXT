@@ -86,7 +86,8 @@ class FloppyDisk : Device
 
     public override (byte, bool) IO_Read(ushort port)
     {
-        Log.DoLog($"Floppy-IN {_io_names[port - 0x3f0]}: {port:X4} {_data_state}", true);
+        int bytes_left = _data == null ? 0 : (_data.Length - _data_offset);
+        Log.DoLog($"Floppy-IN {_io_names[port - 0x3f0]}: {port:X4} {_data_state}, bytes left: {bytes_left}", true);
 
         if (port == 0x3f4)  // main status register
         {
@@ -148,7 +149,7 @@ class FloppyDisk : Device
         {
             using (FileStream fs = File.Open(_filename, FileMode.Open, FileAccess.Read, FileShare.None))
             {
-                fs.Seek((lba + nr) * b.Length, SeekOrigin.Begin);
+                fs.Seek((lba * 2 + nr) * b.Length, SeekOrigin.Begin);
                 fs.Read(b, 0, b.Length);
             }
 
@@ -174,6 +175,7 @@ class FloppyDisk : Device
         _data_state = DataState.WaitCmd;
         head = (_data[1] & 4) == 4 ? 1 : 0;
         cylinder = _data[2];
+        Log.DoLog($"Floppy SEEK to head {head} cylinder {cylinder}");
         return true;
     }
 
