@@ -1371,7 +1371,7 @@ internal class P8086
 
                 bool processed_any = false;
 
-                for(int irq=0; irq<=_io.GetPIC().GetInterruptLevel(); irq++)
+                for(int irq=0; irq<8; irq++)
                 {
                     byte mask = (byte)(1 << irq);
                     Log.DoLog($"Testing IRQ {irq} (ISR: {isr:X2}, mask: {mask:X2})");
