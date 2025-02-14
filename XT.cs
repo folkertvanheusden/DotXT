@@ -1364,44 +1364,25 @@ internal class P8086
         // check for interrupt
         if (GetFlagI() == true) // TODO && _scheduled_interrupts)
         {
-            byte isr = _io.GetPIC().GetPendingInterrupts();
+            int irq = _io.GetPIC().GetPendingInterrupt();
+            if (irq != 255)
+	    {
+                Log.DoLog($"Scanning for IRQ {irq}", true);
 
-            if (isr != 0) {
-                Log.DoLog($"Scanning for IRQs {isr:X2}", true);
+		    foreach (var device in _devices)
+		    {
+			Log.DoLog($"Testing device {device.GetName()} with IRQ {device.GetIRQNumber()}");
+			if (device.GetIRQNumber() != irq)
+			    continue;
 
-                bool processed_any = false;
+			Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
 
-                for(int irq=0; irq<8; irq++)
-                {
-                    byte mask = (byte)(1 << irq);
-                    Log.DoLog($"Testing IRQ {irq} (ISR: {isr:X2}, mask: {mask:X2})");
-                    if ((isr & mask) == 0)
-                        continue;
+			InvokeInterrupt(_ip, irq, true);
+			cycle_count += 60;
 
-                    foreach (var device in _devices)
-                    {
-                        Log.DoLog($"Testing device {device.GetName()} with IRQ {device.GetIRQNumber()}");
-                        if (device.GetIRQNumber() != irq)
-                            continue;
-
-                        Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
-
-                        InvokeInterrupt(_ip, irq, true);
-                        _io.GetPIC().ClearPendingInterrupt(irq);
-
-                        processed_any = true;
-                        cycle_count += 60;
-
-                        break;
-                    }
-
-                    if (processed_any)
-                        break;
-                }
-
-                if (processed_any == false)
-                    _scheduled_interrupts = false;
-            }
+			break;
+		    }
+	    }
         }
 
 #if DEBUG
