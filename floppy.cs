@@ -131,6 +131,18 @@ class FloppyDisk : Device
         int lba = (cylinder * 2 + head) * 9 + sector - 1;
         int n = _data[5];
 
+        byte [] _old_data = _data;
+        _data = new byte[7];
+        _data[0] = 0;
+        _data[1] = 0;
+        _data[2] = 0;
+        _data[3] = _old_data[2];
+        _data[4] = _old_data[3];
+        _data[5] = _old_data[4];
+        _data[6] = _old_data[5];
+        _data_offset = 0;
+        _data_state = DataState.HaveData;
+
         byte[] b = new byte[256];
         for(int nr=0; nr<n; nr++)
         {
@@ -145,23 +157,12 @@ class FloppyDisk : Device
                 if (_dma_controller.SendToChannel(2, b[i]) == false)
                 {
                     Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}, sector {nr + 1} out of {n}. Position: cylinder {cylinder}, head {head}, sector {sector}, lba {lba}");
-                    return false;
+                    _data[0] = 0x40;  // abnormal termination of command
+                    nr = n;  // break outer loop
+                    break;
                 }
             }
         }
-
-        byte [] _old_data = _data;
-
-        _data = new byte[7];
-        _data[0] = 0;
-        _data[1] = 0;
-        _data[2] = 0;
-        _data[3] = _old_data[2];
-        _data[4] = _old_data[3];
-        _data[5] = _old_data[4];
-        _data[6] = _old_data[5];
-        _data_offset = 0;
-        _data_state = DataState.HaveData;
 
         return true;
     }
@@ -195,8 +196,9 @@ class FloppyDisk : Device
                 _just_resetted = true;
             }
             _dma = (value & 8) == 8;
+            if (_dma == false)
+                Log.DoLog($"Floppy-OUT DMA disabled!");
         }
-
         else if (port == 0x3f5)  // data fifo
         {
             if (_data_state != DataState.WaitCmd && _data_state != DataState.WantData)
@@ -305,6 +307,10 @@ class FloppyDisk : Device
             {
                 Log.DoLog($"Floppy-OUT invalid state ({_data_state})");
             }
+        }
+        else
+        {
+            Log.DoLog($"Floppy-OUT write to unexpected port {port:X04}");
         }
 
         if (want_interrupt)
