@@ -252,6 +252,14 @@ class FloppyDisk : Device
 				_data_offset = 1;
 				_data_state = DataState.WantData;
 			}
+			else if (cmd == 0x07)
+			{
+				Log.DoLog($"Floppy-OUT command RECALIBRATE");
+				_data = new byte[2];
+				_data[0] = cmd;
+				_data_offset = 1;
+				_data_state = DataState.WantData;
+			}
 			else
 			{
 				Log.DoLog($"Floppy-OUT command {cmd:X2} not implemented ({value:X2})");
@@ -284,6 +292,12 @@ class FloppyDisk : Device
 				{
 					// do nothing (normally it sets timing parameters)
 					_data_state = DataState.WaitCmd;
+			        }
+				else if (_data[0] == 0x07)  // RECALIBRATE
+				{
+					// do nothing (normally it sets timing parameters)
+					_data_state = DataState.WaitCmd;
+					want_interrupt = true;
 			        }
 				else
 				{
