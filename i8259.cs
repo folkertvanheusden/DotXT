@@ -7,7 +7,6 @@ class pic8259
     private byte _imr = 255;  // all irqs masked (disabled)
     private bool _auto_eoi = false;
     private byte _eoi_type = 0;
-    private byte _eoi_mask = 0;  // which bits to ignore as EOI was not done
     private int _irq_request_level = 7;  // default value? TODO
     private bool _read_irr = false;
     private bool _has_slave = false;
@@ -30,10 +29,10 @@ class pic8259
 
         // any previous interrupts not acked via (auto-)EOI yet?
         // them mask them off
-        pending_ints &= (byte)(~_eoi_mask);
+        pending_ints &= (byte)(~_isr);
 
 	if (temp != 0)
-		Log.DoLog($"i8259 pending interrupts: {temp:X2}, after EOI-masking ({_eoi_mask:X2}): {pending_ints:X2}");
+		Log.DoLog($"i8259 pending interrupts: {temp:X2}, after EOI-masking ({_isr:X2}): {pending_ints:X2}");
 
         return pending_ints;
     }
@@ -62,9 +61,9 @@ class pic8259
             Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service");
 
         _int_in_service = interrupt_nr;
-        _eoi_mask |= (byte)(1 << _int_in_service);
+        _isr |= (byte)(1 << _int_in_service);
 
-        Log.DoLog($"i8259: EOI mask is now {_eoi_mask:X2} by {interrupt_nr}");
+        Log.DoLog($"i8259: EOI mask is now {_isr:X2} by {interrupt_nr}");
     }
 
     public (byte, bool) In(ushort addr)
@@ -115,10 +114,9 @@ class pic8259
                 if (_int_in_service != -1)
                     Log.DoLog($"i8259 implicit EOI of {_int_in_service}");
 
-                _isr = 0;
                 _imr = 0;  // TODO 255?
+                _isr = 0;
 
-                _eoi_mask = 0;
                 _int_in_service  = -1;
             }
             else  // OCW 2/3
@@ -133,32 +131,31 @@ class pic8259
                     Log.DoLog($"i8259 OUT: OCW2");
                     _irq_request_level = value & 7;
 
-                    if (((value >> 5) & 1) == 1)  // EOI set (in OCW2)?
-                    {
-			if ((value & 0x60) == 0x60)  // ack a certain level
-			{
-				int i = value & 7;
-				Log.DoLog($"i8259 EOI of {i}, level: {_irq_request_level}");
-
-			        _eoi_mask &= (byte)~(1 << i);
-			}
-			else
-			{
-				Log.DoLog($"i8259 EOI of {_int_in_service}, level: {_irq_request_level}");
-
-				if (_int_in_service == -1)
-				    Log.DoLog($"i8259 EOI with no int in service?");
-				else
-				{
-				    _eoi_mask &= (byte)~(1 << _int_in_service);
-				    _int_in_service  = -1;
-				}
-			}
-                    }
-		    else
+		    // EOI
+		    if (((value >> 5) & 1) == 1)  // EOI set (in OCW2)?
 		    {
-                        Log.DoLog($"i8259 set level to: {_irq_request_level}");
+			    if ((value & 0x60) == 0x60)  // ack a certain level
+			    {
+				    int i = value & 7;
+				    Log.DoLog($"i8259 EOI of {i}, level: {_irq_request_level}");
+
+				    _isr &= (byte)~(1 << i);
+			    }
+			    else
+			    {
+				    Log.DoLog($"i8259 EOI of {_int_in_service}, level: {_irq_request_level}");
+
+				    if (_int_in_service == -1)
+					    Log.DoLog($"i8259 EOI with no int in service?");
+				    else
+				    {
+					    _isr &= (byte)~(1 << _int_in_service);
+					    _int_in_service  = -1;
+				    }
+			    }
 		    }
+
+		    Log.DoLog($"i8259 set level to: {_irq_request_level}");
                 }
             }
         }
