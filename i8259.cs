@@ -24,26 +24,26 @@ class pic8259
 
     public byte GetPendingInterrupt()
     {
-	if (_irr == 0 || _int_in_service != -1)
-		return 255;
+        if (_irr == 0 || _int_in_service != -1)
+            return 255;
 
-	for(byte i=0; i<8; i++)
-	{
-		byte mask = (byte)(1 << i);
-		if ((_irr & mask) == mask /* requested? */ && (_isr & mask) == 0 /* not in service? */)
-		{
-			Log.DoLog($"i8259 pending interrupt: {i:X2}, (irr: {_irr:X2}, isr: {_isr:X2})");
-			return i;
-		}
-	}
+        for(byte i=0; i<8; i++)
+        {
+            byte mask = (byte)(1 << i);
+            if ((_irr & mask) == mask /* requested? */ && (_isr & mask) == 0 /* not in service? */)
+            {
+                Log.DoLog($"i8259 pending interrupt: {i:X2}, (irr: {_irr:X2}, isr: {_isr:X2})");
+                return i;
+            }
+        }
 
-	// can/should not happen
+        // can/should not happen
         return 255;
     }
 
     public int GetInterruptLevel()
     {
-	    return _irq_request_level;
+        return _irq_request_level;
     }
 
     public void RequestInterruptPIC(int interrupt_nr)
@@ -60,8 +60,8 @@ class pic8259
             Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service");
 
         _int_in_service = interrupt_nr;
-	byte mask =  (byte)(1 << interrupt_nr);
-	if ((_irr & mask) == 0)
+        byte mask =  (byte)(1 << interrupt_nr);
+        if ((_irr & mask) == 0)
             Log.DoLog($"i8259: interrupt {interrupt_nr} was not requested");
         _isr |= mask;
 
@@ -74,7 +74,7 @@ class pic8259
 
         if (addr == 0x0020)
         {
-	    Log.DoLog($"i8259 IN: read status register IRR: {_read_irr} (irr: {_irr:X2}, isr: {_isr:X2})");
+            Log.DoLog($"i8259 IN: read status register IRR: {_read_irr} (irr: {_irr:X2}, isr: {_isr:X2})");
             if (_read_irr)
                 rc = _irr;
             else
@@ -133,37 +133,37 @@ class pic8259
                     Log.DoLog($"i8259 OUT: OCW2");
                     _irq_request_level = value & 7;
 
-		    // EOI
-		    if (((value >> 5) & 1) == 1)  // EOI set (in OCW2)?
-		    {
-			    if ((value & 0x60) == 0x60)  // ack a certain level
-			    {
-				    int i = value & 7;
-				    Log.DoLog($"i8259 EOI of {i}, level: {_irq_request_level}");
+                    // EOI
+                    if (((value >> 5) & 1) == 1)  // EOI set (in OCW2)?
+                    {
+                        if ((value & 0x60) == 0x60)  // ack a certain level
+                        {
+                            int i = value & 7;
+                            Log.DoLog($"i8259 EOI of {i}, level: {_irq_request_level}");
 
-				    byte mask = (byte)~(1 << i);
-				    _irr &= mask;
-				    _isr &= mask;
-				    if (i == _int_in_service)
-				    	_int_in_service = -1;
-			    }
-			    else
-			    {
-				    Log.DoLog($"i8259 EOI of {_int_in_service}, level: {_irq_request_level}");
+                            byte mask = (byte)~(1 << i);
+                            _irr &= mask;
+                            _isr &= mask;
+                            if (i == _int_in_service)
+                                _int_in_service = -1;
+                        }
+                        else
+                        {
+                            Log.DoLog($"i8259 EOI of {_int_in_service}, level: {_irq_request_level}");
 
-				    if (_int_in_service == -1)
-					    Log.DoLog($"i8259 EOI with no int in service?");
-				    else
-				    {
-					    byte mask = (byte)~(1 << _int_in_service);
-					    _irr &= mask;
-					    _isr &= mask;
-					    _int_in_service = -1;
-				    }
-			    }
-		    }
+                            if (_int_in_service == -1)
+                                Log.DoLog($"i8259 EOI with no int in service?");
+                            else
+                            {
+                                byte mask = (byte)~(1 << _int_in_service);
+                                _irr &= mask;
+                                _isr &= mask;
+                                _int_in_service = -1;
+                            }
+                        }
+                    }
 
-		    Log.DoLog($"i8259 set level to: {_irq_request_level}");
+                    Log.DoLog($"i8259 set level to: {_irq_request_level}");
                 }
             }
         }
@@ -200,12 +200,12 @@ class pic8259
 
                     _ii_icw4 = true;
                     _in_init = false;
-		    bool new_auto_eoi = (value & 2) == 2;
-		    if (new_auto_eoi != _auto_eoi)
-		    {
-			    Log.DoLog($"i8259 OUT: _auto_eoi is now {new_auto_eoi}");
-			    _auto_eoi = new_auto_eoi;
-		    }
+                    bool new_auto_eoi = (value & 2) == 2;
+                    if (new_auto_eoi != _auto_eoi)
+                    {
+                        Log.DoLog($"i8259 OUT: _auto_eoi is now {new_auto_eoi}");
+                        _auto_eoi = new_auto_eoi;
+                    }
                 }
             }
             else

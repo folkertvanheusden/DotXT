@@ -3,17 +3,17 @@ namespace DotXT;
 internal enum TMode
 {
     NotSet,
-    Floppy,
-    Binary,
-    Blank
+        Floppy,
+        Binary,
+        Blank
 }
 
 internal enum RepMode
 {
     NotSet,
-    REPE_Z,
-    REPNZ,
-    REP
+        REPE_Z,
+        REPNZ,
+        REP
 }
 
 internal class P8086
@@ -230,7 +230,7 @@ internal class P8086
                 // Get keystroke
                 ConsoleKeyInfo cki = Console.ReadKey(true);
 
-// FIXME                _ah = 0x3b;  // F1 scan code
+                // FIXME                _ah = 0x3b;  // F1 scan code
                 _al = (byte)cki.KeyChar;  // F1 ascii char
 
                 SetFlagC(false);
@@ -274,7 +274,7 @@ internal class P8086
                 SetFlagC(false);
                 _ah = 0x00;  // no error
 
-//FIXME                _scheduled_interrupts[0x0e] = 50;
+                //FIXME                _scheduled_interrupts[0x0e] = 50;
 
                 return true;
             }
@@ -296,14 +296,14 @@ internal class P8086
                 {
                     Log.DoLog(base_str, true);
 
-                //    string s = "";
+                    //    string s = "";
 
                     for(int i=0; i<bytes_per_sector * _al; i++)
                     {
                         WriteMemByte(_es, (ushort)(_bx + i), floppy[disk_offset + i]);
-                //        s += $" {floppy[disk_offset + i]:X2}";
+                        //        s += $" {floppy[disk_offset + i]:X2}";
                     }
-                //    Log.DoLog($"SECTOR: {s}", true);
+                    //    Log.DoLog($"SECTOR: {s}", true);
 
                     SetFlagC(false);
                     _ah = 0x00;  // no error
@@ -379,9 +379,9 @@ internal class P8086
 
     private void FixFlags()
     {
-            _flags &= 0b1111111111010101;
-            _flags |= 2;  // bit 1 is always set
-            _flags |= 0xf000;  // upper 4 bits are always 1
+        _flags &= 0b1111111111010101;
+        _flags |= 2;  // bit 1 is always set
+        _flags |= 0xf000;  // upper 4 bits are always 1
     }
 
     private byte GetPcByte()
@@ -548,7 +548,7 @@ internal class P8086
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
 
-       _b.WriteByte(a, v);
+        _b.WriteByte(a, v);
     }
 
     private void WriteMemWord(ushort segment, ushort offset, ushort v)
@@ -556,8 +556,8 @@ internal class P8086
         uint a1 = (uint)(((segment << 4) + offset) & MemMask);
         uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
 
-       _b.WriteByte(a1, (byte)v);
-       _b.WriteByte(a2, (byte)(v >> 8));
+        _b.WriteByte(a1, (byte)v);
+        _b.WriteByte(a2, (byte)(v >> 8));
     }
 
     public byte ReadMemByte(ushort segment, ushort offset)
@@ -954,7 +954,7 @@ internal class P8086
     // name, cycles
     private (string, int) PutRegisterMem(int reg, int mod, bool w, ushort val)
     {
-//        Log.DoLog($"PutRegisterMem {mod},{w}", true);
+        //        Log.DoLog($"PutRegisterMem {mod},{w}", true);
 
         if (mod == 0)
         {
@@ -1242,23 +1242,23 @@ internal class P8086
         _segment_override_set = false;
         _segment_override_name = "";
 
-	if (pic)
-	{
-		_io.GetPIC().SetIRQBeingServiced(interrupt_nr);
-		interrupt_nr += _io.GetPIC().GetInterruptOffset();
-	}
+        if (pic)
+        {
+            _io.GetPIC().SetIRQBeingServiced(interrupt_nr);
+            interrupt_nr += _io.GetPIC().GetInterruptOffset();
+        }
 
         push(_flags);
         push(_cs);
-	if (_rep)
-	{
-		push(_rep_addr);
-		_rep = false;
-	}
-	else
-	{
-		push(instr_start);
-	}
+        if (_rep)
+        {
+            push(_rep_addr);
+            _rep = false;
+        }
+        else
+        {
+            push(instr_start);
+        }
 
         SetFlagI(false);
 
@@ -1344,7 +1344,7 @@ internal class P8086
                 Log.DoLog($"Script token {tokens[0]} (line {line_nr}) not understood", true);
                 break;
             }
-            
+
             line_nr++;
         }
     }
@@ -1366,23 +1366,23 @@ internal class P8086
         {
             int irq = _io.GetPIC().GetPendingInterrupt();
             if (irq != 255)
-	    {
+            {
                 Log.DoLog($"Scanning for IRQ {irq}", true);
 
-		    foreach (var device in _devices)
-		    {
-			Log.DoLog($"Testing device {device.GetName()} with IRQ {device.GetIRQNumber()}");
-			if (device.GetIRQNumber() != irq)
-			    continue;
+                foreach (var device in _devices)
+                {
+                    Log.DoLog($"Testing device {device.GetName()} with IRQ {device.GetIRQNumber()}");
+                    if (device.GetIRQNumber() != irq)
+                        continue;
 
-			Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
+                    Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
 
-			InvokeInterrupt(_ip, irq, true);
-			cycle_count += 60;
+                    InvokeInterrupt(_ip, irq, true);
+                    cycle_count += 60;
 
-			break;
-		    }
-	    }
+                    break;
+                }
+            }
         }
 
 #if DEBUG
@@ -1444,7 +1444,7 @@ internal class P8086
 
             if (opcode == 0xf2)
             {
-		_rep_addr = instr_start;
+                _rep_addr = instr_start;
                 if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
                 {
                     _rep_mode = RepMode.REPNZ;
@@ -1458,7 +1458,7 @@ internal class P8086
             }
             else if (opcode == 0xf3)
             {
-		_rep_addr = instr_start;
+                _rep_addr = instr_start;
                 if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
                 {
                     _rep_mode = RepMode.REPE_Z;
@@ -1496,13 +1496,13 @@ internal class P8086
         if (script != null)
             RunScript(script);
 
-//        string mem = HexDump(address, false);
-//        string stk = HexDump((uint)(_ss * 16 + _sp), true);
+        //        string mem = HexDump(address, false);
+        //        string stk = HexDump((uint)(_ss * 16 + _sp), true);
 
-//        Log.DoLog($"{mem}", true);
-//        Log.DoLog($"{_ss * 16 + _sp:X6}: {stk}", true);
+        //        Log.DoLog($"{mem}", true);
+        //        Log.DoLog($"{_ss * 16 + _sp:X6}: {stk}", true);
 
-//        Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}", true);
+        //        Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}", true);
 
         string prefixStr =
             $"{flagStr} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{instr_start:X4} | ";
@@ -2376,7 +2376,7 @@ internal class P8086
             (string toName, int put_cycles) = PutRegisterMem(reg2, mod, true, pop());
 
             cycle_count += put_cycles;
- 
+
             cycle_count += 17;
 
 #if DEBUG
@@ -2592,15 +2592,15 @@ internal class P8086
                 {
                     push(_flags);
                     push(_cs);
-		    if (_rep)
-		    {
-		        push(_rep_addr);
-			Log.DoLog($"INT from rep {_rep_addr:X04}");
-		    }
-		    else
-		    {
-			push(_ip);
-		    }
+                    if (_rep)
+                    {
+                        push(_rep_addr);
+                        Log.DoLog($"INT from rep {_rep_addr:X04}");
+                    }
+                    else
+                    {
+                        push(_ip);
+                    }
 
                     SetFlagI(false);
 
@@ -2652,7 +2652,7 @@ internal class P8086
             bool is_sub = false;
             bool apply = true;
             bool use_flag_c = false;
-           
+
             if (opcode <= 0x03)
             {
                 result = r1 + r2;
@@ -4019,12 +4019,12 @@ internal class P8086
                     _ip = newAddresses;
                     cycle_count += 4;
                 }
-		else
-		{
+                else
+                {
 #if DEBUG
-		    Log.DoLog("LOOP end");
+                    Log.DoLog("LOOP end");
 #endif
-		}
+                }
 
                 name = "LOOP";
             }
