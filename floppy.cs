@@ -158,6 +158,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}, sector {nr + 1} out of {n}. Position: cylinder {cylinder}, head {head}, sector {sector}, lba {lba}");
                     _data[0] = 0x40;  // abnormal termination of command
+                    _data[1] = 0x10;  // FDC not serviced by host
                     nr = n;  // break outer loop
                     break;
                 }
@@ -300,7 +301,6 @@ class FloppyDisk : Device
                     }
 
                     _just_resetted = false;
-                    _busy = false;
                 }
             }
             else
