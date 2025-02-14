@@ -13,8 +13,8 @@ class FloppyDisk : Device
     private string _filename = null;
     private bool _just_resetted = false;
     private bool _busy = false;
-    private int cylinder = 0;  // TODO per drive
-    private int head = 0;  // TODO per drive
+    private int _cylinder = 0;  // TODO per drive
+    private int _head = 0;  // TODO per drive
 
     public FloppyDisk(string filename)
     {
@@ -129,8 +129,15 @@ class FloppyDisk : Device
     private bool ReadData()
     {
         int sector = _data[4];
-        int lba = (cylinder * 2 + head) * 9 + sector - 1;
+        int head = (_data[1] & 4) == 4 ? 1 : 0;
+        int lba = (_cylinder * 2 + head) * 9 + sector - 1;
         int n = _data[5];
+
+#if DEBUG
+        Log.DoLog($"Floppy-ReadData HS {_data[1] & 4:X02} C {_data[2]} H {_data[3]} R {_data[4]}");
+        Log.DoLog($"Floppy-ReadData SEEK H {head} C {_cylinder}");
+        Log.DoLog($"Floppy-ReadData LBA {lba}, offset {lba * 512}");
+#endif
 
         byte [] _old_data = _data;
         _data = new byte[7];
@@ -150,14 +157,29 @@ class FloppyDisk : Device
             using (FileStream fs = File.Open(_filename, FileMode.Open, FileAccess.Read, FileShare.None))
             {
                 fs.Seek((lba * 2 + nr) * b.Length, SeekOrigin.Begin);
-                fs.Read(b, 0, b.Length);
+                if (fs.Read(b, 0, b.Length) != b.Length)
+                    Log.DoLog($"Floppy-ReadData failed reading from backend");
             }
+
+#if DEBUG
+            for(int i=0; i<16; i++) {
+                string str = "";
+                for(int k=0; k<16; k++) {
+                    int o = k + i * 16;
+                    if (b[o] > 32 && b[o] < 127)
+                        str += $" {(char)b[o]} ";
+                    else
+                        str += $" {b[o]:X02}";
+                }
+                Log.DoLog($"Floppy-ReadData {str}");
+            }
+#endif
 
             for(int i=0; i<b.Length; i++)
             {
                 if (_dma_controller.SendToChannel(2, b[i]) == false)
                 {
-                    Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}, sector {nr + 1} out of {n}. Position: cylinder {cylinder}, head {head}, sector {sector}, lba {lba}");
+                    Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}, sector {nr + 1} out of {n}. Position: cylinder {_cylinder}, head {head}, sector {sector}, lba {lba}");
                     _data[0] = 0x40;  // abnormal termination of command
                     _data[1] = 0x10;  // FDC not serviced by host
                     nr = n;  // break outer loop
@@ -173,9 +195,9 @@ class FloppyDisk : Device
     {
         // no response, only an interrupt
         _data_state = DataState.WaitCmd;
-        head = (_data[1] & 4) == 4 ? 1 : 0;
-        cylinder = _data[2];
-        Log.DoLog($"Floppy SEEK to head {head} cylinder {cylinder}");
+        _head = (_data[1] & 4) == 4 ? 1 : 0;
+        _cylinder = _data[2];
+        Log.DoLog($"Floppy SEEK to head {_head} cylinder {_cylinder}");
         return true;
     }
 
