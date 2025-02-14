@@ -2019,7 +2019,7 @@ internal class P8086
                 cycle_count += 22;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')})");
+                Log.DoLog($"{prefixStr} CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')}) {GetCX()}");
 #endif
             }
         }
@@ -4401,6 +4401,8 @@ internal class P8086
                 if (cx == 0)
                 {
                     _rep = false;
+                    _rep_do_nothing = true;
+                    _ip = _rep_addr;
                 }
                 else if (_rep_mode == RepMode.REPE_Z)
                 {
