@@ -417,10 +417,7 @@ internal class i8237
             }
         }
 
-        else
-        {
-            Log.DoLog($"i8237_IN: {addr:X4} {v:X2}", true);
-        }
+        Log.DoLog($"i8237_IN: {addr:X4} {v:X2}", true);
 
         return (v, false);
     }
@@ -433,7 +430,7 @@ internal class i8237
 
     public bool Out(ushort addr, byte value)
     {
-        // Log.DoLog($"i8237_OUT: {addr:X4} {value:X2}", true);
+        Log.DoLog($"i8237_OUT: addr {addr:X4} value {value:X2}", true);
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
