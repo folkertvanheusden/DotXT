@@ -30,7 +30,7 @@ class pic8259
 
         // any previous interrupts not acked via (auto-)EOI yet?
         // them mask them off
-        pending_ints &= (byte)(~_eoi_mask);
+        pending_ints &= _eoi_mask;
 
 	if (temp != 0)
 		Log.DoLog($"i8259 pending interrupts: {temp:X2}, after EOI-masking ({_eoi_mask:X2}): {pending_ints:X2}");
@@ -53,6 +53,7 @@ class pic8259
 
     public void ClearPendingInterrupt(int interrupt_nr)
     {
+	    Log.DoLog($"i8259: IRQ {_int_in_service} cleared");
 	    _int_in_service = -1;
     }
 
@@ -64,7 +65,7 @@ class pic8259
         _int_in_service = interrupt_nr;
         _eoi_mask |= (byte)(1 << _int_in_service);
 
-        Log.DoLog($"i8259: EOI mask is now {_eoi_mask:X2} by {interrupt_nr}");
+        Log.DoLog($"i8259: IRQ {interrupt_nr} in service, EOI mask is now {_eoi_mask:X2}");
     }
 
     public (byte, bool) In(ushort addr)
@@ -147,7 +148,7 @@ class pic8259
 				Log.DoLog($"i8259 EOI of {_int_in_service}, level: {_irq_request_level}");
 
 				if (_int_in_service == -1)
-				    Log.DoLog($"i8259 EOI with no int in service?");
+				    Log.DoLog($"i8259 EOI with no int in service? (EOI mask: {_eoi_mask:X2})");
 				else
 				{
 				    _eoi_mask &= (byte)~(1 << _int_in_service);
