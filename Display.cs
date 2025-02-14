@@ -65,7 +65,7 @@ abstract class Display : Device
     protected void EmulateTextDisplay(uint x, uint y, byte character, byte attributes)
     {
         // attribute, character
-        // Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", true);
+        Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", true);
 
 	int [] colormap = { 0, 4, 2, 6, 1, 5, 3, 7 };
 
