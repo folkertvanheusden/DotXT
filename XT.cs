@@ -1244,9 +1244,6 @@ internal class P8086
 
 	if (pic)
 	{
-		if (interrupt_nr < 0 || interrupt_nr > 7)
-			Log.DoLog($"InvokeInterrupt for PIC invalid number {interrupt_nr}");
-
 		_io.GetPIC().SetIRQBeingServiced(interrupt_nr);
 		interrupt_nr += _io.GetPIC().GetInterruptOffset();
 	}
@@ -1390,6 +1387,7 @@ internal class P8086
                         Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
 
                         InvokeInterrupt(_ip, irq, true);
+                        _io.GetPIC().ClearPendingInterrupt(irq);
 
                         processed_any = true;
                         cycle_count += 60;
