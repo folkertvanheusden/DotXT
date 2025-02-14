@@ -13,6 +13,8 @@ class FloppyDisk : Device
     private string _filename = null;
     private bool _just_resetted = false;
     private bool _busy = false;
+    private int cylinder = 0;  // TODO per drive
+    private int head = 0;  // TODO per drive
 
     public FloppyDisk(string filename)
     {
@@ -125,14 +127,11 @@ class FloppyDisk : Device
 
     private bool ReadData()
     {
-        // bool _dma_controller.SendToChannel(int channel, byte value)
-        int track = _data[2];
-        int head = _data[3];
         int sector = _data[4];
-        int lba = (track * 2 + head) * 9 + sector - 1;
+        int lba = (cylinder * 2 + head) * 9 + sector - 1;
         int n = _data[5];
 
-        byte[] b = new byte[512];
+        byte[] b = new byte[256];
         for(int nr=0; nr<n; nr++)
         {
             using (FileStream fs = File.Open(_filename, FileMode.Open, FileAccess.Read, FileShare.None))
@@ -145,20 +144,22 @@ class FloppyDisk : Device
             {
                 if (_dma_controller.SendToChannel(2, b[i]) == false)
                 {
-                    Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}");
+                    Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}, sector {nr + 1} out of {n}. Position: cylinder {cylinder}, head {head}, sector {sector}, lba {lba}");
                     return false;
                 }
             }
         }
 
+        byte [] _old_data = _data;
+
         _data = new byte[7];
         _data[0] = 0;
         _data[1] = 0;
         _data[2] = 0;
-        _data[3] = (byte)track;
-        _data[4] = (byte)head;
-        _data[5] = (byte)sector;
-        _data[6] = (byte)n;
+        _data[3] = _old_data[2];
+        _data[4] = _old_data[3];
+        _data[5] = _old_data[4];
+        _data[6] = _old_data[5];
         _data_offset = 0;
         _data_state = DataState.HaveData;
 
@@ -169,6 +170,8 @@ class FloppyDisk : Device
     {
         // no response, only an interrupt
         _data_state = DataState.WaitCmd;
+        head = (_data[1] & 4) == 4 ? 1 : 0;
+        cylinder = _data[2];
         return true;
     }
 
