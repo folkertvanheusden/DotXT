@@ -93,7 +93,9 @@ class FloppyDisk : Device
 
     public override (byte, bool) IO_Read(ushort port)
     {
-        Log.DoLog($"Floppy-IN {_io_names[port - 0x3f0]}: {port:X4} {_data_state}", true);
+	bool want_interrupt = CheckScheduledInterrupt(1);
+
+        Log.DoLog($"Floppy-IN {_io_names[port - 0x3f0]}: {port:X4} {_data_state}, IRQ: {want_interrupt}", true);
 
         if (port == 0x3f4)  // main status register
 	{
@@ -107,7 +109,7 @@ class FloppyDisk : Device
 	    if (_busy == true)
 		    rc |= 16;
             Log.DoLog($"Floppy-IN for MSR returns {rc:X2}");
-	    return (rc, false);
+	    return (rc, want_interrupt);
 	}
 
         if (port == 0x3f5)  // fifo
@@ -126,10 +128,10 @@ class FloppyDisk : Device
 			Log.DoLog($"Floppy-IN reading from empty FIFO");
 		}
                 Log.DoLog($"Floppy-IN for FIFO returns {rc:X2}");
-		return (rc, false);
+		return (rc, want_interrupt);
 	}
 
-        return (_registers[port - 0x3f0], false);
+        return (_registers[port - 0x3f0], want_interrupt);
     }
 
     private bool ReadData()
@@ -179,7 +181,6 @@ class FloppyDisk : Device
 	// no response, only an interrupt
 	_data_state = DataState.WaitCmd;
 	return true;
-	    
     }
 
     public override bool IO_Write(ushort port, byte value)
@@ -314,6 +315,9 @@ class FloppyDisk : Device
 		}
 	}
 
-        return want_interrupt ? CheckScheduledInterrupt(100) : false;
+	if (want_interrupt)
+		Log.DoLog($"Floppy-OUT triggers IRQ");
+
+        return want_interrupt;
     }
 }
