@@ -229,7 +229,7 @@ internal class i8253 : Device
         clock += ticks;
 
 #if DEBUG
-//        Log.DoLog($"i8253: {clock} cycles, {ticks} added", true);
+        //        Log.DoLog($"i8253: {clock} cycles, {ticks} added", true);
 #endif
 
         bool interrupt = false;
@@ -244,19 +244,19 @@ internal class i8253 : Device
                 _timers[i].counter_cur--;
 
 #if DEBUG
-//                Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}", true);
+                //                Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}", true);
 #endif
 
                 if (_timers[i].counter_cur == 0)
                 {
-//                    Log.DoLog($"i8253 reset counter", true);
+                    //                    Log.DoLog($"i8253 reset counter", true);
 
                     // timer 1 is RAM refresh counter
                     if (i == 1)
                         _i8237.TickChannel0();
 
-		    if (_timers[i].mode != 1)
-			    _timers[i].counter_cur = _timers[i].counter_ini;
+                    if (_timers[i].mode != 1)
+                        _timers[i].counter_cur = _timers[i].counter_ini;
 
                     // mode 0 generates an interrupt
                     if (_timers[i].mode == 0 || _timers[i].mode == 3)
@@ -362,6 +362,7 @@ internal class i8237
         for(int i=0; i<4; i++) {
             _channel_address_register[i] = new b16buffer(_ff);
             _channel_word_count[i] = new b16buffer(_ff);
+            _reached_tc[i] = false;
         }
 
         _b = b;
@@ -380,12 +381,12 @@ internal class i8237
         ushort count = _channel_word_count[0].GetValue();
         count--;
 #if DEBUG
-//        Log.DoLog($"8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}, {count}", true);
+        //        Log.DoLog($"i8237_TickChannel0, mask: {_channel_mask[0]}, tc: {_reached_tc[0]}, mode: {_channel_mode[0]}, dma enabled: {_dma_enabled}, {count}", true);
 #endif
         _channel_word_count[0].SetValue(count);
 
-         if (count == 0xffff)
-             _reached_tc[0] = true;
+        if (count == 0xffff)
+            _reached_tc[0] = true;
     }
 
     public (byte, bool) In(ushort addr)
@@ -404,18 +405,22 @@ internal class i8237
 
         else if (addr == 8)  // status register
         {
+            Log.DoLog($"i8237_IN: read status register");
+
             for(int i=0; i<4; i++)
             {
                 if (_reached_tc[i])
                 {
                     _reached_tc[i] = false;
-
                     v |= (byte)(1 << i);
                 }
             }
         }
 
-        // Log.DoLog($"8237_IN: {addr:X4} {v:X2}", true);
+        else
+        {
+            Log.DoLog($"i8237_IN: {addr:X4} {v:X2}", true);
+        }
 
         return (v, false);
     }
@@ -428,18 +433,18 @@ internal class i8237
 
     public bool Out(ushort addr, byte value)
     {
-        // Log.DoLog($"8237_OUT: {addr:X4} {value:X2}", true);
+        // Log.DoLog($"i8237_OUT: {addr:X4} {value:X2}", true);
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
             _channel_address_register[addr / 2].Put(value);
-            Log.DoLog($"8237 set channel {addr / 2} to address {_channel_address_register[addr / 2].GetValue()}", true);
+            Log.DoLog($"i8237 set channel {addr / 2} to address {_channel_address_register[addr / 2].GetValue():X04}", true);
         }
 
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
         {
             _channel_word_count[addr / 2].Put(value);
-            Log.DoLog($"8237 set channel {addr / 2} to count {_channel_word_count[addr / 2].GetValue()}", true);
+            Log.DoLog($"i8237 set channel {addr / 2} to count {_channel_word_count[addr / 2].GetValue()}", true);
         }
 
         else if (addr == 8)
@@ -453,8 +458,15 @@ internal class i8237
             _channel_mask[value & 3] = (value & 4) == 4;  // dreq enable/disable
 
         else if (addr == 0x0b)  // mode register
+        {
             _channel_mode[value & 3] = value;
-
+            string str = "";
+            if ((value & 0x10) == 0x10)
+                str += ", autoinit";
+            if ((value & 0x20) == 0x20)
+                str += ", decrement";
+            Log.DoLog($"i8237 mode register channel {value & 3}: {value:X02}{str}");
+        }
         else if (addr == 0x0c)  // reset flipflop
             _ff.reset();
 
@@ -499,26 +511,42 @@ internal class i8237
     public bool SendToChannel(int channel, byte value)
     {
         if (_dma_enabled == false)
+        {
+            Log.DoLog($"i8237 SendToChannel channel {channel} value {value:X2}: dma not enabled");
             return false;
+        }
 
         if (_channel_mask[channel])
+        {
+            Log.DoLog($"i8237 SendToChannel channel {channel} value {value:X2}: channel masked");
             return false;
+        }
 
         if (_reached_tc[channel])
+        {
+            Log.DoLog($"i8237 SendToChannel channel {channel} value {value:X2}: reached tc, channel address {_channel_address_register[channel].GetValue():X04}");
             return false;
+        }
 
         ushort addr = _channel_address_register[channel].GetValue();
         uint full_addr = (uint)((_channel_page[channel] * 16) | addr);
         _b.WriteByte(full_addr, value);
 
         addr++;
-         _channel_address_register[channel].SetValue(addr);
+        _channel_address_register[channel].SetValue(addr);
 
-         ushort count = _channel_word_count[channel].GetValue();
-         count--;
-         if (count == 0xffff)
-             _reached_tc[channel] = true;
-         _channel_word_count[channel].SetValue(count);
+        ushort count = _channel_word_count[channel].GetValue();
+        count--;
+        if (count == 0xffff)
+        {
+            Log.DoLog($"i8237 SendToChannel channel {channel} count has reached -1, set tc");
+            _reached_tc[channel] = true;
+        }
+        else
+        {
+            // Log.DoLog($"i8237 SendToChannel channel {channel} count has reached {count}");
+        }
+        _channel_word_count[channel].SetValue(count);
 
         return true;
     }
@@ -661,7 +689,7 @@ class IO
 
     public pic8259 GetPIC()
     {
-	    return _pic;
+        return _pic;
     }
 
     public (byte, bool) In(ushort addr)
@@ -690,8 +718,8 @@ class IO
         Log.DoLog($"IN: I/O port {addr:X4} not implemented", true);
 #endif
 
-//        if (_values.ContainsKey(addr))
- //           return (_values[addr], false);
+        //        if (_values.ContainsKey(addr))
+        //           return (_values[addr], false);
 
         return (0, false);
     }
@@ -727,8 +755,8 @@ class IO
         {
             int harddisk_interrupt_nr = 14;
 
-//FIXME            if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
-//FIXME                scheduled_interrupts[harddisk_interrupt_nr] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
+            //FIXME            if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
+            //FIXME                scheduled_interrupts[harddisk_interrupt_nr] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
 
 #if DEBUG
             Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) generate controller select pulse");
