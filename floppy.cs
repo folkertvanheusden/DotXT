@@ -198,7 +198,7 @@ class FloppyDisk : Device
 	{
 		if ((value & 4) == 0)
 		{
-		    ScheduleInterrupt(2);  // FDC enable (controller reset) (IRQ 6)
+		    want_interrupt = true;  // FDC enable (controller reset) (IRQ 6)
 		    _data_state = DataState.WaitCmd;
 		    _just_resetted = true;
 		}
