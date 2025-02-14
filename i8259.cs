@@ -3,7 +3,7 @@ class pic8259
 {
     private int _int_offset = 8;  // TODO updaten bij ICW (OCW?) en dan XT::Tick() de juiste vector
     private byte _irr = 0;  // which irqs are requested
-    private byte _isr = 0;  // ...and which are allowed (see imr)
+    private byte _isr = 0;  // ...and which are in service
     private byte _imr = 255;  // all irqs masked (disabled)
     private bool _auto_eoi = false;
     private byte _eoi_type = 0;
@@ -30,7 +30,7 @@ class pic8259
 	for(byte i=0; i<8; i++)
 	{
 		byte mask = (byte)(1 << i);
-		if ((_irr & mask) == mask && (_isr & mask) == 0)
+		if ((_irr & mask) == mask /* requested? */ && (_isr & mask) == 0 /* not in service? */)
 		{
 			Log.DoLog($"i8259 pending interrupt: {i:X2}, (irr: {_irr:X2}, isr: {_isr:X2})");
 			return i;
@@ -51,7 +51,7 @@ class pic8259
         byte mask = (byte)(1 << interrupt_nr);
         _irr |= mask;
 
-        Log.DoLog($"i8259 interrupt {interrupt_nr} requested");
+        Log.DoLog($"i8259 interrupt {interrupt_nr} requested (irr: {_irr:X2})");
     }
 
     public void SetIRQBeingServiced(int interrupt_nr)
@@ -60,9 +60,12 @@ class pic8259
             Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service");
 
         _int_in_service = interrupt_nr;
-        _isr |= (byte)(1 << _int_in_service);
+	byte mask =  (byte)(1 << interrupt_nr);
+	if ((_irr & mask) == 0)
+            Log.DoLog($"i8259: interrupt {interrupt_nr} was not requested");
+        _isr |= mask;
 
-        Log.DoLog($"i8259: EOI mask is now {_isr:X2} by {interrupt_nr}");
+        Log.DoLog($"i8259: EOI mask is now {_isr:X2} by setting {interrupt_nr} in service");
     }
 
     public (byte, bool) In(ushort addr)
@@ -138,10 +141,11 @@ class pic8259
 				    int i = value & 7;
 				    Log.DoLog($"i8259 EOI of {i}, level: {_irq_request_level}");
 
-				    _irr &= (byte)~(1 << i);
-				    _isr &= (byte)~(1 << i);
+				    byte mask = (byte)~(1 << i);
+				    _irr &= mask;
+				    _isr &= mask;
 				    if (i == _int_in_service)
-				    	_int_in_service  = -1;
+				    	_int_in_service = -1;
 			    }
 			    else
 			    {
@@ -151,9 +155,10 @@ class pic8259
 					    Log.DoLog($"i8259 EOI with no int in service?");
 				    else
 				    {
-					    _irr &= (byte)~(1 << _int_in_service);
-					    _isr &= (byte)~(1 << _int_in_service);
-					    _int_in_service  = -1;
+					    byte mask = (byte)~(1 << _int_in_service);
+					    _irr &= mask;
+					    _isr &= mask;
+					    _int_in_service = -1;
 				    }
 			    }
 		    }
