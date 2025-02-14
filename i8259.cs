@@ -6,7 +6,6 @@ class pic8259
     private byte _isr = 0;  // ...and which are in service
     private byte _imr = 255;  // all irqs masked (disabled)
     private bool _auto_eoi = false;
-    private byte _eoi_type = 0;
     private int _irq_request_level = 7;  // default value? TODO
     private bool _read_irr = false;
     private bool _has_slave = false;
@@ -60,9 +59,11 @@ class pic8259
             Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service");
 
         _int_in_service = interrupt_nr;
-        byte mask =  (byte)(1 << interrupt_nr);
+        byte mask = (byte)(1 << interrupt_nr);
         if ((_irr & mask) == 0)
             Log.DoLog($"i8259: interrupt {interrupt_nr} was not requested");
+        if ((_isr & mask) == mask)
+            Log.DoLog($"i8259: interrupt {interrupt_nr} was already in service");
         _isr |= mask;
 
         Log.DoLog($"i8259: EOI mask is now {_isr:X2} by setting {interrupt_nr} in service");
