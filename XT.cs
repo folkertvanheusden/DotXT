@@ -1378,21 +1378,9 @@ internal class P8086
                 }
                 else if (_rep_mode == RepMode.REPE_Z)
                 {
-                    // REPE/REPZ
-                    if (GetFlagZ() != true)
-                    {
-                        _rep = false;
-                        rc = false;
-                    }
                 }
                 else if (_rep_mode == RepMode.REPNZ)
                 {
-                    // REPNZ
-                    if (GetFlagZ() != false)
-                    {
-                        _rep = false;
-                        rc = false;
-                    }
                 }
                 else if (_rep_mode == RepMode.REP)
                 {
@@ -1416,6 +1404,23 @@ internal class P8086
 
     public void PrefixEnd()
     {
+        if (_rep_mode == RepMode.REPE_Z)
+        {
+            // REPE/REPZ
+            if (GetFlagZ() != true)
+            {
+                _rep = false;
+            }
+        }
+        else if (_rep_mode == RepMode.REPNZ)
+        {
+            // REPNZ
+            if (GetFlagZ() != false)
+            {
+                _rep = false;
+            }
+        }
+
         if (_rep == false)
         {
             _segment_override_set = false;
@@ -3474,9 +3479,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             {
                 // SCASB
                 byte v = ReadMemByte(_es, _di);
-
                 int result = _al - v;
-
                 SetAddSubFlags(false, _al, v, result, true, false);
 
                 _di += (ushort)(GetFlagD() ? -1 : 1);
@@ -3495,9 +3498,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 // SCASW
                 ushort ax = GetAX();
                 ushort v = ReadMemWord(_es, _di);
-
                 int result = ax - v;
-
                 SetAddSubFlags(true, ax, v, result, true, false);
 
                 _di += (ushort)(GetFlagD() ? -2 : 2);
