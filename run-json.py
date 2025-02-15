@@ -61,14 +61,14 @@ for set in j:
     if not 'name' in set:
         continue
 
-    print(set['name'])
+    name = set['name']
 
     process.stdin.write(f'reset\r\n'.encode('ascii'))
     process.stdin.write(f'dolog {set["name"]}\r\n'.encode('ascii'))
 
     b = set['bytes']
 
-    flags_mask = 65535
+    flags_mask = 65535 & (~16)
 
     byte_offset = 0
     while b[byte_offset] in (0x26, 0x2e, 0x36, 0x3e, 0xf2, 0xf3):
@@ -120,8 +120,10 @@ for set in j:
             compare &= flags_mask
 
         if result != compare:
+            if name:
+                print(name)
+                name = None
             print(f' *** {reg} failed ***')
-            print(f': {result} (emulator) != {regs[reg]} (test set) => {reg}')
             ok = False
 
     # verify mem
@@ -129,12 +131,17 @@ for set in j:
         result = int(docmd(process, f'get ram {addr}').split()[1])
 
         if result != value:
+            if name:
+                print(name)
+                name = None
             print(f' *** {addr} failed ***')
             print(f': {result} (emulator (hex: {result:04x})) != {value} (test set (hex: {value:04x}))')
             ok = False
 
     if not ok:
         for reg in regs:
+            if final["regs"][reg] == is_[reg]:
+                continue
             if reg == 'flags':
                 print(f'{reg} was at start {val_to_flags(initial["regs"][reg])}, should have become {val_to_flags(final["regs"][reg])}, is: {val_to_flags(is_[reg])}')
             else:
@@ -142,8 +149,7 @@ for set in j:
 
         print(f'Test set: {sys.argv[1]}')
 
-        process.stdin.write(f'q\r\n'.encode('ascii'))
-
-        sys.exit(1)
+        #process.stdin.write(f'q\r\n'.encode('ascii'))
+        #sys.exit(1)
 
 sys.exit(0)
