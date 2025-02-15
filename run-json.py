@@ -11,9 +11,7 @@ def docmd(p, str, wait=True):
 
     while wait:
         line = p.stdout.readline()
-
         line = line.decode('ascii', 'ignore').rstrip('\n')
-
         if debug:
             print(line)
 
@@ -50,6 +48,9 @@ def val_to_flags(v):
 process = Popen(['dotnet', 'run', '-c', 'Debug', '--', '-d', '-P', '-l', 'logfile.dat', '-x', 'blank', '-B'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
 process.stdin.write('echo\r\n'.encode('ascii'))  # disable echo
 
+def log(x):
+    process.stdin.write(f'dolog {x}\r\n'.encode('ascii'))
+
 test_file = sys.argv[1]
 
 sub_cmd = test_file[-7] == '.' and test_file[-6].isdigit() and test_file[-5:] == '.json'
@@ -57,18 +58,22 @@ sub_cmd = test_file[-7] == '.' and test_file[-6].isdigit() and test_file[-5:] ==
 j = json.loads(open(test_file, 'rb').read())
 jm = json.loads(open(sys.argv[2], 'rb').read())
 
+error_nr = 0
+test_nr = 0
+
 for set in j:
+    test_nr += 1
     if not 'name' in set:
         continue
 
     name = set['name']
 
     process.stdin.write(f'reset\r\n'.encode('ascii'))
-    process.stdin.write(f'dolog {set["name"]}\r\n'.encode('ascii'))
+    log(f'dolog START {set["name"]}\r\n')
 
     b = set['bytes']
 
-    flags_mask = 65535 & (~16)
+    # v1 fix: flags_mask = 65535 & (~16)
 
     byte_offset = 0
     while b[byte_offset] in (0x26, 0x2e, 0x36, 0x3e, 0xf2, 0xf3):
@@ -76,6 +81,7 @@ for set in j:
 
     first_byte = f'{b[byte_offset]:02X}'
 
+    flags_mask = None
     if sub_cmd:
         second_byte = b[byte_offset + 1]
         reg = f'{(second_byte >> 3) & 7}'
@@ -99,6 +105,7 @@ for set in j:
     for addr, value in initial['ram']:
         docmd(process, f'set ram {addr} {value}')
 
+    # invoke!
     docmd(process, 'S', False)  # step
 
     # verify
@@ -115,15 +122,15 @@ for set in j:
 
         compare = regs[reg]
 
-        if reg == 'flags':
+        if reg == 'flags' and flags_mask != None:
             result &= flags_mask
             compare &= flags_mask
 
         if result != compare:
             if name:
-                print(name)
+                log(name)
                 name = None
-            print(f' *** {reg} failed ***')
+            log(f' *** {reg} failed ***')
             ok = False
 
     # verify mem
@@ -132,10 +139,10 @@ for set in j:
 
         if result != value:
             if name:
-                print(name)
+                log(name)
                 name = None
-            print(f' *** {addr} failed ***')
-            print(f': {result} (emulator (hex: {result:04x})) != {value} (test set (hex: {value:04x}))')
+            log(f' *** {addr:06x} failed ***')
+            log(f': {result} (emulator (hex: {result:04x})) != {value} (test set (hex: {value:04x}))')
             ok = False
 
     if not ok:
@@ -143,11 +150,14 @@ for set in j:
             if final["regs"][reg] == is_[reg]:
                 continue
             if reg == 'flags':
-                print(f'{reg} was at start {val_to_flags(initial["regs"][reg])}, should have become {val_to_flags(final["regs"][reg])}, is: {val_to_flags(is_[reg])}')
+                log(f'{reg} was at start {val_to_flags(initial["regs"][reg])}, should have become {val_to_flags(final["regs"][reg])}, is: {val_to_flags(is_[reg])}')
             else:
-                print(f'{reg} was at start {initial["regs"][reg]} (hex: {initial["regs"][reg]:04x}), should have become {final["regs"][reg]} (hex: {final["regs"][reg]:04x}), is: {is_[reg]} (hex: {is_[reg]:04x})')
+                log(f'{reg} was at start {initial["regs"][reg]} (hex: {initial["regs"][reg]:04x}), should have become {final["regs"][reg]} (hex: {final["regs"][reg]:04x}), is: {is_[reg]} (hex: {is_[reg]:04x})')
 
-        print(f'Test set: {sys.argv[1]}')
+        log(f'dolog FAILED {set["name"]}, nr: {error_nr}/{test_nr}, {sys.argv[1]}\r\n')
+        log('dolog');
+
+        error_nr += 1
 
         #process.stdin.write(f'q\r\n'.encode('ascii'))
         #sys.exit(1)
