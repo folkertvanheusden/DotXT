@@ -2041,7 +2041,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
 
                 cycle_count += 18;
             }
-            PrefixEnd();
         }
         else if (opcode == 0xa5)
         {
@@ -2059,7 +2058,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} MOVSW");
 #endif
             }
-            PrefixEnd();
         }
         else if (opcode == 0xa6)
         {
@@ -2082,7 +2080,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')}) {GetCX()}");
 #endif
             }
-            PrefixEnd();
         }
         else if (opcode == 0xa7)
         {
@@ -2105,7 +2102,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} CMPSW (${v1:X4},${v2:X4})");
 #endif
             }
-            PrefixEnd();
         }
         else if (opcode == 0xe3)
         {
@@ -2560,7 +2556,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} LODSB");
 #endif
             }
-            PrefixEnd();
         }
         else if (opcode == 0xad)
         {
@@ -2577,7 +2572,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} LODSW");
 #endif
             }
-            PrefixEnd();
         }
         else if (opcode == 0xc2 || opcode == 0xc0)
         {
@@ -3457,7 +3451,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} STOSB");
 #endif
             }
-            PrefixEnd();
         }
         else if (opcode == 0xab)
         {
@@ -3474,7 +3467,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} STOSW");
 #endif
             }
-            PrefixEnd();
         }
         else if (opcode == 0xae)
         {
@@ -3495,7 +3487,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} SCASB");
 #endif
             }
-            PrefixEnd();
         }
         else if (opcode == 0xaf)
         {
@@ -3517,7 +3508,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} SCASW");
 #endif
             }
-            PrefixEnd();
         }
         else if (opcode == 0xc6 || opcode == 0xc7)
         {
@@ -4454,6 +4444,8 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
         {
             Log.DoLog($"{prefixStr} opcode {opcode:x} not implemented");
         }
+
+        PrefixEnd();
 
         if (cycle_count == 0)
             cycle_count = 1;  // TODO workaround
