@@ -1354,7 +1354,7 @@ internal class P8086
         return _rep;
     }
 
-    public bool REP_must_run()
+    public bool PrefixMustRun()
     {
         bool rc = true;
 
@@ -1404,17 +1404,6 @@ internal class P8086
                     rc = false;
                 }
             }
-
-            if (_rep == false)
-            {
-                _segment_override_set = false;
-                _segment_override_name = "";
-            }
-        }
-        else
-        {
-            _segment_override_set = false;
-            _segment_override_name = "";
         }
 
         _rep_do_nothing = false;
@@ -1423,6 +1412,15 @@ internal class P8086
             _ip = _rep_addr;
 
         return rc;
+    }
+
+    public void PrefixEnd()
+    {
+        if (_rep == false)
+        {
+            _segment_override_set = false;
+            _segment_override_name = "";
+        }
     }
 
     // cycle counts from https://zsmith.co/intel_i.php
@@ -2027,7 +2025,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
         }
         else if (opcode == 0xa4)
         {
-            if (REP_must_run())
+            if (PrefixMustRun())
             {
                 // MOVSB
                 ushort segment = _segment_override_set ? _segment_override : _ds;
@@ -2035,7 +2033,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 WriteMemByte(_es, _di, v);
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_name} {segment * 16 + _si:X6} -> {_es * 16 + _di:X6}");
+                Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_set}: {_segment_override_name} {segment * 16 + _si:X6} -> {_es * 16 + _di:X6}");
 #endif
 
                 _si += (ushort)(GetFlagD() ? -1 : 1);
@@ -2043,11 +2041,11 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
 
                 cycle_count += 18;
             }
-        Log.DoLog($"AFTER instruction: {_ip:X}");
+            PrefixEnd();
         }
         else if (opcode == 0xa5)
         {
-            if (REP_must_run())
+            if (PrefixMustRun())
             {
                 // MOVSW
                 WriteMemWord(_es, _di, ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
@@ -2061,10 +2059,11 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} MOVSW");
 #endif
             }
+            PrefixEnd();
         }
         else if (opcode == 0xa6)
         {
-            if (REP_must_run())
+            if (PrefixMustRun())
             {
                 // CMPSB
                 byte v1 = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
@@ -2083,10 +2082,11 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')}) {GetCX()}");
 #endif
             }
+            PrefixEnd();
         }
         else if (opcode == 0xa7)
         {
-            if (REP_must_run())
+            if (PrefixMustRun())
             {
                 // CMPSW
                 ushort v1 = ReadMemWord(_segment_override_set ? _segment_override : _ds, _si);
@@ -2105,6 +2105,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} CMPSW (${v1:X4},${v2:X4})");
 #endif
             }
+            PrefixEnd();
         }
         else if (opcode == 0xe3)
         {
@@ -2546,7 +2547,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
         }
         else if (opcode == 0xac)
         {
-            if (REP_must_run())
+            if (PrefixMustRun())
             {
                 // LODSB
                 _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
@@ -2559,10 +2560,11 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} LODSB");
 #endif
             }
+            PrefixEnd();
         }
         else if (opcode == 0xad)
         {
-            if (REP_must_run())
+            if (PrefixMustRun())
             {
                 // LODSW
                 SetAX(ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
@@ -2575,6 +2577,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} LODSW");
 #endif
             }
+            PrefixEnd();
         }
         else if (opcode == 0xc2 || opcode == 0xc0)
         {
@@ -3441,7 +3444,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
         }
         else if (opcode == 0xaa)
         {
-            if (REP_must_run())
+            if (PrefixMustRun())
             {
                 // STOSB
                 WriteMemByte(_es, _di, _al);
@@ -3454,10 +3457,11 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} STOSB");
 #endif
             }
+            PrefixEnd();
         }
         else if (opcode == 0xab)
         {
-            if (REP_must_run())
+            if (PrefixMustRun())
             {
                 // STOSW
                 WriteMemWord(_es, _di, GetAX());
@@ -3470,10 +3474,11 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} STOSW");
 #endif
             }
+            PrefixEnd();
         }
         else if (opcode == 0xae)
         {
-            if (REP_must_run())
+            if (PrefixMustRun())
             {
                 // SCASB
                 byte v = ReadMemByte(_es, _di);
@@ -3490,10 +3495,11 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} SCASB");
 #endif
             }
+            PrefixEnd();
         }
         else if (opcode == 0xaf)
         {
-            if (REP_must_run())
+            if (PrefixMustRun())
             {
                 // SCASW
                 ushort ax = GetAX();
@@ -3511,6 +3517,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 Log.DoLog($"{prefixStr} SCASW");
 #endif
             }
+            PrefixEnd();
         }
         else if (opcode == 0xc6 || opcode == 0xc7)
         {
