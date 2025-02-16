@@ -1556,7 +1556,7 @@ internal class P8086
             }
 
             if (_segment_override_set)
-                Log.DoLog($"segment override to {_segment_override_name}: {_ds:X4}, opcode(s): {opcode:X2} {HexDump(address, false):X2}");
+                Log.DoLog($"segment override to {_segment_override_name}: {_segment_override:X4}, opcode(s): {opcode:X2} {HexDump(address, false):X2}");
 
             if (_rep)
                 Log.DoLog($"repetition mode {_rep_mode}, addr {_rep_addr:X4}, instr start {instr_start:X4}");
