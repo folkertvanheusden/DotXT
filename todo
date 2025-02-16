@@ -1,3 +1,37 @@
+/home/folkert/t/8088/v2/D2.5.json  SHR byte
+/home/folkert/t/8088/v2/D3.5.json  SHR word
+
+/home/folkert/t/8088/v2/D8.json  ESC
+/home/folkert/t/8088/v2/D9.json  ESC
+/home/folkert/t/8088/v2/DA.json  ESC
+/home/folkert/t/8088/v2/DC.json  ESC
+/home/folkert/t/8088/v2/DD.json  ESC  ?
+/home/folkert/t/8088/v2/DE.json  ESC
+/home/folkert/t/8088/v2/DF.json  ESC
+
+/home/folkert/t/8088/v2/E5.json  IN
+/home/folkert/t/8088/v2/ED.json  IN  problematic to test due to devices
+
+/home/folkert/t/8088/v2/F6.6.json  DIV
+/home/folkert/t/8088/v2/F6.7.json  IDIV
+/home/folkert/t/8088/v2/F7.6.json  DIV
+/home/folkert/t/8088/v2/F7.7.json  IDIV
+
+/home/folkert/t/8088/v2/FF.2.json  CALL
+
+/home/folkert/t/8088/v2/FF.6.json
+/home/folkert/t/8088/v2/FF.7.json: een divide kan een interrupt geven. als er dan unspecified flags op de stack worden gepushed, dan geeft dat een memory-verschil in de testset.
+           (if you don't implement the unspecified flags, then anything that triggers an interrupt (e.g. divide by something invalid) causes a push of semi-invalid flags to memory which will be seen as a memory-difference)
+                                   ---> REP (negative quotient) not implemented
+
+
+if device no longer sets irq, then look at _pic.RequestInterruptPIC() versus CheckScheduledInterrupt
+
+DMA & floppy: things can set up dma for less data than the FDC is asked to retrieve probably only see this on copy-protected stuff
+
+https://drive.google.com/file/d/11DCUg-mCqgyUSTISxcwdZ379qGu-7cqe/view?usp=sharing
+
+
 ac94c8d976f9bcaa213f154e28135bc7b776dffa
 
 
