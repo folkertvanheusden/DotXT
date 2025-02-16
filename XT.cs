@@ -3170,27 +3170,29 @@ internal class P8086
                 // IDIV
                 if (word) {
                     int dx_ax = (GetDX() << 16) | GetAX();
+                    int r1s = (int)(short)r1;
 
-                    if (r1 == 0 || dx_ax / r1 >= 0x10000)
+                    if (r1s == 0 || dx_ax / r1s > 0x7fff || dx_ax / r1s < 0x8000)
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     else
                     {
-                        SetAX((ushort)(dx_ax / r1));
-                        SetDX((ushort)(dx_ax % r1));
+                        SetAX((ushort)(dx_ax / r1s));
+                        SetDX((ushort)(dx_ax % r1s));
                     }
                 }
                 else {
                     short ax = (short)GetAX();
+                    short r1s = (short)r1;
 
-                    if (r1 == 0 || ax / r1 > 0x100)
+                    if (r1s == 0 || ax / r1s > 0x7f || ax / r1s < 0x80)
                     {
                         Log.DoLog($"r1 {r1}, ax {ax} -> interrupt");
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
                     {
-                        _al = (byte)(ax / r1);
-                        _ah = (byte)(ax % r1);
+                        _al = (byte)(ax / r1s);
+                        _ah = (byte)(ax % r1s);
                     }
                 }
 
