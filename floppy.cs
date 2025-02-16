@@ -242,7 +242,7 @@ class FloppyDisk : Device
                     Log.DoLog($"Floppy-OUT command SENSE INTERRUPT STATUS");
                     _data = new byte[2];
                     _data[0] = (byte)(_just_resetted ? 0xc0 : 0x20);  // TODO | drive_number
-                    _data[1] = 0;  // cylinder number
+                    _data[1] = (byte)_cylinder;
                     _data_offset = 0;
                     _data_state = DataState.HaveData;
                     want_interrupt = true;
