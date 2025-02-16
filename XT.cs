@@ -1396,9 +1396,6 @@ internal class P8086
 
         _rep_do_nothing = false;
 
-        if (_rep)
-            _ip = _rep_addr;
-
         return rc;
     }
 
@@ -1426,6 +1423,9 @@ internal class P8086
             _segment_override_set = false;
             _segment_override_name = "";
         }
+
+        if (_rep)
+            _ip = _rep_addr;
     }
 
     // cycle counts from https://zsmith.co/intel_i.php
@@ -3603,9 +3603,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 countName = "CL";
             }
 
-            // which one is correct? dosbox and cpu_test from 'riapyx' use the 2nd definition
-            //bool count_1_of = opcode is (0xd0 or 0xd1);
-            bool count_1_of = count == 1;
+            bool count_1_of = opcode is (0xd0 or 0xd1);
 
             bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
