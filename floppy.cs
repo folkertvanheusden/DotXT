@@ -130,7 +130,7 @@ class FloppyDisk : Device
     {
         int sector = _data[4];
         int head = (_data[1] & 4) == 4 ? 1 : 0;
-        int lba = (_cylinder * 2 + _head) * 9 + sector - 1;
+        int lba = (_cylinder * 2 + head) * 9 + sector - 1;
         int n = _data[5];
 
 #if DEBUG
