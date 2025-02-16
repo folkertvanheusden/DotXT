@@ -130,12 +130,12 @@ class FloppyDisk : Device
     {
         int sector = _data[4];
         int head = (_data[1] & 4) == 4 ? 1 : 0;
-        int lba = (_cylinder * 2 + head) * 9 + sector - 1;
+        int lba = (_cylinder * 2 + _head) * 9 + sector - 1;
         int n = _data[5];
 
 #if DEBUG
         Log.DoLog($"Floppy-ReadData HS {_data[1] & 4:X02} C {_data[2]} H {_data[3]} R {_data[4]}");
-        Log.DoLog($"Floppy-ReadData SEEK H {head} C {_cylinder}");
+        Log.DoLog($"Floppy-ReadData SEEK H {_head} C {_cylinder}");
         Log.DoLog($"Floppy-ReadData LBA {lba}, offset {lba * 512}");
 #endif
 
@@ -199,6 +199,16 @@ class FloppyDisk : Device
         _cylinder = _data[2];
         Log.DoLog($"Floppy SEEK to head {_head} cylinder {_cylinder}");
         return true;
+    }
+
+    public void DumpReply()
+    {
+#if DEBUG
+        string str = "";
+        for(int i=0; i<_data.Length; i++)
+            str += $" {_data[i]:X02}";
+        Log.DoLog($"Floppy-reply:{str}");
+#endif
     }
 
     public override bool IO_Write(ushort port, byte value)
@@ -303,10 +313,12 @@ class FloppyDisk : Device
                     if (_data[0] == 0x06)  // READ DATA
                     {
                         want_interrupt |= ReadData();
+                        DumpReply();
                     }
                     else if (_data[0] == 0x0f)  // SEEK
                     {
                         want_interrupt |= Seek();
+                        DumpReply();
                     }
                     else if (_data[0] == 0x03)  // SPECIFY
                     {
