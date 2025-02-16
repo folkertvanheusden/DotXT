@@ -17,7 +17,7 @@
 /home/folkert/t/8088/v2/F7.6.json  DIV
 /home/folkert/t/8088/v2/F7.7.json  IDIV
 
-/home/folkert/t/8088/v2/FF.2.json  CALL
+/home/folkert/t/8088/v2/FF.2.json  CALL SP
 
 /home/folkert/t/8088/v2/FF.6.json
 /home/folkert/t/8088/v2/FF.7.json: een divide kan een interrupt geven. als er dan unspecified flags op de stack worden gepushed, dan geeft dat een memory-verschil in de testset.
