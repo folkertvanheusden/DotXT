@@ -1354,6 +1354,80 @@ internal class P8086
         return _rep;
     }
 
+    public bool PrefixMustRun()
+    {
+        bool rc = true;
+
+        if (_rep)
+        {
+            ushort cx = GetCX();
+
+            if (_rep_do_nothing)
+            {
+                _rep = false;
+                rc = false;
+            }
+            else
+            {
+                cx--;
+                SetCX(cx);
+
+                if (cx == 0)
+                {
+                    _rep = false;
+                }
+                else if (_rep_mode == RepMode.REPE_Z)
+                {
+                }
+                else if (_rep_mode == RepMode.REPNZ)
+                {
+                }
+                else if (_rep_mode == RepMode.REP)
+                {
+                }
+                else
+                {
+                    Log.DoLog($"unknown _rep_mode {_rep_mode}");
+                    _rep = false;
+                    rc = false;
+                }
+            }
+        }
+
+        _rep_do_nothing = false;
+
+        return rc;
+    }
+
+    public void PrefixEnd()
+    {
+        if (_rep_mode == RepMode.REPE_Z)
+        {
+            // REPE/REPZ
+            if (GetFlagZ() != true)
+            {
+                _rep = false;
+            }
+        }
+        else if (_rep_mode == RepMode.REPNZ)
+        {
+            // REPNZ
+            if (GetFlagZ() != false)
+            {
+                _rep = false;
+            }
+        }
+
+        if (_rep == false)
+        {
+            _segment_override_set = false;
+            _segment_override_name = "";
+        }
+
+        if (_rep)
+            _ip = _rep_addr;
+    }
+
     // cycle counts from https://zsmith.co/intel_i.php
     public bool Tick()
     {
@@ -1394,10 +1468,7 @@ internal class P8086
         Log.SetAddress(address);
 
         byte opcode = GetPcByte();
-
-        // ^ address must increase!
-        if (_rep)
-            opcode = _rep_opcode;  // TODO: redundant assignment? _ip should've pointed already at 'this' instruction
+Log.DoLog($"Opcode {opcode:X02} at address {address:X06}");
 
         // handle prefixes
         while (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
@@ -1439,7 +1510,7 @@ internal class P8086
             Log.SetAddress(address);
 
             byte next_opcode = GetPcByte();
-
+Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             _rep_opcode = next_opcode;  // TODO: only allow for certain instructions
 
             if (opcode == 0xf2)
@@ -1448,7 +1519,6 @@ internal class P8086
                 if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
                 {
                     _rep_mode = RepMode.REPNZ;
-
                     Log.DoLog($"REPNZ: {_cs:X4}:{_rep_addr:X4}");
                 }
                 else
@@ -1480,32 +1550,25 @@ internal class P8086
                 Log.DoLog($"segment override to {_segment_override_name}: {_ds:X4}, opcode(s): {opcode:X2} {HexDump(address, false):X2}");
 
             if (_rep)
-                Log.DoLog($"repetition mode {_rep_mode}, addr {_rep_addr:X4}");
+                Log.DoLog($"repetition mode {_rep_mode}, addr {_rep_addr:X4}, instr start {instr_start:X4}");
 
             opcode = next_opcode;
         }
 
 #if DEBUG
         string annotation = _b.GetAnnotation(address);
-
         if (annotation != null)
             Log.DoLog($"; Annotation: {annotation}", true);
 
         string script = _b.GetScript(address);
-
         if (script != null)
             RunScript(script);
 
-        //        string mem = HexDump(address, false);
-        //        string stk = HexDump((uint)(_ss * 16 + _sp), true);
-
-        //        Log.DoLog($"{mem}", true);
-        //        Log.DoLog($"{_ss * 16 + _sp:X6}: {stk}", true);
-
-        //        Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}", true);
+        if (_rep)
+            Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}", true);
 
         string prefixStr =
-            $"{flagStr} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4}, ES:{_es:X4}, CS:{_cs:X4}, SS:{_ss:X4}, DS:{_ds:X4} IP:{instr_start:X4} | ";
+            $"{flagStr} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4} ES:{_es:X4} CS:{_cs:X4} SS:{_ss:X4} DS:{_ds:X4} IP:{instr_start:X4} | ";
 #else
         string prefixStr = "";
 #endif
@@ -1967,7 +2030,7 @@ internal class P8086
         }
         else if (opcode == 0xa4)
         {
-            if (!_rep_do_nothing)
+            if (PrefixMustRun())
             {
                 // MOVSB
                 ushort segment = _segment_override_set ? _segment_override : _ds;
@@ -1975,7 +2038,7 @@ internal class P8086
                 WriteMemByte(_es, _di, v);
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_name} {segment * 16 + _si:X6} -> {_es * 16 + _di:X6}");
+                Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_set}: {_segment_override_name} {segment * 16 + _si:X6} -> {_es * 16 + _di:X6}");
 #endif
 
                 _si += (ushort)(GetFlagD() ? -1 : 1);
@@ -1986,7 +2049,7 @@ internal class P8086
         }
         else if (opcode == 0xa5)
         {
-            if (!_rep_do_nothing)
+            if (PrefixMustRun())
             {
                 // MOVSW
                 WriteMemWord(_es, _di, ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
@@ -2003,7 +2066,7 @@ internal class P8086
         }
         else if (opcode == 0xa6)
         {
-            if (!_rep_do_nothing)
+            if (PrefixMustRun())
             {
                 // CMPSB
                 byte v1 = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
@@ -2025,7 +2088,7 @@ internal class P8086
         }
         else if (opcode == 0xa7)
         {
-            if (!_rep_do_nothing)
+            if (PrefixMustRun())
             {
                 // CMPSW
                 ushort v1 = ReadMemWord(_segment_override_set ? _segment_override : _ds, _si);
@@ -2485,7 +2548,7 @@ internal class P8086
         }
         else if (opcode == 0xac)
         {
-            if (!_rep_do_nothing)
+            if (PrefixMustRun())
             {
                 // LODSB
                 _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, _si);
@@ -2501,7 +2564,7 @@ internal class P8086
         }
         else if (opcode == 0xad)
         {
-            if (!_rep_do_nothing)
+            if (PrefixMustRun())
             {
                 // LODSW
                 SetAX(ReadMemWord(_segment_override_set ? _segment_override : _ds, _si));
@@ -3380,7 +3443,7 @@ internal class P8086
         }
         else if (opcode == 0xaa)
         {
-            if (!_rep_do_nothing)
+            if (PrefixMustRun())
             {
                 // STOSB
                 WriteMemByte(_es, _di, _al);
@@ -3396,7 +3459,7 @@ internal class P8086
         }
         else if (opcode == 0xab)
         {
-            if (!_rep_do_nothing)
+            if (PrefixMustRun())
             {
                 // STOSW
                 WriteMemWord(_es, _di, GetAX());
@@ -3412,13 +3475,11 @@ internal class P8086
         }
         else if (opcode == 0xae)
         {
-            if (!_rep_do_nothing)
+            if (PrefixMustRun())
             {
                 // SCASB
                 byte v = ReadMemByte(_es, _di);
-
                 int result = _al - v;
-
                 SetAddSubFlags(false, _al, v, result, true, false);
 
                 _di += (ushort)(GetFlagD() ? -1 : 1);
@@ -3432,14 +3493,12 @@ internal class P8086
         }
         else if (opcode == 0xaf)
         {
-            if (!_rep_do_nothing)
+            if (PrefixMustRun())
             {
                 // SCASW
                 ushort ax = GetAX();
                 ushort v = ReadMemWord(_es, _di);
-
                 int result = ax - v;
-
                 SetAddSubFlags(true, ax, v, result, true, false);
 
                 _di += (ushort)(GetFlagD() ? -2 : 2);
@@ -3544,9 +3603,7 @@ internal class P8086
                 countName = "CL";
             }
 
-            // which one is correct? dosbox and cpu_test from 'riapyx' use the 2nd definition
-            //bool count_1_of = opcode is (0xd0 or 0xd1);
-            bool count_1_of = count == 1;
+            bool count_1_of = opcode is (0xd0 or 0xd1);
 
             bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
@@ -4387,63 +4444,7 @@ internal class P8086
             Log.DoLog($"{prefixStr} opcode {opcode:x} not implemented");
         }
 
-        if (_rep)
-        {
-            ushort cx = GetCX();
-
-            if (_rep_do_nothing)
-                _rep = false;
-            else
-            {
-                cx--;
-                SetCX(cx);
-
-                if (cx == 0)
-                {
-                    _rep = false;
-                    _rep_do_nothing = true;
-                    _ip = _rep_addr;
-                }
-                else if (_rep_mode == RepMode.REPE_Z)
-                {
-                    // REPE/REPZ
-                    if (GetFlagZ() == true)
-                        _ip = _rep_addr;
-                    else
-                        _rep = false;
-                }
-                else if (_rep_mode == RepMode.REPNZ)
-                {
-                    // REPNZ
-                    if (GetFlagZ() == false)
-                        _ip = _rep_addr;
-                    else
-                        _rep = false;
-                }
-                else if (_rep_mode == RepMode.REP)
-                {
-                    _ip = _rep_addr;
-                }
-                else
-                {
-                    Log.DoLog($"{prefixStr} unknown _rep_mode {(int)_rep_mode}");
-                    _rep = false;
-                }
-            }
-
-            if (_rep == false)
-            {
-                _segment_override_set = false;
-                _segment_override_name = "";
-            }
-        }
-        else
-        {
-            _segment_override_set = false;
-            _segment_override_name = "";
-        }
-
-        _rep_do_nothing = false;
+        PrefixEnd();
 
         if (cycle_count == 0)
             cycle_count = 1;  // TODO workaround

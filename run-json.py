@@ -86,13 +86,12 @@ for set in j:
         second_byte = b[byte_offset + 1]
         reg = f'{(second_byte >> 3) & 7}'
 
-        if 'flags-mask' in jm[first_byte]['reg'][reg]:
-            flags_mask = int(jm[first_byte]['reg'][reg]['flags-mask'])
+        if 'flags-mask' in jm['opcodes'][first_byte]['reg'][reg]:
+            flags_mask = int(jm['opcodes'][first_byte]['reg'][reg]['flags-mask'])
 
     else:
-        if first_byte in jm:
-            if 'flags-mask' in jm[first_byte]:
-                flags_mask = int(jm[first_byte]['flags-mask'])
+        if 'flags-mask' in jm['opcodes'][first_byte]:
+            flags_mask = int(jm['opcodes'][first_byte]['flags-mask'])
 
     initial = set['initial']
 
@@ -145,7 +144,9 @@ for set in j:
             log(f': {result} (emulator (hex: {result:04x})) != {value} (test set (hex: {value:04x}))')
             ok = False
 
-    if not ok:
+    if ok:
+        log(f'dolog OK {set["name"]}')
+    else:
         for reg in regs:
             if final["regs"][reg] == is_[reg]:
                 continue
