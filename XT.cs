@@ -3118,10 +3118,11 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                     name1 = "DX:AX";
                 }
                 else {
-                    int result = _al * (short)r1;
+                    int result = (sbyte)_al * (short)(sbyte)r1;
                     SetAX((ushort)result);
 
-                    bool flag = _ah != 0;
+                    SetFlagS((_ah & 128) == 128);
+                    bool flag = (short)(sbyte)_al != (short)result;
                     SetFlagC(flag);
                     SetFlagO(flag);
                 }
@@ -3668,7 +3669,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 // RCL
                 for (int i = 0; i < count; i++)
                 {
-                    bool newCarry = (v1 & check_bit) == check_bit;
+                    bool new_carry = (v1 & check_bit) == check_bit;
                     v1 <<= 1;
 
                     bool oldCarry = GetFlagC();
@@ -3676,7 +3677,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                     if (oldCarry)
                         v1 |= 1;
 
-                    SetFlagC(newCarry);
+                    SetFlagC(new_carry);
                 }
 
                 if (count_1_of)
@@ -3693,7 +3694,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 // RCR
                 for (int i = 0; i < count; i++)
                 {
-                    bool newCarry = (v1 & 1) == 1;
+                    bool new_carry = (v1 & 1) == 1;
                     v1 >>= 1;
 
                     bool oldCarry = GetFlagC();
@@ -3701,7 +3702,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                     if (oldCarry)
                         v1 |= (ushort)(word ? 0x8000 : 0x80);
 
-                    SetFlagC(newCarry);
+                    SetFlagC(new_carry);
                 }
 
                 if (count_1_of)
@@ -3720,9 +3721,9 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 // SAL/SHL
                 for (int i = 0; i < count; i++)
                 {
-                    bool newCarry = (v1 & check_bit) == check_bit;
+                    bool new_carry = (v1 & check_bit) == check_bit;
                     v1 <<= 1;
-                    SetFlagC(newCarry);
+                    SetFlagC(new_carry);
                 }
 
                 set_flags = count != 0;
@@ -3739,20 +3740,19 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             }
             else if (mode == 5)
             {
-                int temp_count = count & count_mask;
+                ushort org_v1 = v1;
 
                 // SHR
                 for (int i = 0; i < count; i++)
                 {
-                    bool newCarry = (v1 & 1) == 1;
+                    bool new_carry = (v1 & 1) == 1;
                     v1 >>= 1;
-                    SetFlagC(newCarry);
+                    SetFlagC(new_carry);
                 }
 
                 set_flags = count != 0;
 
-                if (set_flags)
-                    SetFlagO((v1 & check_bit) != 0);
+                SetFlagO((org_v1 & check_bit) != 0);
 
                 cycle_count += 2;
 
@@ -3803,10 +3803,10 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
 
                 for (int i = 0; i < count; i++)
                 {
-                    bool newCarry = (v1 & 0x01) == 0x01;
+                    bool new_carry = (v1 & 0x01) == 0x01;
                     v1 >>= 1;
                     v1 |= mask;
-                    SetFlagC(newCarry);
+                    SetFlagC(new_carry);
                 }
 
                 set_flags = count != 0;
