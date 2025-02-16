@@ -159,6 +159,11 @@ internal class P8086
         _flags |= 2;
     }
 
+    public string SegmentAddr(ushort seg, ushort a)
+    {
+        return $"{seg:X04}:{a:X04}";
+    }
+
     public void set_ip(ushort cs, ushort ip)
     {
         Log.DoLog($"Set CS/IP to {cs:X4}:{ip:X4}", true);
@@ -749,7 +754,7 @@ internal class P8086
 
             cycles += 6;
 
-            name += $" ({_segment_override_name}:${segment * 16 + a:X6} -> {v:X4})";
+            name += $" ({_segment_override_name}:${SegmentAddr(segment, a)} -> {v:X4})";
 
             return (v, name, true, segment, a, cycles);
         }
@@ -782,7 +787,7 @@ internal class P8086
 
             cycles += 6;
 
-            name += $" ({_segment_override_name}:${segment * 16 + a:X6} -> {v:X4})";
+            name += $" ({_segment_override_name}:${SegmentAddr(segment, a)} -> {v:X4})";
 
             return (v, name, true, segment, a, cycles);
         }
@@ -1399,23 +1404,30 @@ internal class P8086
         return rc;
     }
 
-    public void PrefixEnd()
+    public void PrefixEnd(byte opcode)
     {
-        if (_rep_mode == RepMode.REPE_Z)
+        if (opcode is (0xa4 or 0xa5 or 0xa6 or 0xa7 or 0xaa or 0xab or 0xac or 0xad or 0xae or 0xaf))
         {
-            // REPE/REPZ
-            if (GetFlagZ() != true)
+            if (_rep_mode == RepMode.REPE_Z)
             {
-                _rep = false;
+                // REPE/REPZ
+                if (GetFlagZ() != true)
+                {
+                    _rep = false;
+                }
+            }
+            else if (_rep_mode == RepMode.REPNZ)
+            {
+                // REPNZ
+                if (GetFlagZ() != false)
+                {
+                    _rep = false;
+                }
             }
         }
-        else if (_rep_mode == RepMode.REPNZ)
+        else
         {
-            // REPNZ
-            if (GetFlagZ() != false)
-            {
-                _rep = false;
-            }
+            _rep = false;
         }
 
         if (_rep == false)
@@ -1465,10 +1477,8 @@ internal class P8086
 
         ushort instr_start = _ip;
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
-        Log.SetAddress(address);
-
+        Log.SetAddress(_cs, _ip);
         byte opcode = GetPcByte();
-Log.DoLog($"Opcode {opcode:X02} at address {address:X06}");
 
         // handle prefixes
         while (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
@@ -1507,10 +1517,9 @@ Log.DoLog($"Opcode {opcode:X02} at address {address:X06}");
             }
 
             address = (uint)(_cs * 16 + _ip) & MemMask;
-            Log.SetAddress(address);
-
+            Log.SetAddress(_cs, _ip);
             byte next_opcode = GetPcByte();
-Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
+
             _rep_opcode = next_opcode;  // TODO: only allow for certain instructions
 
             if (opcode == 0xf2)
@@ -2038,7 +2047,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 WriteMemByte(_es, _di, v);
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_set}: {_segment_override_name} {segment * 16 + _si:X6} -> {_es * 16 + _di:X6}");
+                Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_set}: {_segment_override_name} {SegmentAddr(segment, _si)} -> {SegmentAddr(_es, _di)}");
 #endif
 
                 _si += (ushort)(GetFlagD() ? -1 : 1);
@@ -2675,9 +2684,9 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
 
 #if DEBUG
                 if (opcode == 0xce)
-                    Log.DoLog($"{prefixStr} INTO {@int:X2} -> ${_cs * 16 + _ip:X6} (from {addr:X4})");
+                    Log.DoLog($"{prefixStr} INTO {@int:X2} -> {SegmentAddr(_cs, _ip)} (from {addr:X4})");
                 else
-                    Log.DoLog($"{prefixStr} INT {@int:X2} -> ${_cs * 16 + _ip:X6} (from {addr:X4})");
+                    Log.DoLog($"{prefixStr} INT {@int:X2} -> {SegmentAddr(_cs, _ip)} (from {addr:X4})");
 #endif
             }
         }
@@ -2983,7 +2992,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             cycle_count += 16;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} CALL {a:X4} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
+            Log.DoLog($"{prefixStr} CALL {a:X4} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
 #endif
         }
         else if (opcode == 0xea)
@@ -2998,7 +3007,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             cycle_count += 15;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} JMP ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
+            Log.DoLog($"{prefixStr} JMP ${_cs:X} ${_ip:X}: {SegmentAddr(_cs, _ip)}");
 #endif
         }
         else if (opcode == 0xf6 || opcode == 0xf7)
@@ -3156,6 +3165,37 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
 
                 cmd_name = "DIV";
             }
+            else if (function == 7)
+            {
+                // IDIV
+                if (word) {
+                    int dx_ax = (GetDX() << 16) | GetAX();
+
+                    if (r1 == 0 || dx_ax / r1 >= 0x10000)
+                        InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
+                    else
+                    {
+                        SetAX((ushort)(dx_ax / r1));
+                        SetDX((ushort)(dx_ax % r1));
+                    }
+                }
+                else {
+                    short ax = (short)GetAX();
+
+                    if (r1 == 0 || ax / r1 > 0x100)
+                    {
+                        Log.DoLog($"r1 {r1}, ax {ax} -> interrupt");
+                        InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
+                    }
+                    else
+                    {
+                        _al = (byte)(ax / r1);
+                        _ah = (byte)(ax % r1);
+                    }
+                }
+
+                cmd_name = "IDIV";
+            }
             else
             {
                 Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented");
@@ -3164,7 +3204,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             cycle_count += 4;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {cmd_name} {name1}{name2}");
+            Log.DoLog($"{prefixStr} {cmd_name} {name1}{name2} word:{word}");
 #endif
         }
         else if (opcode == 0xfa)
@@ -4020,7 +4060,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             }
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {name} {to} ({_cs:X4}:{newAddress:X4} -> {_cs * 16 + newAddress:X6})");
+            Log.DoLog($"{prefixStr} {name} {to} ({_cs:X4}:{newAddress:X4} -> {SegmentAddr(_cs, newAddress)})");
 #endif
         }
         else if (opcode == 0xd7)
@@ -4355,7 +4395,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 cycle_count += 16;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
+                Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
 #endif
             }
             else if (function == 3)
@@ -4372,7 +4412,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 cycle_count += 37;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> ${_cs * 16 + _ip:X6})");
+                Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
 #endif
             }
             else if (function == 4)
@@ -4425,7 +4465,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             Log.DoLog($"{prefixStr} opcode {opcode:x} not implemented");
         }
 
-        PrefixEnd();
+        PrefixEnd(opcode);
 
         if (cycle_count == 0)
             cycle_count = 1;  // TODO workaround
