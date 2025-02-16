@@ -3115,7 +3115,7 @@ internal class P8086
                     SetAX((ushort)dx_ax);
                     SetDX((ushort)(dx_ax >> 16));
 
-                    bool flag = GetDX() != 0;
+                    bool flag = (int)(short)GetAX() != resulti;
                     SetFlagC(flag);
                     SetFlagO(flag);
 
@@ -3204,7 +3204,10 @@ internal class P8086
             cycle_count += 4;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {cmd_name} {name1}{name2} word:{word}");
+            if (name2 != "")
+                Log.DoLog($"{prefixStr} {cmd_name} {name1},{name2} word:{word}");
+            else
+                Log.DoLog($"{prefixStr} {cmd_name} {name1} word:{word}");
 #endif
         }
         else if (opcode == 0xfa)
