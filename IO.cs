@@ -397,12 +397,10 @@ internal class i8237
         {
             v = _channel_address_register[addr / 2].Get();
         }
-
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
         {
             v = _channel_word_count[addr / 2].Get();
         }
-
         else if (addr == 8)  // status register
         {
             Log.DoLog($"i8237_IN: read status register");
@@ -469,9 +467,11 @@ internal class i8237
 
         else if (addr == 0x0d)  // master reset
         {
+            Log.DoLog($"i8237_IN: MASTER RESET");
             reset_masks(true);
             _ff.reset();
-            // TODO: clear status
+            for(int i=0; i<4; i++)
+                _reached_tc[i] = false;
         }
 
         else if (addr == 0x0e)  // reset masks
@@ -536,8 +536,8 @@ internal class i8237
         count--;
         if (count == 0xffff)
         {
-            Log.DoLog($"i8237 SendToChannel channel {channel} count has reached -1, set tc");
-            _reached_tc[channel] = true;
+            //Log.DoLog($"i8237 SendToChannel channel {channel} count has reached -1, set tc");
+            //_reached_tc[channel] = true;
         }
         else
         {
@@ -649,18 +649,14 @@ class IO
     private pic8259 _pic;
     private i8237 _i8237;
     private PPI _ppi;
-
     private Bus _b;
-
+    private bool _test_mode = false;
     private Dictionary <ushort, byte> _values = new Dictionary <ushort, byte>();
-
     private Dictionary <ushort, Device> _io_map = new Dictionary <ushort, Device>();
-
     private List<Device> _devices;
-
     private int _clock;
 
-    public IO(Bus b, ref List<Device> devices)
+    public IO(Bus b, ref List<Device> devices, bool test_mode)
     {
         _b = b;
 
@@ -682,6 +678,8 @@ class IO
         }
 
         _devices = devices;
+
+        _test_mode = test_mode;
     }
 
     public pic8259 GetPIC()
@@ -691,6 +689,9 @@ class IO
 
     public (byte, bool) In(ushort addr)
     {
+        if (_test_mode)
+            return (255, false);
+
         // Log.DoLog($"IN: {addr:X4}", true);
 
         foreach(var device in _devices)

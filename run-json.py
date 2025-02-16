@@ -45,7 +45,7 @@ def val_to_flags(v):
     o += ')'
     return o
 
-process = Popen(['dotnet', 'run', '-c', 'Debug', '--', '-d', '-P', '-l', 'logfile.dat', '-x', 'blank', '-B'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
+process = Popen(['dotnet', 'run', '-c', 'Debug', '--', '-d', '-P', '-l', 'logfile.dat', '-x', 'blank', '-B', '-I'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
 process.stdin.write('echo\r\n'.encode('ascii'))  # disable echo
 
 def log(x):
@@ -163,4 +163,4 @@ for set in j:
         #process.stdin.write(f'q\r\n'.encode('ascii'))
         #sys.exit(1)
 
-sys.exit(0)
+sys.exit(1 if error_nr > 0 else 0)

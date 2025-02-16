@@ -75,13 +75,13 @@ internal class P8086
 
     private List<Device> _devices;
 
-    public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, ref List<Device> devices)
+    public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, ref List<Device> devices, bool run_IO)
     {
         _b = b;
 
         _devices = devices;
 
-        _io = new IO(b, ref devices);
+        _io = new IO(b, ref devices, !run_IO);
 
         // intercept also other ints besides keyboard/console access
         _intercept_int_flag = intercept_int_flag;

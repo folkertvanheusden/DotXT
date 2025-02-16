@@ -11,7 +11,7 @@ ushort initial_ip = 0;
 bool set_initial_ip = false;
 
 bool load_bios = true;
-
+bool run_IO = true;
 uint load_test_at = 0xffffffff;
 
 bool debugger = false;
@@ -26,6 +26,7 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-l file   log to file");
         Console.WriteLine("-i        intercept some of the BIOS calls");
         Console.WriteLine("-B        disable loading of the BIOS ROM images");
+        Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
         Console.WriteLine("-P        skip prompt");
         Console.WriteLine("-o cs,ip  start address (in hexadecimal)");
@@ -54,6 +55,8 @@ for(int i=0; i<args.Length; i++)
         Log.SetLogFile(args[++i]);
     else if (args[i] == "-i")
         intercept_int = true;
+    else if (args[i] == "-I")
+        run_IO = false;
     else if (args[i] == "-B")
         load_bios = false;
     else if (args[i] == "-d")
@@ -94,7 +97,12 @@ if (mode != TMode.Blank)
     devices.Add(new MDA());
     devices.Add(new CGA());
     devices.Add(new i8253());
-    devices.Add(new FloppyDisk("roms/002962_ms_dos_622/disk1.img"));
+    //devices.Add(new FloppyDisk("disks/002962_ms_dos_622/disk1.img"));
+    //devices.Add(new FloppyDisk("disks/msdos6_22disk1.img"));
+    //devices.Add(new FloppyDisk("disks/diags100.img"));
+    devices.Add(new FloppyDisk("disks/4.01-Setup.img"));
+    //devices.Add(new FloppyDisk("disks/3.21-disk1.img"));
+    //devices.Add(new FloppyDisk("disks/FD/720k/x86BOOT.img"));
     devices.Add(new Keyboard());
     devices.Add(new PPI());
 }
@@ -110,7 +118,7 @@ if (mode == TMode.Blank)
 // Bus gets the devices for memory mapped i/o
 Bus b = new Bus(ram_size, load_bios, ref devices);
 
-var p = new P8086(ref b, test, mode, load_test_at, intercept_int, !debugger, ref devices);
+var p = new P8086(ref b, test, mode, load_test_at, intercept_int, !debugger, ref devices, run_IO);
 
 if (set_initial_ip)
     p.set_ip(initial_cs, initial_ip);
