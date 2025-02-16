@@ -3007,20 +3007,16 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             bool word = (opcode & 1) == 1;
 
             byte o1 = GetPcByte();
-
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
 
             (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
-
             cycle_count += get_cycles;
 
             string name2 = "";
-
             string cmd_name = "error";
 
             int function = (o1 >> 3) & 7;
-
             if (function == 0 || function == 1)
             {
                 // TEST
@@ -3146,10 +3142,11 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 else {
                     ushort ax = GetAX();
 
-                    Log.DoLog($"r1 {r1}, ax {ax}");
-
                     if (r1 == 0 || ax / r1 > 0x100)
+                    {
+                        Log.DoLog($"r1 {r1}, ax {ax} -> interrupt");
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
+                    }
                     else
                     {
                         _al = (byte)(ax / r1);
