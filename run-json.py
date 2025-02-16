@@ -31,8 +31,8 @@ def flag(v, b, c):
         return c
     return '-'
 
-def val_to_flags(v):
-    o = f'{v} (hex: {v:04x}, '
+def flag_str(v):
+    o = ''
     o += flag(v, 11, 'o')
     o += flag(v, 10, 'D')
     o += flag(v,  9, 'I')
@@ -42,7 +42,10 @@ def val_to_flags(v):
     o += flag(v,  2, 'p')
     o += flag(v,  1, '1')
     o += flag(v,  0, 'c')
-    o += ')'
+    return o
+
+def val_to_flags(v, mask):
+    o = f'{v} (hex: {v:04x}, {flag_str(v)}, masked: {flag_str(v & mask)})'
     return o
 
 process = Popen(['dotnet', 'run', '-c', 'Debug', '--', '-d', '-P', '-l', 'logfile.dat', '-x', 'blank', '-B', '-I'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
@@ -151,9 +154,11 @@ for set in j:
             if final["regs"][reg] == is_[reg]:
                 continue
             if reg == 'flags':
-                log(f'{reg} was at start {val_to_flags(initial["regs"][reg])}, should have become {val_to_flags(final["regs"][reg])}, is: {val_to_flags(is_[reg])}')
+                if flags_mask == None:
+                    flags_mask = 65535
+                log(f'{reg} was {val_to_flags(initial["regs"][reg], flags_mask)}, should now be {val_to_flags(final["regs"][reg], flags_mask)}, is: {val_to_flags(is_[reg], flags_mask)}')
             else:
-                log(f'{reg} was at start {initial["regs"][reg]} (hex: {initial["regs"][reg]:04x}), should have become {final["regs"][reg]} (hex: {final["regs"][reg]:04x}), is: {is_[reg]} (hex: {is_[reg]:04x})')
+                log(f'{reg} was {initial["regs"][reg]} (hex: {initial["regs"][reg]:04x}), should now be {final["regs"][reg]} (hex: {final["regs"][reg]:04x}), is: {is_[reg]} (hex: {is_[reg]:04x})')
 
         log(f'dolog FAILED {set["name"]}, nr: {error_nr}/{test_nr}, {sys.argv[1]}\r\n')
         log('dolog');
