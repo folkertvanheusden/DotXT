@@ -3596,6 +3596,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
 
             int count = 1;
             string countName = "1";
+            int count_mask = 0x1f;
 
             if ((opcode & 2) == 2)
             {
@@ -3603,7 +3604,7 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 countName = "CL";
             }
 
-            bool count_1_of = opcode is (0xd0 or 0xd1);
+            bool count_1_of = opcode is (0xd0 or 0xd1 or 0xd2 or 0xd3);
 
             bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
 
@@ -3715,27 +3716,19 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             else if (mode == 4)
             {
                 ushort prev_v1 = v1;
+                int temp_count = count & count_mask;
 
                 // SAL/SHL
                 for (int i = 0; i < count; i++)
                 {
                     bool newCarry = (v1 & check_bit) == check_bit;
-
                     v1 <<= 1;
-
                     SetFlagC(newCarry);
                 }
 
-                if (count_1_of)
+                if (temp_count == 1)
                 {
-                    bool b7 = (prev_v1 & check_bit) != 0;
-                    bool b6 = (prev_v1 & check_bit2) != 0;
-
-#if DEBUG
-                    // Log.DoLog($"b6: {b6}, b7: {b7}: flagO: {b7 != b6}");
-#endif
-
-                    SetFlagO(b7 != b6);
+                    SetFlagO(((v1 & check_bit) == check_bit) ^ GetFlagC());
                 }
                 else
                 {
@@ -3752,20 +3745,20 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             }
             else if (mode == 5)
             {
-                // SHR
-                if (count_1_of)
-                    SetFlagO((v1 & check_bit) == check_bit);
+                int temp_count = count & count_mask;
 
+                // SHR
                 for (int i = 0; i < count; i++)
                 {
                     bool newCarry = (v1 & 1) == 1;
-
                     v1 >>= 1;
-
                     SetFlagC(newCarry);
                 }
 
                 set_flags = count != 0;
+
+                if (set_flags)
+                    SetFlagO((v1 & check_bit) != 0);
 
                 cycle_count += 2;
 
@@ -3817,17 +3810,14 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                 for (int i = 0; i < count; i++)
                 {
                     bool newCarry = (v1 & 0x01) == 0x01;
-
                     v1 >>= 1;
-
                     v1 |= mask;
-
                     SetFlagC(newCarry);
                 }
 
-                SetFlagO(false);
-
                 set_flags = count != 0;
+                if (set_flags)
+                    SetFlagO(false);
 
                 cycle_count += 2;
 
