@@ -3716,7 +3716,6 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
             else if (mode == 4)
             {
                 ushort prev_v1 = v1;
-                int temp_count = count & count_mask;
 
                 // SAL/SHL
                 for (int i = 0; i < count; i++)
@@ -3726,16 +3725,11 @@ Log.DoLog($"NEXT Opcode {next_opcode:X02} at address {address:X06}");
                     SetFlagC(newCarry);
                 }
 
-                if (temp_count == 1)
+                set_flags = count != 0;
+                if (set_flags)
                 {
                     SetFlagO(((v1 & check_bit) == check_bit) ^ GetFlagC());
                 }
-                else
-                {
-                    SetFlagO(false);  // undefined!
-                }
-
-                set_flags = count != 0;
 
                 cycle_count += 2;
 
