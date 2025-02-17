@@ -22,6 +22,7 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-T addr   sets the load-address for -t");
         Console.WriteLine("-x type   set type for -T: floppy, binary, blank");
         Console.WriteLine("-l file   log to file");
+        Console.WriteLine("-D file   disassemble to file");
         Console.WriteLine("-B        disable loading of the BIOS ROM images");
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
@@ -50,6 +51,8 @@ for(int i=0; i<args.Length; i++)
     }
     else if (args[i] == "-l")
         Log.SetLogFile(args[++i]);
+    else if (args[i] == "-D")
+        Log.SetDisassemblyFile(args[++i]);
     else if (args[i] == "-I")
         run_IO = false;
     else if (args[i] == "-B")
@@ -80,6 +83,10 @@ if (test == "")
     Console.WriteLine("DotXT, (C) 2023-2025 by Folkert van Heusden");
     Console.WriteLine("Released in the public domain");
 }
+
+Console.CancelKeyPress += delegate {
+    Log.EmitDisassembly();
+};
 
 #if DEBUG
 Console.WriteLine("Debug mode");

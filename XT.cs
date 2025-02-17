@@ -1310,7 +1310,7 @@ internal class P8086
                 if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
                 {
                     _rep_mode = RepMode.REPNZ;
-                    Log.DoLog($"REPNZ: {_cs:X4}:{_rep_addr:X4}");
+                    Log.DoLog($"REPNZ: {_cs:X4}:{_rep_addr:X4}", true);
                 }
                 else
                 {
@@ -1323,12 +1323,12 @@ internal class P8086
                 if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
                 {
                     _rep_mode = RepMode.REPE_Z;
-                    Log.DoLog($"REPZ: {_cs:X4}:{_rep_addr:X4}");
+                    Log.DoLog($"REPZ: {_cs:X4}:{_rep_addr:X4}", true);
                 }
                 else
                 {
                     _rep_mode = RepMode.REP;
-                    Log.DoLog($"REP: {_cs:X4}:{_rep_addr:X4}");
+                    Log.DoLog($"REP: {_cs:X4}:{_rep_addr:X4}", true);
                 }
             }
             else
@@ -1393,7 +1393,7 @@ internal class P8086
             _al = (byte)result;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {name} AL,${v:X2}");
+            Log.Disassemble(prefixStr, $" {name} AL,${v:X2}");
 #endif
         }
         else if (opcode == 0x05 || opcode == 0x15)
@@ -1426,7 +1426,7 @@ internal class P8086
             cycle_count += 3;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {name} AX,${v:X4}");
+            Log.Disassemble(prefixStr, $" {name} AX,${v:X4}");
 #endif
         }
         else if (opcode == 0x06)
@@ -1437,7 +1437,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH ES");
+            Log.Disassemble(prefixStr, $" PUSH ES");
 #endif
         }
         else if (opcode == 0x07)
@@ -1448,7 +1448,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP ES");
+            Log.Disassemble(prefixStr, $" POP ES");
 #endif
         }
         else if (opcode == 0x0e)
@@ -1459,7 +1459,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH CS");
+            Log.Disassemble(prefixStr, $" PUSH CS");
 #endif
         }
         else if (opcode == 0x0f)
@@ -1470,7 +1470,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP CS");
+            Log.Disassemble(prefixStr, $" POP CS");
 #endif
         }
         else if (opcode == 0x16)
@@ -1481,7 +1481,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH SS");
+            Log.Disassemble(prefixStr, $" PUSH SS");
 #endif
         }
         else if (opcode == 0x17)
@@ -1492,7 +1492,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP SS");
+            Log.Disassemble(prefixStr, $" POP SS");
 #endif
         }
         else if (opcode == 0x1c)
@@ -1514,7 +1514,7 @@ internal class P8086
             cycle_count += 3;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} SBB ${v:X4}");
+            Log.Disassemble(prefixStr, $" SBB ${v:X4}");
 #endif
         }
         else if (opcode == 0x1d)
@@ -1538,7 +1538,7 @@ internal class P8086
             cycle_count += 3;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} SBB ${v:X4}");
+            Log.Disassemble(prefixStr, $" SBB ${v:X4}");
 #endif
         }
         else if (opcode == 0x1e)
@@ -1549,7 +1549,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH DS");
+            Log.Disassemble(prefixStr, $" PUSH DS");
 #endif
         }
         else if (opcode == 0x1f)
@@ -1560,7 +1560,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP DS");
+            Log.Disassemble(prefixStr, $" POP DS");
 #endif
         }
         else if (opcode == 0x27)
@@ -1607,7 +1607,7 @@ internal class P8086
             cycle_count += 4;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} DAA");
+            Log.Disassemble(prefixStr, $" DAA");
 #endif
         }
         else if (opcode == 0x2c)
@@ -1624,7 +1624,7 @@ internal class P8086
             cycle_count += 3;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} SUB ${v:X2}");
+            Log.Disassemble(prefixStr, $" SUB ${v:X2}");
 #endif
         }
         else if (opcode == 0x2f)
@@ -1662,7 +1662,7 @@ internal class P8086
             cycle_count += 4;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} DAS");
+            Log.Disassemble(prefixStr, $" DAS");
 #endif
         }
         else if (opcode == 0x37)
@@ -1686,7 +1686,7 @@ internal class P8086
 
             cycle_count += 4;  // FIXME
 #if DEBUG
-            Log.DoLog($"{prefixStr} AAA");
+            Log.Disassemble(prefixStr, $" AAA");
 #endif
         }
         else if (opcode == 0x3f)
@@ -1709,7 +1709,7 @@ internal class P8086
 
             cycle_count += 4;  // FIXME
 #if DEBUG
-            Log.DoLog($"{prefixStr} AAS");
+            Log.Disassemble(prefixStr, $" AAS");
 #endif
         }
         else if (opcode == 0x2d)
@@ -1728,7 +1728,7 @@ internal class P8086
             cycle_count += 3;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} SUB ${v:X4}");
+            Log.Disassemble(prefixStr, $" SUB ${v:X4}");
 #endif
         }
         else if (opcode == 0x58)
@@ -1739,7 +1739,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP AX");
+            Log.Disassemble(prefixStr, $" POP AX");
 #endif
         }
         else if (opcode == 0x59)
@@ -1750,7 +1750,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP CX");
+            Log.Disassemble(prefixStr, $" POP CX");
 #endif
         }
         else if (opcode == 0x5a)
@@ -1761,7 +1761,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP DX");
+            Log.Disassemble(prefixStr, $" POP DX");
 #endif
         }
         else if (opcode == 0x5b)
@@ -1772,7 +1772,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP BX");
+            Log.Disassemble(prefixStr, $" POP BX");
 #endif
         }
         else if (opcode == 0x5c)
@@ -1783,7 +1783,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP SP");
+            Log.Disassemble(prefixStr, $" POP SP");
 #endif
         }
         else if (opcode == 0x5d)
@@ -1794,7 +1794,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP BP");
+            Log.Disassemble(prefixStr, $" POP BP");
 #endif
         }
         else if (opcode == 0x5e)
@@ -1805,7 +1805,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP SI");
+            Log.Disassemble(prefixStr, $" POP SI");
 #endif
         }
         else if (opcode == 0x5f)
@@ -1816,7 +1816,7 @@ internal class P8086
             cycle_count += 8;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP DI");
+            Log.Disassemble(prefixStr, $" POP DI");
 #endif
         }
         else if (opcode == 0xa4)
@@ -1829,7 +1829,7 @@ internal class P8086
                 WriteMemByte(_es, _di, v);
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_set}: {_segment_override_name} {SegmentAddr(segment, _si)} -> {SegmentAddr(_es, _di)}");
+                Log.Disassemble(prefixStr, $" MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_set}: {_segment_override_name} {SegmentAddr(segment, _si)} -> {SegmentAddr(_es, _di)}");
 #endif
 
                 _si += (ushort)(GetFlagD() ? -1 : 1);
@@ -1851,7 +1851,7 @@ internal class P8086
                 cycle_count += 18;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} MOVSW");
+                Log.Disassemble(prefixStr, $" MOVSW");
 #endif
             }
         }
@@ -1873,7 +1873,7 @@ internal class P8086
                 cycle_count += 22;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')}) {GetCX()}");
+                Log.Disassemble(prefixStr, $" CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')}) {GetCX()}");
 #endif
             }
         }
@@ -1895,7 +1895,7 @@ internal class P8086
                 cycle_count += 22;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} CMPSW (${v1:X4},${v2:X4})");
+                Log.Disassemble(prefixStr, $" CMPSW (${v1:X4},${v2:X4})");
 #endif
             }
         }
@@ -1917,7 +1917,7 @@ internal class P8086
             }
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} JCXZ {addr:X}");
+            Log.Disassemble(prefixStr, $" JCXZ {addr:X}");
 #endif
         }
         else if (opcode == 0xe9)
@@ -1930,7 +1930,7 @@ internal class P8086
             cycle_count += 15;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} JMP {_ip:X} ({offset:X4})");
+            Log.Disassemble(prefixStr, $" JMP {_ip:X} ({offset:X4})");
 #endif
         }
         else if (opcode == 0x50)
@@ -1941,7 +1941,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH AX");
+            Log.Disassemble(prefixStr, $" PUSH AX");
 #endif
         }
         else if (opcode == 0x51)
@@ -1952,7 +1952,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH CX");
+            Log.Disassemble(prefixStr, $" PUSH CX");
 #endif
         }
         else if (opcode == 0x52)
@@ -1963,7 +1963,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH DX");
+            Log.Disassemble(prefixStr, $" PUSH DX");
 #endif
         }
         else if (opcode == 0x53)
@@ -1974,7 +1974,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH BX");
+            Log.Disassemble(prefixStr, $" PUSH BX");
 #endif
         }
         else if (opcode == 0x54)
@@ -1988,7 +1988,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH SP");
+            Log.Disassemble(prefixStr, $" PUSH SP");
 #endif
         }
         else if (opcode == 0x55)
@@ -1999,7 +1999,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH BP");
+            Log.Disassemble(prefixStr, $" PUSH BP");
 #endif
         }
         else if (opcode == 0x56)
@@ -2010,7 +2010,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH SI");
+            Log.Disassemble(prefixStr, $" PUSH SI");
 #endif
         }
         else if (opcode == 0x57)
@@ -2021,7 +2021,7 @@ internal class P8086
             cycle_count += 11;  // 15
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSH DI");
+            Log.Disassemble(prefixStr, $" PUSH DI");
 #endif
         }
         else if (opcode is (0x80 or 0x81 or 0x82 or 0x83))
@@ -2161,7 +2161,7 @@ internal class P8086
             cycle_count += 3 + cycles;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {iname} {name1},${r2:X2}");
+            Log.Disassemble(prefixStr, $" {iname} {name1},${r2:X2}");
 #endif
         }
         else if (opcode == 0x84 || opcode == 0x85)
@@ -2193,7 +2193,7 @@ internal class P8086
             cycle_count += 3 + cycles;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} TEST {name1},{name2}");
+            Log.Disassemble(prefixStr, $" TEST {name1},{name2}");
 #endif
         }
         else if (opcode == 0x86 || opcode == 0x87)
@@ -2216,7 +2216,7 @@ internal class P8086
             cycle_count += 3 + get_cycles + put_cycles;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} XCHG {name1},{name2}");
+            Log.Disassemble(prefixStr, $" XCHG {name1},{name2}");
 #endif
         }
         else if (opcode == 0x8f)
@@ -2234,7 +2234,7 @@ internal class P8086
             cycle_count += 17;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POP {toName}");
+            Log.Disassemble(prefixStr, $" POP {toName}");
 #endif
         }
         else if (opcode == 0x90)
@@ -2244,7 +2244,7 @@ internal class P8086
             cycle_count += 3;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} NOP");
+            Log.Disassemble(prefixStr, $" NOP");
 #endif
         }
         else if (opcode >= 0x91 && opcode <= 0x97)
@@ -2262,7 +2262,7 @@ internal class P8086
             cycle_count += 3;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} XCHG AX,{name_other}");
+            Log.Disassemble(prefixStr, $" XCHG AX,{name_other}");
 #endif
         }
         else if (opcode == 0x98)
@@ -2278,7 +2278,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} CBW");
+            Log.Disassemble(prefixStr, $" CBW");
 #endif
         }
         else if (opcode == 0x99)
@@ -2292,7 +2292,7 @@ internal class P8086
             cycle_count += 5;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} CDW");
+            Log.Disassemble(prefixStr, $" CDW");
 #endif
         }
         else if (opcode == 0x9a)
@@ -2310,7 +2310,7 @@ internal class P8086
             cycle_count += 37;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} CALL ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
+            Log.Disassemble(prefixStr, $" CALL ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
 #endif
         }
         else if (opcode == 0x9c)
@@ -2321,7 +2321,7 @@ internal class P8086
             cycle_count += 10;  // 14
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} PUSHF");
+            Log.Disassemble(prefixStr, $" PUSHF");
 #endif
         }
         else if (opcode == 0x9d)
@@ -2334,7 +2334,7 @@ internal class P8086
             FixFlags();
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} POPF");
+            Log.Disassemble(prefixStr, $" POPF");
 #endif
         }
         else if (opcode == 0xac)
@@ -2349,7 +2349,7 @@ internal class P8086
                 cycle_count += 5;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} LODSB");
+                Log.Disassemble(prefixStr, $" LODSB");
 #endif
             }
         }
@@ -2365,7 +2365,7 @@ internal class P8086
                 cycle_count += 5;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} LODSW");
+                Log.Disassemble(prefixStr, $" LODSW");
 #endif
             }
         }
@@ -2381,7 +2381,7 @@ internal class P8086
             cycle_count += 16;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} RET ${nToRelease:X4}");
+            Log.Disassemble(prefixStr, $" RET ${nToRelease:X4}");
 #endif
         }
         else if (opcode == 0xc3 || opcode == 0xc1)
@@ -2392,7 +2392,7 @@ internal class P8086
             cycle_count += 16;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} RET");
+            Log.Disassemble(prefixStr, $" RET");
 #endif
         }
         else if (opcode == 0xc4 || opcode == 0xc5)
@@ -2423,7 +2423,7 @@ internal class P8086
             cycle_count += 7 + get_cycles;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {name} {affected},{name_from}");
+            Log.Disassemble(prefixStr, $" {name} {affected},{name_from}");
 #endif
         }
         else if (opcode == 0xcc || opcode == 0xcd || opcode == 0xce)
@@ -2463,9 +2463,9 @@ internal class P8086
 
 #if DEBUG
                 if (opcode == 0xce)
-                    Log.DoLog($"{prefixStr} INTO {@int:X2} -> {SegmentAddr(_cs, _ip)} (from {addr:X4})");
+                    Log.Disassemble(prefixStr, $" INTO {@int:X2} -> {SegmentAddr(_cs, _ip)} (from {addr:X4})");
                 else
-                    Log.DoLog($"{prefixStr} INT {@int:X2} -> {SegmentAddr(_cs, _ip)} (from {addr:X4})");
+                    Log.Disassemble(prefixStr, $" INT {@int:X2} -> {SegmentAddr(_cs, _ip)} (from {addr:X4})");
 #endif
             }
         }
@@ -2480,7 +2480,7 @@ internal class P8086
             cycle_count += 32;  // 44
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} IRET");
+            Log.Disassemble(prefixStr, $" IRET");
 #endif
         }
         else if ((opcode >= 0x00 && opcode <= 0x03) || (opcode >= 0x10 && opcode <= 0x13) || (opcode >= 0x28 && opcode <= 0x2b) || (opcode >= 0x18 && opcode <= 0x1b) || (opcode >= 0x38 && opcode <= 0x3b))
@@ -2565,7 +2565,7 @@ internal class P8086
                     PutRegister(reg1, word, (ushort)result);
 
 #if DEBUG
-                    Log.DoLog($"{prefixStr} {name} {name2},{name1}");
+                    Log.Disassemble(prefixStr, $" {name} {name2},{name1}");
 #endif
                 }
                 else
@@ -2588,7 +2588,7 @@ internal class P8086
                     cycle_count += put_cycles;
 
 #if DEBUG
-                    Log.DoLog($"{prefixStr} {name} {name1},{name2}");
+                    Log.Disassemble(prefixStr, $" {name} {name1},{name2}");
 #endif
                 }
             }
@@ -2596,9 +2596,9 @@ internal class P8086
             {
 #if DEBUG
                 if (direction)
-                    Log.DoLog($"{prefixStr} {name} {name2},{name1}");
+                    Log.Disassemble(prefixStr, $" {name} {name2},{name1}");
                 else
-                    Log.DoLog($"{prefixStr} {name} {name1},{name2}");
+                    Log.Disassemble(prefixStr, $" {name} {name1},{name2}");
 #endif
             }
         }
@@ -2622,7 +2622,7 @@ internal class P8086
                 result = r1 - r2;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} CMP AX,#${r2:X4}");
+                Log.Disassemble(prefixStr, $" CMP AX,#${r2:X4}");
 #endif
             }
             else if (opcode == 0x3c)
@@ -2633,7 +2633,7 @@ internal class P8086
                 result = r1 - r2;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} CMP AL,#${r2:X2}");
+                Log.Disassemble(prefixStr, $" CMP AL,#${r2:X2}");
 #endif
             }
             else
@@ -2700,7 +2700,7 @@ internal class P8086
             }
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {name} {name1},{name2}");
+            Log.Disassemble(prefixStr, $" {name} {name1},{name2}");
 #endif
         }
         else if (opcode is (0x34 or 0x35 or 0x24 or 0x25 or 0x0c or 0x0d))
@@ -2756,7 +2756,7 @@ internal class P8086
             cycle_count += 4;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {name} {tgt_name},${bHigh:X2}{bLow:X2}");
+            Log.Disassemble(prefixStr, $" {name} {tgt_name},${bHigh:X2}{bLow:X2}");
 #endif
         }
         else if (opcode == 0xe8)
@@ -2771,7 +2771,7 @@ internal class P8086
             cycle_count += 16;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} CALL {a:X4} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
+            Log.Disassemble(prefixStr, $" CALL {a:X4} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
 #endif
         }
         else if (opcode == 0xea)
@@ -2786,7 +2786,7 @@ internal class P8086
             cycle_count += 15;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} JMP ${_cs:X} ${_ip:X}: {SegmentAddr(_cs, _ip)}");
+            Log.Disassemble(prefixStr, $" JMP ${_cs:X} ${_ip:X}: {SegmentAddr(_cs, _ip)}");
 #endif
         }
         else if (opcode == 0xf6 || opcode == 0xf7)
@@ -2989,9 +2989,9 @@ internal class P8086
 
 #if DEBUG
             if (name2 != "")
-                Log.DoLog($"{prefixStr} {cmd_name} {name1},{name2} word:{word}");
+                Log.Disassemble(prefixStr, $" {cmd_name} {name1},{name2} word:{word}");
             else
-                Log.DoLog($"{prefixStr} {cmd_name} {name1} word:{word}");
+                Log.Disassemble(prefixStr, $" {cmd_name} {name1} word:{word}");
 #endif
         }
         else if (opcode == 0xfa)
@@ -3002,7 +3002,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} CLI");
+            Log.Disassemble(prefixStr, $" CLI");
 #endif
         }
         else if ((opcode & 0xf0) == 0xb0)
@@ -3022,7 +3022,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} MOV {name},${v:X}");
+            Log.Disassemble(prefixStr, $" MOV {name},${v:X}");
 #endif
         }
         else if (opcode == 0xa0)
@@ -3035,7 +3035,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} MOV AL,[${a:X4}]");
+            Log.Disassemble(prefixStr, $" MOV AL,[${a:X4}]");
 #endif
         }
         else if (opcode == 0xa1)
@@ -3048,7 +3048,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} MOV AX,[${a:X4}]");
+            Log.Disassemble(prefixStr, $" MOV AX,[${a:X4}]");
 #endif
         }
         else if (opcode == 0xa2)
@@ -3061,7 +3061,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} MOV [${a:X4}],AL");
+            Log.Disassemble(prefixStr, $" MOV [${a:X4}],AL");
 #endif
         }
         else if (opcode == 0xa3)
@@ -3074,7 +3074,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} MOV [${a:X4}],AX");
+            Log.Disassemble(prefixStr, $" MOV [${a:X4}],AX");
 #endif
         }
         else if (opcode == 0xa8)
@@ -3091,7 +3091,7 @@ internal class P8086
             cycle_count += 3;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} TEST AL,${v:X2}");
+            Log.Disassemble(prefixStr, $" TEST AL,${v:X2}");
 #endif
         }
         else if (opcode == 0xa9)
@@ -3108,7 +3108,7 @@ internal class P8086
             cycle_count += 3;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} TEST AX,${v:X4}");
+            Log.Disassemble(prefixStr, $" TEST AX,${v:X4}");
 #endif
         }
         else if (opcode is (0x88 or 0x89 or 0x8a or 0x8b or 0x8e or 0x8c))
@@ -3128,7 +3128,7 @@ internal class P8086
 
             cycle_count += 2;
 
-            // Log.DoLog($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}, sreg {sreg}");
+            // Log.Disassemble($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}, sreg {sreg}");
 
             // 88: rm < r (byte) 00  false,byte
             // 89: rm < r (word) 01  false,word  <--
@@ -3152,7 +3152,7 @@ internal class P8086
                     toName = PutRegister(reg, word, v);
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} MOV {toName},{fromName}");
+                Log.Disassemble(prefixStr, $" MOV {toName},{fromName}");
 #endif
             }
             else
@@ -3171,7 +3171,7 @@ internal class P8086
                 cycle_count += put_cycles;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} MOV {toName},{fromName} ({v:X4})");
+                Log.Disassemble(prefixStr, $" MOV {toName},{fromName} ({v:X4})");
 #endif
             }
 
@@ -3196,7 +3196,7 @@ internal class P8086
             string name_to = PutRegister(reg, true, addr);
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} LEA {name_to},{name_from}");
+            Log.Disassemble(prefixStr, $" LEA {name_to},{name_from}");
 #endif
         }
         else if (opcode == 0x9e)
@@ -3212,7 +3212,7 @@ internal class P8086
             cycle_count += 4;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} SAHF (set to {GetFlagsAsString()})");
+            Log.Disassemble(prefixStr, $" SAHF (set to {GetFlagsAsString()})");
 #endif
         }
         else if (opcode == 0x9f)
@@ -3223,7 +3223,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} LAHF");
+            Log.Disassemble(prefixStr, $" LAHF");
 #endif
         }
         else if (opcode is >= 0x40 and <= 0x4f)
@@ -3261,9 +3261,9 @@ internal class P8086
 
 #if DEBUG
             if (isDec)
-                Log.DoLog($"{prefixStr} DEC {name}");
+                Log.Disassemble(prefixStr, $" DEC {name}");
             else
-                Log.DoLog($"{prefixStr} INC {name}");
+                Log.Disassemble(prefixStr, $" INC {name}");
 #endif
         }
         else if (opcode == 0xaa)
@@ -3278,7 +3278,7 @@ internal class P8086
                 cycle_count += 11;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} STOSB");
+                Log.Disassemble(prefixStr, $" STOSB");
 #endif
             }
         }
@@ -3294,7 +3294,7 @@ internal class P8086
                 cycle_count += 11;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} STOSW");
+                Log.Disassemble(prefixStr, $" STOSW");
 #endif
             }
         }
@@ -3312,7 +3312,7 @@ internal class P8086
                 cycle_count += 15;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} SCASB");
+                Log.Disassemble(prefixStr, $" SCASB");
 #endif
             }
         }
@@ -3331,7 +3331,7 @@ internal class P8086
                 cycle_count += 15;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} SCASW");
+                Log.Disassemble(prefixStr, $" SCASW");
 #endif
             }
         }
@@ -3363,7 +3363,7 @@ internal class P8086
                 cycle_count += put_cycles;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} MOV word {name},${v:X4}");
+                Log.Disassemble(prefixStr, $" MOV word {name},${v:X4}");
 #endif
             }
             else
@@ -3376,7 +3376,7 @@ internal class P8086
                 cycle_count += put_cycles;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} MOV byte {name},${v:X2}");
+                Log.Disassemble(prefixStr, $" MOV byte {name},${v:X2}");
 #endif
             }
         }
@@ -3395,13 +3395,13 @@ internal class P8086
                 cycle_count += 16;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} RETF ${nToRelease:X4}");
+                Log.Disassemble(prefixStr, $" RETF ${nToRelease:X4}");
 #endif
             }
 #if DEBUG
             else
             {
-                Log.DoLog($"{prefixStr} RETF");
+                Log.Disassemble(prefixStr, $" RETF");
 
                 cycle_count += 26;
             }
@@ -3461,7 +3461,7 @@ internal class P8086
                 cycle_count += 2;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} ROL {vName},{countName}");
+                Log.Disassemble(prefixStr, $" ROL {vName},{countName}");
 #endif
             }
             else if (mode == 1)
@@ -3485,7 +3485,7 @@ internal class P8086
                 cycle_count += 2;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} ROR {vName},{countName}");
+                Log.Disassemble(prefixStr, $" ROR {vName},{countName}");
 #endif
             }
             else if (mode == 2)
@@ -3510,7 +3510,7 @@ internal class P8086
                 cycle_count += 2;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} RCL {vName},{countName}");
+                Log.Disassemble(prefixStr, $" RCL {vName},{countName}");
 #endif
             }
             else if (mode == 3)
@@ -3535,7 +3535,7 @@ internal class P8086
                 cycle_count += 2;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} RCR {vName},{countName}");
+                Log.Disassemble(prefixStr, $" RCR {vName},{countName}");
 #endif
             }
             else if (mode == 4)
@@ -3559,7 +3559,7 @@ internal class P8086
                 cycle_count += 2;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} SAL {vName},{countName}");
+                Log.Disassemble(prefixStr, $" SAL {vName},{countName}");
 #endif
             }
             else if (mode == 5)
@@ -3584,7 +3584,7 @@ internal class P8086
                 cycle_count += 2;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} SHR {vName},{countName}");
+                Log.Disassemble(prefixStr, $" SHR {vName},{countName}");
 #endif
             }
             else if (mode == 6)
@@ -3604,7 +3604,7 @@ internal class P8086
                     }
 
 #if DEBUG
-                    Log.DoLog($"{prefixStr} SETMOC");
+                    Log.Disassemble(prefixStr, $" SETMOC");
 #endif
                 }
                 else
@@ -3619,7 +3619,7 @@ internal class P8086
                     v1 = (ushort)(word ? 0xffff : 0xff);
 
 #if DEBUG
-                    Log.DoLog($"{prefixStr} SETMO");
+                    Log.Disassemble(prefixStr, $" SETMO");
 #endif
                 }
             }
@@ -3643,7 +3643,7 @@ internal class P8086
                 cycle_count += 2;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} SAR {vName},{countName}");
+                Log.Disassemble(prefixStr, $" SAR {vName},{countName}");
 #endif
             }
             else
@@ -3695,7 +3695,7 @@ internal class P8086
             cycle_count += 2;  // TODO
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} AAM");
+            Log.Disassemble(prefixStr, $" AAM");
 #endif
         }
         else if (opcode == 0xd5)
@@ -3713,7 +3713,7 @@ internal class P8086
             cycle_count += 2;  // TODO
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} AAD");
+            Log.Disassemble(prefixStr, $" AAD");
 #endif
         }
         else if (opcode == 0xd6)
@@ -3727,7 +3727,7 @@ internal class P8086
             cycle_count += 2;  // TODO
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} SALC");
+            Log.Disassemble(prefixStr, $" SALC");
 #endif
         }
         else if (opcode == 0xdb || opcode==0xdd)
@@ -3850,7 +3850,7 @@ internal class P8086
             }
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {name} {to} ({_cs:X4}:{newAddress:X4} -> {SegmentAddr(_cs, newAddress)})");
+            Log.Disassemble(prefixStr, $" {name} {to} ({_cs:X4}:{newAddress:X4} -> {SegmentAddr(_cs, newAddress)})");
 #endif
         }
         else if (opcode == 0xd7)
@@ -3863,7 +3863,7 @@ internal class P8086
             cycle_count += 11;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} XLATB ({_ds:X4}:{GetBX():X4} + {old_al:X2})");
+            Log.Disassemble(prefixStr, $" XLATB ({_ds:X4}:{GetBX():X4} + {old_al:X2})");
 #endif
         }
         else if (opcode == 0xe0 || opcode == 0xe1 || opcode == 0xe2)
@@ -3919,12 +3919,12 @@ internal class P8086
 #if DEBUG
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
+                Log.Disassemble(prefixStr, $" opcode {opcode:X2} not implemented");
             }
 #endif
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} {name} {to} ({newAddresses:X4})");
+            Log.Disassemble(prefixStr, $" {name} {to} ({newAddresses:X4})");
 #endif
         }
         else if (opcode == 0xe4)
@@ -3940,7 +3940,7 @@ internal class P8086
             cycle_count += 10;  // or 14
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} IN AL,${from:X2}");
+            Log.Disassemble(prefixStr, $" IN AL,${from:X2}");
 #endif
         }
         else if (opcode == 0xe5)
@@ -3955,7 +3955,7 @@ internal class P8086
             cycle_count += 10;  // or 14
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} IN AX,${from:X2}");
+            Log.Disassemble(prefixStr, $" IN AX,${from:X2}");
 #endif
         }
         else if (opcode == 0xe6)
@@ -3967,7 +3967,7 @@ internal class P8086
             cycle_count += 10;  // max 14
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} OUT ${to:X2},AL");
+            Log.Disassemble(prefixStr, $" OUT ${to:X2},AL");
 #endif
         }
         else if (opcode == 0xe7)
@@ -3979,7 +3979,7 @@ internal class P8086
             cycle_count += 10;  // max 14
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} OUT ${to:X2},AX");
+            Log.Disassemble(prefixStr, $" OUT ${to:X2},AX");
 #endif
         }
         else if (opcode == 0xec)
@@ -3993,7 +3993,7 @@ internal class P8086
             cycle_count += 8;  // or 12
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} IN AL,DX");
+            Log.Disassemble(prefixStr, $" IN AL,DX");
 #endif
         }
         else if (opcode == 0xed)
@@ -4006,7 +4006,7 @@ internal class P8086
             cycle_count += 12;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} IN AX,DX");
+            Log.Disassemble(prefixStr, $" IN AX,DX");
 #endif
         }
         else if (opcode == 0xee)
@@ -4017,7 +4017,7 @@ internal class P8086
             cycle_count += 8;  // or 12
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} OUT DX,AL");
+            Log.Disassemble(prefixStr, $" OUT DX,AL");
 #endif
         }
         else if (opcode == 0xef)
@@ -4028,7 +4028,7 @@ internal class P8086
             cycle_count += 8;  // or 12 TODO
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} OUT DX,AX");
+            Log.Disassemble(prefixStr, $" OUT DX,AX");
 #endif
         }
         else if (opcode == 0xeb)
@@ -4041,7 +4041,7 @@ internal class P8086
             cycle_count += 15;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} JP ${_ip:X4} ({_cs * 16 + _ip:X6})");
+            Log.Disassemble(prefixStr, $" JP ${_ip:X4} ({_cs * 16 + _ip:X6})");
 #endif
         }
         else if (opcode == 0xf4)
@@ -4050,7 +4050,7 @@ internal class P8086
             _ip--;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} HLT");
+            Log.Disassemble(prefixStr, $" HLT");
 #endif
 
             if (_terminate_on_hlt)
@@ -4071,7 +4071,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} CMC");
+            Log.Disassemble(prefixStr, $" CMC");
 #endif
         }
         else if (opcode == 0xf8)
@@ -4082,7 +4082,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} CLC");
+            Log.Disassemble(prefixStr, $" CLC");
 #endif
         }
         else if (opcode == 0xf9)
@@ -4093,7 +4093,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} STC");
+            Log.Disassemble(prefixStr, $" STC");
 #endif
         }
         else if (opcode == 0xfb)
@@ -4106,7 +4106,7 @@ internal class P8086
             _scheduled_interrupts = true;  // TODO temp?
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} STI");
+            Log.Disassemble(prefixStr, $" STI");
 #endif
         }
         else if (opcode == 0xfc)
@@ -4117,7 +4117,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} CLD");
+            Log.Disassemble(prefixStr, $" CLD");
 #endif
         }
         else if (opcode == 0xfd)
@@ -4128,7 +4128,7 @@ internal class P8086
             cycle_count += 2;
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} STD");
+            Log.Disassemble(prefixStr, $" STD");
 #endif
         }
         else if (opcode == 0xfe || opcode == 0xff)
@@ -4143,7 +4143,7 @@ internal class P8086
 
             int function = (o1 >> 3) & 7;
 
-            // Log.DoLog($"mod {mod} reg {reg} function {function}");
+            // Log.Disassemble($"mod {mod} reg {reg} function {function}");
 
             (ushort v, string name, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg, mod, word);
 
@@ -4164,7 +4164,7 @@ internal class P8086
                 SetFlagP((byte)v);
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} INC {name}");
+                Log.Disassemble(prefixStr, $" INC {name}");
 #endif
             }
             else if (function == 1)
@@ -4182,7 +4182,7 @@ internal class P8086
                 SetFlagP((byte)v);
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} DEC {name}");
+                Log.Disassemble(prefixStr, $" DEC {name}");
 #endif
             }
             else if (function == 2)
@@ -4196,7 +4196,7 @@ internal class P8086
                 cycle_count += 16;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
+                Log.Disassemble(prefixStr, $" CALL {name} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
 #endif
             }
             else if (function == 3)
@@ -4213,7 +4213,7 @@ internal class P8086
                 cycle_count += 37;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} CALL {name} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
+                Log.Disassemble(prefixStr, $" CALL {name} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
 #endif
             }
             else if (function == 4)
@@ -4224,7 +4224,7 @@ internal class P8086
                 cycle_count += 18;
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} JMP {name} ({_cs * 16 + _ip:X6})");
+                Log.Disassemble(prefixStr, $" JMP {name} ({_cs * 16 + _ip:X6})");
 #endif
             }
             else if (function == 5)
@@ -4236,7 +4236,7 @@ internal class P8086
                 cycle_count += 18;  // TODO
 
 #if DEBUG
-                Log.DoLog($"{prefixStr} JMP {_cs:X4}:{_ip:X4}");
+                Log.Disassemble(prefixStr, $" JMP {_cs:X4}:{_ip:X4}");
 #endif
             }
             else if (function == 6)
@@ -4246,7 +4246,7 @@ internal class P8086
 
                 cycle_count += 16;
 #if DEBUG
-                Log.DoLog($"{prefixStr} PUSH ${v:X4}");
+                Log.Disassemble(prefixStr, $" PUSH ${v:X4}");
 #endif
             }
             else
