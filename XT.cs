@@ -3151,9 +3151,8 @@ internal class P8086
                 else {
                     ushort ax = GetAX();
 
-                    if (r1 == 0 || ax / r1 > 0x100)
+                    if (r1 == 0 || ax / r1 >= 0x100)
                     {
-                        Log.DoLog($"r1 {r1}, ax {ax} -> interrupt");
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
@@ -3186,7 +3185,6 @@ internal class P8086
 
                     if (r1s == 0 || ax / r1s > 0x7f || ax / r1s < 0x80)
                     {
-                        Log.DoLog($"r1 {r1}, ax {ax} -> interrupt");
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
