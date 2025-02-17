@@ -94,7 +94,7 @@ internal class Rom
     public string GetAnnotation(uint address)
     {
         if (_annotations.ContainsKey(address))
-                return _annotations[address];
+            return _annotations[address];
 
         return null;
     }
@@ -102,7 +102,7 @@ internal class Rom
     public string GetScript(uint address)
     {
         if (_scripts.ContainsKey(address))
-                return _scripts[address];
+            return _scripts[address];
 
         return null;
     }
@@ -124,11 +124,11 @@ class Bus
 {
     private Memory _m;
 
-//    private readonly Rom _bios = new("roms/10jan86-bios/BIOS_5160_10JAN86_U18_62X0851_27256_F800.BIN");
-//    private readonly Rom _bios = new("roms/GLABIOS.ROM");
-//    private readonly Rom _bios = new("roms/xtramtest.32k");
-    private readonly Rom _bios = new("roms/Supersoft_PCXT_8KB.bin");
-//    private readonly Rom _bios = new("roms/ruuds_diagnostic_rom_v5.4_32kb.bin");
+    //    private readonly Rom _bios = new("roms/10jan86-bios/BIOS_5160_10JAN86_U18_62X0851_27256_F800.BIN");
+        private readonly Rom _bios = new("roms/GLABIOS.ROM");
+    //    private readonly Rom _bios = new("roms/xtramtest.32k");
+    //private readonly Rom _bios = new("roms/Supersoft_PCXT_8KB.bin");
+    //    private readonly Rom _bios = new("roms/ruuds_diagnostic_rom_v5.4_32kb.bin");
 
     private readonly Rom _basic = new("roms/10jan86-bios/BIOS_5160_10JAN86_U19_62X0854_27256_F000.BIN");
     // private readonly Rom _basic = new("roms/BIOS_5160_09MAY86_U19_62X0819_68X4370_27256_F000.BIN");

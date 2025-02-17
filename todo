@@ -1,6 +1,3 @@
-/home/folkert/t/8088/v2/D2.5.json  SHR byte
-/home/folkert/t/8088/v2/D3.5.json  SHR word
-
 /home/folkert/t/8088/v2/D8.json  ESC
 /home/folkert/t/8088/v2/D9.json  ESC
 /home/folkert/t/8088/v2/DA.json  ESC
@@ -12,8 +9,8 @@
 /home/folkert/t/8088/v2/E5.json  IN
 /home/folkert/t/8088/v2/ED.json  IN  problematic to test due to devices
 
-/home/folkert/t/8088/v2/F6.6.json  DIV
-/home/folkert/t/8088/v2/F6.7.json  IDIV
+/home/folkert/t/8088/v2/F6.6.json  DIV interrupt & flags
+/home/folkert/t/8088/v2/F6.7.json  IDIV interrupt & flags
 /home/folkert/t/8088/v2/F7.6.json  DIV
 /home/folkert/t/8088/v2/F7.7.json  IDIV
 
