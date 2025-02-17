@@ -687,10 +687,10 @@ class IO
         return _pic;
     }
 
-    public (byte, bool) In(ushort addr)
+    public (ushort, bool) In(ushort addr)
     {
         if (_test_mode)
-            return (255, false);
+            return (65535, false);
 
         // Log.DoLog($"IN: {addr:X4}", true);
 

@@ -4148,7 +4148,8 @@ internal class P8086
             // IN AL,ib
             byte @from = GetPcByte();
 
-            (_al, bool i) = _io.In(@from);
+            (ushort val, bool i) = _io.In(@from);
+            _al = (byte)val;
 
             _scheduled_interrupts |= i;
 
@@ -4164,11 +4165,9 @@ internal class P8086
             byte @from = GetPcByte();
 
             (ushort val, bool i) = _io.In(@from);
-
             SetAX(val);
 
             _scheduled_interrupts |= i;
-
             cycle_count += 10;  // or 14
 
 #if DEBUG
@@ -4179,7 +4178,6 @@ internal class P8086
         {
             // OUT
             byte to = GetPcByte();
-
             _scheduled_interrupts |= _io.Out(@to, _al);
 
             cycle_count += 10;  // max 14
@@ -4192,7 +4190,6 @@ internal class P8086
         {
             // OUT
             byte to = GetPcByte();
-
             _scheduled_interrupts |= _io.Out(@to, GetAX());
 
             cycle_count += 10;  // max 14
@@ -4204,7 +4201,8 @@ internal class P8086
         else if (opcode == 0xec)
         {
             // IN AL,DX
-            (_al, bool i) = _io.In(GetDX());
+            (ushort val, bool i) = _io.In(GetDX());
+            _al = (byte)val;
 
             _scheduled_interrupts |= i;
 
@@ -4212,6 +4210,19 @@ internal class P8086
 
 #if DEBUG
             Log.DoLog($"{prefixStr} IN AL,DX");
+#endif
+        }
+        else if (opcode == 0xed)
+        {
+            // IN AX,DX
+            (ushort val, bool i) = _io.In(GetDX());
+            SetAX(val);
+            _scheduled_interrupts |= i;
+
+            cycle_count += 12;
+
+#if DEBUG
+            Log.DoLog($"{prefixStr} IN AX,DX");
 #endif
         }
         else if (opcode == 0xee)
