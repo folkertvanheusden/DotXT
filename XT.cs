@@ -3153,12 +3153,16 @@ internal class P8086
 
                     if (r1 == 0 || ax / r1 >= 0x100)
                     {
+                        SetFlagP(0);
+                        SetFlagS((ax & 0x8000) != 0);
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
                     {
                         _al = (byte)(ax / r1);
                         _ah = (byte)(ax % r1);
+                        SetFlagP(0);
+                        SetFlagS((_ah ^ 0x80) != 0);
                     }
                 }
 
@@ -3191,6 +3195,7 @@ internal class P8086
                     {
                         _al = (byte)(ax / r1s);
                         _ah = (byte)(ax % r1s);
+                        SetFlagP(0);
                     }
                 }
 
