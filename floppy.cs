@@ -156,14 +156,17 @@ class FloppyDisk : Device
         {
             using (FileStream fs = File.Open(_filename, FileMode.Open, FileAccess.Read, FileShare.None))
             {
-                fs.Seek((lba * 2 + nr) * b.Length, SeekOrigin.Begin);
+                long start = (lba * 2 + nr) * b.Length;
+                fs.Seek(start, SeekOrigin.Begin);
                 if (fs.Read(b, 0, b.Length) != b.Length)
-                    Log.DoLog($"Floppy-ReadData failed reading from backend");
+                    Log.DoLog($"Floppy-ReadData failed reading from backend (offset: {start})");
+                if (fs.Position != start + b.Length;
+                    Log.DoLog($"Floppy-ReadData backend data processing error?");
             }
 
 #if DEBUG
             for(int i=0; i<16; i++) {
-                string str = "";
+                string str = $"{i * 16 + nr * b.Length:X02}: ";
                 for(int k=0; k<16; k++) {
                     int o = k + i * 16;
                     if (b[o] > 32 && b[o] < 127)
