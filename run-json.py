@@ -144,12 +144,13 @@ for set in j:
                 log(name)
                 name = None
             log(f' *** {addr:06x} failed ***')
-            log(f': {result} (emulator (hex: {result:04x})) != {value} (test set (hex: {value:04x}))')
+            log(f'{addr:06x} is {result} (hex: {result:04x}), should be: {value} (hex: {value:04x})')
             ok = False
 
     if ok:
         log(f'dolog OK {set["name"]}')
     else:
+        #log(json.dumps(set))
         for reg in regs:
             if final["regs"][reg] == is_[reg]:
                 continue
@@ -160,8 +161,10 @@ for set in j:
             else:
                 log(f'{reg} was {initial["regs"][reg]} (hex: {initial["regs"][reg]:04x}), should now be {final["regs"][reg]} (hex: {final["regs"][reg]:04x}), is: {is_[reg]} (hex: {is_[reg]:04x})')
 
-        log(f'dolog FAILED {set["name"]}, nr: {error_nr}/{test_nr}, {sys.argv[1]}\r\n')
-        log('dolog');
+        ss = is_['SS'] if 'SS' in is_ else initial['regs']['ss']
+        sp = is_['SP'] if 'SP' in is_ else initial['regs']['sp']
+        log(f'dolog sp:ss is at {ss * 16 + sp:06x}')
+        log(f'dolog FAILED {set["name"]}, nr: {error_nr}/{test_nr}: {set["hash"]}, {sys.argv[1]}\r\n')
 
         error_nr += 1
 
