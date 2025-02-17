@@ -3794,7 +3794,10 @@ internal class P8086
 
                 set_flags = count != 0;
 
-                SetFlagO((org_v1 & check_bit) != 0);
+                if (count == 1)
+                    SetFlagO((org_v1 & check_bit) != 0);
+                else
+                    SetFlagO(false);
 
                 cycle_count += 2;
 
