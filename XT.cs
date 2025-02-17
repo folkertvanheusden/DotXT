@@ -3765,7 +3765,7 @@ internal class P8086
             else if (opcode == 0x72 || opcode == 0x62)
             {
                 state = GetFlagC();
-                name = "JC";
+                name = "JC/JB";
             }
             else if (opcode == 0x73 || opcode == 0x63)
             {
@@ -4055,6 +4055,8 @@ internal class P8086
 
             if (_terminate_on_hlt)
             {
+                Log.EmitDisassembly();
+
                 if (_is_test)
                     System.Environment.Exit(_si == 0xa5ee ? 123 : 0);
 
