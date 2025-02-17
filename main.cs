@@ -4,8 +4,6 @@ string test = "";
 
 TMode mode = TMode.NotSet;
 
-bool intercept_int = false;
-
 ushort initial_cs = 0;
 ushort initial_ip = 0;
 bool set_initial_ip = false;
@@ -24,7 +22,6 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-T addr   sets the load-address for -t");
         Console.WriteLine("-x type   set type for -T: floppy, binary, blank");
         Console.WriteLine("-l file   log to file");
-        Console.WriteLine("-i        intercept some of the BIOS calls");
         Console.WriteLine("-B        disable loading of the BIOS ROM images");
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
@@ -53,8 +50,6 @@ for(int i=0; i<args.Length; i++)
     }
     else if (args[i] == "-l")
         Log.SetLogFile(args[++i]);
-    else if (args[i] == "-i")
-        intercept_int = true;
     else if (args[i] == "-I")
         run_IO = false;
     else if (args[i] == "-B")
@@ -100,7 +95,9 @@ if (mode != TMode.Blank)
     //devices.Add(new FloppyDisk("disks/002962_ms_dos_622/disk1.img"));
     //devices.Add(new FloppyDisk("disks/msdos6_22disk1.img"));
     //devices.Add(new FloppyDisk("disks/diags100.img"));
-    devices.Add(new FloppyDisk("disks/4.01-Setup.img"));
+    //devices.Add(new FloppyDisk("disks/4.01-test.img"));
+    devices.Add(new FloppyDisk("disks/3.30-disk1.img"));
+    //devices.Add(new FloppyDisk("disks/COMPAQ-DIAGS-508-012988-REVK.img"));
     //devices.Add(new FloppyDisk("disks/3.21-disk1.img"));
     //devices.Add(new FloppyDisk("disks/FD/720k/x86BOOT.img"));
     devices.Add(new Keyboard());
@@ -118,7 +115,7 @@ if (mode == TMode.Blank)
 // Bus gets the devices for memory mapped i/o
 Bus b = new Bus(ram_size, load_bios, ref devices);
 
-var p = new P8086(ref b, test, mode, load_test_at, intercept_int, !debugger, ref devices, run_IO);
+var p = new P8086(ref b, test, mode, load_test_at, !debugger, ref devices, run_IO);
 
 if (set_initial_ip)
     p.set_ip(initial_cs, initial_ip);

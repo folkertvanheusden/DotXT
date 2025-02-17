@@ -61,8 +61,6 @@ internal class P8086
     private ushort _rep_addr;
     private byte _rep_opcode;
 
-    private bool _intercept_int_flag;
-
     private bool _is_test;
 
     private bool _terminate_on_hlt;
@@ -75,19 +73,13 @@ internal class P8086
 
     private List<Device> _devices;
 
-    public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool intercept_int_flag, bool terminate_on_hlt, ref List<Device> devices, bool run_IO)
+    public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool terminate_on_hlt, ref List<Device> devices, bool run_IO)
     {
         _b = b;
 
         _devices = devices;
 
         _io = new IO(b, ref devices, !run_IO);
-
-        // intercept also other ints besides keyboard/console access
-        _intercept_int_flag = intercept_int_flag;
-
-        if (_intercept_int_flag)
-            Console.WriteLine("Intercept IRQ enabled");
 
         _terminate_on_hlt = terminate_on_hlt;
 
@@ -170,216 +162,6 @@ internal class P8086
 
         _cs = cs;
         _ip = ip;
-    }
-
-    private bool InterceptInt(int nr)  // TODO rename
-    {
-        if (!_intercept_int_flag)
-            return false;
-
-        Log.DoLog($"INT {nr:X2} {_ah:X2}", true);
-
-        if (nr == 0x10)
-        {
-            if (_ah == 0x0e)
-            {
-                // teletype output
-                SetFlagC(false);
-
-                Console.Write((char)_al);
-
-                if (_al == 13 || _al == 10)
-                {
-                    Log.DoLog($"CONSOLE-STR: {tty_output}", true);
-
-                    tty_output = "";
-                }
-                else
-                {
-                    Log.DoLog($"CONSOLE-CHR: {(char)_al}", true);
-
-                    if (_al >= 32 && _al != 127)
-                        tty_output += (char)_al;
-                }
-
-                if (_al == 13)
-                    Console.WriteLine("");
-
-                return true;
-            }
-            else if (_ah == 0x00)
-            {
-                // get video mode
-                _al = 7;
-
-                SetFlagC(false);
-
-                return true;
-            }
-
-#if DEBUG
-            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
-#endif
-
-            return false;
-        }
-        else if (nr == 0x16)
-        {
-            // keyboard access
-#if DEBUG
-            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
-#endif
-
-            if (_ah == 0x00)
-            {
-                // Get keystroke
-                ConsoleKeyInfo cki = Console.ReadKey(true);
-
-                // FIXME                _ah = 0x3b;  // F1 scan code
-                _al = (byte)cki.KeyChar;  // F1 ascii char
-
-                SetFlagC(false);
-                return true;
-            }
-            else if (_ah == 0x01)
-            {
-                // check for key stroke
-                SetFlagZ(true);  // nothing waiting
-                SetFlagC(false);
-                return true;
-            }
-        }
-        else if (nr == 0x29)
-        {
-            // fast console output
-            SetFlagC(false);
-            Console.Write((char)_al);
-
-            return true;
-        }
-
-        if (nr == 0x12)
-        {
-            // return conventional memory size
-            SetAX(640); // 640kB
-            SetFlagC(false);
-            return true;
-        }
-        else if (nr == 0x13 && floppy.Count > 0)
-        {
-#if DEBUG
-            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
-#endif
-
-            if (_ah == 0x00)
-            {
-                // reset disk system
-                Log.DoLog("INT $13: reset disk system", true);
-
-                SetFlagC(false);
-                _ah = 0x00;  // no error
-
-                //FIXME                _scheduled_interrupts[0x0e] = 50;
-
-                return true;
-            }
-            else if (_ah == 0x02)
-            {
-                // read sector
-                ushort bytes_per_sector = 512;
-                byte sectors_per_track = 9;
-                byte n_sides = 2;
-                byte tracks_per_side = (byte)(floppy.Count / (bytes_per_sector * n_sides * sectors_per_track));
-
-                int disk_offset = (_ch * n_sides + _dh) * sectors_per_track * bytes_per_sector + (_cl - 1) * bytes_per_sector;
-
-                ushort _bx = GetBX();
-
-                string base_str = $"INT $13, read sector(s): {_al} sectors, track {_ch}/{tracks_per_side}, sector {_cl}, head {_dh}, drive {_dl}, offset {disk_offset}/{floppy.Count} to ${_es:X4}:{_bx:X4}";
-
-                if (disk_offset + bytes_per_sector <= floppy.Count)
-                {
-                    Log.DoLog(base_str, true);
-
-                    //    string s = "";
-
-                    for(int i=0; i<bytes_per_sector * _al; i++)
-                    {
-                        WriteMemByte(_es, (ushort)(_bx + i), floppy[disk_offset + i]);
-                        //        s += $" {floppy[disk_offset + i]:X2}";
-                    }
-                    //    Log.DoLog($"SECTOR: {s}", true);
-
-                    SetFlagC(false);
-                    _ah = 0x00;  // no error
-
-                    return true;
-                }
-
-                Log.DoLog(base_str + " FAILED", true);
-            }
-            else if (_ah == 0x41)
-            {
-                // Check extensions present
-
-                SetFlagC(true);
-                _ah = 0x01;  // invalid command
-
-                return true;
-            }
-        }
-        else if (nr == 0x19)
-        {
-            // reboot (to bootloader)
-            Log.DoLog("INT 19, Reboot", true);
-            Console.WriteLine("REBOOT");
-            System.Environment.Exit(1);
-        }
-        else if (nr == 0x2f)
-        {
-#if DEBUG
-            Console.WriteLine($"INT NR {nr:X2}, AX: {_ah:X2}{_al:X2}");
-#endif
-
-            if (_ah == 0x0d)
-            {
-                // disk reset
-                SetFlagC(false);
-                _ah = 0x00;  // no error
-                return true;
-            }
-        }
-        else if (nr == 0x11) {
-#if DEBUG
-            Console.WriteLine($"INT NR {nr:X2} get bios equipment list");
-#endif
-
-            SetAX(0b0000000000100001);
-            SetFlagC(false);
-            return true;
-        }
-        else if (nr == 0x1a) {
-            if (_ah == 0x02) {
-                DateTime now = DateTime.Now;
-
-                // convert to BCD
-                _ch = (byte)(((now.Hour / 10) << 4) | (now.Hour % 10));
-                _cl = (byte)(((now.Minute / 10) << 4) | (now.Minute % 10));
-                _dh = (byte)(((now.Second / 10) << 4) | (now.Second % 10));
-                _dl = 0;
-
-                SetFlagC(false);
-                return true;
-            }
-        }
-        else
-        {
-#if DEBUG
-            Console.WriteLine($"INT NR {nr:X2}, AH: {_ah:X2}");
-#endif
-        }
-
-        return false;
     }
 
     private void FixFlags()
@@ -2660,25 +2442,22 @@ internal class P8086
 
                 uint addr = (uint)(@int * 4);
 
-                if (InterceptInt(@int) == false)
+                push(_flags);
+                push(_cs);
+                if (_rep)
                 {
-                    push(_flags);
-                    push(_cs);
-                    if (_rep)
-                    {
-                        push(_rep_addr);
-                        Log.DoLog($"INT from rep {_rep_addr:X04}");
-                    }
-                    else
-                    {
-                        push(_ip);
-                    }
-
-                    SetFlagI(false);
-
-                    _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
-                    _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
+                    push(_rep_addr);
+                    Log.DoLog($"INT from rep {_rep_addr:X04}");
                 }
+                else
+                {
+                    push(_ip);
+                }
+
+                SetFlagI(false);
+
+                _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
+                _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
 
                 cycle_count += 51;  // 71  TODO
 
