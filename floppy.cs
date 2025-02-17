@@ -134,7 +134,7 @@ class FloppyDisk : Device
         int n = _data[5];
 
 #if DEBUG
-        Log.DoLog($"Floppy-ReadData HS {_data[1] & 4:X02} C {_data[2]} H {_data[3]} R {_data[4]}");
+        Log.DoLog($"Floppy-ReadData HS {_data[1] & 4:X02} C {_data[2]} H {_data[3]} R {_data[4]} N {_data[5]}");
         Log.DoLog($"Floppy-ReadData SEEK H {_head} C {_cylinder}");
         Log.DoLog($"Floppy-ReadData LBA {lba}, offset {lba * 512}");
 #endif
