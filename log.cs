@@ -37,18 +37,12 @@ class Log
 #if DEBUG
         lock(_disassembly_lock)
         {
-            string addr = $"{_cs:X04}:{_ip:X04}";
+            string key = $"{_cs * 16 + _ip:X06}";
 
-            if (disassembly.ContainsKey(addr))
+            if (disassembly.ContainsKey(key) == false)
             {
-                if (disassembly[addr].Item1 != prefix)
-                {
-                    disassembly[addr] = new Tuple<string, string>(null, assembly);
-                }
-            }
-            else
-            {
-                disassembly.Add(addr, new Tuple<string, string>(prefix, assembly));
+                string addr = $"{_cs:X04}:{_ip:X04}";
+                disassembly.Add(key, new Tuple<string, string>(addr, assembly));
             }
         }
 #endif
@@ -65,10 +59,7 @@ class Log
             {
                 foreach(KeyValuePair<string, Tuple<string, string> > entry in disassembly)
                 {
-                    // if (entry.Value.Item1 == null)
-                    File.AppendAllText(_disassembly, $"{entry.Key} {entry.Value.Item2}" + Environment.NewLine);
-                    //else
-                    //File.AppendAllText(_disassembly, $"{entry.Key} {entry.Value.Item2} {entry.Value.Item1}" + Environment.NewLine);
+                    File.AppendAllText(_disassembly, $"{entry.Value.Item1} {entry.Value.Item2}" + Environment.NewLine);
                 }
             }
         }
