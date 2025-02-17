@@ -160,7 +160,7 @@ class FloppyDisk : Device
                 fs.Seek(start, SeekOrigin.Begin);
                 if (fs.Read(b, 0, b.Length) != b.Length)
                     Log.DoLog($"Floppy-ReadData failed reading from backend (offset: {start})");
-                if (fs.Position != start + b.Length;
+                if (fs.Position != start + b.Length)
                     Log.DoLog($"Floppy-ReadData backend data processing error?");
             }
 
