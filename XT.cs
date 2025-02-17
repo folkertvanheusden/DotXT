@@ -528,7 +528,7 @@ internal class P8086
             if (_segment_override_set == false && (reg == 2 || reg == 3)) {  // BP uses SS
                 segment = _ss;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [1]");
+                Log.DoLog($"BP SS-override ${_ss:X4} [1]", true);
 #endif
             }
 
@@ -553,7 +553,7 @@ internal class P8086
             {
                 segment = new_segment;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [2]");
+                Log.DoLog($"BP SS-override ${_ss:X4} [2]", true);
 #endif
             }
 
@@ -561,7 +561,7 @@ internal class P8086
             {
                 segment = _ss;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [3]");
+                Log.DoLog($"BP SS-override ${_ss:X4} [3]", true);
 #endif
             }
 
@@ -752,7 +752,7 @@ internal class P8086
             if (_segment_override_set == false && (reg == 2 || reg == 3)) {  // BP uses SS
                 segment = _ss;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [4]");
+                Log.DoLog($"BP SS-override ${_ss:X4} [4]", true);
 #endif
             }
 
@@ -778,7 +778,7 @@ internal class P8086
             {
                 segment = new_segment;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [5]");
+                Log.DoLog($"BP SS-override ${_ss:X4} [5]", true);
 #endif
             }
 
@@ -786,7 +786,7 @@ internal class P8086
             {
                 segment = _ss;
 #if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [6]");
+                Log.DoLog($"BP SS-override ${_ss:X4} [6]", true);
 #endif
             }
 
@@ -814,7 +814,7 @@ internal class P8086
 
     (string, int) UpdateRegisterMem(int reg, int mod, bool a_valid, ushort seg, ushort addr, bool word, ushort v)
     {
-        Log.DoLog($"UpdateRegisterMem {reg} {mod} {a_valid} {seg:X4}:{addr:X4} -> {seg * 16 + addr}/{seg * 16 + addr:X4} {word} {v}");
+        Log.DoLog($"UpdateRegisterMem {reg} {mod} {a_valid} {seg:X4}:{addr:X4} -> {seg * 16 + addr}/{seg * 16 + addr:X4} {word} {v}", true);
 
         if (a_valid)
         {
@@ -1174,7 +1174,7 @@ internal class P8086
                 }
                 else
                 {
-                    Log.DoLog($"unknown _rep_mode {_rep_mode}");
+                    Log.DoLog($"unknown _rep_mode {_rep_mode}", true);
                     _rep = false;
                     rc = false;
                 }
@@ -1239,11 +1239,11 @@ internal class P8086
 
                 foreach (var device in _devices)
                 {
-                    Log.DoLog($"Testing device {device.GetName()} with IRQ {device.GetIRQNumber()}");
+                    Log.DoLog($"Testing device {device.GetName()} with IRQ {device.GetIRQNumber()}", true);
                     if (device.GetIRQNumber() != irq)
                         continue;
 
-                    Log.DoLog($"{device.GetName()} triggers IRQ {irq}");
+                    Log.DoLog($"{device.GetName()} triggers IRQ {irq}", true);
 
                     InvokeInterrupt(_ip, irq, true);
                     cycle_count += 60;
@@ -1338,10 +1338,10 @@ internal class P8086
             }
 
             if (_segment_override_set)
-                Log.DoLog($"segment override to {_segment_override_name}: {_segment_override:X4}, opcode(s): {opcode:X2} {HexDump(address, false):X2}");
+                Log.DoLog($"segment override to {_segment_override_name}: {_segment_override:X4}, opcode(s): {opcode:X2} {HexDump(address, false):X2}", true);
 
             if (_rep)
-                Log.DoLog($"repetition mode {_rep_mode}, addr {_rep_addr:X4}, instr start {instr_start:X4}");
+                Log.DoLog($"repetition mode {_rep_mode}, addr {_rep_addr:X4}, instr start {instr_start:X4}", true);
 
             opcode = next_opcode;
         }
@@ -2084,7 +2084,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented", true);
             }
 
             string iname = "error";
@@ -2143,7 +2143,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented", true);
             }
 
             if (is_logic)
@@ -2447,7 +2447,7 @@ internal class P8086
                 if (_rep)
                 {
                     push(_rep_addr);
-                    Log.DoLog($"INT from rep {_rep_addr:X04}");
+                    Log.DoLog($"INT from rep {_rep_addr:X04}", true);
                 }
                 else
                 {
@@ -2579,7 +2579,7 @@ internal class P8086
                     {
                         seg = _ss;
 #if DEBUG
-                        Log.DoLog($"BP SS-override ${_ss:X4} [7]");
+                        Log.DoLog($"BP SS-override ${_ss:X4} [7]", true);
 #endif
                     }
 
@@ -2638,7 +2638,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented", true);
             }
 
             SetAddSubFlags(word, r1, r2, result, true, false);
@@ -2683,7 +2683,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented", true);
             }
 
             SetLogicFuncFlags(word, result);
@@ -2746,7 +2746,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented", true);
             }
 
             SetLogicFuncFlags(word, word ? GetAX() : _al);
@@ -2982,7 +2982,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented", true);
             }
 
             cycle_count += 4;
@@ -3648,7 +3648,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} RCR/SHR/{opcode:X2} mode {mode} not implemented");
+                Log.DoLog($"{prefixStr} RCR/SHR/{opcode:X2} mode {mode} not implemented", true);
             }
 
             if (!word)
@@ -3741,7 +3741,7 @@ internal class P8086
             cycle_count += 2;  // TODO
 
 #if DEBUG
-            Log.DoLog($"{prefixStr} FPU - ignored");
+            Log.DoLog($"{prefixStr} FPU - ignored", true);
 #endif
         }
         else if ((opcode & 0xf0) == 0x70 || (opcode & 0xf0) == 0x60)
@@ -3834,7 +3834,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:x2} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:x2} not implemented", true);
             }
 
             ushort newAddress = (ushort)(_ip + (sbyte)to);
@@ -3890,7 +3890,7 @@ internal class P8086
                 else
                 {
 #if DEBUG
-                    Log.DoLog("LOOP end");
+                    Log.DoLog("LOOP end", true);
 #endif
                 }
 
@@ -4205,7 +4205,7 @@ internal class P8086
                 push(_cs);
                 push(_ip);
 
-                Log.DoLog($"v: {v:X4}, addr: {addr:X4}, word@addr+0: {ReadMemWord(seg, (ushort)(addr + 0)):X4}, word@addr+2: {ReadMemWord(seg, (ushort)(addr + 2)):X4}");
+                Log.DoLog($"v: {v:X4}, addr: {addr:X4}, word@addr+0: {ReadMemWord(seg, (ushort)(addr + 0)):X4}, word@addr+2: {ReadMemWord(seg, (ushort)(addr + 2)):X4}", true);
 
                 _ip = v;
                 _cs = ReadMemWord(seg, (ushort)(addr + 2));
@@ -4251,7 +4251,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented");
+                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented", true);
             }
 
             if (!word)
@@ -4263,7 +4263,7 @@ internal class P8086
         }
         else
         {
-            Log.DoLog($"{prefixStr} opcode {opcode:x} not implemented");
+            Log.DoLog($"{prefixStr} opcode {opcode:x} not implemented", true);
         }
 
         PrefixEnd(opcode);
