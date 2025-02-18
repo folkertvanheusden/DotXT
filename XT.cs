@@ -1239,7 +1239,6 @@ internal class P8086
 
                 foreach (var device in _devices)
                 {
-                    Log.DoLog($"Testing device {device.GetName()} with IRQ {device.GetIRQNumber()}", true);
                     if (device.GetIRQNumber() != irq)
                         continue;
 
