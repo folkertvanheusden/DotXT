@@ -109,7 +109,7 @@ if (mode != TMode.Blank)
     //devices.Add(new FloppyDisk("disks/3.21-disk1.img"));
     //devices.Add(new FloppyDisk("disks/FD/720k/x86BOOT.img"));
     Keyboard kb = new();
-    devices.Add(kb);  // still needed because of ticks
+    devices.Add(kb);  // still needed because of clock ticks
     devices.Add(new PPI(kb));
 }
 

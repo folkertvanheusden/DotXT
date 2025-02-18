@@ -435,23 +435,19 @@ internal class i8237
             _channel_address_register[addr / 2].Put(value);
             Log.DoLog($"i8237 set channel {addr / 2} to address {_channel_address_register[addr / 2].GetValue():X04}", true);
         }
-
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
         {
             _channel_word_count[addr / 2].Put(value);
             Log.DoLog($"i8237 set channel {addr / 2} to count {_channel_word_count[addr / 2].GetValue()}", true);
+            _reached_tc[addr / 2] = false;
         }
-
         else if (addr == 8)
         {
             _command = value;
-
             _dma_enabled = (_command & 4) == 0;
         }
-
         else if (addr == 0x0a)  // mask
             _channel_mask[value & 3] = (value & 4) == 4;  // dreq enable/disable
-
         else if (addr == 0x0b)  // mode register
         {
             _channel_mode[value & 3] = value;
@@ -460,11 +456,12 @@ internal class i8237
                 str += ", autoinit";
             if ((value & 0x20) == 0x20)
                 str += ", decrement";
+            for(int i=0; i<4; i++)
+                _reached_tc[i] = false;
             Log.DoLog($"i8237 mode register channel {value & 3}: {value:X02}{str}");
         }
         else if (addr == 0x0c)  // reset flipflop
             _ff.reset();
-
         else if (addr == 0x0d)  // master reset
         {
             Log.DoLog($"i8237_IN: MASTER RESET");
@@ -473,12 +470,10 @@ internal class i8237
             for(int i=0; i<4; i++)
                 _reached_tc[i] = false;
         }
-
         else if (addr == 0x0e)  // reset masks
         {
             reset_masks(false);
         }
-
         else if (addr == 0x0f)  // multiple mask
         {
             for(int i=0; i<4; i++)
@@ -537,7 +532,7 @@ internal class i8237
         if (count == 0xffff)
         {
             //Log.DoLog($"i8237 SendToChannel channel {channel} count has reached -1, set tc");
-            //_reached_tc[channel] = true;
+            _reached_tc[channel] = true;
         }
         else
         {
@@ -759,12 +754,11 @@ class IO
 
         else
         {
+#if DEBUG
+            Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", true);
+#endif
             if (_io_map.ContainsKey(addr))
                 return _io_map[addr].IO_Write(addr, (byte)value);
-
-#if DEBUG
-            // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", true);
-#endif
         }
 
         _values[addr] = (byte)value;
