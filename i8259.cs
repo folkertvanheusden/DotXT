@@ -29,7 +29,7 @@ class pic8259
         for(byte i=0; i<8; i++)
         {
             byte mask = (byte)(1 << i);
-            if ((_irr & mask) == mask /* requested? */ && (_isr & mask) == 0 /* not in service? */)
+            if ((_irr & mask) == mask /* requested? */ && (_isr & mask) == 0 /* not in service? */ && (_imr & mask) == 0 /* not masked off? */)
             {
                 Log.DoLog($"i8259 pending interrupt: {i:X2}, (irr: {_irr:X2}, isr: {_isr:X2})");
                 return i;
@@ -64,6 +64,8 @@ class pic8259
             Log.DoLog($"i8259: interrupt {interrupt_nr} was not requested");
         if ((_isr & mask) == mask)
             Log.DoLog($"i8259: interrupt {interrupt_nr} was already in service");
+        if ((_imr & mask) == mask)
+            Log.DoLog($"i8259: interrupt {interrupt_nr} was masked off");
         _isr |= mask;
 
         Log.DoLog($"i8259: EOI mask is now {_isr:X2} by setting {interrupt_nr} in service");
@@ -127,7 +129,7 @@ class pic8259
                 if ((value & 8) == 8)  // OCW3
                 {
                     Log.DoLog($"i8259 OUT: OCW3");
-                    _read_irr = (value & 1) == 1;
+                    _read_irr = (value & 3) == 2;
                 }
                 else  // OCW2
                 {
