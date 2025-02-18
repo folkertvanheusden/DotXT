@@ -164,7 +164,10 @@ for set in j:
         ss = is_['SS'] if 'SS' in is_ else initial['regs']['ss']
         sp = is_['SP'] if 'SP' in is_ else initial['regs']['sp']
         log(f'dolog sp:ss is at {ss * 16 + sp:06x}')
-        log(f'dolog FAILED {set["name"]}, nr: {error_nr}/{test_nr}: {set["hash"]}, {sys.argv[1]}\r\n')
+        ip = is_['ip'] if 'ip' in is_ else -1
+        memint0 = int(docmd(process, f'get ram 0').split()[1]) + int(docmd(process, f'get ram 1').split()[1]) * 256
+        istr = f'INT{ip:04x}' if ip == memint0 else 'NO-INT'
+        log(f'dolog FAILED {set["name"]}, nr: {error_nr}/{test_nr}: {set["hash"]}, {sys.argv[1]} {istr}\r\n')
 
         error_nr += 1
 
