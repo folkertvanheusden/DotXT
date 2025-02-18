@@ -31,7 +31,7 @@ class pic8259
             byte mask = (byte)(1 << i);
             if ((_irr & mask) == mask /* requested? */ && (_isr & mask) == 0 /* not in service? */ && (_imr & mask) == 0 /* not masked off? */)
             {
-                Log.DoLog($"i8259 pending interrupt: {i:X2}, (irr: {_irr:X2}, isr: {_isr:X2})");
+                Log.DoLog($"i8259 pending interrupt: {i:X2}, (irr: {_irr:X2}, isr: {_isr:X2}, imr: {_imr:X2})");
                 return i;
             }
         }
