@@ -551,12 +551,14 @@ internal class i8237
 
 internal class PPI : Device
 {
-    byte _control = 0;
-    bool _dipswitches_high = false;
-    byte [] _cache = new byte[4];
+    private byte _control = 0;
+    private bool _dipswitches_high = false;
+    private byte [] _cache = new byte[4];
+    private Keyboard _kb = null;
 
-    public PPI()
+    public PPI(Keyboard kb)
     {
+        _kb = kb;
     }
 
     public override int GetIRQNumber()
@@ -591,7 +593,7 @@ internal class PPI : Device
             return ((byte)(switches >> 4), false);
         }
 
-        return (_cache[port - 0x0060], false);
+        return _kb.IO_Read(port);
     }
 
     public override bool IO_Write(ushort port, byte value)
@@ -607,17 +609,15 @@ internal class PPI : Device
 
             if ((_control & 2) == 2)  // speaker
                 return false;
-
-            return false;
+            // fall through for keyboard
         }
-
-        if (port == 0x0063)
+        else if (port == 0x0063)
         {
             _control = value;
             return false;
         }
 
-        return false;
+        return _kb.IO_Write(port, value);
     }
 
     public override void SyncClock(int clock)
@@ -648,7 +648,6 @@ class IO
 {
     private pic8259 _pic;
     private i8237 _i8237;
-    private PPI _ppi;
     private Bus _b;
     private bool _test_mode = false;
     private Dictionary <ushort, byte> _values = new Dictionary <ushort, byte>();
@@ -662,7 +661,6 @@ class IO
 
         _pic = new();
         _i8237 = new(_b);
-        _ppi = new();
 
         foreach(var device in devices)
         {

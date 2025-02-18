@@ -62,9 +62,7 @@ class Keyboard : Device
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
-        mappings[0x60] = this;
-        mappings[0x61] = this;
-        mappings[0x64] = this;
+        // see PPI
     }
 
     public override bool IO_Write(ushort port, byte value)

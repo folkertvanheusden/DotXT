@@ -76,9 +76,7 @@ internal class P8086
     public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool terminate_on_hlt, ref List<Device> devices, bool run_IO)
     {
         _b = b;
-
         _devices = devices;
-
         _io = new IO(b, ref devices, !run_IO);
 
         _terminate_on_hlt = terminate_on_hlt;

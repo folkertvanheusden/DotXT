@@ -108,8 +108,9 @@ if (mode != TMode.Blank)
     //devices.Add(new FloppyDisk("disks/COMPAQ-DIAGS-508-012988-REVK.img"));
     //devices.Add(new FloppyDisk("disks/3.21-disk1.img"));
     //devices.Add(new FloppyDisk("disks/FD/720k/x86BOOT.img"));
-    devices.Add(new Keyboard());
-    devices.Add(new PPI());
+    Keyboard kb = new();
+    devices.Add(kb);  // still needed because of ticks
+    devices.Add(new PPI(kb));
 }
 
 uint ram_size = 256 * 1024;
