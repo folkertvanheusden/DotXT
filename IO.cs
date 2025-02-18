@@ -710,16 +710,14 @@ class IO
             return (0xa5, false);
 
         if (_io_map.ContainsKey(addr))
+        {
+            Log.DoLog($"IN: reading {addr:X4} from cache", true);
             return _io_map[addr].IO_Read(addr);
+        }
 
-#if DEBUG
         Log.DoLog($"IN: I/O port {addr:X4} not implemented", true);
-#endif
 
-        //        if (_values.ContainsKey(addr))
-        //           return (_values[addr], false);
-
-        return (0, false);
+        return (0xff, false);
     }
 
     public bool Tick(int ticks, int clock)
