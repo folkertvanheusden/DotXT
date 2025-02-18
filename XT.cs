@@ -2946,7 +2946,7 @@ internal class P8086
                     }
                 }
 
-                if (false)
+                if (true)
                 {
                     SetFlagZ(_ah == 0);
                     SetFlagS((_ah & 0x80) == 0x80);
@@ -2961,6 +2961,8 @@ internal class P8086
             else if (function == 7)
             {
                 bool set_flags = false;
+                bool negate = _rep_mode == RepMode.REP && _rep;
+                _rep = false;
 
                 // IDIV
                 if (word) {
@@ -2974,7 +2976,10 @@ internal class P8086
                     }
                     else
                     {
-                        SetAX((ushort)(dx_ax / r1s));
+                        if (negate)
+                            SetAX((ushort)-(dx_ax / r1s));
+                        else
+                            SetAX((ushort)(dx_ax / r1s));
                         SetDX((ushort)(dx_ax % r1s));
                     }
                 }
@@ -2989,7 +2994,10 @@ internal class P8086
                     }
                     else
                     {
-                        _al = (byte)(ax / r1s);
+                        if (negate)
+                            _al = (byte)-(ax / r1s);
+                        else
+                            _al = (byte)(ax / r1s);
                         _ah = (byte)(ax % r1s);
                     }
                 }
