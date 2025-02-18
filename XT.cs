@@ -1357,6 +1357,8 @@ internal class P8086
 
         string prefixStr =
             $"{flagStr} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4} ES:{_es:X4} CS:{_cs:X4} SS:{_ss:X4} DS:{_ds:X4} IP:{instr_start:X4} | ";
+
+        // Log.DoLog(HexDump(address, false), true);
 #else
         string prefixStr = "";
 #endif
@@ -4134,18 +4136,14 @@ internal class P8086
         {
             // DEC and others
             bool word = (opcode & 1) == 1;
-
             byte o1 = GetPcByte();
-
             int mod = o1 >> 6;
             int reg = o1 & 7;
-
             int function = (o1 >> 3) & 7;
 
-            // Log.Disassemble($"mod {mod} reg {reg} function {function}");
+            // Log.DoLog($"mod {mod} reg {reg} word {word} function {function}", true);
 
             (ushort v, string name, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg, mod, word);
-
             cycle_count += get_cycles;
 
             if (function == 0)
@@ -4241,10 +4239,10 @@ internal class P8086
             else if (function == 6)
             {
                 // PUSH rmw
-                if (reg == 4 && mod == 3 && word == true)
+                if (reg == 4 && mod == 3 && word == true)  // PUSH SP
                 {
-                    _sp -= 2;
-                    WriteMemWord(seg, _sp, _sp);
+                    v -= 2;
+                    WriteMemWord(_ss, v, v);
                 }
                 else
                 {
