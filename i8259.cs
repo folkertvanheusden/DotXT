@@ -50,7 +50,7 @@ class pic8259
         byte mask = (byte)(1 << interrupt_nr);
         _irr |= mask;
 
-        Log.DoLog($"i8259 interrupt {interrupt_nr} requested (irr: {_irr:X2})");
+        Log.DoLog($"i8259 interrupt {interrupt_nr} requested (irr: {_irr:X2}, imr: {_imr:X2})");
     }
 
     public void SetIRQBeingServiced(int interrupt_nr)
@@ -121,6 +121,7 @@ class pic8259
 
                 _imr = 0;  // TODO 255?
                 _isr = 0;
+                _irr = 0;
 
                 _int_in_service  = -1;
             }
