@@ -2914,12 +2914,17 @@ internal class P8086
             }
             else if (function == 6)
             {
+                bool set_flags = false;
+
                 // DIV
                 if (word) {
                     uint dx_ax = (uint)((GetDX() << 16) | GetAX());
 
                     if (r1 == 0 || dx_ax / r1 >= 0x10000)
+                    {
+                        set_flags = true;
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
+                    }
                     else
                     {
                         SetAX((ushort)(dx_ax / r1));
@@ -2931,30 +2936,42 @@ internal class P8086
 
                     if (r1 == 0 || ax / r1 >= 0x100)
                     {
-                        SetFlagP(0);
-                        SetFlagS((ax & 0x8000) != 0);
+                        set_flags = true;
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
                     {
                         _al = (byte)(ax / r1);
                         _ah = (byte)(ax % r1);
-                        SetFlagP(0);
-                        SetFlagS((_ah ^ 0x80) != 0);
                     }
+                }
+
+                if (false)
+                {
+                    SetFlagZ(_ah == 0);
+                    SetFlagS((_ah & 0x80) == 0x80);
+                    SetFlagP(_ah);
+                    SetFlagA(false);
+                    SetFlagC(false);
+                    SetFlagO(false);
                 }
 
                 cmd_name = "DIV";
             }
             else if (function == 7)
             {
+                bool set_flags = false;
+
                 // IDIV
                 if (word) {
                     int dx_ax = (GetDX() << 16) | GetAX();
                     int r1s = (int)(short)r1;
 
                     if (r1s == 0 || dx_ax / r1s > 0x7fff || dx_ax / r1s < -0x8000)
+                    {
+                        set_flags = true;
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
+                    }
                     else
                     {
                         SetAX((ushort)(dx_ax / r1s));
@@ -2963,18 +2980,28 @@ internal class P8086
                 }
                 else {
                     short ax = (short)GetAX();
-                    short r1s = (short)r1;
+                    short r1s = (short)(sbyte)r1;
 
                     if (r1s == 0 || ax / r1s > 0x7f || ax / r1s < -0x80)
                     {
+                        set_flags = true;
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
                     {
                         _al = (byte)(ax / r1s);
                         _ah = (byte)(ax % r1s);
-                        SetFlagP(0);
                     }
+                }
+
+                if (false)
+                {
+                    SetFlagZ(_ah == 0);
+                    SetFlagS((_ah & 0x80) == 0x80);
+                    SetFlagP(_ah);
+                    SetFlagA(false);
+                    SetFlagC(false);
+                    SetFlagO(false);
                 }
 
                 cmd_name = "IDIV";
