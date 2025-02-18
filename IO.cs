@@ -754,13 +754,13 @@ class IO
 
         else
         {
-#if DEBUG
-            Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", true);
-#endif
             if (_io_map.ContainsKey(addr))
                 return _io_map[addr].IO_Write(addr, (byte)value);
         }
 
+#if DEBUG
+        Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", true);
+#endif
         _values[addr] = (byte)value;
 
         return false;

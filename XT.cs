@@ -4241,7 +4241,15 @@ internal class P8086
             else if (function == 6)
             {
                 // PUSH rmw
-                push(v);
+                if (reg == 4 && mod == 3 && word == true)
+                {
+                    _sp -= 2;
+                    WriteMemWord(seg, _sp, _sp);
+                }
+                else
+                {
+                    push(v);
+                }
 
                 cycle_count += 16;
 #if DEBUG
