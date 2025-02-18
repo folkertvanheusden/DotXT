@@ -102,8 +102,8 @@ if (mode != TMode.Blank)
     //devices.Add(new FloppyDisk("disks/002962_ms_dos_622/disk1.img"));
     //devices.Add(new FloppyDisk("disks/msdos6_22disk1.img"));
     //devices.Add(new FloppyDisk("disks/diags100.img"));
-    //devices.Add(new FloppyDisk("disks/4.01-test.img"));
-    devices.Add(new FloppyDisk("disks/3.30-disk1.img"));
+    devices.Add(new FloppyDisk("disks/4.01-test.img"));
+    //devices.Add(new FloppyDisk("disks/3.30-disk1.img"));
     //devices.Add(new FloppyDisk("disks/bigtop.img"));
     //devices.Add(new FloppyDisk("disks/COMPAQ-DIAGS-508-012988-REVK.img"));
     //devices.Add(new FloppyDisk("disks/3.21-disk1.img"));
@@ -119,7 +119,7 @@ uint ram_size = 256 * 1024;
 if (test != "")
     ram_size = 640 * 1024;
 
-if (mode == TMode.Blank)
+if (mode == TMode.Blank || mode == TMode.Binary)
     ram_size = 1024 * 1024;
 
 // Bus gets the devices for memory mapped i/o
