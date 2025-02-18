@@ -10,14 +10,16 @@
 /home/folkert/t/8088/v2/F6.7.json  IDIV interrupt & flags
 /home/folkert/t/8088/v2/F7.6.json  DIV
 /home/folkert/t/8088/v2/F7.7.json  IDIV
+				een divide kan een interrupt geven. als er dan unspecified flags op de stack worden gepushed,
+				dan geeft dat een memory-verschil in de testset.
+			   	(if you don't implement the unspecified flags, then anything that triggers an interrupt (e.g.
+				divide by something invalid) causes a push of semi-invalid flags to memory which will be seen
+				as a memory-difference)
+                                   ---> REP (negative quotient) not implemented
 
 /home/folkert/t/8088/v2/FF.2.json  CALL SP
 
-/home/folkert/t/8088/v2/FF.6.json  PUSH SP
-
-/home/folkert/t/8088/v2/FF.7.json: een divide kan een interrupt geven. als er dan unspecified flags op de stack worden gepushed, dan geeft dat een memory-verschil in de testset.
-           (if you don't implement the unspecified flags, then anything that triggers an interrupt (e.g. divide by something invalid) causes a push of semi-invalid flags to memory which will be seen as a memory-difference)
-                                   ---> REP (negative quotient) not implemented
+/home/folkert/t/8088/v2/FF.7.json
 
 
 if device no longer sets irq, then look at _pic.RequestInterruptPIC() versus CheckScheduledInterrupt
