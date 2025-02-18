@@ -108,6 +108,7 @@ if (mode != TMode.Blank)
     //devices.Add(new FloppyDisk("disks/COMPAQ-DIAGS-508-012988-REVK.img"));
     //devices.Add(new FloppyDisk("disks/3.21-disk1.img"));
     //devices.Add(new FloppyDisk("disks/FD/720k/x86BOOT.img"));
+    //devices.Add(new FloppyDisk("disks/FD13-D1.IMG"));
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks
     devices.Add(new PPI(kb));
