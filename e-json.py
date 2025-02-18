@@ -5,7 +5,11 @@ import sys
 
 
 js = json.load(open(sys.argv[1]))
-j = js[int(sys.argv[2])]
+j = None
+for entry in js:
+    if entry['hash'] == sys.argv[2]:
+        j = entry
+        break
 
 print(f'; {j["name"]}')
 prefixes = {
