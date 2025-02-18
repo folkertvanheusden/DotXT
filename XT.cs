@@ -2855,12 +2855,17 @@ internal class P8086
             }
             else if (function == 4)
             {
+                bool negate = _rep_mode == RepMode.REP && _rep;
+                _rep = false;
+
                 // MUL
                 if (word) {
                     ushort ax = GetAX();
                     int resulti = ax * r1;
 
                     uint dx_ax = (uint)resulti;
+                    if (negate)
+                        dx_ax = (uint)-dx_ax;
                     SetAX((ushort)dx_ax);
                     SetDX((ushort)(dx_ax >> 16));
 
@@ -2873,6 +2878,8 @@ internal class P8086
                 }
                 else {
                     int result = _al * r1;
+                    if (negate)
+                        result = -result;
                     SetAX((ushort)result);
 
                     bool flag = _ah != 0;
@@ -2884,12 +2891,17 @@ internal class P8086
             }
             else if (function == 5)
             {
+                bool negate = _rep_mode == RepMode.REP && _rep;
+                _rep = false;
+
                 // IMUL
                 if (word) {
                     short ax = (short)GetAX();
                     int resulti = ax * (short)r1;
 
                     uint dx_ax = (uint)resulti;
+                    if (negate)
+                        dx_ax = (uint)-dx_ax;
                     SetAX((ushort)dx_ax);
                     SetDX((ushort)(dx_ax >> 16));
 
@@ -2902,6 +2914,8 @@ internal class P8086
                 }
                 else {
                     int result = (sbyte)_al * (short)(sbyte)r1;
+                    if (negate)
+                        result = -result;
                     SetAX((ushort)result);
 
                     SetFlagS((_ah & 128) == 128);
