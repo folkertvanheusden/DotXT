@@ -67,23 +67,23 @@ abstract class Display : Device
         // attribute, character
         Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", true);
 
-	int [] colormap = { 0, 4, 2, 6, 1, 5, 3, 7 };
+        Console.Write((char)27);  // position cursor
+        Console.Write($"[{y + 1};{x + 1}H");
 
-	int fg = colormap[(attributes >> 4) & 7];
-	int bg = colormap[attributes & 7];
+        int [] colormap = { 0, 4, 2, 6, 1, 5, 3, 7 };
 
-//	if (fg == bg) { fg = 7; bg = 0; }  // TODO temporary workaround
+        int fg = colormap[(attributes >> 4) & 7];
+        int bg = colormap[attributes & 7];
+
+        //	if (fg == bg) { fg = 7; bg = 0; }  // TODO temporary workaround
 
         Console.Write((char)27);  // set attributes
         Console.Write($"[0;{40 + fg};{30 + bg}m");  // BG & FG color
-	if ((attributes & 8) == 8)
-	{
-		Console.Write((char)27);  // set attributes
-		Console.Write($"[1m");  // bright
-	}
-
-        Console.Write((char)27);  // position cursor
-        Console.Write($"[{y + 1};{x + 1}H");
+        if ((attributes & 8) == 8)
+        {
+            Console.Write((char)27);  // set attributes
+            Console.Write($"[1m");  // bright
+        }
 
         Console.Write((char)character);
     }
