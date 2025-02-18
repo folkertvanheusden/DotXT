@@ -2983,7 +2983,7 @@ internal class P8086
                     int dx_ax = (GetDX() << 16) | GetAX();
                     int r1s = (int)(short)r1;
 
-                    if (r1s == 0 || dx_ax / r1s > 0x7fff || dx_ax / r1s < -0x8000)
+                    if (r1s == 0 || 0x7fff / r1s > dx_ax || -0x8000 / r1s < dx_ax)
                     {
                         set_flags = true;
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
@@ -3001,7 +3001,7 @@ internal class P8086
                     short ax = (short)GetAX();
                     short r1s = (short)(sbyte)r1;
 
-                    if (r1s == 0 || ax / r1s > 0x7f || ax / r1s < -0x80)
+                    if (r1s == 0 || 0x7f / r1s > ax || -0x80 / r1s < ax)
                     {
                         set_flags = true;
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
