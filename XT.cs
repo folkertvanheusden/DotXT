@@ -819,8 +819,6 @@ internal class P8086
 
     (string, int) UpdateRegisterMem(int reg, int mod, bool a_valid, ushort seg, ushort addr, bool word, ushort v)
     {
-        Log.DoLog($"UpdateRegisterMem {reg} {mod} {a_valid} {seg:X4}:{addr:X4} -> {seg * 16 + addr}/{seg * 16 + addr:X4} {word} {v}", true);
-
         if (a_valid)
         {
             if (word)
@@ -830,10 +828,8 @@ internal class P8086
 
             return ($"[{addr:X4}]", 4);
         }
-        else
-        {
-            return PutRegisterMem(reg, mod, word, v);
-        }
+
+        return PutRegisterMem(reg, mod, word, v);
     }
 
     private void ClearFlagBit(int bit)
@@ -3395,9 +3391,7 @@ internal class P8086
             {
                 // the value follows
                 ushort v = GetPcWord();
-
                 (string dummy2, int put_cycles) = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
-
                 cycle_count += put_cycles;
 
 #if DEBUG
@@ -3408,9 +3402,7 @@ internal class P8086
             {
                 // the value follows
                 byte v = GetPcByte();
-
                 (string dummy2, int put_cycles) = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
-
                 cycle_count += put_cycles;
 
 #if DEBUG
