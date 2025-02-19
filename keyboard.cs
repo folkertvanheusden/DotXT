@@ -3,7 +3,7 @@ using System.Threading;
 class Keyboard : Device
 {
     private Thread _keyboard_thread;
-    protected new int _irq_nr = 1;
+    protected int _irq_nr = 1;
     protected int _irq_trigger_delay = 4770;  // cycles for 1ms @ 4.77 MHz
     private Mutex _keyboard_buffer_lock = new();
     private Queue<int> _keyboard_buffer = new();
