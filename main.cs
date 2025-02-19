@@ -8,12 +8,13 @@ ushort initial_cs = 0;
 ushort initial_ip = 0;
 bool set_initial_ip = false;
 
-bool load_bios = true;
 bool run_IO = true;
 uint load_test_at = 0xffffffff;
 
 bool debugger = false;
 bool prompt = true;
+
+List<Rom> roms = new();
 
 for(int i=0; i<args.Length; i++)
 {
@@ -22,8 +23,9 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-T addr   sets the load-address for -t");
         Console.WriteLine("-x type   set type for -T: floppy, binary, blank");
         Console.WriteLine("-l file   log to file");
+        Console.WriteLine("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
+        Console.WriteLine("          e.g. load the bios from f000:e000");
         Console.WriteLine("-D file   disassemble to file");
-        Console.WriteLine("-B        disable loading of the BIOS ROM images");
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
         Console.WriteLine("-P        skip prompt");
@@ -55,12 +57,24 @@ for(int i=0; i<args.Length; i++)
         Log.SetDisassemblyFile(args[++i]);
     else if (args[i] == "-I")
         run_IO = false;
-    else if (args[i] == "-B")
-        load_bios = false;
     else if (args[i] == "-d")
         debugger = true;
     else if (args[i] == "-P")
         prompt = false;
+    else if (args[i] == "-R")
+    {
+        string[] parts = args[++i].Split(',');
+        string file = parts[0];
+
+        string[] aparts = parts[1].Split(':');
+        uint seg = (uint)Convert.ToInt32(aparts[0], 16);
+        uint ip = (uint)Convert.ToInt32(aparts[1], 16);
+        uint addr = seg * 16 + ip;
+
+        Console.WriteLine($"Loading {file} to {addr:X06}");
+
+        roms.Add(new Rom(file, addr));
+    }
     else if (args[i] == "-o")
     {
         string[] parts = args[++i].Split(',');
@@ -125,7 +139,7 @@ if (mode != TMode.Blank)
 uint ram_size = 1024 * 1024;
 
 // Bus gets the devices for memory mapped i/o
-Bus b = new Bus(ram_size, load_bios, ref devices);
+Bus b = new Bus(ram_size, ref devices, ref roms);
 
 var p = new P8086(ref b, test, mode, load_test_at, !debugger, ref devices, run_IO);
 
