@@ -14,6 +14,8 @@ uint load_test_at = 0xffffffff;
 bool debugger = false;
 bool prompt = true;
 
+uint ram_size = 1024;
+
 List<Rom> roms = new();
 
 for(int i=0; i<args.Length; i++)
@@ -25,6 +27,7 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-l file   log to file");
         Console.WriteLine("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
         Console.WriteLine("          e.g. load the bios from f000:e000");
+        Console.WriteLine("-s size   RAM size in kilobytes, decimal");
         Console.WriteLine("-D file   disassemble to file");
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
@@ -61,6 +64,8 @@ for(int i=0; i<args.Length; i++)
         debugger = true;
     else if (args[i] == "-P")
         prompt = false;
+    else if (args[i] == "-s")
+        ram_size = (uint)Convert.ToInt32(args[++i], 10);
     else if (args[i] == "-R")
     {
         string[] parts = args[++i].Split(',');
@@ -136,10 +141,8 @@ if (mode != TMode.Blank)
     devices.Add(new PPI(kb));
 }
 
-uint ram_size = 1024 * 1024;
-
 // Bus gets the devices for memory mapped i/o
-Bus b = new Bus(ram_size, ref devices, ref roms);
+Bus b = new Bus(ram_size * 1024, ref devices, ref roms);
 
 var p = new P8086(ref b, test, mode, load_test_at, !debugger, ref devices, run_IO);
 
