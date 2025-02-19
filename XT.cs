@@ -1074,32 +1074,6 @@ internal class P8086
         return 0xffff;
     }
 
-    public void RunScript(string script)
-    {
-        string[] lines = script.Split(';');
-
-        int line_nr = 1;
-
-        foreach (var line in lines)
-        {
-            string[] tokens = line.Split(' ');
-
-            if (tokens[0] == "print*")
-            {
-                string[] registers = tokens[1].Split(',');
-
-                Log.DoLog($"{line_nr} {tokens[0]}: {GetTerminatedString(GetRegisterByName(registers[0]), GetRegisterByName(registers[1]), '\n')}", true);
-            }
-            else
-            {
-                Log.DoLog($"Script token {tokens[0]} (line {line_nr}) not understood", true);
-                break;
-            }
-
-            line_nr++;
-        }
-    }
-
     public bool IsProcessingRep()
     {
         return _rep;
@@ -1320,14 +1294,6 @@ internal class P8086
         }
 
 #if DEBUG
-        string annotation = _b.GetAnnotation(address);
-        if (annotation != null)
-            Log.DoLog($"; Annotation: {annotation}", true);
-
-        string script = _b.GetScript(address);
-        if (script != null)
-            RunScript(script);
-
         if (_rep)
             Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}", true);
 
