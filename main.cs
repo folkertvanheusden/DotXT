@@ -18,7 +18,7 @@ bool prompt = true;
 for(int i=0; i<args.Length; i++)
 {
     if (args[i] == "-h") {
-        Console.WriteLine("-t file   load 'file' in RAM");
+        Console.WriteLine("-t file   load 'file'");
         Console.WriteLine("-T addr   sets the load-address for -t");
         Console.WriteLine("-x type   set type for -T: floppy, binary, blank");
         Console.WriteLine("-l file   log to file");
@@ -99,28 +99,30 @@ if (mode != TMode.Blank)
 //    devices.Add(new MDA());
     devices.Add(new CGA());
     devices.Add(new i8253());
-    //devices.Add(new FloppyDisk("disks/002962_ms_dos_622/disk1.img"));
-    //devices.Add(new FloppyDisk("disks/msdos6_22disk1.img"));
-    //devices.Add(new FloppyDisk("disks/diags100.img"));
-    //devices.Add(new FloppyDisk("disks/4.01-test.img"));
-    devices.Add(new FloppyDisk("disks/3.30-disk1.img"));
-    //devices.Add(new FloppyDisk("disks/bigtop.img"));
-    //devices.Add(new FloppyDisk("disks/COMPAQ-DIAGS-508-012988-REVK.img"));
-    //devices.Add(new FloppyDisk("disks/3.21-disk1.img"));
-    //devices.Add(new FloppyDisk("disks/FD/720k/x86BOOT.img"));
-    //devices.Add(new FloppyDisk("disks/FD13-D1.IMG"));
+    if (test == "")
+    {
+        //devices.Add(new FloppyDisk("disks/002962_ms_dos_622/disk1.img"));
+        //devices.Add(new FloppyDisk("disks/msdos6_22disk1.img"));
+        //devices.Add(new FloppyDisk("disks/diags100.img"));
+        //devices.Add(new FloppyDisk("disks/4.01-test.img"));
+        //    devices.Add(new FloppyDisk("disks/3.30-disk1.img"));
+        //devices.Add(new FloppyDisk("disks/bigtop.img"));
+        //devices.Add(new FloppyDisk("disks/COMPAQ-DIAGS-508-012988-REVK.img"));
+        //devices.Add(new FloppyDisk("disks/3.21-disk1.img"));
+        //devices.Add(new FloppyDisk("disks/FD/720k/x86BOOT.img"));
+        //    devices.Add(new FloppyDisk("disks/fs1.img"));
+        devices.Add(new FloppyDisk("disks/FD13-D1.IMG"));
+    }
+    else
+    {
+        devices.Add(new FloppyDisk(test));
+    }
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks
     devices.Add(new PPI(kb));
 }
 
-uint ram_size = 256 * 1024;
-
-if (test != "")
-    ram_size = 640 * 1024;
-
-if (mode == TMode.Blank || mode == TMode.Binary)
-    ram_size = 1024 * 1024;
+uint ram_size = 1024 * 1024;
 
 // Bus gets the devices for memory mapped i/o
 Bus b = new Bus(ram_size, load_bios, ref devices);
