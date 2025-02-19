@@ -704,7 +704,7 @@ class IO
 
         if (_io_map.ContainsKey(addr))
         {
-            Log.DoLog($"IN: reading {addr:X4} from cache", true);
+            Log.DoLog($"IN: reading {addr:X4} from device", true);
             return _io_map[addr].IO_Read(addr);
         }
 
@@ -739,18 +739,6 @@ class IO
 
         else if (addr == 0x0080)
             Log.DoLog($"Manufacturer systems checkpoint {value:X2}", true);
-
-        else if (addr == 0x0322)
-        {
-            int harddisk_interrupt_nr = 14;
-
-            //FIXME            if (scheduled_interrupts.ContainsKey(harddisk_interrupt_nr) == false)
-            //FIXME                scheduled_interrupts[harddisk_interrupt_nr] = 31;  // generate (XT disk-)controller select pulse (IRQ 5)
-
-#if DEBUG
-            Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) generate controller select pulse");
-#endif
-        }
 
         else
         {
