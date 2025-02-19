@@ -531,7 +531,7 @@ internal class i8237
         count--;
         if (count == 0xffff)
         {
-            Log.DoLog($"i8237 SendToChannel channel {channel} count has reached -1, set tc, address {full_addr:X06}, {_channel_page[channel]:X03}");
+            Log.DoLog($"i8237 SendToChannel channel {channel} count has reached -1, set tc, address {full_addr:X06}");
             _reached_tc[channel] = true;
         }
 
