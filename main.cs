@@ -1,7 +1,7 @@
 using DotXT;
 
 string test = "";
-string floppy = "";
+List<string> floppies = new();
 
 TMode mode = TMode.NotSet;
 
@@ -29,7 +29,7 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
         Console.WriteLine("          e.g. load the bios from f000:e000");
         Console.WriteLine("-s size   RAM size in kilobytes, decimal");
-        Console.WriteLine("-F file   load floppy image");
+        Console.WriteLine("-F file   load floppy image (multiple for drive A-D)");
         Console.WriteLine("-D file   disassemble to file");
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
@@ -61,7 +61,7 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-I")
         run_IO = false;
     else if (args[i] == "-F")
-        floppy = args[++i];
+        floppies.Add(args[++i]);
     else if (args[i] == "-d")
         debugger = true;
     else if (args[i] == "-P")
@@ -120,24 +120,8 @@ if (mode != TMode.Blank)
 //    devices.Add(new MDA());
     devices.Add(new CGA());
     devices.Add(new i8253());
-    if (floppy == "")
-    {
-        //devices.Add(new FloppyDisk("disks/002962_ms_dos_622/disk1.img"));
-        //devices.Add(new FloppyDisk("disks/msdos6_22disk1.img"));
-        //devices.Add(new FloppyDisk("disks/diags100.img"));
-        //devices.Add(new FloppyDisk("disks/4.01-test.img"));
-        //    devices.Add(new FloppyDisk("disks/3.30-disk1.img"));
-        //devices.Add(new FloppyDisk("disks/bigtop.img"));
-        //devices.Add(new FloppyDisk("disks/COMPAQ-DIAGS-508-012988-REVK.img"));
-        //devices.Add(new FloppyDisk("disks/3.21-disk1.img"));
-        //devices.Add(new FloppyDisk("disks/FD/720k/x86BOOT.img"));
-        //    devices.Add(new FloppyDisk("disks/fs1.img"));
-        devices.Add(new FloppyDisk("disks/FD13-D1.IMG"));
-    }
-    else
-    {
-        devices.Add(new FloppyDisk(floppy));
-    }
+    if (floppies.Count() > 0)
+        devices.Add(new FloppyDisk(floppies));
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks
     devices.Add(new PPI(kb));

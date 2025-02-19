@@ -10,16 +10,16 @@ class FloppyDisk : Device
     private DataState _data_state = DataState.NotSet;
     private byte [] _data = null;
     private int _data_offset = 0;
-    private string _filename = null;
+    private List<string> _filenames = null;
     private bool _just_resetted = false;
     private bool _busy = false;
     private int [] _cylinder = new int[4];
     private int [] _head = new int[4];
     private int _cylinder_seek_result = 0;
 
-    public FloppyDisk(string filename)
+    public FloppyDisk(List<string> filenames)
     {
-        _filename = filename;
+        _filenames = filenames;
     }
 
     public override int GetIRQNumber()
@@ -157,12 +157,12 @@ class FloppyDisk : Device
         byte[] b = new byte[256];
         for(int nr=0; nr<n; nr++)
         {
-            using (FileStream fs = File.Open(_filename, FileMode.Open, FileAccess.Read, FileShare.None))
+            using (FileStream fs = File.Open(_filenames[unit], FileMode.Open, FileAccess.Read, FileShare.None))
             {
                 long start = (lba * 2 + nr) * b.Length;
                 fs.Seek(start, SeekOrigin.Begin);
                 if (fs.Read(b, 0, b.Length) != b.Length)
-                    Log.DoLog($"Floppy-ReadData failed reading from backend (offset: {start})", true);
+                    Log.DoLog($"Floppy-ReadData failed reading from backend ({_filenames[unit]}, offset: {start})", true);
                 if (fs.Position != start + b.Length)
                     Log.DoLog($"Floppy-ReadData backend data processing error?", true);
             }
