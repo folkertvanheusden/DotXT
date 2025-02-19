@@ -2928,7 +2928,8 @@ internal class P8086
             }
             else if (function == 6)
             {
-                bool set_flags = false;
+                SetFlagC(false);
+                SetFlagO(false);
 
                 // DIV
                 if (word) {
@@ -2936,7 +2937,10 @@ internal class P8086
 
                     if (r1 == 0 || dx_ax / r1 >= 0x10000)
                     {
-                        set_flags = true;
+                        SetFlagZ(_ah == 0);
+                        SetFlagS((_ah & 0x80) == 0x80);
+                        SetFlagP(_ah);
+                        SetFlagA(false);
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
@@ -2950,7 +2954,10 @@ internal class P8086
 
                     if (r1 == 0 || ax / r1 >= 0x100)
                     {
-                        set_flags = true;
+                        SetFlagZ(_ah == 0);
+                        SetFlagS((_ah & 0x80) == 0x80);
+                        SetFlagP(_ah);
+                        SetFlagA(false);
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
@@ -2960,23 +2967,15 @@ internal class P8086
                     }
                 }
 
-                if (true)
-                {
-                    SetFlagZ(_ah == 0);
-                    SetFlagS((_ah & 0x80) == 0x80);
-                    SetFlagP(_ah);
-                    SetFlagA(false);
-                    SetFlagC(false);
-                    SetFlagO(false);
-                }
-
                 cmd_name = "DIV";
             }
             else if (function == 7)
             {
-                bool set_flags = false;
                 bool negate = _rep_mode == RepMode.REP && _rep;
                 _rep = false;
+
+                SetFlagC(false);
+                SetFlagO(false);
 
                 // IDIV
                 if (word) {
@@ -2985,7 +2984,10 @@ internal class P8086
 
                     if (r1s == 0 || 0x7fff / r1s > dx_ax || -0x8000 / r1s < dx_ax)
                     {
-                        set_flags = true;
+                        SetFlagZ(_ah == 0);
+                        SetFlagS((_ah & 0x80) == 0x80);
+                        SetFlagP(_ah);
+                        SetFlagA(false);
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
@@ -3003,7 +3005,10 @@ internal class P8086
 
                     if (r1s == 0 || 0x7f / r1s > ax || -0x80 / r1s < ax)
                     {
-                        set_flags = true;
+                        SetFlagZ(_ah == 0);
+                        SetFlagS((_ah & 0x80) == 0x80);
+                        SetFlagP(_ah);
+                        SetFlagA(false);
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
@@ -3014,16 +3019,6 @@ internal class P8086
                             _al = (byte)(ax / r1s);
                         _ah = (byte)(ax % r1s);
                     }
-                }
-
-                if (false)
-                {
-                    SetFlagZ(_ah == 0);
-                    SetFlagS((_ah & 0x80) == 0x80);
-                    SetFlagP(_ah);
-                    SetFlagA(false);
-                    SetFlagC(false);
-                    SetFlagO(false);
                 }
 
                 cmd_name = "IDIV";
