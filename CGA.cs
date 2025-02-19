@@ -95,8 +95,7 @@ class CGA : Display
             uint mask = uint.MaxValue - 1;
             uint char_base_offset = use_offset & mask;
 
-            if ((use_offset & 1) == 0)
-                EmulateTextDisplay(x, y, _ram[char_base_offset + 0], _ram[char_base_offset + 1]);
+            EmulateTextDisplay(x, y, _ram[char_base_offset + 0], _ram[char_base_offset + 1]);
         }
     }
 
