@@ -2557,15 +2557,9 @@ internal class P8086
                         );
 
                     if (override_to_ss)
-                    {
                         seg = _ss;
-#if DEBUG
-                        Log.DoLog($"BP SS-override ${_ss:X4} [7]", true);
-#endif
-                    }
 
                     (string dummy, int put_cycles) = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result);
-
                     cycle_count += put_cycles;
 
 #if DEBUG
@@ -4202,8 +4196,6 @@ internal class P8086
                 // CALL FAR
                 push(_cs);
                 push(_ip);
-
-                Log.DoLog($"v: {v:X4}, addr: {addr:X4}, word@addr+0: {ReadMemWord(seg, (ushort)(addr + 0)):X4}, word@addr+2: {ReadMemWord(seg, (ushort)(addr + 2)):X4}", true);
 
                 _ip = v;
                 _cs = ReadMemWord(seg, (ushort)(addr + 2));
