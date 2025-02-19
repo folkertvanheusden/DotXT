@@ -301,23 +301,18 @@ internal class P8086
     private void WriteMemByte(ushort segment, ushort offset, byte v)
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
-
         _b.WriteByte(a, v);
     }
 
     private void WriteMemWord(ushort segment, ushort offset, ushort v)
     {
-        uint a1 = (uint)(((segment << 4) + offset) & MemMask);
-        uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
-
-        _b.WriteByte(a1, (byte)v);
-        _b.WriteByte(a2, (byte)(v >> 8));
+        WriteMemByte(segment, offset, (byte)v);
+        WriteMemByte(segment, (ushort)(offset + 1), (byte)(v >> 8));
     }
 
     public byte ReadMemByte(ushort segment, ushort offset)
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
-
         return _b.ReadByte(a);
     } 
 
@@ -1307,7 +1302,10 @@ internal class P8086
         if (opcode == 0x00)
         {
             if (++_crash_counter >= 5)
+            {
+                Log.DoLog($"Terminating because of {_crash_counter}x 0x00 opcode ({address:X06})");
                 Terminate();
+            }
         }
         else
         {
