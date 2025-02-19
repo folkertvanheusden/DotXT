@@ -166,14 +166,18 @@ internal class i8237
         else if (addr == 0x0b)  // mode register
         {
             _channel_mode[value & 3] = value;
-            string str = "";
-            if ((value & 0x10) == 0x10)
-                str += ", autoinit";
-            if ((value & 0x20) == 0x20)
-                str += ", decrement";
+            string [] type = new string[] { "controller self test", "read transfer", "write transfer", "invalid" };
+            string [] mode = new string[] { "on demand", "block", "single", "cascade" };
             for(int i=0; i<4; i++)
                 _reached_tc[i] = false;
-            Log.DoLog($"i8237 mode register channel {value & 3}: {value:X02}{str}", true);
+            string extra = "";
+            if ((value & 16) == 16)
+                extra += ", auto init";
+            if ((value & 32) == 32)
+                extra += ", decrement address";
+            else
+                extra += ", increment address";
+            Log.DoLog($"i8237 mode register channel {value & 3}: {value:X02} {type[(value >> 2) & 3]}, {mode[(value >> 6) & 3]}{extra}", true);
         }
         else if (addr == 0x0c)  // reset flipflop
             _ff.reset();
