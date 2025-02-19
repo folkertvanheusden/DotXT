@@ -332,7 +332,8 @@ class FloppyDisk : Device
                     }
                     else if (_data[0] == 0x07)  // RECALIBRATE
                     {
-                        // do nothing (normally it sets timing parameters)
+                        _head = 0;
+                        _cylinder = 0;
                         _data_state = DataState.WaitCmd;
                         want_interrupt = true;
                     }
