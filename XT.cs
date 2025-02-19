@@ -329,6 +329,13 @@ internal class P8086
         return _flags;
     }
 
+    public void SetZSPFlags(byte v)
+    {
+        SetFlagZ(v == 0);
+        SetFlagS((v & 0x80) == 0x80);
+        SetFlagP(v);
+    }
+
     private void WriteMemByte(ushort segment, ushort offset, byte v)
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
@@ -1599,9 +1606,7 @@ internal class P8086
                 SetFlagC(false);
             }
 
-            SetFlagS((_al & 0x80) == 0x80);
-            SetFlagZ(_al == 0);
-            SetFlagP(_al);
+            SetZSPFlags(_al);
 
             cycle_count += 4;
 
@@ -1654,9 +1659,7 @@ internal class P8086
                 SetFlagC(true);
             }
 
-            SetFlagS((_al & 0x80) == 0x80);
-            SetFlagZ(_al == 0);
-            SetFlagP(_al);
+            SetZSPFlags(_al);
 
             cycle_count += 4;
 
@@ -2937,9 +2940,7 @@ internal class P8086
 
                     if (r1 == 0 || dx_ax / r1 >= 0x10000)
                     {
-                        SetFlagZ(_ah == 0);
-                        SetFlagS((_ah & 0x80) == 0x80);
-                        SetFlagP(_ah);
+                        SetZSPFlags(_ah);
                         SetFlagA(false);
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
@@ -2954,9 +2955,7 @@ internal class P8086
 
                     if (r1 == 0 || ax / r1 >= 0x100)
                     {
-                        SetFlagZ(_ah == 0);
-                        SetFlagS((_ah & 0x80) == 0x80);
-                        SetFlagP(_ah);
+                        SetZSPFlags(_ah);
                         SetFlagA(false);
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
@@ -2984,9 +2983,7 @@ internal class P8086
 
                     if (r1s == 0 || 0x7fff / r1s > dx_ax || -0x8000 / r1s < dx_ax)
                     {
-                        SetFlagZ(_ah == 0);
-                        SetFlagS((_ah & 0x80) == 0x80);
-                        SetFlagP(_ah);
+                        SetZSPFlags(_ah);
                         SetFlagA(false);
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
@@ -3005,9 +3002,7 @@ internal class P8086
 
                     if (r1s == 0 || 0x7f / r1s > ax || -0x80 / r1s < ax)
                     {
-                        SetFlagZ(_ah == 0);
-                        SetFlagS((_ah & 0x80) == 0x80);
-                        SetFlagP(_ah);
+                        SetZSPFlags(_ah);
                         SetFlagA(false);
                         InvokeInterrupt(_ip, 0x00, false);  // divide by zero or divisor too small
                     }
@@ -3718,15 +3713,11 @@ internal class P8086
                 _ah = (byte)(_al / b2);
                 _al %= b2;
 
-                SetFlagS((_al & 128) == 128);
-                SetFlagZ(_al == 0);
-                SetFlagP(_al);
+                SetZSPFlags(_al);
             }
             else
             {
-                SetFlagS(false);
-                SetFlagZ(true);
-                SetFlagP(0);
+                SetZSPFlags(0);
 
                 SetFlagO(false);
                 SetFlagA(false);
@@ -3749,9 +3740,7 @@ internal class P8086
             _al = (byte)(_al + _ah * b2);
             _ah = 0;
 
-            SetFlagS((_al & 128) == 128);
-            SetFlagZ(_al == 0);
-            SetFlagP(_al);
+            SetZSPFlags(_al);
 
             cycle_count += 2;  // TODO
 
