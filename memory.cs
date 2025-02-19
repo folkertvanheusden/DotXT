@@ -53,15 +53,7 @@ internal class Rom
     public byte ReadByte(uint address)
     {
         address -= _offset;
-
-        if (address < _contents.Length)
-            return _contents[address];
-
-#if DEBUG
-        Log.DoLog($"Rom::ReadByte: {address} > {_contents.Length}");
-#endif
-
-        return 0xee;
+        return _contents[address];
     }
 }
 
