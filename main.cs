@@ -1,6 +1,7 @@
 using DotXT;
 
 string test = "";
+string floppy = "";
 
 TMode mode = TMode.NotSet;
 
@@ -23,11 +24,12 @@ for(int i=0; i<args.Length; i++)
     if (args[i] == "-h") {
         Console.WriteLine("-t file   load 'file'");
         Console.WriteLine("-T addr   sets the load-address for -t");
-        Console.WriteLine("-x type   set type for -T: floppy, binary, blank");
+        Console.WriteLine("-x type   set type for -T: binary, blank");
         Console.WriteLine("-l file   log to file");
         Console.WriteLine("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
         Console.WriteLine("          e.g. load the bios from f000:e000");
         Console.WriteLine("-s size   RAM size in kilobytes, decimal");
+        Console.WriteLine("-F file   load floppy image");
         Console.WriteLine("-D file   disassemble to file");
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
@@ -42,9 +44,7 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-x") {
         string type = args[++i];
 
-        if (type == "floppy")
-            mode = TMode.Floppy;
-        else if (type == "binary")
+        if (type == "binary")
             mode = TMode.Binary;
         else if (type == "blank")
             mode = TMode.Blank;
@@ -60,6 +60,8 @@ for(int i=0; i<args.Length; i++)
         Log.SetDisassemblyFile(args[++i]);
     else if (args[i] == "-I")
         run_IO = false;
+    else if (args[i] == "-F")
+        floppy = args[++i];
     else if (args[i] == "-d")
         debugger = true;
     else if (args[i] == "-P")
@@ -118,7 +120,7 @@ if (mode != TMode.Blank)
 //    devices.Add(new MDA());
     devices.Add(new CGA());
     devices.Add(new i8253());
-    if (test == "")
+    if (floppy == "")
     {
         //devices.Add(new FloppyDisk("disks/002962_ms_dos_622/disk1.img"));
         //devices.Add(new FloppyDisk("disks/msdos6_22disk1.img"));
@@ -134,7 +136,7 @@ if (mode != TMode.Blank)
     }
     else
     {
-        devices.Add(new FloppyDisk(test));
+        devices.Add(new FloppyDisk(floppy));
     }
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks

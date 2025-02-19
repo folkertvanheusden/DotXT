@@ -3,17 +3,16 @@ namespace DotXT;
 internal enum TMode
 {
     NotSet,
-        Floppy,
-        Binary,
-        Blank
+    Binary,
+    Blank
 }
 
 internal enum RepMode
 {
     NotSet,
-        REPE_Z,
-        REPNZ,
-        REP
+    REPE_Z,
+    REPNZ,
+    REP
 }
 
 internal class P8086
