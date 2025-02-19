@@ -100,7 +100,7 @@ class FloppyDisk : Device
                 rc |= 32;
             if (_busy == true)
                 rc |= 16;
-            Log.DoLog($"Floppy-IN for MSR returns {rc:X2}");
+            Log.DoLog($"Floppy-IN for MSR returns {rc:X2}", true);
             return (rc, false);
         }
 
@@ -117,13 +117,13 @@ class FloppyDisk : Device
             }
             else
             {
-                Log.DoLog($"Floppy-IN reading from empty FIFO");
+                Log.DoLog($"Floppy-IN reading from empty FIFO", true);
             }
-            Log.DoLog($"Floppy-IN for FIFO returns {rc:X2}");
+            Log.DoLog($"Floppy-IN for FIFO returns {rc:X2}", true);
             return (rc, false);
         }
 
-        Log.DoLog("Floppy-IN read from cache");
+        Log.DoLog("Floppy-IN read from cache", true);
 
         return (_registers[port - 0x3f0], false);
     }
@@ -136,9 +136,9 @@ class FloppyDisk : Device
         int n = _data[5];
 
 #if DEBUG
-        Log.DoLog($"Floppy-ReadData HS {_data[1] & 4:X02} C {_data[2]} H {_data[3]} R {_data[4]} N {_data[5]}");
-        Log.DoLog($"Floppy-ReadData SEEK H {_head} C {_cylinder}");
-        Log.DoLog($"Floppy-ReadData LBA {lba}, offset {lba * 512}");
+        Log.DoLog($"Floppy-ReadData HS {_data[1] & 4:X02} C {_data[2]} H {_data[3]} R {_data[4]} N {_data[5]}", true);
+        Log.DoLog($"Floppy-ReadData SEEK H {_head} C {_cylinder}", true);
+        Log.DoLog($"Floppy-ReadData LBA {lba}, offset {lba * 512}", true);
 #endif
 
         byte [] _old_data = _data;
@@ -161,9 +161,9 @@ class FloppyDisk : Device
                 long start = (lba * 2 + nr) * b.Length;
                 fs.Seek(start, SeekOrigin.Begin);
                 if (fs.Read(b, 0, b.Length) != b.Length)
-                    Log.DoLog($"Floppy-ReadData failed reading from backend (offset: {start})");
+                    Log.DoLog($"Floppy-ReadData failed reading from backend (offset: {start})", true);
                 if (fs.Position != start + b.Length)
-                    Log.DoLog($"Floppy-ReadData backend data processing error?");
+                    Log.DoLog($"Floppy-ReadData backend data processing error?", true);
             }
 
 #if DEBUG
@@ -176,7 +176,7 @@ class FloppyDisk : Device
                     else
                         str += $" {b[o]:X02}";
                 }
-                Log.DoLog($"Floppy-ReadData {str}");
+                Log.DoLog($"Floppy-ReadData {str}", true);
             }
 #endif
 
@@ -184,7 +184,7 @@ class FloppyDisk : Device
             {
                 if (_dma_controller.SendToChannel(2, b[i]) == false)
                 {
-                    Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}, sector {nr + 1} out of {n}. Position: cylinder {_cylinder}, head {head}, sector {sector}, lba {lba}");
+                    Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}, sector {nr + 1} out of {n}. Position: cylinder {_cylinder}, head {head}, sector {sector}, lba {lba}", true);
                     _data[0] = 0x40;  // abnormal termination of command
                     _data[1] = 0x10;  // FDC not serviced by host
                     nr = n;  // break outer loop
@@ -202,7 +202,7 @@ class FloppyDisk : Device
         _data_state = DataState.WaitCmd;
         _head = (_data[1] & 4) == 4 ? 1 : 0;
         _cylinder = _data[2];
-        Log.DoLog($"Floppy SEEK to head {_head} cylinder {_cylinder}");
+        Log.DoLog($"Floppy SEEK to head {_head} cylinder {_cylinder}", true);
         return true;
     }
 
@@ -212,7 +212,7 @@ class FloppyDisk : Device
         string str = "";
         for(int i=0; i<_data.Length; i++)
             str += $" {_data[i]:X02}";
-        Log.DoLog($"Floppy-reply:{str}");
+        Log.DoLog($"Floppy-reply:{str}", true);
 #endif
     }
 
@@ -237,13 +237,13 @@ class FloppyDisk : Device
             }
             _dma = (value & 8) == 8;
             if (_dma == false)
-                Log.DoLog($"Floppy-OUT DMA disabled!");
+                Log.DoLog($"Floppy-OUT DMA disabled!", true);
         }
         else if (port == 0x3f5)  // data fifo
         {
             if (_data_state != DataState.WaitCmd && _data_state != DataState.WantData)
             {
-                Log.DoLog($"Floppy-OUT was in {_data_state} mode, going to WaitCmd (forcibly)");
+                Log.DoLog($"Floppy-OUT was in {_data_state} mode, going to WaitCmd (forcibly)", true);
                 _data_state = DataState.WaitCmd;
             }
 
@@ -254,7 +254,7 @@ class FloppyDisk : Device
                 byte cmd = (byte)(value & 31);
                 if (cmd == 0x08)
                 {
-                    Log.DoLog($"Floppy-OUT command SENSE INTERRUPT STATUS");
+                    Log.DoLog($"Floppy-OUT command SENSE INTERRUPT STATUS", true);
                     _data = new byte[2];
                     _data[0] = (byte)(_just_resetted ? 0xc0 : 0x20);  // TODO | drive_number
                     _data[1] = (byte)_cylinder;
@@ -265,7 +265,7 @@ class FloppyDisk : Device
                 }
                 else if (cmd == 0x06)
                 {
-                    Log.DoLog($"Floppy-OUT command READ DATA");
+                    Log.DoLog($"Floppy-OUT command READ DATA", true);
                     _data = new byte[9];
                     _data[0] = cmd;
                     _data_offset = 1;
@@ -273,7 +273,7 @@ class FloppyDisk : Device
                 }
                 else if (cmd == 0x0f)
                 {
-                    Log.DoLog($"Floppy-OUT command SEEK");
+                    Log.DoLog($"Floppy-OUT command SEEK", true);
                     _data = new byte[3];
                     _data[0] = cmd;
                     _data_offset = 1;
@@ -281,7 +281,7 @@ class FloppyDisk : Device
                 }
                 else if (cmd == 0x03)
                 {
-                    Log.DoLog($"Floppy-OUT command SPECIFY");
+                    Log.DoLog($"Floppy-OUT command SPECIFY", true);
                     _data = new byte[3];
                     _data[0] = cmd;
                     _data_offset = 1;
@@ -289,7 +289,7 @@ class FloppyDisk : Device
                 }
                 else if (cmd == 0x07)
                 {
-                    Log.DoLog($"Floppy-OUT command RECALIBRATE");
+                    Log.DoLog($"Floppy-OUT command RECALIBRATE", true);
                     _data = new byte[2];
                     _data[0] = cmd;
                     _data_offset = 1;
@@ -297,17 +297,17 @@ class FloppyDisk : Device
                 }
                 else
                 {
-                    Log.DoLog($"Floppy-OUT command {cmd:X2} not implemented ({value:X2})");
+                    Log.DoLog($"Floppy-OUT command {cmd:X2} not implemented ({value:X2})", true);
                     _busy = false;
                 }
 
                 if (_data_state == DataState.HaveData)
                 {
-                    Log.DoLog($"Floppy-OUT queued {_data.Length - _data_offset} bytes");
+                    Log.DoLog($"Floppy-OUT queued {_data.Length - _data_offset} bytes", true);
                 }
                 else if (_data_state == DataState.WantData)
                 {
-                    Log.DoLog($"Floppy-OUT waiting for {_data.Length - _data_offset} bytes");
+                    Log.DoLog($"Floppy-OUT waiting for {_data.Length - _data_offset} bytes", true);
                 }
             }
             else if (_data_state == DataState.WantData)
@@ -338,7 +338,7 @@ class FloppyDisk : Device
                     }
                     else
                     {
-                        Log.DoLog($"Floppy-OUT unexpected command-after-data {_data[0]:X2}");
+                        Log.DoLog($"Floppy-OUT unexpected command-after-data {_data[0]:X2}", true);
                     }
 
                     _just_resetted = false;
@@ -346,17 +346,17 @@ class FloppyDisk : Device
             }
             else
             {
-                Log.DoLog($"Floppy-OUT invalid state ({_data_state})");
+                Log.DoLog($"Floppy-OUT invalid state ({_data_state})", true);
             }
         }
         else
         {
-            Log.DoLog($"Floppy-OUT write to unexpected port {port:X04}");
+            Log.DoLog($"Floppy-OUT write to unexpected port {port:X04}", true);
         }
 
         if (want_interrupt)
         {
-            Log.DoLog($"Floppy-OUT triggers IRQ");
+            Log.DoLog($"Floppy-OUT triggers IRQ", true);
             _pic.RequestInterruptPIC(_irq_nr);
         }
 
