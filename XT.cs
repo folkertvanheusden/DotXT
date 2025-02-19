@@ -42,17 +42,13 @@ internal class P8086
 
     private ushort _flags;
 
+    private int _crash_counter = 0;
+
     private const uint MemMask = 0x00ffffff;
 
     private Bus _b;
-
     private readonly IO _io;
 
-    // TODO: make it into a Device, tick_count so that the Device tells which source
-    // triggerd the timer so that it can be reset. dus; tick_count = 0, vraag device
-    // of die int nog gezet is: device heeft een vlag per source (bijv. timer x van
-    // de 8255) die gezet wordt, bij een reconfigure van die 8255-timer wordt dan
-    // die vlag gereset
     private bool _scheduled_interrupts = false;
 
     private bool _rep;
@@ -62,15 +58,9 @@ internal class P8086
     private byte _rep_opcode;
 
     private bool _is_test;
-
     private bool _terminate_on_hlt;
 
-    private readonly List<byte> floppy = new();
-
-    private string tty_output = "";
-
     private int clock;
-
     private List<Device> _devices;
 
     public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool terminate_on_hlt, ref List<Device> devices, bool run_IO)
@@ -110,33 +100,6 @@ internal class P8086
                     }
                 }
             }
-        }
-        else if (test != "" && t_mode == TMode.Floppy)
-        {
-            _cs = 0;
-            _ip = 0x7c00;
-
-            using (var stream = File.Open(test, FileMode.Open))
-            {
-                byte[] buffer = new byte[512];
-
-                for(;;)
-                {
-                    int n_read = stream.Read(buffer, 0, 512);
-
-                    if (n_read == 0)
-                        break;
-
-                    if (n_read != 512)
-                        Console.WriteLine($"Short read from floppy image: {n_read}");
-
-                    for(int i=0; i<512; i++)
-                        floppy.Add(buffer[i]);
-                }
-            }
-
-            for(int i=0; i<512; i++)
-                _b.WriteByte((ushort)(_ip + i), floppy[i]);
         }
         else if (t_mode != TMode.Blank)
         {
@@ -1223,6 +1186,16 @@ internal class P8086
             _ip = _rep_addr;
     }
 
+    public void Terminate()
+    {
+        Log.EmitDisassembly();
+
+        if (_is_test)
+            System.Environment.Exit(_si == 0xa5ee ? 123 : 0);
+
+        System.Environment.Exit(0);
+    }
+
     // cycle counts from https://zsmith.co/intel_i.php
     public bool Tick()
     {
@@ -1365,6 +1338,16 @@ internal class P8086
 #else
         string prefixStr = "";
 #endif
+
+        if (opcode == 0x00)
+        {
+            if (++_crash_counter >= 5)
+                Terminate();
+        }
+        else
+        {
+            _crash_counter = 0;
+        }
 
         // main instruction handling
         if (opcode == 0x04 || opcode == 0x14)
@@ -4078,14 +4061,7 @@ internal class P8086
 #endif
 
             if (_terminate_on_hlt)
-            {
-                Log.EmitDisassembly();
-
-                if (_is_test)
-                    System.Environment.Exit(_si == 0xa5ee ? 123 : 0);
-
-                System.Environment.Exit(0);
-            }
+                Terminate();
 
             rc = false;
         }
