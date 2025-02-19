@@ -13,8 +13,9 @@ class FloppyDisk : Device
     private string _filename = null;
     private bool _just_resetted = false;
     private bool _busy = false;
-    private int _cylinder = 0;  // TODO per drive
-    private int _head = 0;  // TODO per drive
+    private int [] _cylinder = new int[4];
+    private int [] _head = new int[4];
+    private int _cylinder_seek_result = 0;
 
     public FloppyDisk(string filename)
     {
@@ -128,16 +129,16 @@ class FloppyDisk : Device
         return (_registers[port - 0x3f0], false);
     }
 
-    private bool ReadData()
+    private bool ReadData(int unit)
     {
         int sector = _data[4];
         int head = (_data[1] & 4) == 4 ? 1 : 0;
-        int lba = (_cylinder * 2 + head) * 9 + sector - 1;
+        int lba = (_cylinder[unit] * 2 + head) * 9 + sector - 1;
         int n = _data[5];
 
 #if DEBUG
         Log.DoLog($"Floppy-ReadData HS {_data[1] & 4:X02} C {_data[2]} H {_data[3]} R {_data[4]} N {_data[5]}", true);
-        Log.DoLog($"Floppy-ReadData SEEK H {_head} C {_cylinder}", true);
+        Log.DoLog($"Floppy-ReadData SEEK H {_head[unit]} C {_cylinder[unit]}, unit {unit}", true);
         Log.DoLog($"Floppy-ReadData LBA {lba}, offset {lba * 512}", true);
 #endif
 
@@ -184,7 +185,7 @@ class FloppyDisk : Device
             {
                 if (_dma_controller.SendToChannel(2, b[i]) == false)
                 {
-                    Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}, sector {nr + 1} out of {n}. Position: cylinder {_cylinder}, head {head}, sector {sector}, lba {lba}", true);
+                    Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}, sector {nr + 1} out of {n}. Position: cylinder {_cylinder[unit]}, head {head}, sector {sector}, lba {lba}, unit {unit}", true);
                     _data[0] = 0x40;  // abnormal termination of command
                     _data[1] = 0x10;  // FDC not serviced by host
                     nr = n;  // break outer loop
@@ -196,13 +197,14 @@ class FloppyDisk : Device
         return true;
     }
 
-    private bool Seek()
+    private bool Seek(int unit)
     {
         // no response, only an interrupt
         _data_state = DataState.WaitCmd;
-        _head = (_data[1] & 4) == 4 ? 1 : 0;
-        _cylinder = _data[2];
-        Log.DoLog($"Floppy SEEK to head {_head} cylinder {_cylinder}", true);
+        _head[unit] = (_data[1] & 4) == 4 ? 1 : 0;
+        _cylinder[unit] = _data[2];
+        _cylinder_seek_result = _cylinder[unit];
+        Log.DoLog($"Floppy SEEK to head {_head[unit]} cylinder {_cylinder[unit]}, unit {unit}", true);
         return true;
     }
 
@@ -257,7 +259,7 @@ class FloppyDisk : Device
                     Log.DoLog($"Floppy-OUT command SENSE INTERRUPT STATUS", true);
                     _data = new byte[2];
                     _data[0] = (byte)(_just_resetted ? 0xc0 : 0x20);  // TODO | drive_number
-                    _data[1] = (byte)_cylinder;
+                    _data[1] = (byte)_cylinder_seek_result;
                     _data_offset = 0;
                     _data_state = DataState.HaveData;
                     want_interrupt = true;
@@ -317,12 +319,12 @@ class FloppyDisk : Device
                 {
                     if (_data[0] == 0x06)  // READ DATA
                     {
-                        want_interrupt |= ReadData();
+                        want_interrupt |= ReadData(_data[1] & 3);
                         DumpReply();
                     }
                     else if (_data[0] == 0x0f)  // SEEK
                     {
-                        want_interrupt |= Seek();
+                        want_interrupt |= Seek(_data[1] & 3);
                         DumpReply();
                     }
                     else if (_data[0] == 0x03)  // SPECIFY
@@ -332,8 +334,9 @@ class FloppyDisk : Device
                     }
                     else if (_data[0] == 0x07)  // RECALIBRATE
                     {
-                        _head = 0;
-                        _cylinder = 0;
+                        int unit = _data[1] & 3;
+                        _head[unit] = 0;
+                        _cylinder[unit] = 0;
                         _data_state = DataState.WaitCmd;
                         want_interrupt = true;
                     }
