@@ -96,14 +96,14 @@ List<Device> devices = new();
 
 if (mode != TMode.Blank)
 {
-    devices.Add(new MDA());
+//    devices.Add(new MDA());
     devices.Add(new CGA());
     devices.Add(new i8253());
     //devices.Add(new FloppyDisk("disks/002962_ms_dos_622/disk1.img"));
     //devices.Add(new FloppyDisk("disks/msdos6_22disk1.img"));
     //devices.Add(new FloppyDisk("disks/diags100.img"));
-    devices.Add(new FloppyDisk("disks/4.01-test.img"));
-    //devices.Add(new FloppyDisk("disks/3.30-disk1.img"));
+    //devices.Add(new FloppyDisk("disks/4.01-test.img"));
+    devices.Add(new FloppyDisk("disks/3.30-disk1.img"));
     //devices.Add(new FloppyDisk("disks/bigtop.img"));
     //devices.Add(new FloppyDisk("disks/COMPAQ-DIAGS-508-012988-REVK.img"));
     //devices.Add(new FloppyDisk("disks/3.21-disk1.img"));

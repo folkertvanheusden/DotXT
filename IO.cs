@@ -521,23 +521,20 @@ internal class i8237
         }
 
         ushort addr = _channel_address_register[channel].GetValue();
-        uint full_addr = (uint)((_channel_page[channel] * 16) | addr);
-        _b.WriteByte(full_addr, value);
-
+        uint full_addr = (uint)((_channel_page[channel] << 16) | addr);
         addr++;
         _channel_address_register[channel].SetValue(addr);
+
+        _b.WriteByte(full_addr, value);
 
         ushort count = _channel_word_count[channel].GetValue();
         count--;
         if (count == 0xffff)
         {
-            //Log.DoLog($"i8237 SendToChannel channel {channel} count has reached -1, set tc");
+            Log.DoLog($"i8237 SendToChannel channel {channel} count has reached -1, set tc, address {full_addr:X06}, {_channel_page[channel]:X03}");
             _reached_tc[channel] = true;
         }
-        else
-        {
-            // Log.DoLog($"i8237 SendToChannel channel {channel} count has reached {count}");
-        }
+
         _channel_word_count[channel].SetValue(count);
 
         return true;
@@ -690,7 +687,7 @@ class IO
         foreach(var device in _devices)
             device.SyncClock(_clock);
 
-        if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2)
+        if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87)
             return _i8237.In(addr);
 
         if (addr == 0x0008)  // DMA status register
@@ -731,7 +728,7 @@ class IO
     {
         // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})", true);
 
-        if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2) // 8237
+        if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87) // 8237
             return _i8237.Out(addr, (byte)value);
 
         else if (addr == 0x0020 || addr == 0x0021)  // PIC

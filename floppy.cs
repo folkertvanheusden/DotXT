@@ -123,6 +123,8 @@ class FloppyDisk : Device
             return (rc, false);
         }
 
+        Log.DoLog("Floppy-IN read from cache");
+
         return (_registers[port - 0x3f0], false);
     }
 
