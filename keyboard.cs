@@ -2,7 +2,7 @@ using System.Threading;
 
 class Keyboard : Device
 {
-    private Thread _keyboard_thread;
+    private Thread _console_keyboard_thread;
     protected int _irq_nr = 1;
     protected int _kb_reset_irq_delay = 4770;  // cycles for 1ms @ 4.77 MHz
     protected int _kb_key_irq = 100;
@@ -14,9 +14,9 @@ class Keyboard : Device
     public Keyboard()
     {
         Console.TreatControlCAsInput = true;
-        _keyboard_thread = new Thread(Keyboard.KeyboardThread);
-        _keyboard_thread.Name = "keyboard_thread";
-        _keyboard_thread.Start(this);
+        _console_keyboard_thread = new Thread(Keyboard.ConsoleKeyboardThread);
+        _console_keyboard_thread.Name = "keyboard_thread";
+        _console_keyboard_thread.Start(this);
     }
 
     public override int GetIRQNumber()
@@ -35,53 +35,62 @@ class Keyboard : Device
         ScheduleInterrupt(_kb_key_irq);
     }
 
-    public static void KeyboardThread(object o_kb)
+    public static ConsoleKey ConvertChar(char c)
+    {
+        ConsoleKey ck;
+        Enum.TryParse<ConsoleKey>(c.ToString(), out ck);
+        return ck;
+    }
+
+    public static void ConsoleKeyboardThread(object o_kb)
     {
         Log.DoLog("KeyboardThread started", true);
 
         Keyboard kb = (Keyboard)o_kb;
 
-        Dictionary<ConsoleKey, byte> key_map = new() {
-            { ConsoleKey.Escape, 0x01 },
-            { ConsoleKey.Enter, 0x1c },
-            { ConsoleKey.D1, 0x02 },
-            { ConsoleKey.D2, 0x03 },
-            { ConsoleKey.D3, 0x04 },
-            { ConsoleKey.D4, 0x05 },
-            { ConsoleKey.D5, 0x06 },
-            { ConsoleKey.D6, 0x07 },
-            { ConsoleKey.D7, 0x08 },
-            { ConsoleKey.D8, 0x09 },
-            { ConsoleKey.D9, 0x0a },
-            { ConsoleKey.D0, 0x0b },
-            { ConsoleKey.A, 0x1e },
-            { ConsoleKey.B, 0x30 },
-            { ConsoleKey.C, 0x2e },
-            { ConsoleKey.D, 0x20 },
-            { ConsoleKey.E, 0x12 },
-            { ConsoleKey.F, 0x21 },
-            { ConsoleKey.G, 0x22 },
-            { ConsoleKey.H, 0x23 },
-            { ConsoleKey.I, 0x17 },
-            { ConsoleKey.J, 0x24 },
-            { ConsoleKey.K, 0x25 },
-            { ConsoleKey.L, 0x26 },
-            { ConsoleKey.M, 0x32 },
-            { ConsoleKey.N, 0x31 },
-            { ConsoleKey.O, 0x18 },
-            { ConsoleKey.P, 0x19 },
-            { ConsoleKey.Q, 0x10 },
-            { ConsoleKey.R, 0x13 },
-            { ConsoleKey.S, 0x1f },
-            { ConsoleKey.T, 0x14 },
-            { ConsoleKey.U, 0x16 },
-            { ConsoleKey.V, 0x2f },
-            { ConsoleKey.W, 0x11 },
-            { ConsoleKey.X, 0x2d },
-            { ConsoleKey.Y, 0x15 },
-            { ConsoleKey.Z, 0x2c },
-            { ConsoleKey.Spacebar,  0x39 },
-            { ConsoleKey.Backspace, 0x0e },
+        Dictionary<ConsoleKey, byte []> key_map = new() {
+            { ConsoleKey.Escape, new byte[] { 0x01 } },
+            { ConsoleKey.Enter, new byte[] { 0x1c } },
+            { ConsoleKey.D1, new byte[] { 0x02 } },
+            { ConsoleKey.D2, new byte[] { 0x03 } },
+            { ConsoleKey.D3, new byte[] { 0x04 } },
+            { ConsoleKey.D4, new byte[] { 0x05 } },
+            { ConsoleKey.D5, new byte[] { 0x06 } },
+            { ConsoleKey.D6, new byte[] { 0x07 } },
+            { ConsoleKey.D7, new byte[] { 0x08 } },
+            { ConsoleKey.D8, new byte[] { 0x09 } },
+            { ConsoleKey.D9, new byte[] { 0x0a } },
+            { ConsoleKey.D0, new byte[] { 0x0b } },
+            { ConsoleKey.A, new byte[] { 0x1e } },
+            { ConsoleKey.B, new byte[] { 0x30 } },
+            { ConsoleKey.C, new byte[] { 0x2e } },
+            { ConsoleKey.D, new byte[] { 0x20 } },
+            { ConsoleKey.E, new byte[] { 0x12 } },
+            { ConsoleKey.F, new byte[] { 0x21 } },
+            { ConsoleKey.G, new byte[] { 0x22 } },
+            { ConsoleKey.H, new byte[] { 0x23 } },
+            { ConsoleKey.I, new byte[] { 0x17 } },
+            { ConsoleKey.J, new byte[] { 0x24 } },
+            { ConsoleKey.K, new byte[] { 0x25 } },
+            { ConsoleKey.L, new byte[] { 0x26 } },
+            { ConsoleKey.M, new byte[] { 0x32 } },
+            { ConsoleKey.N, new byte[] { 0x31 } },
+            { ConsoleKey.O, new byte[] { 0x18 } },
+            { ConsoleKey.P, new byte[] { 0x19 } },
+            { ConsoleKey.Q, new byte[] { 0x10 } },
+            { ConsoleKey.R, new byte[] { 0x13 } },
+            { ConsoleKey.S, new byte[] { 0x1f } },
+            { ConsoleKey.T, new byte[] { 0x14 } },
+            { ConsoleKey.U, new byte[] { 0x16 } },
+            { ConsoleKey.V, new byte[] { 0x2f } },
+            { ConsoleKey.W, new byte[] { 0x11 } },
+            { ConsoleKey.X, new byte[] { 0x2d } },
+            { ConsoleKey.Y, new byte[] { 0x15 } },
+            { ConsoleKey.Z, new byte[] { 0x2c } },
+            { ConsoleKey.Spacebar, new byte[] { 0x39 } },
+            { ConsoleKey.Backspace, new byte[] { 0x0e } },
+//            { ConvertChar(';'), new byte[] { 0x27 } },
+            { ConvertChar(':'), new byte[] { 0x2a, 0x27, 0x27 | 0x80, 0x2a } },
         };
 
         for(;;)
@@ -89,21 +98,15 @@ class Keyboard : Device
             ConsoleKeyInfo cki = Console.ReadKey(true);
             ConsoleKey ck = cki.Key;
 
-            Log.DoLog($"Key pressed: {cki}", true);
+            Log.DoLog($"Key pressed: {ck} {ck.ToString()} {cki.Modifiers}", true);
 
-            if ((cki.Modifiers & ConsoleModifiers.Shift) != 0)
-                kb.PushKeyboardScancode(0x2a);  // shift make
-            if ((cki.Modifiers & ConsoleModifiers.Control) != 0)
-                kb.PushKeyboardScancode(0x1d);  // control make
             if (key_map.ContainsKey(ck))
             {
-                kb.PushKeyboardScancode(key_map[ck]);  // key make
-                kb.PushKeyboardScancode(key_map[ck] ^ 0x80);  // unmake
+                foreach(int key in key_map[ck])
+                    kb.PushKeyboardScancode(key);
+                if (key_map[ck].Length == 1)
+                    kb.PushKeyboardScancode(key_map[ck][0] ^ 0x80);
             }
-            if ((cki.Modifiers & ConsoleModifiers.Shift) != 0)
-                kb.PushKeyboardScancode(0x2a ^ 0x80);  // shift unmake
-            if ((cki.Modifiers & ConsoleModifiers.Control) != 0)
-                kb.PushKeyboardScancode(0x1d ^ 0x80);  // control unmake
         }
 
         Log.DoLog("KeyboardThread terminating", true);
