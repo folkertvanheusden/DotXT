@@ -129,18 +129,37 @@ class FloppyDisk : Device
         return (_registers[port - 0x3f0], false);
     }
 
+    private byte [] GetFromFloppyImage(int unit, int cylinder, int head, int sector, int n)
+    {
+        byte[] b = new byte[256 * n];
+        int lba = (cylinder * 2 + head) * 9 + sector - 1;
+        long offset = lba * b.Length;
+        Log.DoLog($"Floppy-ReadData LBA {lba}, offset {offset}, n {n}", true);
+
+        for(int nr=0; nr<n; nr++)
+        {
+            using (FileStream fs = File.Open(_filenames[unit], FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                fs.Seek(offset, SeekOrigin.Begin);
+                if (fs.Read(b, 256 * nr, 256) != 256)
+                    Log.DoLog($"Floppy-ReadData failed reading from backend ({_filenames[unit]}, offset: {offset})", true);
+                if (fs.Position != offset + 256)
+                    Log.DoLog($"Floppy-ReadData backend data processing error?", true);
+                offset += 256;
+            }
+        }
+
+        return b;
+    }
+
     private bool ReadData(int unit)
     {
         int sector = _data[4];
         int head = (_data[1] & 4) == 4 ? 1 : 0;
-        int lba = (_cylinder[unit] * 2 + head) * 9 + sector - 1;
         int n = _data[5];
 
-#if DEBUG
-        Log.DoLog($"Floppy-ReadData HS {_data[1] & 4:X02} C {_data[2]} H {_data[3]} R {_data[4]} N {_data[5]}", true);
+        Log.DoLog($"Floppy-ReadData HS {head:X02} C {_data[2]} H {_data[3]} R {_data[4]} N {_data[5]}", true);
         Log.DoLog($"Floppy-ReadData SEEK H {_head[unit]} C {_cylinder[unit]}, unit {unit}", true);
-        Log.DoLog($"Floppy-ReadData LBA {lba}, offset {lba * 512}", true);
-#endif
 
         byte [] _old_data = _data;
         _data = new byte[7];
@@ -154,43 +173,39 @@ class FloppyDisk : Device
         _data_offset = 0;
         _data_state = DataState.HaveData;
 
-        byte[] b = new byte[256];
-        for(int nr=0; nr<n; nr++)
-        {
-            using (FileStream fs = File.Open(_filenames[unit], FileMode.Open, FileAccess.Read, FileShare.None))
+        byte[] b = GetFromFloppyImage(unit, _cylinder[unit], head, sector, n);
+        for(int i=0; i<508; i++) {
+             if (b[i + 0] == 'N' &&
+                 b[i + 1] == 'U' &&
+                 b[i + 2] == 'L' &&
+                 b[i + 3] == 'L')
             {
-                long start = (lba * 2 + nr) * b.Length;
-                fs.Seek(start, SeekOrigin.Begin);
-                if (fs.Read(b, 0, b.Length) != b.Length)
-                    Log.DoLog($"Floppy-ReadData failed reading from backend ({_filenames[unit]}, offset: {start})", true);
-                if (fs.Position != start + b.Length)
-                    Log.DoLog($"Floppy-ReadData backend data processing error?", true);
+                Log.DoLog($"{i} NULL", true);
             }
+        }
 
 #if DEBUG
-            for(int i=0; i<16; i++) {
-                string str = $"{i * 16 + nr * b.Length:X02}: ";
-                for(int k=0; k<16; k++) {
-                    int o = k + i * 16;
-                    if (b[o] > 32 && b[o] < 127)
-                        str += $" {(char)b[o]} ";
-                    else
-                        str += $" {b[o]:X02}";
-                }
-                Log.DoLog($"Floppy-ReadData {str}", true);
+        for(int i=0; i<b.Length / 16; i++) {
+            string str = $"{i * 16:X02}: ";
+            for(int k=0; k<16; k++) {
+                int o = k + i * 16;
+                if (b[o] > 32 && b[o] < 127)
+                    str += $" {(char)b[o]} ";
+                else
+                    str += $" {b[o]:X02}";
             }
+            Log.DoLog($"Floppy-ReadData {str}", true);
+        }
 #endif
 
-            for(int i=0; i<b.Length; i++)
+        for(int i=0; i<b.Length; i++)
+        {
+            if (_dma_controller.SendToChannel(2, b[i]) == false)
             {
-                if (_dma_controller.SendToChannel(2, b[i]) == false)
-                {
-                    Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}, sector {nr + 1} out of {n}. Position: cylinder {_cylinder[unit]}, head {head}, sector {sector}, lba {lba}, unit {unit}", true);
-                    _data[0] = 0x40;  // abnormal termination of command
-                    _data[1] = 0x10;  // FDC not serviced by host
-                    nr = n;  // break outer loop
-                    break;
-                }
+                Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}. Position: cylinder {_cylinder[unit]}, head {head}, sector {sector}, unit {unit}", true);
+                _data[0] = 0x40;  // abnormal termination of command
+                _data[1] = 0x10;  // FDC not serviced by host
+                break;
             }
         }
 
