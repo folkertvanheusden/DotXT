@@ -10,6 +10,7 @@ class Log
     private static ushort _ip = 0;
     private static SortedDictionary<string, Tuple<string, string> > disassembly = new();
     private static readonly System.Threading.Lock _disassembly_lock = new();
+    private static readonly System.Threading.Lock _logging_lock = new();  // for windows
 
     public static void SetLogFile(string file)
     {
@@ -68,8 +69,13 @@ class Log
 
     public static void DoLog(string what, bool is_meta = false)
     {
-        File.AppendAllText(_logfile, $"[{_nr} | {_cs:X04}:{_ip:X04}] " + (is_meta ? "; " : "") + what + Environment.NewLine);
-        _nr++;
+        string output = $"[{_nr} | {_cs:X04}:{_ip:X04}] " + (is_meta ? "; " : "") + what + Environment.NewLine;
+
+        lock(_logging_lock)
+        {
+            File.AppendAllText(_logfile, output);
+            _nr++;
+        }
 
         if (_echo)
             Console.WriteLine(what);
