@@ -1,3 +1,5 @@
+using System.Text;
+
 abstract class Display : Device
 {
     private DateTime _prev_ts = DateTime.UtcNow;
@@ -8,6 +10,7 @@ abstract class Display : Device
 
     public Display()
     {
+        Console.OutputEncoding = Encoding.GetEncoding(28591);
         TerminalClear();
     }
 
