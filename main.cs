@@ -130,7 +130,7 @@ if (mode != TMode.Blank)
 // Bus gets the devices for memory mapped i/o
 Bus b = new Bus(ram_size * 1024, ref devices, ref roms);
 
-var p = new P8086(ref b, test, mode, load_test_at, !debugger, ref devices, run_IO);
+var p = new P8086(ref b, test, mode, load_test_at, debugger, ref devices, run_IO);
 
 if (set_initial_ip)
     p.set_ip(initial_cs, initial_ip);
