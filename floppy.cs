@@ -134,7 +134,7 @@ class FloppyDisk : Device
         byte[] b = new byte[256 * n];
         int lba = (cylinder * 2 + head) * 9 + sector - 1;
         long offset = lba * b.Length;
-        Log.DoLog($"Floppy-ReadData LBA {lba}, offset {offset}, n {n}", true);
+        Log.DoLog($"Floppy-ReadData LBA {lba}, offset {offset}, n {n} C {cylinder} H {head} S {sector}", true);
 
         for(int nr=0; nr<n; nr++)
         {
@@ -158,56 +158,60 @@ class FloppyDisk : Device
         int head = (_data[1] & 4) == 4 ? 1 : 0;
         int n = _data[5];
 
-        Log.DoLog($"Floppy-ReadData HS {head:X02} C {_data[2]} H {_data[3]} R {_data[4]} N {_data[5]}", true);
+        Log.DoLog($"Floppy-ReadData HS {head:X02} C {_data[2]} H {_data[3]} R {_data[4]} Sz {_data[5]} EOT {_data[6]} GPL {_data[7]} DTL {_data[8]}", true);
         Log.DoLog($"Floppy-ReadData SEEK H {_head[unit]} C {_cylinder[unit]}, unit {unit}", true);
 
-        byte [] _old_data = _data;
+        byte [] old_data = _data;
         _data = new byte[7];
         _data[0] = 0;
         _data[1] = 0;
         _data[2] = 0;
-        _data[3] = _old_data[2];
-        _data[4] = _old_data[3];
-        _data[5] = _old_data[4];
-        _data[6] = _old_data[5];
+        _data[3] = old_data[2];
+        _data[4] = old_data[3];
+        _data[6] = old_data[5];
         _data_offset = 0;
         _data_state = DataState.HaveData;
 
-        byte[] b = GetFromFloppyImage(unit, _cylinder[unit], head, sector, n);
-        for(int i=0; i<508; i++) {
-             if (b[i + 0] == 'N' &&
-                 b[i + 1] == 'U' &&
-                 b[i + 2] == 'L' &&
-                 b[i + 3] == 'L')
-            {
-                Log.DoLog($"{i} NULL", true);
-            }
-        }
+        bool dma_finished = false;
+        do
+        {
+            if (sector >= 10)
+                break;
+            byte[] b = GetFromFloppyImage(unit, _cylinder[unit], head, sector, n);
+            _data[5] = (byte)sector;
 
 #if DEBUG
-        for(int i=0; i<b.Length / 16; i++) {
-            string str = $"{i * 16:X02}: ";
-            for(int k=0; k<16; k++) {
-                int o = k + i * 16;
-                if (b[o] > 32 && b[o] < 127)
-                    str += $" {(char)b[o]} ";
-                else
-                    str += $" {b[o]:X02}";
+            for(int i=0; i<b.Length / 16; i++) {
+                string str = $"{i * 16:X02}: ";
+                for(int k=0; k<16; k++) {
+                    int o = k + i * 16;
+                    if (b[o] > 32 && b[o] < 127)
+                        str += $" {(char)b[o]} ";
+                    else
+                        str += $" {b[o]:X02}";
+                }
+                Log.DoLog($"Floppy-ReadData {str}", true);
             }
-            Log.DoLog($"Floppy-ReadData {str}", true);
-        }
 #endif
 
-        for(int i=0; i<b.Length; i++)
-        {
-            if (_dma_controller.SendToChannel(2, b[i]) == false)
+            for(int i=0; i<b.Length && dma_finished == false; i++)
             {
-                Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}. Position: cylinder {_cylinder[unit]}, head {head}, sector {sector}, unit {unit}", true);
-                _data[0] = 0x40;  // abnormal termination of command
-                _data[1] = 0x10;  // FDC not serviced by host
-                break;
+                if (_dma_controller.SendToChannel(2, b[i]) == false)
+                {
+                    if (sector == old_data[4])
+                    {
+                        Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}. Position: cylinder {_cylinder[unit]}, head {head}, sector {sector}, unit {unit}", true);
+                        _data[0] = 0x40;  // abnormal termination of command
+                        _data[1] = 0x10;  // FDC not serviced by host
+                    }
+                    dma_finished = true;
+                    break;
+                }
             }
+
+            sector++;
         }
+        while(dma_finished == false && sector <= old_data[6]);
 
         return true;
     }
