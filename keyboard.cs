@@ -5,7 +5,7 @@ class Keyboard : Device
     private Thread _console_keyboard_thread;
     protected int _irq_nr = 1;
     protected int _kb_reset_irq_delay = 4770;  // cycles for 1ms @ 4.77 MHz
-    protected int _kb_key_irq = 100;
+    protected int _kb_key_irq = 2048;
     private Mutex _keyboard_buffer_lock = new();
     private Queue<int> _keyboard_buffer = new();
     private bool _clock_low = false;
@@ -90,7 +90,7 @@ class Keyboard : Device
             { ConsoleKey.Spacebar, new byte[] { 0x39 } },
             { ConsoleKey.Backspace, new byte[] { 0x0e } },
 //            { ConvertChar(';'), new byte[] { 0x27 } },
-            { ConvertChar(':'), new byte[] { 0x2a, 0x27, 0x27 | 0x80, 0x2a } },
+            { ConvertChar(':'), new byte[] { 0x2a, 0x27, 0x27 | 0x80, 0x2a, 0xaa } },
         };
 
         for(;;)
@@ -102,10 +102,11 @@ class Keyboard : Device
 
             if (key_map.ContainsKey(ck))
             {
-                foreach(int key in key_map[ck])
-                    kb.PushKeyboardScancode(key);
-                if (key_map[ck].Length == 1)
-                    kb.PushKeyboardScancode(key_map[ck][0] ^ 0x80);
+                var messages = key_map[ck];
+                for(int i=0; i<messages.Length; i++)
+                    kb.PushKeyboardScancode(messages[i]);
+                if (messages.Length == 1)
+                    kb.PushKeyboardScancode(messages[0] ^ 0x80);
             }
         }
 
