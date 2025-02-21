@@ -57,6 +57,8 @@ class TelnetServer: TextConsole
         if (_kb == null || c == 0 || c >= 127)
             return;
 
+        Console.WriteLine($"PushChar({c})");
+
         Dictionary<char, byte []> key_map = new() {
                 { (char)27, new byte[] { 0x01 } },
                 { (char)13, new byte[] { 0x1c } },
@@ -123,7 +125,11 @@ class TelnetServer: TextConsole
                 { 'y', new byte[] { 0x15 } },
                 { 'z', new byte[] { 0x2c } },
                 { ' ', new byte[] { 0x39 } },
-                { (char)9, new byte[] { 0x0e } },
+                { '.', new byte[] { 0x34 } },
+                { '-', new byte[] { 0x0c } },
+                { '_', new byte[] { 0x2a, 0x0c, 0x0c | 0x80, 0x2a, 0xaa } },
+                { (char)8, new byte[] { 0x0e } },
+                { (char)9, new byte[] { 0x0f } },
                 { ':', new byte[] { 0x2a, 0x27, 0x27 | 0x80, 0x2a, 0xaa } },
         };
 
