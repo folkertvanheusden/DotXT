@@ -86,11 +86,6 @@ internal class i8237
         _b = b;
     }
 
-    public bool Tick(int ticks)
-    {
-        return false;
-    }
-
     public void TickChannel0()
     {
         // RAM refresh

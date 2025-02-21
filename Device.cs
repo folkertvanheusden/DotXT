@@ -2,6 +2,7 @@ abstract class Device
 {
     protected pic8259 _pic = null;
     private int next_interrupt = -1;
+    protected int _clock = 0;
 
     public abstract String GetName();
 
@@ -18,9 +19,11 @@ abstract class Device
     public abstract void WriteByte(uint offset, byte value);
     public abstract byte ReadByte(uint offset);
 
-    public abstract void SyncClock(int clock);
-
-    public abstract bool Tick(int cycles);
+    public virtual bool Tick(int cycles, int clock)
+    {
+        _clock = clock;
+        return false;
+    }
 
     public abstract int GetIRQNumber();
 

@@ -4,7 +4,6 @@ abstract class Display : Device
 {
     private DateTime _prev_ts = DateTime.UtcNow;
     private int _prev_clock = 0;
-    protected int _clock = 0;
     private int _last_hsync = 0;
     private List<EmulatorConsole> _consoles = null;
     protected GraphicalFrame _gf = new();
@@ -57,7 +56,8 @@ abstract class Display : Device
 
     public abstract void Redraw();
 
-    public override void SyncClock(int clock)
+/*
+    public void SyncClock(int clock)
     {
         DateTime now_ts = DateTime.UtcNow;
         TimeSpan elapsed_time = now_ts.Subtract(_prev_ts);
@@ -75,7 +75,7 @@ abstract class Display : Device
 
         _clock = clock;
     }
-
+*/
     public abstract override void RegisterDevice(Dictionary <ushort, Device> mappings);
 
     public abstract override bool HasAddress(uint addr);
@@ -124,6 +124,4 @@ abstract class Display : Device
     public abstract override void WriteByte(uint offset, byte value);
 
     public abstract override byte ReadByte(uint offset);
-
-    public abstract override bool Tick(int cycles);
 }

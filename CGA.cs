@@ -32,7 +32,6 @@ class CGA : Display
     private M6845 _m6845 = new();
     private byte _m6845_reg;
     private uint _display_address = 0;
-    private bool _fake_status_bits = false;
     private byte _graphics_mode = 255;
     private CGAMode _cga_mode = CGAMode.Text40;
     private List<byte []> palette = new() {
@@ -152,13 +151,12 @@ class CGA : Display
 
         if (port == 0x3da)
         {
-            _fake_status_bits = !_fake_status_bits;
-
             int scanline = (_clock / 304) % 262;  // 262 scanlines, 304 cpu cycles per scanline
+            Log.DoLog($"Scanline: {scanline}, clock: {_clock}");
 
             if (scanline >= 200)  // 200 scanlines visible
                 return (1 /* regen buffer */ | 8 /* in vertical retrace */, false);
-            return (0, false);
+            return (1, false);
         }
 
         if (port == 0x3d8)
@@ -272,10 +270,5 @@ class CGA : Display
     public override byte ReadByte(uint offset)
     {
         return _ram[(offset - 0xb8000) & 0x3fff];
-    }
-
-    public override bool Tick(int cycles)
-    {
-        return false;
     }
 }

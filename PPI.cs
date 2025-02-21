@@ -69,10 +69,6 @@ internal class PPI : Device
         return _kb.IO_Write(port, value);
     }
 
-    public override void SyncClock(int clock)
-    {
-    }
-
     public override bool HasAddress(uint addr)
     {
         return false;
@@ -85,10 +81,5 @@ internal class PPI : Device
     public override byte ReadByte(uint offset)
     {
         return 0xee;
-    }
-
-    public override bool Tick(int ticks)
-    {
-        return false;
     }
 }

@@ -75,10 +75,6 @@ internal class i8253 : Device
         return _timers[0].is_pending || _timers[1].is_pending || _timers[2].is_pending;
     }
 
-    public override void SyncClock(int clock)
-    {
-    }
-
     public override bool HasAddress(uint addr)
     {
         return false;
@@ -224,7 +220,7 @@ internal class i8253 : Device
         }
     }
 
-    public override bool Tick(int ticks)
+    public override bool Tick(int ticks, int ignored)
     {
         clock += ticks;
 

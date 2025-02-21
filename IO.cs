@@ -7,7 +7,6 @@ class IO
     private Dictionary <ushort, byte> _values = new Dictionary <ushort, byte>();
     private Dictionary <ushort, Device> _io_map = new Dictionary <ushort, Device>();
     private List<Device> _devices;
-    private int _clock;
 
     public IO(Bus b, ref List<Device> devices, bool test_mode)
     {
@@ -46,9 +45,6 @@ class IO
 
         // Log.DoLog($"IN: {addr:X4}", true);
 
-        foreach(var device in _devices)
-            device.SyncClock(_clock);
-
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87)
             return _i8237.In(addr);
 
@@ -77,10 +73,7 @@ class IO
         bool rc = false;
 
         foreach(var device in _devices)
-            rc |= device.Tick(ticks);
-        _i8237.Tick(ticks);
-
-        _clock = clock;
+            rc |= device.Tick(ticks, clock);
 
         return rc;
     }
@@ -88,9 +81,6 @@ class IO
     public bool Out(ushort addr, ushort value)
     {
         // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})", true);
-
-        foreach(var device in _devices)
-            device.SyncClock(_clock);
 
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87) // 8237
             return _i8237.Out(addr, (byte)value);

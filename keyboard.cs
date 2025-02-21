@@ -126,11 +126,7 @@ class Keyboard : Device
         return 0xee;
     }
 
-    public override void SyncClock(int clock)
-    {
-    }
-
-    public override bool Tick(int cycles)
+    public override bool Tick(int cycles, int clock)
     {
         if (CheckScheduledInterrupt(cycles))
             _pic.RequestInterruptPIC(_irq_nr);

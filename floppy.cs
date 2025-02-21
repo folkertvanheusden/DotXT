@@ -66,15 +66,6 @@ class FloppyDisk : Device
         return 0xee;
     }
 
-    public override void SyncClock(int clock)
-    {
-    }
-
-    public override bool Tick(int cycles)
-    {
-        return false;
-    }
-
     public bool FifoHasDataForCpu()
     {
         return _data_state == DataState.HaveData;

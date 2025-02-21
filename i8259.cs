@@ -93,10 +93,6 @@ class pic8259
         return (rc, false);
     }
 
-    public void Tick()
-    {
-    }
-
     public bool Out(ushort addr, byte value)
     {
         Log.DoLog($"i8259 OUT port {addr:X2} value {value:X2}");
