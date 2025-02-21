@@ -156,7 +156,7 @@ class CGA : Display
 
             if (scanline >= 200)  // 200 scanlines visible
                 return (1 /* regen buffer */ | 8 /* in vertical retrace */, false);
-            return (1, false);
+            return ((byte)(scanline & 1), false);
         }
 
         if (port == 0x3d8)
