@@ -24,7 +24,7 @@ class CGA : Display
     private M6845 _m6845 = new();
     private byte _m6845_reg;
     private uint _display_address = 0;
-    private int _clock;
+    private bool _fake_status_bits = false;
 
     public CGA(TextConsole tc): base(tc)
     {
@@ -43,6 +43,12 @@ class CGA : Display
         mappings[0x3d5] = this;
         mappings[0x3d6] = this;
         mappings[0x3d7] = this;
+        mappings[0x3da] = this;
+    }
+
+    public int GetWaitStateCycles()
+    {
+        return 4;
     }
 
     public override bool HasAddress(uint addr)
@@ -75,6 +81,17 @@ class CGA : Display
 
         if ((port == 0x3d5 || port == 0x3d7) && _m6845_reg >= 0x0c)
             return (_m6845.Read(_m6845_reg), false);
+
+        if (port == 0x3da)
+        {
+            _fake_status_bits = !_fake_status_bits;
+
+            int scanline = (_clock / 304) % 262;  // 262 scanlines, 304 cpu cycles per scanline
+
+            if (scanline >= 200)  // 200 scanlines visible
+                return (1 /* regen buffer */ | 8 /* in vertical retrace */, false);
+            return (0, false);
+        }
 
         return (0xee, false);
     }
