@@ -3,14 +3,19 @@ using System.Text;
 abstract class Display : Device
 {
     private DateTime _prev_ts = DateTime.UtcNow;
-    private int _prev_clock;
-    private int _clock;
+    private int _prev_clock = 0;
+    private int _clock = 0;
+    private int _last_hsync = 0;
+    private TextConsole _tc = null;
 
-    private int _last_hsync;
-
-    public Display()
+    public Display(TextConsole tc)
     {
-        Console.OutputEncoding = Encoding.GetEncoding(28591);
+        _tc = tc;
+        if (_tc != null)
+            _tc.RegisterDisplay(this);  // for Redraw()
+
+//        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+//        Console.OutputEncoding = Encoding.UTF8;
         TerminalClear();
     }
 
@@ -19,13 +24,31 @@ abstract class Display : Device
         return -1;
     }
 
+    private void WriteTextConsole(char what)
+    {
+        if (_tc != null)
+        {
+            _tc.Write($"{what}");
+        }
+    }
+
+    private void WriteTextConsole(string what)
+    {
+        if (_tc != null)
+        {
+            _tc.Write(what);
+        }
+    }
+
     protected void TerminalClear()
     {
-        Console.Write((char)27);  // clear screen
-        Console.Write($"[2J");
+        WriteTextConsole((char)27);  // clear screen
+        WriteTextConsole("[2J");
     }
 
     public abstract override String GetName();
+
+    public abstract void Redraw();
 
     public override void SyncClock(int clock)
     {
@@ -38,8 +61,8 @@ abstract class Display : Device
 
         int speed_percentage = (int)(done_cycles * 100.0 / target_cycles);
 
-        Console.Write((char)27);
-        Console.Write($"[1;82H{speed_percentage}%  ");
+//        Console.Write((char)27);
+//        Console.Write($"[1;82H{speed_percentage}%  ");
 
         _prev_clock = _clock;
 
@@ -70,8 +93,8 @@ abstract class Display : Device
         // attribute, character
         Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", true);
 
-        Console.Write((char)27);  // position cursor
-        Console.Write($"[{y + 1};{x + 1}H");
+        WriteTextConsole((char)27); // position cursor
+        WriteTextConsole($"[{y + 1};{x + 1}H");
 
         int [] colormap = { 0, 4, 2, 6, 1, 5, 3, 7 };
 
@@ -80,15 +103,15 @@ abstract class Display : Device
 
         //	if (fg == bg) { fg = 7; bg = 0; }  // TODO temporary workaround
 
-        Console.Write((char)27);  // set attributes
-        Console.Write($"[0;{40 + fg};{30 + bg}m");  // BG & FG color
+        WriteTextConsole((char)27);  // set attributes
+        WriteTextConsole($"[0;{40 + fg};{30 + bg}m");  // BG & FG color
         if ((attributes & 8) == 8)
         {
-            Console.Write((char)27);  // set attributes
-            Console.Write($"[1m");  // bright
+            WriteTextConsole((char)27);  // set attributes
+            WriteTextConsole($"[1m");  // bright
         }
 
-        Console.Write((char)character);
+        WriteTextConsole((char)character);
     }
 
     public abstract override void WriteByte(uint offset, byte value);

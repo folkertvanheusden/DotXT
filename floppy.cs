@@ -4,7 +4,7 @@ class FloppyDisk : Device
 {
     private byte [] _registers = new byte[8];
     private i8237 _dma_controller = null;
-    protected new int _irq_nr = 6;
+    protected int _irq_nr = 6;
     private bool _dma = false;
     private string [] _io_names = new string[] { "status reg a", "status reg b", "digital output reg", "tape drive reg", "main status reg", "data fifo", null, "digital input reg", "cfg control reg" };
     private DataState _data_state = DataState.NotSet;

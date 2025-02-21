@@ -26,7 +26,7 @@ class CGA : Display
     private uint _display_address = 0;
     private int _clock;
 
-    public CGA()
+    public CGA(TextConsole tc): base(tc)
     {
     }
 
@@ -84,8 +84,13 @@ class CGA : Display
         // Log.DoLog($"CGA::WriteByte({offset:X6}, {value:X2})", true);
 
         uint use_offset = (offset - 0xb8000) & 0x3fff;
-
         _ram[use_offset] = value;
+        DrawOnConsole(use_offset);
+    }
+
+    public void DrawOnConsole(uint use_offset)
+    {
+        // TODO handle graphical modes
 
         if (use_offset >= _display_address && use_offset < _display_address + 80 * 25 * 2)
         {
@@ -96,6 +101,14 @@ class CGA : Display
             uint char_base_offset = use_offset & mask;
 
             EmulateTextDisplay(x, y, _ram[char_base_offset + 0], _ram[char_base_offset + 1]);
+        }
+    }
+
+    public override void Redraw()
+    {
+        for(uint i=_display_address; i<_display_address + 80 * 25 * 2; i += 2)
+        {
+            DrawOnConsole(i);
         }
     }
 

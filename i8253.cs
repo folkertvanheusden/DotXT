@@ -14,7 +14,7 @@ internal struct Timer
 internal class i8253 : Device
 {
     Timer [] _timers = new Timer[3];
-    protected new int _irq_nr = 0;
+    protected int _irq_nr = 0;
     i8237 _i8237 = null;
     int clock = 0;
 

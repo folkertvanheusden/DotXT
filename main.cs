@@ -19,6 +19,11 @@ uint ram_size = 1024;
 
 List<Rom> roms = new();
 
+string key_mda = "mda";
+string key_cga = "cga";
+
+Dictionary<string, Tuple<string, int> > consoles = new();
+
 for(int i=0; i<args.Length; i++)
 {
     if (args[i] == "-h") {
@@ -34,6 +39,7 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
         Console.WriteLine("-P        skip prompt");
+        Console.WriteLine($"-p device,type,port   port to listen on. type must be \"telnet\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
         Console.WriteLine("-o cs,ip  start address (in hexadecimal)");
         System.Environment.Exit(0);
     }
@@ -41,6 +47,22 @@ for(int i=0; i<args.Length; i++)
         test = args[++i];
     else if (args[i] == "-T")
         load_test_at = (uint)Convert.ToInt32(args[++i], 16);
+    else if (args[i] == "-p")
+    {
+        string[] parts = args[++i].Split(',');
+        if (parts[0] != key_cga && parts[0] != key_mda)
+        {
+            Console.WriteLine($"{parts[0]} is not understood");
+            System.Environment.Exit(1);
+        }
+        if (parts[1] != "telnet")
+        {
+            Console.WriteLine($"{parts[1]} is not understood");
+            System.Environment.Exit(1);
+        }
+
+        consoles.Add(parts[0], new Tuple<string, int>(parts[1], Convert.ToInt32(parts[2], 10)));
+    }
     else if (args[i] == "-x") {
         string type = args[++i];
 
@@ -48,9 +70,9 @@ for(int i=0; i<args.Length; i++)
             mode = TMode.Binary;
         else if (type == "blank")
             mode = TMode.Blank;
-        else {
+        else
+        {
             Console.WriteLine($"{type} is not understood");
-
             System.Environment.Exit(1);
         }
     }
@@ -117,14 +139,26 @@ List<Device> devices = new();
 
 if (mode != TMode.Blank)
 {
-//    devices.Add(new MDA());
-    devices.Add(new CGA());
-    devices.Add(new i8253());
-    if (floppies.Count() > 0)
-        devices.Add(new FloppyDisk(floppies));
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks
     devices.Add(new PPI(kb));
+
+    if (consoles.ContainsKey(key_mda))
+    {
+        if (consoles[key_mda].Item1 == "telnet")
+            devices.Add(new MDA(new TelnetServer(kb, consoles[key_mda].Item2)));
+    }
+
+    if (consoles.ContainsKey(key_cga))
+    {
+        if (consoles[key_cga].Item1 == "telnet")
+            devices.Add(new CGA(new TelnetServer(kb, consoles[key_cga].Item2)));
+    }
+
+    devices.Add(new i8253());
+
+    if (floppies.Count() > 0)
+        devices.Add(new FloppyDisk(floppies));
 }
 
 // Bus gets the devices for memory mapped i/o
