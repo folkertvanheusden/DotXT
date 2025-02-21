@@ -4,7 +4,7 @@ class Keyboard : Device
 {
     protected int _irq_nr = 1;
     protected int _kb_reset_irq_delay = 4770;  // cycles for 1ms @ 4.77 MHz
-    protected int _kb_key_irq = 2048;
+    protected int _kb_key_irq = 4770000/50;
     private Mutex _keyboard_buffer_lock = new();
     private Queue<int> _keyboard_buffer = new();
     private bool _clock_low = false;
@@ -86,7 +86,7 @@ class Keyboard : Device
             bool interrupt_needed = _keyboard_buffer.Count > 0;
             _keyboard_buffer_lock.ReleaseMutex();
 
-            Log.DoLog($"Keyboard: scan code {rc}", true);
+            Console.WriteLine($"Keyboard: scan code {rc:X02}");
 
             if (interrupt_needed)
                 ScheduleInterrupt(_kb_key_irq);
