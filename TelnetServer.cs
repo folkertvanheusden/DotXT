@@ -1,6 +1,8 @@
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
+
 
 internal struct TelnetServerThreadParameters
 {
@@ -15,6 +17,7 @@ class TelnetServer: TextConsole
     private int _listen_port = 2300;
     private static readonly System.Threading.Lock _stream_lock = new();
     private NetworkStream _ns = null;
+    private UTF8Encoding utf8 = new UTF8Encoding();
 
     public TelnetServer(Keyboard kb, int port)
     {
@@ -36,8 +39,15 @@ class TelnetServer: TextConsole
         {
             if (_ns != null)
             {
-                byte [] msg = System.Text.Encoding.ASCII.GetBytes(what);
-                _ns.Write(msg, 0, msg.Length);
+                byte [] msg = utf8.GetBytes(what);
+                try
+                {
+                    _ns.Write(msg, 0, msg.Length);
+                }
+                catch(SocketException e)
+                {
+                    Console.WriteLine($"TelnetServer socket exception: {e}");
+                }
             }
         }
     }

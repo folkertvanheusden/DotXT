@@ -14,8 +14,6 @@ abstract class Display : Device
         if (_tc != null)
             _tc.RegisterDisplay(this);  // for Redraw()
 
-//        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-//        Console.OutputEncoding = Encoding.UTF8;
         TerminalClear();
     }
 
