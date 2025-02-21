@@ -144,26 +144,33 @@ class HTTPServer: GraphicalConsole
 
                 string [] lines = headers.Split("\r\n");
                 string [] request = lines[0].Split(" ");
-                if (request[0] == "GET" && request[1] == "/frame.cgi")
+                if (request.Length == 3)
                 {
-                    Console.WriteLine($"Requested: {request[1]} - 200");
+                    if (request[0] == "GET" && request[1] == "/frame.cgi")
+                    {
+                        Console.WriteLine($"Requested: {request[1]} - 200");
 
-                    PushLine(stream, "HTTP/1.0 200 All good");
-                    PushLine(stream, "Server: DotXT");
-                    PushLine(stream, "Content-Type: image/bmp");
-                    PushLine(stream, "");
+                        PushLine(stream, "HTTP/1.0 200 All good");
+                        PushLine(stream, "Server: DotXT");
+                        PushLine(stream, "Content-Type: image/bmp");
+                        PushLine(stream, "");
 
-                    GraphicalFrame frame = parameters.hs.GetFrame();
-                    byte [] data = GraphicalFrameToBmp(frame);
-                    stream.Write(data, 0, data.Length);
+                        GraphicalFrame frame = parameters.hs.GetFrame();
+                        byte [] data = GraphicalFrameToBmp(frame);
+                        stream.Write(data, 0, data.Length);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Requested: {request[1]} - 404");
+
+                        PushLine(stream, $"HTTP/1.0 404 {request[1]} not found");
+                        PushLine(stream, "Server: DotXT");
+                        PushLine(stream, "");
+                    }
                 }
                 else
                 {
-                    Console.WriteLine($"Requested: {request[1]} - 404");
-
-                    PushLine(stream, $"HTTP/1.0 404 {request[1]} not found");
-                    PushLine(stream, "Server: DotXT");
-                    PushLine(stream, "");
+                        Console.WriteLine(headers);
                 }
             }
             catch(SocketException e)
