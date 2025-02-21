@@ -9,6 +9,11 @@ abstract class Device
     public abstract bool IO_Write(ushort port, byte value);
     public abstract (byte, bool) IO_Read(ushort port);
 
+    public int GetWaitStateCycles()
+    {
+        return 0;
+    }
+
     public abstract bool HasAddress(uint addr);
     public abstract void WriteByte(uint offset, byte value);
     public abstract byte ReadByte(uint offset);

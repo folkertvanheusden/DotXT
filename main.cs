@@ -213,7 +213,7 @@ if (debugger)
             {
                 int address = Convert.ToInt32(parts[1], 16);
 
-                Console.WriteLine($"{address:X6} {p.HexDump((uint)address, false)}");
+                Console.WriteLine($"{address:X6} {p.HexDump((uint)address)}");
             }
         }
         else if (parts[0] == "dolog")
@@ -350,8 +350,7 @@ if (debugger)
                 try
                 {
                     uint   addr  = (uint)Convert.ToInt32(parts[2], 10);
-
-                    ushort value = b.ReadByte(addr);
+                    ushort value = b.ReadByte(addr).Item1;
 
                     Console.WriteLine($">GET {addr} {value}");
                 }

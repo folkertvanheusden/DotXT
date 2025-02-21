@@ -4,7 +4,7 @@ abstract class Display : Device
 {
     private DateTime _prev_ts = DateTime.UtcNow;
     private int _prev_clock = 0;
-    private int _clock = 0;
+    protected int _clock = 0;
     private int _last_hsync = 0;
     private TextConsole _tc = null;
 

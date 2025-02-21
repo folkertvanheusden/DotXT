@@ -59,7 +59,7 @@ internal class P8086
     private bool _is_test;
     private bool _terminate_on_hlt;
 
-    private int clock;
+    private int _clock;
     private List<Device> _devices;
 
     public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool terminate_on_hlt, ref List<Device> devices, bool run_IO)
@@ -133,17 +133,13 @@ internal class P8086
 
     private byte GetPcByte()
     {
-        uint address = (uint)(_cs * 16 + _ip++) & MemMask;
-
-        return _b.ReadByte(address);
+        return ReadMemByte(_cs, _ip++);
     }
 
     private ushort GetPcWord()
     {
         ushort v = GetPcByte();
-
         v |= (ushort)(GetPcByte() << 8);
-
         return v;
     }
 
@@ -301,7 +297,7 @@ internal class P8086
     private void WriteMemByte(ushort segment, ushort offset, byte v)
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
-        _b.WriteByte(a, v);
+        _clock += _b.WriteByte(a, v);
     }
 
     private void WriteMemWord(ushort segment, ushort offset, ushort v)
@@ -313,15 +309,14 @@ internal class P8086
     public byte ReadMemByte(ushort segment, ushort offset)
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
-        return _b.ReadByte(a);
+        var rc = _b.ReadByte(a);
+        _clock += rc.Item2;
+        return rc.Item1;
     } 
 
     public ushort ReadMemWord(ushort segment, ushort offset)
     {
-        uint a1 = (uint)(((segment << 4) + offset) & MemMask);
-        uint a2 = (uint)(((segment << 4) + ((offset + 1) & 0xffff)) & MemMask);
-
-        return (ushort)(_b.ReadByte(a1) | (_b.ReadByte(a2) << 8));
+        return (ushort)(ReadMemByte(segment, offset) + (ReadMemByte(segment, (ushort)(offset + 1)) << 8));
     } 
 
     private (ushort, string) GetRegister(int reg, bool w)
@@ -1007,31 +1002,24 @@ internal class P8086
 
         SetFlagI(false);
 
-        uint addr = (uint)(interrupt_nr * 4);
+        ushort addr = (ushort)(interrupt_nr * 4);
 
-        _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
-        _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
+        _ip = ReadMemWord(0, addr);
+        _cs = ReadMemWord(0, (ushort)(addr + 2));
 
 #if DEBUG
         Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs:X4}:{_ip:X4}, PIC: {pic})", true);
 #endif
     }
 
-    public string HexDump(uint addr, bool word)
+    public string HexDump(uint addr)
     {
         string s = "";
-
-        if (word)
+        for(uint o=0; o<32; o++)
         {
-            for(uint o=0; o<32; o += 2)
-                s += $" {_b.ReadByte((addr + o) & 0xfffff) + (_b.ReadByte((addr + o + 1) & 0xfffff) << 8):X4}";
+            var rc = _b.ReadByte((addr + o) & 0xfffff);
+            s += $" {rc.Item1:X2}";
         }
-        else
-        {
-            for(uint o=0; o<32; o++)
-                s += $" {_b.ReadByte((addr + o) & 0xfffff):X2}";
-        }
-
         return s;
     }
 
@@ -1279,7 +1267,7 @@ internal class P8086
             }
 
             if (_segment_override_set)
-                Log.DoLog($"segment override to {_segment_override_name}: {_segment_override:X4}, opcode(s): {opcode:X2} {HexDump(address, false):X2}", true);
+                Log.DoLog($"segment override to {_segment_override_name}: {_segment_override:X4}, opcode(s): {opcode:X2} {HexDump(address):X2}", true);
 
             if (_rep)
                 Log.DoLog($"repetition mode {_rep_mode}, addr {_rep_addr:X4}, instr start {instr_start:X4}", true);
@@ -1294,7 +1282,7 @@ internal class P8086
         string prefixStr =
             $"{flagStr} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4} ES:{_es:X4} CS:{_cs:X4} SS:{_ss:X4} DS:{_ds:X4} IP:{instr_start:X4} | ";
 
-        // Log.DoLog(HexDump(address, false), true);
+        // Log.DoLog(HexDump(address), true);
 #else
         string prefixStr = "";
 #endif
@@ -2384,7 +2372,7 @@ internal class P8086
                 else
                     @int = GetPcByte();
 
-                uint addr = (uint)(@int * 4);
+                ushort addr = (ushort)(@int * 4);
 
                 push(_flags);
                 push(_cs);
@@ -2400,8 +2388,8 @@ internal class P8086
 
                 SetFlagI(false);
 
-                _ip = (ushort)(_b.ReadByte(addr + 0) + (_b.ReadByte(addr + 1) << 8));
-                _cs = (ushort)(_b.ReadByte(addr + 2) + (_b.ReadByte(addr + 3) << 8));
+                _ip = ReadMemWord(0, addr);
+                _cs = ReadMemWord(0, (ushort)(addr + 2));
 
                 cycle_count += 51;  // 71  TODO
 
@@ -4233,9 +4221,9 @@ internal class P8086
             cycle_count = 1;  // TODO workaround
 
         // tick I/O
-        _scheduled_interrupts |= _io.Tick(cycle_count, clock);
+        _scheduled_interrupts |= _io.Tick(cycle_count, _clock);
 
-        clock += cycle_count;
+        _clock += cycle_count;
 
         return rc;
     }

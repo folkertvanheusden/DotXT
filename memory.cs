@@ -80,26 +80,26 @@ class Bus
         _m = new Memory(_size);
     }
 
-    public byte ReadByte(uint address)
+    public (byte, int) ReadByte(uint address)
     {
         address &= 0x000fffff;
 
         foreach(var rom in _roms)
         {
             if (address >= rom.GetOffset() && address < rom.GetOffset() + rom.GetSize())
-                return rom.ReadByte(address);
+                return (rom.ReadByte(address), 0);  // ROM is infinite fast (TODO)
         }
 
         foreach(var device in _devices)
         {
             if (device.HasAddress(address))
-                return device.ReadByte(address);
+                return (device.ReadByte(address), device.GetWaitStateCycles());
         }
 
-        return _m.ReadByte(address);
+        return (_m.ReadByte(address), 0);  // TODO see ROM
     }
 
-    public void WriteByte(uint address, byte v)
+    public int WriteByte(uint address, byte v)
     {
         address &= 0x000fffff;
 
@@ -108,10 +108,11 @@ class Bus
             if (device.HasAddress(address))
             {
                 device.WriteByte(address, v);
-                return;
+                return device.GetWaitStateCycles();
             }
         }
 
         _m.WriteByte(address, v);
+        return 0;
     }
 }
