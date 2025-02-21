@@ -35,6 +35,24 @@ class CGA : Display
     private bool _fake_status_bits = false;
     private byte _graphics_mode = 255;
     private CGAMode _cga_mode = CGAMode.Text40;
+    private List<byte []> palette = new() {
+            new byte[] {   0,   0,   0 },
+            new byte[] {   0,   0, 127 },
+            new byte[] {   0, 127,   0 },
+            new byte[] {   0, 127, 127 },
+            new byte[] { 127,   0,   0 },
+            new byte[] { 127,   0, 127 },
+            new byte[] { 127, 127,   0 },
+            new byte[] { 127, 127, 127 },
+            new byte[] { 127, 127, 127 },
+            new byte[] {   0,   0, 255 },
+            new byte[] {   0, 255,   0 },
+            new byte[] {   0, 255, 255 },
+            new byte[] { 255,   0,   0 },
+            new byte[] { 255,   0, 255 },
+            new byte[] { 255, 255,   0 },
+            new byte[] { 255, 255, 255 }
+    };
 
     public CGA(List<EmulatorConsole> consoles): base(consoles)
     {
@@ -151,7 +169,7 @@ class CGA : Display
 
     public override void WriteByte(uint offset, byte value)
     {
-        uint use_offset = offset - 0xb8000;
+        uint use_offset = (offset - 0xb8000) & 0x3fff;
         _ram[use_offset] = value;
         DrawOnConsole(use_offset);
     }
@@ -212,6 +230,8 @@ class CGA : Display
                 EmulateTextDisplay(x, y, _ram[char_base_offset + 0], _ram[char_base_offset + 1]);
 
                 int char_offset = _ram[char_base_offset + 0] * 8;
+                int fg = _ram[char_base_offset + 1] & 15;
+                int bg = (_ram[char_base_offset + 1] >> 4) & 7;
                 for(int yo=0; yo<8; yo++)
                 {
                     int pixel_offset = ((int)y * 8 + yo) * _gf.width * 3;
@@ -220,9 +240,20 @@ class CGA : Display
                     for(int xo=0; xo<8; xo++)
                     {
                         int x_pixel_offset = pixel_offset + ((int)x * 8 + xo) * 3;
-                        byte color = (byte)((line & bit_mask) != 0 ? 255 : 0);
+                        bool is_fg = (line & bit_mask) != 0;
                         bit_mask >>= 1;
-                        _gf.rgb_pixels[x_pixel_offset + 0] = _gf.rgb_pixels[x_pixel_offset + 1] = _gf.rgb_pixels[x_pixel_offset + 2] = color;
+                        if (is_fg)
+                        {
+                            _gf.rgb_pixels[x_pixel_offset + 0] = palette[fg][0];
+                            _gf.rgb_pixels[x_pixel_offset + 1] = palette[fg][1];
+                            _gf.rgb_pixels[x_pixel_offset + 2] = palette[fg][2];
+                        }
+                        else
+                        {
+                            _gf.rgb_pixels[x_pixel_offset + 0] = palette[bg][0];
+                            _gf.rgb_pixels[x_pixel_offset + 1] = palette[bg][1];
+                            _gf.rgb_pixels[x_pixel_offset + 2] = palette[bg][2];
+                        }
                     }
                 }
             }
@@ -240,7 +271,7 @@ class CGA : Display
 
     public override byte ReadByte(uint offset)
     {
-        return _ram[offset - 0xb8000];
+        return _ram[(offset - 0xb8000) & 0x3fff];
     }
 
     public override bool Tick(int cycles)
