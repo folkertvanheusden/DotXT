@@ -3,7 +3,7 @@ class MDA : Display
     private byte [] _ram = new byte[16384];
     private bool _hsync = false;
 
-    public MDA(TextConsole tc) : base(tc)
+    public MDA(List<EmulatorConsole> consoles) : base(consoles)
     {
     }
 

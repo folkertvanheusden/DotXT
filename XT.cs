@@ -1239,7 +1239,7 @@ internal class P8086
                 if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
                 {
                     _rep_mode = RepMode.REPNZ;
-                    Log.DoLog($"REPNZ: {_cs:X4}:{_rep_addr:X4}", true);
+                    //Log.DoLog($"REPNZ: {_cs:X4}:{_rep_addr:X4}", true);
                 }
                 else
                 {
@@ -1252,12 +1252,12 @@ internal class P8086
                 if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
                 {
                     _rep_mode = RepMode.REPE_Z;
-                    Log.DoLog($"REPZ: {_cs:X4}:{_rep_addr:X4}", true);
+                    //Log.DoLog($"REPZ: {_cs:X4}:{_rep_addr:X4}", true);
                 }
                 else
                 {
                     _rep_mode = RepMode.REP;
-                    Log.DoLog($"REP: {_cs:X4}:{_rep_addr:X4}", true);
+                    //Log.DoLog($"REP: {_cs:X4}:{_rep_addr:X4}", true);
                 }
             }
             else
@@ -1266,11 +1266,11 @@ internal class P8086
                 cycle_count += 2;
             }
 
-            if (_segment_override_set)
-                Log.DoLog($"segment override to {_segment_override_name}: {_segment_override:X4}, opcode(s): {opcode:X2} {HexDump(address):X2}", true);
+            //if (_segment_override_set)
+            //    Log.DoLog($"segment override to {_segment_override_name}: {_segment_override:X4}, opcode(s): {opcode:X2} {HexDump(address):X2}", true);
 
-            if (_rep)
-                Log.DoLog($"repetition mode {_rep_mode}, addr {_rep_addr:X4}, instr start {instr_start:X4}", true);
+            //if (_rep)
+            //    Log.DoLog($"repetition mode {_rep_mode}, addr {_rep_addr:X4}, instr start {instr_start:X4}", true);
 
             opcode = next_opcode;
         }

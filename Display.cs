@@ -6,13 +6,15 @@ abstract class Display : Device
     private int _prev_clock = 0;
     protected int _clock = 0;
     private int _last_hsync = 0;
-    private TextConsole _tc = null;
+    private List<EmulatorConsole> _consoles = null;
+    protected GraphicalFrame _gf = new();
 
-    public Display(TextConsole tc)
+    public Display(List<EmulatorConsole> consoles)
     {
-        _tc = tc;
-        if (_tc != null)
-            _tc.RegisterDisplay(this);  // for Redraw()
+        _consoles = consoles;
+
+        foreach(var c in _consoles)
+            c.RegisterDisplay(this);  // for Redraw()
 
         TerminalClear();
     }
@@ -22,19 +24,26 @@ abstract class Display : Device
         return -1;
     }
 
+    public GraphicalFrame GetFrame()
+    {
+        return _gf;
+    }
+
     private void WriteTextConsole(char what)
     {
-        if (_tc != null)
+        foreach(var c in _consoles)
         {
-            _tc.Write($"{what}");
+            if (c is TextConsole)
+                c.Write($"{what}");
         }
     }
 
     private void WriteTextConsole(string what)
     {
-        if (_tc != null)
+        foreach(var c in _consoles)
         {
-            _tc.Write(what);
+            if (c is TextConsole)
+                c.Write($"{what}");
         }
     }
 

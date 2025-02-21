@@ -22,7 +22,7 @@ List<Rom> roms = new();
 string key_mda = "mda";
 string key_cga = "cga";
 
-Dictionary<string, Tuple<string, int> > consoles = new();
+Dictionary<string, List<Tuple<string, int> > > consoles = new();
 
 for(int i=0; i<args.Length; i++)
 {
@@ -31,6 +31,7 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-T addr   sets the load-address for -t");
         Console.WriteLine("-x type   set type for -T: binary, blank");
         Console.WriteLine("-l file   log to file");
+        Console.WriteLine("-L        log to screen");
         Console.WriteLine("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
         Console.WriteLine("          e.g. load the bios from f000:e000");
         Console.WriteLine("-s size   RAM size in kilobytes, decimal");
@@ -39,7 +40,7 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
         Console.WriteLine("-P        skip prompt");
-        Console.WriteLine($"-p device,type,port   port to listen on. type must be \"telnet\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
+        Console.WriteLine($"-p device,type,port   port to listen on. type must be \"telnet\" or \"http\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
         Console.WriteLine("-o cs,ip  start address (in hexadecimal)");
         System.Environment.Exit(0);
     }
@@ -55,13 +56,21 @@ for(int i=0; i<args.Length; i++)
             Console.WriteLine($"{parts[0]} is not understood");
             System.Environment.Exit(1);
         }
-        if (parts[1] != "telnet")
+        if (parts[1] != "telnet" && parts[1] != "http")
         {
             Console.WriteLine($"{parts[1]} is not understood");
             System.Environment.Exit(1);
         }
 
-        consoles.Add(parts[0], new Tuple<string, int>(parts[1], Convert.ToInt32(parts[2], 10)));
+        var console_device = new Tuple<string, int>(parts[1], Convert.ToInt32(parts[2], 10));
+        if (consoles.ContainsKey(parts[0]))
+            consoles[parts[0]].Add(console_device);
+        else
+        {
+            List<Tuple<string, int> > console_devices = new();
+            console_devices.Add(console_device);
+            consoles.Add(parts[0], console_devices);
+        }
     }
     else if (args[i] == "-x") {
         string type = args[++i];
@@ -78,6 +87,8 @@ for(int i=0; i<args.Length; i++)
     }
     else if (args[i] == "-l")
         Log.SetLogFile(args[++i]);
+    else if (args[i] == "-L")
+        Log.EchoToConsole(true);
     else if (args[i] == "-D")
         Log.SetDisassemblyFile(args[++i]);
     else if (args[i] == "-I")
@@ -143,16 +154,21 @@ if (mode != TMode.Blank)
     devices.Add(kb);  // still needed because of clock ticks
     devices.Add(new PPI(kb));
 
-    if (consoles.ContainsKey(key_mda))
+    foreach(KeyValuePair<string, List<Tuple<string, int> > > current_console in consoles)
     {
-        if (consoles[key_mda].Item1 == "telnet")
-            devices.Add(new MDA(new TelnetServer(kb, consoles[key_mda].Item2)));
-    }
+        List<EmulatorConsole> console_instances = new();
+        foreach(var c in current_console.Value)
+        {
+            if (c.Item1 == "telnet")
+                console_instances.Add(new TelnetServer(kb, c.Item2));
+            else if (c.Item1 == "http")
+                console_instances.Add(new HTTPServer(kb, c.Item2));
+        }
 
-    if (consoles.ContainsKey(key_cga))
-    {
-        if (consoles[key_cga].Item1 == "telnet")
-            devices.Add(new CGA(new TelnetServer(kb, consoles[key_cga].Item2)));
+        if (current_console.Key == key_mda)
+            devices.Add(new MDA(console_instances));
+        else if (current_console.Key == key_cga)
+            devices.Add(new CGA(console_instances));
     }
 
     devices.Add(new i8253());
