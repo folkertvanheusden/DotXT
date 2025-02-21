@@ -211,7 +211,19 @@ class CGA : Display
         }
         else if (_cga_mode == CGAMode.G640)
         {
-            // TODO
+            if (use_offset >= _display_address && use_offset < _display_address + 1600)
+            {
+                int x = (int)(use_offset % 80) * 8;
+                int y = (int)use_offset / 80;
+
+                byte b = _ram[use_offset];
+                for(int x_i = 0; x_i < 8; x_i++)
+                {
+                    int offset = (y * 640 + x + x_i) * 3;
+                    _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = (byte)((b & 128) != 0 ? 255 : 0);
+                    b <<= 1;
+                }
+            }
         }
         else  // text
         {
