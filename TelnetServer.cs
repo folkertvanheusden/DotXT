@@ -197,95 +197,102 @@ class TelnetServer: TextConsole
             SetupTelnetSession(stream);
             parameters.ts.SetStream(stream);
 
-            byte [] buffer = new byte[1];
-            while (stream.Read(buffer, 0, buffer.Length) != 0)
+            try
             {
-                // if escape, wait 5 ms for more data
-                // if more data in that delay, then check if that's a cursor key
-                // else just return the escape
-                if (buffer[0] == 27)
+                byte [] buffer = new byte[1];
+                while (stream.Read(buffer, 0, buffer.Length) != 0)
                 {
-                    Thread.Sleep(1);  // sleep 1 ms
-
-                    if (stream.DataAvailable == false)
+                    // if escape, wait 5 ms for more data
+                    // if more data in that delay, then check if that's a cursor key
+                    // else just return the escape
+                    if (buffer[0] == 27)
                     {
-                        // no other data, just push the escape
-                        parameters.ts.PushChar(buffer[0], true);
-                        Console.WriteLine("No other data");
-                        continue;
-                    }
+                        Thread.Sleep(1);  // sleep 1 ms
 
-                    // see if the waiting data is a cursor key
-                    if (stream.Read(buffer, 0, buffer.Length) == 0)
-                        break;
-                    if (buffer[0] == '[')  // if [ the assume a cursor movement was sent
-                    {
-                        byte [] cursor = new byte[6];
-                        byte c = 0;
-                        int move_n = 0;
-                        int pos = 0;
-                        for(;;)
+                        if (stream.DataAvailable == false)
                         {
-                            if (stream.Read(cursor, pos, 1) == 0)
-                                break;
-                            c = cursor[pos];
-                            if (++pos == cursor.Length)  // should not happen
-                                break;  // discard code: this can be improved TODO
-                            if ((char)c < '0' || (char)c > '9')
-                                break;
-                            move_n *= 10;
-                            move_n += c - (byte)'0';
-                        }
-
-                        byte [] code = new byte[] { 0x45, 0x2a, 0, 0, 0x2a, 0xaa, 0x45 | 80 };
-                        int code_offset = 2;
-                        char ansii_code = pos > 0 ? (char)cursor[pos - 1] : (char)0;
-                        if (ansii_code == 'A')  // UP
-                        {
-                            code[code_offset + 0] = 0x48;
-                            code[code_offset + 1] = (byte)(code[code_offset + 0] | 0x80);
-                        }
-                        else if (ansii_code == 'B')  // DOWN
-                        {
-                            code[code_offset + 0] = 0x50;
-                            code[code_offset + 1] = (byte)(code[code_offset + 0] | 0x80);
-                        }
-                        else if (ansii_code == 'C')  // RIGHT
-                        {
-                            code[code_offset + 0] = 0x4d;
-                            code[code_offset + 1] = (byte)(code[code_offset + 0] | 0x80);
-                        }
-                        else if (ansii_code == 'D')  // LEFT
-                        {
-                            code[code_offset + 0] = 0x4b;
-                            code[code_offset + 1] = (byte)(code[code_offset + 0] | 0x80);
-                        }
-                        else
-                        {
-                            // ideally send the "invalid" code
-                            Console.WriteLine($"Not an cursor movement escape code: {ansii_code}");
+                            // no other data, just push the escape
+                            parameters.ts.PushChar(buffer[0], true);
+                            Console.WriteLine("No other data");
                             continue;
                         }
 
-                        if (move_n == 0)
-                            move_n = 1;
-                        Console.WriteLine($"Moving cursor {move_n} positions with code of length {code.Length}");
-                        for(int k=0; k<move_n; k++)
+                        // see if the waiting data is a cursor key
+                        if (stream.Read(buffer, 0, buffer.Length) == 0)
+                            break;
+                        if (buffer[0] == '[')  // if [ the assume a cursor movement was sent
                         {
-                            for(int i=0; i<code.Length; i++)
-                                parameters.ts.PushChar(code[i], true);
+                            byte [] cursor = new byte[6];
+                            byte c = 0;
+                            int move_n = 0;
+                            int pos = 0;
+                            for(;;)
+                            {
+                                if (stream.Read(cursor, pos, 1) == 0)
+                                    break;
+                                c = cursor[pos];
+                                if (++pos == cursor.Length)  // should not happen
+                                    break;  // discard code: this can be improved TODO
+                                if ((char)c < '0' || (char)c > '9')
+                                    break;
+                                move_n *= 10;
+                                move_n += c - (byte)'0';
+                            }
+
+                            byte [] code = new byte[] { 0x45, 0x2a, 0, 0, 0x2a, 0xaa, 0x45 | 80 };
+                            int code_offset = 2;
+                            char ansii_code = pos > 0 ? (char)cursor[pos - 1] : (char)0;
+                            if (ansii_code == 'A')  // UP
+                            {
+                                code[code_offset + 0] = 0x48;
+                                code[code_offset + 1] = (byte)(code[code_offset + 0] | 0x80);
+                            }
+                            else if (ansii_code == 'B')  // DOWN
+                            {
+                                code[code_offset + 0] = 0x50;
+                                code[code_offset + 1] = (byte)(code[code_offset + 0] | 0x80);
+                            }
+                            else if (ansii_code == 'C')  // RIGHT
+                            {
+                                code[code_offset + 0] = 0x4d;
+                                code[code_offset + 1] = (byte)(code[code_offset + 0] | 0x80);
+                            }
+                            else if (ansii_code == 'D')  // LEFT
+                            {
+                                code[code_offset + 0] = 0x4b;
+                                code[code_offset + 1] = (byte)(code[code_offset + 0] | 0x80);
+                            }
+                            else
+                            {
+                                // ideally send the "invalid" code
+                                Console.WriteLine($"Not an cursor movement escape code: {ansii_code}");
+                                continue;
+                            }
+
+                            if (move_n == 0 || move_n > 4)
+                                move_n = 1;
+                            Console.WriteLine($"Moving cursor {move_n} positions with code of length {code.Length}");
+                            for(int k=0; k<move_n; k++)
+                            {
+                                for(int i=0; i<code.Length; i++)
+                                    parameters.ts.PushChar(code[i], true);
+                            }
+                        }
+                        else
+                        {
+                            parameters.ts.PushChar(27, true);
+                            parameters.ts.PushChar(buffer[0], true);
                         }
                     }
                     else
                     {
-                        parameters.ts.PushChar(27, true);
-                        parameters.ts.PushChar(buffer[0], true);
+                        parameters.ts.PushChar(buffer[0], false);
                     }
                 }
-                else
-                {
-                    parameters.ts.PushChar(buffer[0], false);
-                }
+            }
+            catch(SocketException e)
+            {
+                Console.WriteLine($"TelnetServer socket exception: {e}");
             }
 
             client.Close();
