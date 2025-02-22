@@ -34,7 +34,7 @@ class CGA : Display
     private byte _m6845_reg;
     private uint _display_address = 0;
     private byte _graphics_mode = 255;
-    private CGAMode _cga_mode = CGAMode.Text40;
+    private CGAMode _cga_mode = CGAMode.Text80;
     private List<byte []> palette = new() {
             new byte[] {   0,   0,   0 },
             new byte[] {   0,   0, 127 },
@@ -57,10 +57,7 @@ class CGA : Display
     public CGA(List<EmulatorConsole> consoles): base(consoles)
     {
         font_descr = fonts.get_font(FontName.VGA);
-
-        _gf.width = 640;
-        _gf.height = 200;
-        _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
+        _gf.rgb_pixels = null;
     }
 
     public override String GetName()
@@ -257,30 +254,33 @@ class CGA : Display
 
                 EmulateTextDisplay(x, y, character, attributes);
 
-                int char_offset = character * font_descr.height;
-                int fg = attributes & 15;
-                int bg = (attributes >> 4) & 7;
-                for(int yo=0; yo<font_descr.height; yo++)
+                if (_gf.rgb_pixels != null)
                 {
-                    int y_pixel_offset = ((int)y * font_descr.height + yo) * _gf.width * 3;
-                    byte line = font_descr.pixels[char_offset + yo];
-                    byte bit_mask = 128;
-                    for(int xo=0; xo<8; xo++)
+                    int char_offset = character * font_descr.height;
+                    int fg = attributes & 15;
+                    int bg = (attributes >> 4) & 7;
+                    for(int yo=0; yo<font_descr.height; yo++)
                     {
-                        int x_pixel_offset = y_pixel_offset + ((int)x * 8 + xo) * 3;
-                        bool is_fg = (line & bit_mask) != 0;
-                        bit_mask >>= 1;
-                        if (is_fg)
+                        int y_pixel_offset = ((int)y * font_descr.height + yo) * _gf.width * 3;
+                        byte line = font_descr.pixels[char_offset + yo];
+                        byte bit_mask = 128;
+                        for(int xo=0; xo<8; xo++)
                         {
-                            _gf.rgb_pixels[x_pixel_offset + 0] = palette[fg][0];
-                            _gf.rgb_pixels[x_pixel_offset + 1] = palette[fg][1];
-                            _gf.rgb_pixels[x_pixel_offset + 2] = palette[fg][2];
-                        }
-                        else
-                        {
-                            _gf.rgb_pixels[x_pixel_offset + 0] = palette[bg][0];
-                            _gf.rgb_pixels[x_pixel_offset + 1] = palette[bg][1];
-                            _gf.rgb_pixels[x_pixel_offset + 2] = palette[bg][2];
+                            int x_pixel_offset = y_pixel_offset + ((int)x * 8 + xo) * 3;
+                            bool is_fg = (line & bit_mask) != 0;
+                            bit_mask >>= 1;
+                            if (is_fg)
+                            {
+                                _gf.rgb_pixels[x_pixel_offset + 0] = palette[fg][0];
+                                _gf.rgb_pixels[x_pixel_offset + 1] = palette[fg][1];
+                                _gf.rgb_pixels[x_pixel_offset + 2] = palette[fg][2];
+                            }
+                            else
+                            {
+                                _gf.rgb_pixels[x_pixel_offset + 0] = palette[bg][0];
+                                _gf.rgb_pixels[x_pixel_offset + 1] = palette[bg][1];
+                                _gf.rgb_pixels[x_pixel_offset + 2] = palette[bg][2];
+                            }
                         }
                     }
                 }
