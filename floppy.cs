@@ -225,7 +225,7 @@ class FloppyDisk : Device
         _head[unit] = (_data[1] & 4) == 4 ? 1 : 0;
         _cylinder[unit] = _data[2];
         _cylinder_seek_result = _cylinder[unit];
-        Log.DoLog($"Floppy SEEK to head {_head[unit]} cylinder {_cylinder[unit]}, unit {unit}", true);
+        Log.DoLog($"Floppy SEEK to head {_head[unit]} cylinder {_cylinder[unit]}, unit {unit}, relative {_data[0] & 128} direction {_data[0] & 64}", true);
         return true;
     }
 
