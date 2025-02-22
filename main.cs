@@ -40,7 +40,7 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
         Console.WriteLine("-P        skip prompt");
-        Console.WriteLine($"-p device,type,port   port to listen on. type must be \"telnet\" or \"http\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
+        Console.WriteLine($"-p device,type,port   port to listen on. type must be \"telnet\", \"http\" or \"vnc\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
         Console.WriteLine("-o cs,ip  start address (in hexadecimal)");
         System.Environment.Exit(0);
     }
@@ -56,7 +56,7 @@ for(int i=0; i<args.Length; i++)
             Console.WriteLine($"{parts[0]} is not understood");
             System.Environment.Exit(1);
         }
-        if (parts[1] != "telnet" && parts[1] != "http")
+        if (parts[1] != "telnet" && parts[1] != "http" && parts[1] != "vnc")
         {
             Console.WriteLine($"{parts[1]} is not understood");
             System.Environment.Exit(1);
@@ -163,6 +163,8 @@ if (mode != TMode.Blank)
                 console_instances.Add(new TelnetServer(kb, c.Item2));
             else if (c.Item1 == "http")
                 console_instances.Add(new HTTPServer(kb, c.Item2));
+            else if (c.Item1 == "vnc")
+                console_instances.Add(new VNCServer(kb, c.Item2));
         }
 
         if (current_console.Key == key_mda)
