@@ -17,12 +17,6 @@ abstract class GraphicalConsole: EmulatorConsole
 
     public GraphicalFrame GetFrame()
     {
-        GraphicalFrame in_ = _d.GetFrame();
-
-        GraphicalFrame gf = new();
-        gf.width = in_.width;
-        gf.height = in_.height;
-        gf.rgb_pixels = in_.rgb_pixels.ToArray();
-        return gf;
+        return _d.GetFrame();
     }
 };

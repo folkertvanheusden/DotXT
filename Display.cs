@@ -25,7 +25,15 @@ abstract class Display : Device
 
     public GraphicalFrame GetFrame()
     {
-        return _gf;
+        // TODO locking
+        GraphicalFrame gf = new();
+        gf.width = _gf.width;
+        gf.height = _gf.height;
+        int n_bytes = _gf.width * _gf.height * 3;
+        gf.rgb_pixels = new byte[n_bytes];
+        for(int i=0; i<n_bytes; i++)
+            gf.rgb_pixels[i] = _gf.rgb_pixels[i];
+        return gf;
     }
 
     private void WriteTextConsole(char what)
