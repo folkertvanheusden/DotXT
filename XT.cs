@@ -1142,6 +1142,11 @@ internal class P8086
             _ip = _rep_addr;
     }
 
+    public void ResetCrashCounter()
+    {
+        _crash_counter = 0;
+    }
+
     // cycle counts from https://zsmith.co/intel_i.php
     public bool Tick()
     {

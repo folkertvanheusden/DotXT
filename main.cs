@@ -378,10 +378,10 @@ if (debugger)
         }
         else if (line == "c")
         {
-            for (;;)
+            p.ResetCrashCounter();
+
+            while(p.Tick())
             {
-                if (p.Tick() == false)
-                    break;
             }
         }
         else if (line != "")
