@@ -7,6 +7,7 @@ abstract class Display : Device
     private int _last_hsync = 0;
     private List<EmulatorConsole> _consoles = null;
     protected GraphicalFrame _gf = new();
+    protected ulong _gf_version = 1;
 
     public Display(List<EmulatorConsole> consoles)
     {
@@ -21,6 +22,11 @@ abstract class Display : Device
     public override int GetIRQNumber()
     {
         return -1;
+    }
+
+    public ulong GetFrameVersion()
+    {
+        return _gf_version;
     }
 
     public GraphicalFrame GetFrame()

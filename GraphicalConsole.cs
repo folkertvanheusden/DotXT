@@ -15,6 +15,11 @@ abstract class GraphicalConsole: EmulatorConsole
     {
     }
 
+    public ulong GetFrameVersion()
+    {
+        return _d.GetFrameVersion();
+    }
+
     public GraphicalFrame GetFrame()
     {
         return _d.GetFrame();

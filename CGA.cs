@@ -184,6 +184,7 @@ class CGA : Display
         uint use_offset = (offset - 0xb8000) & 0x3fff;
         _ram[use_offset] = value;
         DrawOnConsole(use_offset);
+        _gf_version++;
     }
 
     public void DrawOnConsole(uint use_offset)
@@ -294,6 +295,7 @@ class CGA : Display
         {
             DrawOnConsole(i);
         }
+        _gf_version++;
     }
 
     public override byte ReadByte(uint offset)

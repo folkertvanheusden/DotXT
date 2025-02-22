@@ -171,16 +171,23 @@ class HTTPServer: GraphicalConsole
                         PushLine(stream, "Content-Type: multipart/x-mixed-replace; boundary=--myboundary");
                         PushLine(stream, "");
 
+                        ulong version = 0;
                         for(;;)
                         {
-                            GraphicalFrame frame = parameters.hs.GetFrame();
-                            byte [] data = GraphicalFrameToBmp(frame);
+                            ulong new_version = parameters.hs.GetFrameVersion();
+                            if (new_version != version)
+                            {
+                                version = new_version;
 
-                            PushLine(stream, "--myboundary");
-                            PushLine(stream, "Content-Type: image/bmp");
-                            PushLine(stream, $"Content-Length: {data.Length}");
-                            PushLine(stream, "");
-                            stream.Write(data, 0, data.Length);
+                                GraphicalFrame frame = parameters.hs.GetFrame();
+                                byte [] data = GraphicalFrameToBmp(frame);
+
+                                PushLine(stream, "--myboundary");
+                                PushLine(stream, "Content-Type: image/bmp");
+                                PushLine(stream, $"Content-Length: {data.Length}");
+                                PushLine(stream, "");
+                                stream.Write(data, 0, data.Length);
+                            }
 
                             Thread.Sleep(1000 / 15);
                         }

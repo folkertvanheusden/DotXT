@@ -45,8 +45,7 @@ class VNCServer: GraphicalConsole
         buffer[0] = 0;
         while(buffer[0] != '\n')
         {
-            if (stream.Read(buffer, 0, 1) == 0)
-                return;
+            stream.ReadExactly(buffer);
         }
     }
 
@@ -59,7 +58,7 @@ class VNCServer: GraphicalConsole
 
         // receive reply with choice, ignoring choice
         byte[] buffer = new byte[1];
-        stream.Read(buffer, 0, 1);
+        stream.ReadExactly(buffer);
 
         byte[] reply = new byte[4];
         reply[3] = 0;  // OK
@@ -69,7 +68,7 @@ class VNCServer: GraphicalConsole
     private static void VNCClientServerInit(NetworkStream stream, VNCServer vnc)
     {
         byte[] shared = new byte[1];
-        stream.Read(shared, 0, 1);
+        stream.ReadExactly(shared);
 
         var example = vnc.GetFrame();
         int width = vnc._compatible ? compatible_width : example.width;
@@ -108,49 +107,64 @@ class VNCServer: GraphicalConsole
         stream.ReadTimeout = 1000 / 15;  // 15 fps
 
         byte[] type = new byte[1];
-        if (stream.Read(type, 0, 1) == 0)
+        try
+        {
+            stream.ReadExactly(type);
+        }
+        catch(System.IO.IOException e)
+        {
             return;
+        }
 
-        stream.ReadTimeout = 250;  // sane(?) timeout
+        stream.ReadTimeout = 1000;  // sane(?) timeout
+
+        Console.WriteLine($"Client message {type[0]} received");
 
         if (type[0] == 0)  // SetPixelFormat
         {
             byte[] temp = new byte[3 + 16];
-            stream.Read(temp, 0, temp.Length);
+            stream.ReadExactly(temp);
         }
         else if (type[0] == 2)  // SetEncodings
         {
             byte[] temp = new byte[3];
-            stream.Read(temp, 0, temp.Length);
+            stream.ReadExactly(temp);
             ushort no_encodings = (ushort)((temp[1] << 8) | temp[2]);
+            Console.WriteLine($"retrieve {no_encodings} encodings");
             byte[] encodings = new byte[no_encodings * 4];
-            stream.Read(encodings, 0, encodings.Length);
+            stream.ReadExactly(encodings);
         }
         else if (type[0] == 3)  // FramebufferUpdateRequest
         {
-            byte[] buffer = new byte[5];
-            stream.Read(buffer, 0, buffer.Length);
+            byte[] buffer = new byte[9];
+            stream.ReadExactly(buffer);
             // TODO
         }
         else if (type[0] == 4)  // KeyEvent
         {
             byte[] buffer = new byte[7];
-            stream.Read(buffer, 0, buffer.Length);
+            stream.ReadExactly(buffer);
+            uint vnc_scan_code = (uint)((buffer[3] << 24) | (buffer[4] << 16) | (buffer[5] << 8) | buffer[6]);
+            Console.WriteLine($"Key {buffer[0]} {vnc_scan_code:x04}");
             // TODO
         }
         else if (type[0] == 5)  // PointerEvent
         {
             byte[] buffer = new byte[5];
-            stream.Read(buffer, 0, buffer.Length);
+            stream.ReadExactly(buffer);
             // TODO
         }
         else if (type[0] == 6)  // ClientCutText
         {
             byte[] buffer = new byte[7];
-            stream.Read(buffer, 0, buffer.Length);
+            stream.ReadExactly(buffer);
             uint n_to_read = (uint)((buffer[3] << 24) | (buffer[4] << 16) | (buffer[5] << 8) | buffer[6]);
             byte[] temp = new byte[n_to_read];
-            stream.Read(temp, 0, temp.Length);
+            stream.ReadExactly(temp);
+        }
+        else
+        {
+            Console.WriteLine($"Client message {type[0]} not understood");
         }
     }
 
@@ -245,11 +259,18 @@ class VNCServer: GraphicalConsole
                 VNCSecurityHandshake(stream);
                 VNCClientServerInit(stream, parameters.vs);
 
+                ulong version = 0;
                 for(;;)
                 {
                     VNCWaitForEvent(stream);
 
-                    VNCSendFrame(stream, parameters.vs);
+                    ulong new_version = parameters.vs.GetFrameVersion();
+                    if (new_version != version)
+                    {
+                        version = new_version;
+
+                        VNCSendFrame(stream, parameters.vs);
+                    }
                 }
             }
             catch(SocketException e)
