@@ -15,12 +15,14 @@ class VNCServer: GraphicalConsole
     private Thread _thread = null;
     private Keyboard _kb = null;
     private int _listen_port = 5900;
+    private bool _compatible = false;
     private static readonly System.Threading.Lock _stream_lock = new();
 
-    public VNCServer(Keyboard kb, int port)
+    public VNCServer(Keyboard kb, int port, bool compatible)
     {
         _kb = kb;
         _listen_port = port;
+        _compatible = compatible;
 
         VNCServerThreadParameters parameters = new();
         parameters.vs = this;
@@ -62,12 +64,37 @@ class VNCServer: GraphicalConsole
         stream.Write(reply, 0, reply.Length);
     }
 
+    private static GraphicalFrame ResizeFrame(GraphicalFrame in_, int new_width, int new_height)
+    {
+        GraphicalFrame out_ = new();
+        out_.width = new_width;
+        out_.height = new_height;
+        out_.rgb_pixels = new byte[new_width * new_height * 3];
+
+        for(int y=0; y<Math.Min(new_height, in_.height); y++)
+        {
+            int in_offset = y * in_.width * 3;
+            int out_offset = y * new_height * 3;
+            for(int x=0; x<Math.Min(new_height, in_.height); x++)
+            {
+                int x_offset = x * 3;
+                out_.rgb_pixels[out_offset + x_offset + 0] = in_.rgb_pixels[in_offset + x_offset + 0];
+                out_.rgb_pixels[out_offset + x_offset + 1] = in_.rgb_pixels[in_offset + x_offset + 1];
+                out_.rgb_pixels[out_offset + x_offset + 2] = in_.rgb_pixels[in_offset + x_offset + 2];
+            }
+        }
+
+        return out_;
+    }
+
     private static void VNCClientServerInit(NetworkStream stream, VNCServer vnc)
     {
         byte[] shared = new byte[1];
         stream.Read(shared, 0, 1);
 
         var example = vnc.GetFrame();
+        if (vnc._compatible)
+            example = ResizeFrame(example, 640, 400);
         byte[] reply = new byte[24];
         reply[0] = (byte)(example.width >> 8);
         reply[1] = (byte)(example.width & 255);
@@ -151,15 +178,18 @@ class VNCServer: GraphicalConsole
     private static void VNCSendFrame(NetworkStream stream, VNCServer vs)
     {
         var frame = vs.GetFrame();
-/*
-        byte[] resize = new byte[5];
-        resize[0] = 15;  // ResizeFrameBuffer
-        resize[1] = (byte)(frame.width >> 8);  // width
-        resize[2] = (byte)frame.width;
-        resize[3] = (byte)(frame.height >> 8);  // height
-        resize[4] = (byte)frame.height;
-        stream.Write(resize, 0, resize.Length);
-*/
+
+        if (!vs._compatible)
+        {
+            byte[] resize = new byte[5];
+            resize[0] = 15;  // ResizeFrameBuffer
+            resize[1] = (byte)(frame.width >> 8);  // width
+            resize[2] = (byte)frame.width;
+            resize[3] = (byte)(frame.height >> 8);  // height
+            resize[4] = (byte)frame.height;
+            stream.Write(resize, 0, resize.Length);
+        }
+
         byte[] update = new byte[4 + 12];
         update[0] = 0;  // FrameBufferUpdate
         update[1] = 0;  // padding
@@ -183,10 +213,10 @@ class VNCServer: GraphicalConsole
         {
             int o_offset = i * 4;
             int i_offset = i * 3;
-            buffer[o_offset + 0] = 255;
-            buffer[o_offset + 1] = frame.rgb_pixels[i_offset + 0];
-            buffer[o_offset + 2] = frame.rgb_pixels[i_offset + 1];
-            buffer[o_offset + 3] = frame.rgb_pixels[i_offset + 2];
+            buffer[o_offset + 3] = 255;
+            buffer[o_offset + 2] = frame.rgb_pixels[i_offset + 0];
+            buffer[o_offset + 1] = frame.rgb_pixels[i_offset + 1];
+            buffer[o_offset + 0] = frame.rgb_pixels[i_offset + 2];
         }
         stream.Write(buffer, 0, buffer.Length);
     }

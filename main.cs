@@ -164,7 +164,7 @@ if (mode != TMode.Blank)
             else if (c.Item1 == "http")
                 console_instances.Add(new HTTPServer(kb, c.Item2));
             else if (c.Item1 == "vnc")
-                console_instances.Add(new VNCServer(kb, c.Item2));
+                console_instances.Add(new VNCServer(kb, c.Item2, true));
         }
 
         if (current_console.Key == key_mda)
