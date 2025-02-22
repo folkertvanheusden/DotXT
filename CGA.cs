@@ -28,7 +28,8 @@ class M6845
 class CGA : Display
 {
     private byte [] _ram = new byte[16384];
-
+    private Fonts fonts = new();
+    private FontDescriptor font_descr;
     private M6845 _m6845 = new();
     private byte _m6845_reg;
     private uint _display_address = 0;
@@ -55,6 +56,8 @@ class CGA : Display
 
     public CGA(List<EmulatorConsole> consoles): base(consoles)
     {
+        font_descr = fonts.get_font(FontName.VGA);
+
         _gf.width = 640;
         _gf.height = 200;
         _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
@@ -139,7 +142,7 @@ class CGA : Display
                         _gf.width = 320;
                     }
                 }
-                _gf.height = 200;
+                _gf.height = font_descr.height * 25;
                 _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
                 _graphics_mode = value;
                 Console.WriteLine($"CGA mode is now {value:X02} ({_cga_mode}), {_gf.width}x{_gf.height}");
@@ -253,13 +256,13 @@ class CGA : Display
 
                 EmulateTextDisplay(x, y, character, attributes);
 
-                int char_offset = character * 8;
+                int char_offset = character * font_descr.height;
                 int fg = attributes & 15;
                 int bg = (attributes >> 4) & 7;
-                for(int yo=0; yo<8; yo++)
+                for(int yo=0; yo<font_descr.height; yo++)
                 {
-                    int y_pixel_offset = ((int)y * 8 + yo) * _gf.width * 3;
-                    byte line = font_cga.glyphs[char_offset + yo];
+                    int y_pixel_offset = ((int)y * font_descr.height + yo) * _gf.width * 3;
+                    byte line = font_descr.pixels[char_offset + yo];
                     byte bit_mask = 128;
                     for(int xo=0; xo<8; xo++)
                     {
