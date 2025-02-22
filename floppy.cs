@@ -127,6 +127,9 @@ class FloppyDisk : Device
         if (file_size >= 819200)
             sectors_per_track = 18;
 
+        if (sector > sectors_per_track)
+            Log.DoLog($"Floppy-ReadData: reading beyond sector-count? ({sector} > {sectors_per_track})");
+
         byte[] b = new byte[256 * n];
         int lba = (cylinder * 2 + head) * sectors_per_track + sector - 1;
         long offset = lba * b.Length;
