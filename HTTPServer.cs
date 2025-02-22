@@ -159,6 +159,32 @@ class HTTPServer: GraphicalConsole
                         byte [] data = GraphicalFrameToBmp(frame);
                         stream.Write(data, 0, data.Length);
                     }
+                    else if (request[0] == "GET" && request[1] == "/stream.cgi")
+                    {
+                        Console.WriteLine($"Requested: {request[1]} - 200");
+
+                        PushLine(stream, "HTTP/1.0 200 All good");
+                        PushLine(stream, "Server: DotXT");
+                        PushLine(stream, "Cache-Control: no-cache");
+                        PushLine(stream, "Pragma: no-cache");
+                        PushLine(stream, "Expires: Thu, 01 Dec 1994 16:00:00 GMT");
+                        PushLine(stream, "Content-Type: multipart/x-mixed-replace; boundary=--myboundary");
+                        PushLine(stream, "");
+
+                        for(;;)
+                        {
+                            GraphicalFrame frame = parameters.hs.GetFrame();
+                            byte [] data = GraphicalFrameToBmp(frame);
+
+                            PushLine(stream, "--myboundary");
+                            PushLine(stream, "Content-Type: image/bmp");
+                            PushLine(stream, $"Content-Length: {data.Length}");
+                            PushLine(stream, "");
+                            stream.Write(data, 0, data.Length);
+
+                            Thread.Sleep(1000 / 15);
+                        }
+                    }
                     else
                     {
                         Console.WriteLine($"Requested: {request[1]} - 404");
