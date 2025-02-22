@@ -69,12 +69,18 @@ class CGA : Display
     {
         Log.DoLog("CGA::RegisterDevice", true);
 
+        mappings[0x3d0] = this;
+        mappings[0x3d1] = this;
+        mappings[0x3d2] = this;
+        mappings[0x3d3] = this;
         mappings[0x3d4] = this;
         mappings[0x3d5] = this;
         mappings[0x3d6] = this;
         mappings[0x3d7] = this;
         mappings[0x3d8] = this;
         mappings[0x3da] = this;
+        mappings[0x3db] = this;
+        mappings[0x3dc] = this;
     }
 
     public int GetWaitStateCycles()
@@ -94,12 +100,13 @@ class CGA : Display
     {
         Log.DoLog($"CGA::IO_Write {port:X4} {value:X2}", true);
 
-        if (port == 0x3d4 || port == 0x3d6)
+        if (port == 0x3d4 || port == 0x3d6 || port == 0x3d0 || port == 0x3d2)
             _m6845_reg = value;
-        else if (port == 0x3d5 || port == 0x3d7)
+        else if (port == 0x3d5 || port == 0x3d7 || port == 0x3d1 || port == 0x3d3)
         {
             _m6845.Write(_m6845_reg, value);
             _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
+            Console.WriteLine($"Set base address to {_display_address:X04}");
             Redraw();
         }
         else if (port == 0x3d8)
@@ -137,6 +144,10 @@ class CGA : Display
                 _graphics_mode = value;
                 Console.WriteLine($"CGA mode is now {value:X02} ({_cga_mode}), {_gf.width}x{_gf.height}");
             }
+        }
+        else
+        {
+            Console.WriteLine($"CGA output to this ({port:X04}) port not implemented");
         }
 
         return false;
@@ -237,19 +248,22 @@ class CGA : Display
                 uint mask = uint.MaxValue - 1;
                 uint char_base_offset = use_offset & mask;
 
-                EmulateTextDisplay(x, y, _ram[char_base_offset + 0], _ram[char_base_offset + 1]);
+                byte character = _ram[char_base_offset + 0];
+                byte attributes = _ram[char_base_offset + 1];
 
-                int char_offset = _ram[char_base_offset + 0] * 8;
-                int fg = _ram[char_base_offset + 1] & 15;
-                int bg = (_ram[char_base_offset + 1] >> 4) & 7;
+                EmulateTextDisplay(x, y, character, attributes);
+
+                int char_offset = character * 8;
+                int fg = attributes & 15;
+                int bg = (attributes >> 4) & 7;
                 for(int yo=0; yo<8; yo++)
                 {
-                    int pixel_offset = ((int)y * 8 + yo) * _gf.width * 3;
+                    int y_pixel_offset = ((int)y * 8 + yo) * _gf.width * 3;
                     byte line = font_cga.glyphs[char_offset + yo];
                     byte bit_mask = 128;
                     for(int xo=0; xo<8; xo++)
                     {
-                        int x_pixel_offset = pixel_offset + ((int)x * 8 + xo) * 3;
+                        int x_pixel_offset = y_pixel_offset + ((int)x * 8 + xo) * 3;
                         bool is_fg = (line & bit_mask) != 0;
                         bit_mask >>= 1;
                         if (is_fg)
