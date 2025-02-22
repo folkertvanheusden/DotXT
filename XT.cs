@@ -1142,16 +1142,6 @@ internal class P8086
             _ip = _rep_addr;
     }
 
-    public void Terminate()
-    {
-        Log.EmitDisassembly();
-
-        if (_is_test)
-            System.Environment.Exit(_si == 0xa5ee ? 123 : 0);
-
-        System.Environment.Exit(0);
-    }
-
     // cycle counts from https://zsmith.co/intel_i.php
     public bool Tick()
     {
@@ -1292,7 +1282,7 @@ internal class P8086
             if (++_crash_counter >= 5)
             {
                 Log.DoLog($"Terminating because of {_crash_counter}x 0x00 opcode ({address:X06})");
-                Terminate();
+                return false;
             }
         }
         else
@@ -4004,9 +3994,6 @@ internal class P8086
 #if DEBUG
             Log.Disassemble(prefixStr, $" HLT");
 #endif
-
-            if (_terminate_on_hlt)
-                Terminate();
 
             rc = false;
         }

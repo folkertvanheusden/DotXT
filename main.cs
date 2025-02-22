@@ -180,7 +180,7 @@ if (mode != TMode.Blank)
 // Bus gets the devices for memory mapped i/o
 Bus b = new Bus(ram_size * 1024, ref devices, ref roms);
 
-var p = new P8086(ref b, test, mode, load_test_at, debugger, ref devices, run_IO);
+var p = new P8086(ref b, test, mode, load_test_at, false, ref devices, run_IO);
 
 if (set_initial_ip)
     p.set_ip(initial_cs, initial_ip);
@@ -394,6 +394,14 @@ if (debugger)
 }
 else
 {
-    for (;;)
-        p.Tick();
+    while(p.Tick())
+    {
+    }
 }
+
+Log.EmitDisassembly();
+    
+if (test != "" && mode == TMode.Binary)
+    System.Environment.Exit(p.GetSI() == 0xa5ee ? 123 : 0);
+
+System.Environment.Exit(0);
