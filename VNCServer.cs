@@ -17,6 +17,8 @@ class VNCServer: GraphicalConsole
     private int _listen_port = 5900;
     private bool _compatible = false;
     private static readonly System.Threading.Lock _stream_lock = new();
+    private static int compatible_width = 640;
+    private static int compatible_height = 400;
 
     public VNCServer(Keyboard kb, int port, bool compatible)
     {
@@ -64,42 +66,19 @@ class VNCServer: GraphicalConsole
         stream.Write(reply, 0, reply.Length);
     }
 
-    private static GraphicalFrame ResizeFrame(GraphicalFrame in_, int new_width, int new_height)
-    {
-        GraphicalFrame out_ = new();
-        out_.width = new_width;
-        out_.height = new_height;
-        out_.rgb_pixels = new byte[new_width * new_height * 3];
-
-        for(int y=0; y<Math.Min(new_height, in_.height); y++)
-        {
-            int in_offset = y * in_.width * 3;
-            int out_offset = y * new_height * 3;
-            for(int x=0; x<Math.Min(new_height, in_.height); x++)
-            {
-                int x_offset = x * 3;
-                out_.rgb_pixels[out_offset + x_offset + 0] = in_.rgb_pixels[in_offset + x_offset + 0];
-                out_.rgb_pixels[out_offset + x_offset + 1] = in_.rgb_pixels[in_offset + x_offset + 1];
-                out_.rgb_pixels[out_offset + x_offset + 2] = in_.rgb_pixels[in_offset + x_offset + 2];
-            }
-        }
-
-        return out_;
-    }
-
     private static void VNCClientServerInit(NetworkStream stream, VNCServer vnc)
     {
         byte[] shared = new byte[1];
         stream.Read(shared, 0, 1);
 
         var example = vnc.GetFrame();
-        if (vnc._compatible)
-            example = ResizeFrame(example, 640, 400);
+        int width = vnc._compatible ? compatible_width : example.width;
+        int height = vnc._compatible ? compatible_height : example.height;
         byte[] reply = new byte[24];
-        reply[0] = (byte)(example.width >> 8);
-        reply[1] = (byte)(example.width & 255);
-        reply[2] = (byte)(example.height >> 8);
-        reply[3] = (byte)(example.height & 255);
+        reply[0] = (byte)(width >> 8);
+        reply[1] = (byte)(width & 255);
+        reply[2] = (byte)(height >> 8);
+        reply[3] = (byte)(height & 255);
         reply[4] = 32;  // bits per pixel
         reply[5] = 32;  // depth
         reply[6] = 1;  // big endian
@@ -179,14 +158,17 @@ class VNCServer: GraphicalConsole
     {
         var frame = vs.GetFrame();
 
+        int width = vs._compatible ? compatible_width : frame.width;
+        int height = vs._compatible ? compatible_height : frame.height;
+
         if (!vs._compatible)
         {
             byte[] resize = new byte[5];
             resize[0] = 15;  // ResizeFrameBuffer
-            resize[1] = (byte)(frame.width >> 8);  // width
-            resize[2] = (byte)frame.width;
-            resize[3] = (byte)(frame.height >> 8);  // height
-            resize[4] = (byte)frame.height;
+            resize[1] = (byte)(width >> 8);  // width
+            resize[2] = (byte)width;
+            resize[3] = (byte)(height >> 8);  // height
+            resize[4] = (byte)height;
             stream.Write(resize, 0, resize.Length);
         }
 
@@ -199,26 +181,49 @@ class VNCServer: GraphicalConsole
         update[5] = 0;
         update[6] = 0;  // y pos
         update[7] = 0;
-        update[8] = (byte)(frame.width >> 8);  // width
-        update[9] = (byte)frame.width;
-        update[10] = (byte)(frame.height >> 8);  // height
-        update[11] = (byte)frame.height;
+        update[8] = (byte)(width >> 8);  // width
+        update[9] = (byte)width;
+        update[10] = (byte)(height >> 8);  // height
+        update[11] = (byte)height;
         update[12] = 0;
         update[13] = 0;
         update[14] = 0;
         update[15] = 0;
         stream.Write(update, 0, update.Length);
-        byte[] buffer = new byte[frame.width * frame.height * 4];
-        for(int i=0; i<frame.width * frame.height; i++)
+
+        if (vs._compatible)
         {
-            int o_offset = i * 4;
-            int i_offset = i * 3;
-            buffer[o_offset + 3] = 255;
-            buffer[o_offset + 2] = frame.rgb_pixels[i_offset + 0];
-            buffer[o_offset + 1] = frame.rgb_pixels[i_offset + 1];
-            buffer[o_offset + 0] = frame.rgb_pixels[i_offset + 2];
+            byte[] buffer = new byte[width * height * 4];
+            for(int y=0; y<Math.Min(height, frame.height); y++)
+            {
+                int in_offset = y * frame.width * 3;
+                int out_offset = y * width * 4;
+                for(int x=0; x<Math.Min(width, frame.width); x++)
+                {
+                    int i_offset = in_offset + x * 3;
+                    int o_offset = out_offset + x * 4;
+                    buffer[o_offset + 3] = 255;
+                    buffer[o_offset + 2] = frame.rgb_pixels[i_offset + 0];
+                    buffer[o_offset + 1] = frame.rgb_pixels[i_offset + 1];
+                    buffer[o_offset + 0] = frame.rgb_pixels[i_offset + 2];
+                }
+            }
+            stream.Write(buffer, 0, buffer.Length);
         }
-        stream.Write(buffer, 0, buffer.Length);
+        else
+        {
+            byte[] buffer = new byte[frame.width * frame.height * 4];
+            for(int i=0; i<frame.width * frame.height; i++)
+            {
+                int o_offset = i * 4;
+                int i_offset = i * 3;
+                buffer[o_offset + 3] = 255;
+                buffer[o_offset + 2] = frame.rgb_pixels[i_offset + 0];
+                buffer[o_offset + 1] = frame.rgb_pixels[i_offset + 1];
+                buffer[o_offset + 0] = frame.rgb_pixels[i_offset + 2];
+            }
+            stream.Write(buffer, 0, buffer.Length);
+        }
     }
 
     public static void VNCThread(object o_parameters)
