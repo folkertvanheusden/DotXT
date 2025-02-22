@@ -191,7 +191,7 @@ class FloppyDisk : Device
             }
 #endif
 
-            for(int i=0; i<b.Length && dma_finished == false; i++)
+            for(int i=0; i<b.Length; i++)
             {
                 if (_dma_controller.SendToChannel(2, b[i]) == false)
                 {
@@ -208,7 +208,9 @@ class FloppyDisk : Device
 
             sector++;
         }
-        while(dma_finished == false); // && sector <= old_data[6]);
+        while(dma_finished == false);
+
+        Log.DoLog($"Floppy-ReadData {sector - old_data[4]} sector(s) read");
 
         return true;
     }
