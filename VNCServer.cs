@@ -35,6 +35,100 @@ class VNCServer: GraphicalConsole
         _thread.Start(parameters);
     }
 
+    public void PushChar(uint c, bool press)
+    {
+        if (_kb == null)
+            return;
+
+        Dictionary<uint, byte []> key_map = new() {
+                { 0xff1b, new byte[] { 0x01 } },  // escape
+                { 0xff0d, new byte[] { 0x1c } },  // enter
+                { 0xff08, new byte[] { 0x0e } },  // backspace
+                { 0xff09, new byte[] { 0x0f } },  // tab
+                { 0xffe1, new byte[] { 0x2a } },  // left shift
+                { 0x31, new byte[] { 0x02 } },  // 1
+                { 0x32, new byte[] { 0x03 } },
+                { 0x33, new byte[] { 0x04 } },
+                { 0x34, new byte[] { 0x05 } },
+                { 0x35, new byte[] { 0x06 } },
+                { 0x36, new byte[] { 0x07 } },
+                { 0x37, new byte[] { 0x08 } },
+                { 0x38, new byte[] { 0x09 } },
+                { 0x39, new byte[] { 0x0a } },  // 9
+                { 0x30, new byte[] { 0x0b } },  // 0
+                { 0x41, new byte[] { 0x1e } },  // A
+                { 0x42, new byte[] { 0x30 } },
+                { 0x43, new byte[] { 0x2e } },
+                { 0x44, new byte[] { 0x20 } },
+                { 0x45, new byte[] { 0x12 } },
+                { 0x46, new byte[] { 0x21 } },
+                { 0x47, new byte[] { 0x22 } },
+                { 0x48, new byte[] { 0x23 } },
+                { 0x49, new byte[] { 0x17 } },
+                { 0x4a, new byte[] { 0x24 } },
+                { 0x4b, new byte[] { 0x25 } },
+                { 0x4c, new byte[] { 0x26 } },
+                { 0x4d, new byte[] { 0x32 } },
+                { 0x4e, new byte[] { 0x31 } },
+                { 0x4f, new byte[] { 0x18 } },
+                { 0x50, new byte[] { 0x19 } },
+                { 0x51, new byte[] { 0x10 } },
+                { 0x52, new byte[] { 0x13 } },
+                { 0x53, new byte[] { 0x1f } },
+                { 0x54, new byte[] { 0x14 } },
+                { 0x55, new byte[] { 0x16 } },
+                { 0x56, new byte[] { 0x2f } },
+                { 0x57, new byte[] { 0x11 } },
+                { 0x58, new byte[] { 0x2d } },
+                { 0x59, new byte[] { 0x15 } },
+                { 0x5a, new byte[] { 0x2c } },  // Z
+                { 0x61, new byte[] { 0x1e } },  // a
+                { 0x62, new byte[] { 0x30 } },
+                { 0x63, new byte[] { 0x2e } },
+                { 0x64, new byte[] { 0x20 } },
+                { 0x65, new byte[] { 0x12 } },
+                { 0x66, new byte[] { 0x21 } },
+                { 0x67, new byte[] { 0x22 } },
+                { 0x68, new byte[] { 0x23 } },
+                { 0x69, new byte[] { 0x17 } },
+                { 0x6a, new byte[] { 0x24 } },
+                { 0x6b, new byte[] { 0x25 } },
+                { 0x6c, new byte[] { 0x26 } },
+                { 0x6d, new byte[] { 0x32 } },
+                { 0x6e, new byte[] { 0x31 } },
+                { 0x6f, new byte[] { 0x18 } },
+                { 0x70, new byte[] { 0x19 } },
+                { 0x71, new byte[] { 0x10 } },
+                { 0x72, new byte[] { 0x13 } },
+                { 0x73, new byte[] { 0x1f } },
+                { 0x74, new byte[] { 0x14 } },
+                { 0x75, new byte[] { 0x16 } },
+                { 0x76, new byte[] { 0x2f } },
+                { 0x77, new byte[] { 0x11 } },
+                { 0x78, new byte[] { 0x2d } },
+                { 0x79, new byte[] { 0x15 } },
+                { 0x7a, new byte[] { 0x2c } },  // z
+                { 0x20, new byte[] { 0x39 } },  // space
+                { 0x2e, new byte[] { 0x34 } },  // .
+                { 0x2d, new byte[] { 0x0c } },  // -
+                { 0x5f, new byte[] { 0x0c } },  // _
+                { 0x3a, new byte[] { 0x27 } },  // :
+                { 0xff54, new byte[] { 0x50 } },  // cursor down
+                { 0xff52, new byte[] { 0x48 } },  // cursor up
+                { 0xff51, new byte[] { 0x4b } },  // cursor left
+                { 0xff53, new byte[] { 0x4d } },  // cursor right
+                { 0xff50, new byte[] { 0x47 } },  // home
+                { 0xff57, new byte[] { 0x4f } },  // end
+        };
+
+        if (key_map.ContainsKey(c))
+        {
+            var messages = key_map[c];
+            for(int i=0; i<messages.Length; i++)
+                _kb.PushKeyboardScancode(press ? messages[i] : (messages[i] | 0x80));
+        }
+    }
+
     private static void VNCSendVersion(NetworkStream stream)
     {
         byte[] msg = System.Text.Encoding.ASCII.GetBytes("RFB 003.008\n");
@@ -102,7 +196,7 @@ class VNCServer: GraphicalConsole
         stream.Write(name_bytes, 0, name_bytes.Length);
     }
 
-    private static void VNCWaitForEvent(NetworkStream stream)
+    private static void VNCWaitForEvent(NetworkStream stream, VNCServer vnc)
     {
         stream.ReadTimeout = 1000 / 15;  // 15 fps
 
@@ -118,7 +212,7 @@ class VNCServer: GraphicalConsole
 
         stream.ReadTimeout = 1000;  // sane(?) timeout
 
-        Console.WriteLine($"Client message {type[0]} received");
+        // Console.WriteLine($"Client message {type[0]} received");
 
         if (type[0] == 0)  // SetPixelFormat
         {
@@ -146,7 +240,7 @@ class VNCServer: GraphicalConsole
             stream.ReadExactly(buffer);
             uint vnc_scan_code = (uint)((buffer[3] << 24) | (buffer[4] << 16) | (buffer[5] << 8) | buffer[6]);
             Console.WriteLine($"Key {buffer[0]} {vnc_scan_code:x04}");
-            // TODO
+            vnc.PushChar(vnc_scan_code, buffer[0] != 0);
         }
         else if (type[0] == 5)  // PointerEvent
         {
@@ -259,11 +353,10 @@ class VNCServer: GraphicalConsole
                 VNCSecurityHandshake(stream);
                 VNCClientServerInit(stream, parameters.vs);
 
+                parameters.vs.Redraw();
                 ulong version = 0;
                 for(;;)
                 {
-                    VNCWaitForEvent(stream);
-
                     ulong new_version = parameters.vs.GetFrameVersion();
                     if (new_version != version)
                     {
@@ -271,6 +364,8 @@ class VNCServer: GraphicalConsole
 
                         VNCSendFrame(stream, parameters.vs);
                     }
+
+                    VNCWaitForEvent(stream, parameters.vs);
                 }
             }
             catch(SocketException e)
