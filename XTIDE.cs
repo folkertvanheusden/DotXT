@@ -22,6 +22,19 @@ class XTIDE : Device
         _sector_buffer[_sector_buffer_offset++] = (byte)(v >> 8);
     }
 
+    private void PushSectorBufferString(string what, int length)
+    {
+        for(int i=0; i<length; i += 2)
+        {
+            ushort word = 0;
+            if (i < what.Length)
+                word |= (ushort)((byte)what[i] << 8);
+            if (i + 1 < what.Length)
+                word |= (byte)what[i + 1];
+            PushSectorBufferWord(word);
+        }
+    }
+
     private void CMDIdentifyDrive()
     {
         Log.DoLog("XT-IDE: CMDIdentifyDrive");
@@ -46,8 +59,7 @@ class XTIDE : Device
         PushSectorBufferWord(0);  // ECC byte count
         for(int i=0; i<4; i++)
             PushSectorBufferWord(0);  // firmware revision, ascii
-        for(int i=0; i<20; i++)
-            PushSectorBufferWord(0);  // model number, ascii
+        PushSectorBufferString("DotXT", 40); // model number, ascii
         PushSectorBufferWord(1);  // Maximum number of sectors that can be transferred per interrupt on read and write multiple commands
         PushSectorBufferWord(0);  // no doubleword transfers
         PushSectorBufferWord(1024);  // LBA supported
