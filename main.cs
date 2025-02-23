@@ -177,6 +177,8 @@ if (mode != TMode.Blank)
 
     if (floppies.Count() > 0)
         devices.Add(new FloppyDisk(floppies));
+
+    devices.Add(new XTIDE("ide.img"));
 }
 
 // Bus gets the devices for memory mapped i/o
