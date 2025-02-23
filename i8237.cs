@@ -213,6 +213,45 @@ internal class i8237
         return false;
     }
 
+    public int ReceiveFromChannel(int channel)
+    {
+        if (_dma_enabled == false)
+        {
+            Log.DoLog($"i8237 ReceiveFromChannel channel {channel}: dma not enabled", true);
+            return -1;
+        }
+
+        if (_channel_mask[channel])
+        {
+            Log.DoLog($"i8237 ReceiveFromChannel channel {channel}: channel masked", true);
+            return -1;
+        }
+
+        if (_reached_tc[channel])
+        {
+            Log.DoLog($"i8237 ReceiveFromChannel channel {channel}: reached tc, channel address {_channel_address_register[channel].GetValue():X04}", true);
+            return -1;
+        }
+
+        ushort addr = _channel_address_register[channel].GetValue();
+        uint full_addr = (uint)((_channel_page[channel] << 16) | addr);
+        addr++;
+        _channel_address_register[channel].SetValue(addr);
+
+        byte rc = _b.ReadByte(full_addr).Item1;
+
+        ushort count = _channel_word_count[channel].GetValue();
+        count--;
+        if (count == 0xffff)
+        {
+            Log.DoLog($"i8237 ReceiveFromChannel channel {channel} count has reached -1, set tc, address {full_addr:X06}", true);
+            _reached_tc[channel] = true;
+        }
+        _channel_word_count[channel].SetValue(count);
+
+        return rc;
+    }
+
     // used by devices (floppy etc) to send data to memory
     public bool SendToChannel(int channel, byte value)
     {
