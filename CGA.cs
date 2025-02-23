@@ -290,10 +290,36 @@ class CGA : Display
 
     public override void Redraw()
     {
-        int width = _cga_mode == CGAMode.Text40 ? 40 : 80;
-        for(uint i=_display_address; i<_display_address + width * 25 * 2; i += 2)
+        int interval = 0;
+        int byte_count = 0;
+        if (_cga_mode == CGAMode.Text40)
         {
-            DrawOnConsole(i);
+            byte_count = 40 * 25 * 2;
+            interval = 2;
+        }
+        else if (_cga_mode == CGAMode.Text80)
+        {
+            byte_count = 80 * 25 * 2;
+            interval = 2;
+        }
+        else if (_cga_mode == CGAMode.G320)
+        {
+            byte_count = 80 * 25 * 2;
+            interval = 1;
+        }
+        else if (_cga_mode == CGAMode.G640)
+        {
+            byte_count = 80 * 25 * 2;
+            interval = 1;
+        }
+        else
+        {
+            Log.DoLog($"Unexpected mode {_cga_mode}");
+            return;
+        }
+        for(int i=(int)_display_address; i<_display_address + byte_count; i += interval)
+        {
+            DrawOnConsole((uint)i);
         }
         _gf_version++;
     }
