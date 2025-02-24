@@ -35,6 +35,7 @@ class CGA : Display
     private uint _display_address = 0;
     private byte _graphics_mode = 255;
     private CGAMode _cga_mode = CGAMode.Text80;
+    private byte _color_configuration = 32;
     private List<byte []> palette = new() {
             new byte[] {   0,   0,   0 },
             new byte[] {   0,   0, 127 },
@@ -78,6 +79,7 @@ class CGA : Display
         mappings[0x3d6] = this;
         mappings[0x3d7] = this;
         mappings[0x3d8] = this;
+        mappings[0x3d9] = this;
         mappings[0x3da] = this;
         mappings[0x3db] = this;
         mappings[0x3dc] = this;
@@ -145,6 +147,11 @@ class CGA : Display
                 Console.WriteLine($"CGA mode is now {value:X02} ({_cga_mode}), {_gf.width}x{_gf.height}");
                 Redraw();
             }
+        }
+        else if (port == 0x3d9)
+        {
+            _color_configuration = value;
+            Console.WriteLine($"CGA color configuration: {_color_configuration:X02}");
         }
         else
         {
@@ -214,13 +221,26 @@ class CGA : Display
                     int color_index = (b >> (x_i * 2)) & 3;
                     int offset = (y * 320 + x + 3 - x_i) * 3;
 
-                    _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 0;
-                    if (color_index == 1)  // green
-                        _gf.rgb_pixels[offset + 1] = 255;
-                    else if (color_index == 2)  // red
-                        _gf.rgb_pixels[offset + 0] = 255;
-                    else if (color_index == 3)  // blue
-                        _gf.rgb_pixels[offset + 2] = 255;
+                    if ((_color_configuration & 32) != 0)
+                    {
+                        _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 0;
+                        if (color_index == 1)
+                            _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 255;
+                        else if (color_index == 2)
+                            _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 2] = 255;
+                        else if (color_index == 3)
+                            _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 255;
+                    }
+                    else
+                    {
+                        _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 0;
+                        if (color_index == 1)  // green
+                            _gf.rgb_pixels[offset + 1] = 255;
+                        else if (color_index == 2)  // red
+                            _gf.rgb_pixels[offset + 0] = 255;
+                        else if (color_index == 3)  // blue
+                            _gf.rgb_pixels[offset + 2] = 255;
+                    }
                 }
             }
         }
