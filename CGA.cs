@@ -143,6 +143,7 @@ class CGA : Display
                 _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
                 _graphics_mode = value;
                 Console.WriteLine($"CGA mode is now {value:X02} ({_cga_mode}), {_gf.width}x{_gf.height}");
+                Redraw();
             }
         }
         else
@@ -227,13 +228,14 @@ class CGA : Display
         {
             if (use_offset >= _display_address && use_offset < _display_address + 1600)
             {
-                int x = (int)(use_offset % 80) * 8;
-                int y = (int)use_offset / 80;
+                uint addr_without_base = use_offset - _display_address;
+                int x = (int)(addr_without_base % 80) * 8;
+                int y = (int)addr_without_base / 80;
 
                 byte b = _ram[use_offset];
                 for(int x_i = 0; x_i < 8; x_i++)
                 {
-                    int offset = (y * 640 + x + x_i) * 3;
+                    int offset = (y * 640 + x + 7 - x_i) * 3;
                     _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = (byte)((b & 128) != 0 ? 255 : 0);
                     b <<= 1;
                 }
