@@ -2920,7 +2920,7 @@ internal class P8086
                     short ax = (short)GetAX();
                     short r1s = (short)(sbyte)r1;
 
-                    if (r1s == 0 || ax / r1s > 0x7fff || ax / r1s < 0x8000)
+                    if (r1s == 0 || ax / r1s > 0x7fff || ax / r1s < -0x8000)
                     {
                         SetZSPFlags(_ah);
                         SetFlagA(false);
