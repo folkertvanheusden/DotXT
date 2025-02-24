@@ -399,8 +399,17 @@ if (debugger)
 }
 else
 {
-    while(p.Tick())
+    try
     {
+        while(p.Tick())
+        {
+        }
+    }
+    catch(Exception e)
+    {
+        string msg = $"An exception occured: {e.ToString()}";
+        Console.WriteLine(msg);
+        Log.DoLog(msg);
     }
 }
 
