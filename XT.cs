@@ -48,8 +48,6 @@ internal class P8086
     private Bus _b;
     private readonly IO _io;
 
-    private bool _scheduled_interrupts = false;
-
     private bool _rep;
     private bool _rep_do_nothing;
     private RepMode _rep_mode;
@@ -1155,12 +1153,13 @@ internal class P8086
         int cycle_count = 0;  // cycles used for an instruction
 
         // check for interrupt
-        if (GetFlagI() == true) // TODO && _scheduled_interrupts)
+        if (GetFlagI() == true)
         {
             int irq = _io.GetPIC().GetPendingInterrupt();
             if (irq != 255)
             {
-                Log.DoLog($"Scanning for IRQ {irq}", true);
+                if (irq != 0)
+                    Log.DoLog($"Scanning for IRQ {irq}", true);
 
                 foreach (var device in _devices)
                 {
@@ -1611,7 +1610,7 @@ internal class P8086
 
             _al &= 0x0f;
 
-            cycle_count += 4;  // FIXME
+            cycle_count += 8;
 #if DEBUG
             Log.Disassemble(prefixStr, $" AAA");
 #endif
@@ -1634,7 +1633,7 @@ internal class P8086
 
             _al &= 0x0f;
 
-            cycle_count += 4;  // FIXME
+            cycle_count += 8;
 #if DEBUG
             Log.Disassemble(prefixStr, $" AAS");
 #endif
@@ -2919,7 +2918,7 @@ internal class P8086
                     short ax = (short)GetAX();
                     short r1s = (short)(sbyte)r1;
 
-                    if (r1s == 0 || ax / r1s > 0x7fff || ax / r1s < 0x8000)
+                    if (r1s == 0 || ax / r1s > 0x7fff || ax / r1s < -0x8000)
                     {
                         SetZSPFlags(_ah);
                         SetFlagA(false);
@@ -3346,19 +3345,17 @@ internal class P8086
                 _sp += nToRelease;
 
                 cycle_count += 16;
-
 #if DEBUG
                 Log.Disassemble(prefixStr, $" RETF ${nToRelease:X4}");
 #endif
             }
-#if DEBUG
             else
             {
+#if DEBUG
                 Log.Disassemble(prefixStr, $" RETF");
-
+#endif
                 cycle_count += 26;
             }
-#endif
         }
         else if ((opcode & 0xfc) == 0xd0)
         {
@@ -3641,7 +3638,7 @@ internal class P8086
                 InvokeInterrupt(_ip, 0x00, false);
             }
 
-            cycle_count += 2;  // TODO
+            cycle_count += 83;
 
 #if DEBUG
             Log.Disassemble(prefixStr, $" AAM");
@@ -3657,7 +3654,7 @@ internal class P8086
 
             SetZSPFlags(_al);
 
-            cycle_count += 2;  // TODO
+            cycle_count += 60;
 
 #if DEBUG
             Log.Disassemble(prefixStr, $" AAD");
@@ -3677,7 +3674,14 @@ internal class P8086
             Log.Disassemble(prefixStr, $" SALC");
 #endif
         }
-        else if (opcode == 0xdb || opcode==0xdd)
+        else if (opcode == 0x9b)
+        {
+            cycle_count += 2;  // TODO
+#if DEBUG
+            Log.DoLog($"{prefixStr} FWAIT - ignored", true);
+#endif
+        }
+        else if (opcode >= 0xd8 && opcode <= 0xdf)
         {
             byte o1 = GetPcByte();
             int mod = o1 >> 6;
@@ -3882,8 +3886,6 @@ internal class P8086
             (ushort val, bool i) = _io.In(@from);
             _al = (byte)val;
 
-            _scheduled_interrupts |= i;
-
             cycle_count += 10;  // or 14
 
 #if DEBUG
@@ -3898,7 +3900,6 @@ internal class P8086
             (ushort val, bool i) = _io.In(@from);
             SetAX(val);
 
-            _scheduled_interrupts |= i;
             cycle_count += 10;  // or 14
 
 #if DEBUG
@@ -3909,7 +3910,7 @@ internal class P8086
         {
             // OUT
             byte to = GetPcByte();
-            _scheduled_interrupts |= _io.Out(@to, _al);
+            _io.Out(@to, _al);
 
             cycle_count += 10;  // max 14
 
@@ -3921,7 +3922,7 @@ internal class P8086
         {
             // OUT
             byte to = GetPcByte();
-            _scheduled_interrupts |= _io.Out(@to, GetAX());
+            _io.Out(@to, GetAX());
 
             cycle_count += 10;  // max 14
 
@@ -3935,8 +3936,6 @@ internal class P8086
             (ushort val, bool i) = _io.In(GetDX());
             _al = (byte)val;
 
-            _scheduled_interrupts |= i;
-
             cycle_count += 8;  // or 12
 
 #if DEBUG
@@ -3948,7 +3947,6 @@ internal class P8086
             // IN AX,DX
             (ushort val, bool i) = _io.In(GetDX());
             SetAX(val);
-            _scheduled_interrupts |= i;
 
             cycle_count += 12;
 
@@ -3959,7 +3957,7 @@ internal class P8086
         else if (opcode == 0xee)
         {
             // OUT
-            _scheduled_interrupts |= _io.Out(GetDX(), _al);
+            _io.Out(GetDX(), _al);
 
             cycle_count += 8;  // or 12
 
@@ -3970,9 +3968,9 @@ internal class P8086
         else if (opcode == 0xef)
         {
             // OUT
-            _scheduled_interrupts |= _io.Out(GetDX(), GetAX());
+            _io.Out(GetDX(), GetAX());
 
-            cycle_count += 8;  // or 12 TODO
+            cycle_count += 12;
 
 #if DEBUG
             Log.Disassemble(prefixStr, $" OUT DX,AX");
@@ -4041,8 +4039,6 @@ internal class P8086
             SetFlagI(true); // IF
 
             cycle_count += 2;
-
-            _scheduled_interrupts = true;  // TODO temp?
 
 #if DEBUG
             Log.Disassemble(prefixStr, $" STI");
@@ -4166,7 +4162,7 @@ internal class P8086
                 _cs = ReadMemWord(seg, (ushort)(addr + 2));
                 _ip = ReadMemWord(seg, addr);
 
-                cycle_count += 18;  // TODO
+                cycle_count += 15;
 
 #if DEBUG
                 Log.Disassemble(prefixStr, $" JMP {_cs:X4}:{_ip:X4}");
@@ -4210,10 +4206,13 @@ internal class P8086
         PrefixEnd(opcode);
 
         if (cycle_count == 0)
+        {
+            Log.DoLog($"cyclecount not set for {opcode:X02}");
             cycle_count = 1;  // TODO workaround
+        }
 
         // tick I/O
-        _scheduled_interrupts |= _io.Tick(cycle_count, _clock);
+        _io.Tick(cycle_count, _clock);
 
         _clock += cycle_count;
 

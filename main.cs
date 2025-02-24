@@ -177,6 +177,11 @@ if (mode != TMode.Blank)
 
     if (floppies.Count() > 0)
         devices.Add(new FloppyDisk(floppies));
+
+    string [] drives = new string[] { "ide.img" };
+    devices.Add(new XTIDE(drives));
+
+    devices.Add(new MIDI());
 }
 
 // Bus gets the devices for memory mapped i/o
@@ -396,8 +401,17 @@ if (debugger)
 }
 else
 {
-    while(p.Tick())
+    try
     {
+        while(p.Tick())
+        {
+        }
+    }
+    catch(Exception e)
+    {
+        string msg = $"An exception occured: {e.ToString()}";
+        Console.WriteLine(msg);
+        Log.DoLog(msg);
     }
 }
 

@@ -34,7 +34,7 @@ internal class PPI : Device
 
         if (port == 0x0062)
         {
-            byte switches = 0b11100000;  // 1 floppy, CGA80, 256kB, reserved
+            byte switches = 0b01100000;  // 1 floppy, CGA80, 256kB, reserved
 
             if (_dipswitches_high == true)
                 return ((byte)(switches & 0x0f), false);

@@ -35,6 +35,7 @@ class CGA : Display
     private uint _display_address = 0;
     private byte _graphics_mode = 255;
     private CGAMode _cga_mode = CGAMode.Text80;
+    private byte _color_configuration = 32;
     private List<byte []> palette = new() {
             new byte[] {   0,   0,   0 },
             new byte[] {   0,   0, 127 },
@@ -78,6 +79,7 @@ class CGA : Display
         mappings[0x3d6] = this;
         mappings[0x3d7] = this;
         mappings[0x3d8] = this;
+        mappings[0x3d9] = this;
         mappings[0x3da] = this;
         mappings[0x3db] = this;
         mappings[0x3dc] = this;
@@ -115,14 +117,16 @@ class CGA : Display
             {
                 if ((value & 2) == 2)  // graphics 320x200
                 {
-                    if ((value & 16) == 16)  // graphics 640x00
+                    if ((value & 16) == 16)  // graphics 640x200
                     {
                         _gf.width = 640;
+                        _gf.height = 200;
                         _cga_mode = CGAMode.G640;
                     }
                     else
                     {
-                        _gf.width = 320;
+                        _gf.width = 640;  // pixeldoubler, else 320
+                        _gf.height = 400;  // pixeldoubler, else 200
                         _cga_mode = CGAMode.G320;
                     }
                 }
@@ -138,12 +142,18 @@ class CGA : Display
                         _cga_mode = CGAMode.Text40;
                         _gf.width = 320;
                     }
+                    _gf.height = font_descr.height * 25;
                 }
-                _gf.height = font_descr.height * 25;
                 _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
                 _graphics_mode = value;
                 Console.WriteLine($"CGA mode is now {value:X02} ({_cga_mode}), {_gf.width}x{_gf.height}");
+                Redraw();
             }
+        }
+        else if (port == 0x3d9)
+        {
+            _color_configuration = value;
+            Console.WriteLine($"CGA color configuration: {_color_configuration:X02}");
         }
         else
         {
@@ -184,6 +194,30 @@ class CGA : Display
         _gf_version++;
     }
 
+    private byte [] GetPixelColor(int color_index)
+    {
+        byte [] rgb = new byte[3];
+        if ((_color_configuration & 32) != 0)
+        {
+            if (color_index == 1)
+                rgb[1] = rgb[2] = 255;
+            else if (color_index == 2)
+                rgb[0] = rgb[2] = 255;
+            else if (color_index == 3)
+                rgb[0] = rgb[1] = rgb[2] = 255;
+        }
+        else
+        {
+            if (color_index == 1)  // green
+                rgb[1] = 255;
+            else if (color_index == 2)  // red
+                rgb[0] = 255;
+            else if (color_index == 3)  // blue
+                rgb[2] = 255;
+        }
+        return rgb;
+    }
+
     public void DrawOnConsole(uint use_offset)
     {
         if (_cga_mode == CGAMode.G320)
@@ -191,33 +225,37 @@ class CGA : Display
             int x = 0;
             int y = 0;
 
-            if (use_offset >= 8192)
+            if (use_offset - _display_address >= 8192)
             {
-                y = (int)(use_offset - 8192) / 80 * 2 + 1;
-                x = (int)(use_offset % 80) * 4;
+                uint addr_without_base = use_offset - 8192 - _display_address;
+                y = (int)addr_without_base / 80 * 2 + 1;
+                x = (int)(addr_without_base % 80) * 4;
             }
             else
             {
-                y = (int)use_offset / 80 * 2;
-                x = (int)(use_offset % 80) * 4;
+                uint addr_without_base = use_offset - _display_address;
+                y = (int)addr_without_base / 80 * 2;
+                x = (int)(addr_without_base % 80) * 4;
             }
 
             if (y < 200)
             {
                 byte b = _ram[use_offset];
 
+                int y_offset = y * 320 * 3 * 4;
                 for(int x_i = 0; x_i < 4; x_i++)
                 {
                     int color_index = (b >> (x_i * 2)) & 3;
-                    int offset = (y * 320 + x + x_i) * 3;
+                    int offset = y_offset + (x + 3 - x_i) * 3 * 2;
 
-                    _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 0;
-                    if (color_index == 1)  // green
-                        _gf.rgb_pixels[offset + 1] = 255;
-                    else if (color_index == 2)  // red
-                        _gf.rgb_pixels[offset + 0] = 255;
-                    else if (color_index == 3)  // blue
-                        _gf.rgb_pixels[offset + 2] = 255;
+                    byte [] color = GetPixelColor(color_index);
+                    _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
+                    _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = color[1];
+                    _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = color[2];
+                    offset += 320 * 3 * 2;
+                    _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
+                    _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = color[1];
+                    _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = color[2];
                 }
             }
         }
@@ -225,13 +263,14 @@ class CGA : Display
         {
             if (use_offset >= _display_address && use_offset < _display_address + 1600)
             {
-                int x = (int)(use_offset % 80) * 8;
-                int y = (int)use_offset / 80;
+                uint addr_without_base = use_offset - _display_address;
+                int x = (int)(addr_without_base % 80) * 8;
+                int y = (int)addr_without_base / 80;
 
                 byte b = _ram[use_offset];
                 for(int x_i = 0; x_i < 8; x_i++)
                 {
-                    int offset = (y * 640 + x + x_i) * 3;
+                    int offset = (y * 640 + x + 7 - x_i) * 3;
                     _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = (byte)((b & 128) != 0 ? 255 : 0);
                     b <<= 1;
                 }

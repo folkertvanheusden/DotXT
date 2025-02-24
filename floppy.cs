@@ -512,6 +512,12 @@ class FloppyDisk : Device
             }
             else if (_data_state == DataState.WantData)
             {
+                if (_data_offset >= _data.Length)
+                {
+                        Log.DoLog($"Floppy-OUT command buffer overflow");
+                        return false;
+                }
+
                 _data[_data_offset++] = value;
                 if (_data_offset == _data.Length)
                 {
