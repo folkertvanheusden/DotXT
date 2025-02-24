@@ -46,6 +46,17 @@ class VNCServer: GraphicalConsole
                 { 0xff08, new byte[] { 0x0e } },  // backspace
                 { 0xff09, new byte[] { 0x0f } },  // tab
                 { 0xffe1, new byte[] { 0x2a } },  // left shift
+                { 0xffe9, new byte[] { 0x38 } },  // left alt
+                { 0xffbe, new byte[] { 0x3b } },  // F1
+                { 0xffbf, new byte[] { 0x3c } },  // F2
+                { 0xffc0, new byte[] { 0x3d } },  // F3
+                { 0xffc1, new byte[] { 0x3e } },  // F4
+                { 0xffc2, new byte[] { 0x3f } },  // F5
+                { 0xffc3, new byte[] { 0x40 } },  // F6
+                { 0xffc4, new byte[] { 0x41 } },  // F7
+                { 0xffc5, new byte[] { 0x42 } },  // F8
+                { 0xffc6, new byte[] { 0x43 } },  // F9
+                { 0xffc7, new byte[] { 0x44 } },  // F10
                 { 0x31, new byte[] { 0x02 } },  // 1
                 { 0x32, new byte[] { 0x03 } },
                 { 0x33, new byte[] { 0x04 } },
@@ -113,6 +124,11 @@ class VNCServer: GraphicalConsole
                 { 0x2d, new byte[] { 0x0c } },  // -
                 { 0x5f, new byte[] { 0x0c } },  // _
                 { 0x3a, new byte[] { 0x27 } },  // :
+                { 0x2f, new byte[] { 0x35 } },  // /
+                { 0x2a, new byte[] { 0x09 } },  // *  (shift)
+                { 0x26, new byte[] { 0x08 } },  // &  (shift)
+                { 0x5c, new byte[] { 0x2b } },  // \
+                { 0x7c, new byte[] { 0x2b } },  // |  (shift)
                 { 0xff54, new byte[] { 0x50 } },  // cursor down
                 { 0xff52, new byte[] { 0x48 } },  // cursor up
                 { 0xff51, new byte[] { 0x4b } },  // cursor left
