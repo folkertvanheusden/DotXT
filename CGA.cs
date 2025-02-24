@@ -191,15 +191,17 @@ class CGA : Display
             int x = 0;
             int y = 0;
 
-            if (use_offset >= 8192)
+            if (use_offset - _display_address >= 8192)
             {
-                y = (int)(use_offset - 8192) / 80 * 2 + 1;
-                x = (int)(use_offset % 80) * 4;
+                uint addr_without_base = use_offset - 8192 - _display_address;
+                y = (int)addr_without_base / 80 * 2 + 1;
+                x = (int)(addr_without_base % 80) * 4;
             }
             else
             {
-                y = (int)use_offset / 80 * 2;
-                x = (int)(use_offset % 80) * 4;
+                uint addr_without_base = use_offset - _display_address;
+                y = (int)addr_without_base / 80 * 2;
+                x = (int)(addr_without_base % 80) * 4;
             }
 
             if (y < 200)
@@ -209,7 +211,7 @@ class CGA : Display
                 for(int x_i = 0; x_i < 4; x_i++)
                 {
                     int color_index = (b >> (x_i * 2)) & 3;
-                    int offset = (y * 320 + x + x_i) * 3;
+                    int offset = (y * 320 + x + 3 - x_i) * 3;
 
                     _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 0;
                     if (color_index == 1)  // green
