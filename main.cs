@@ -180,6 +180,8 @@ if (mode != TMode.Blank)
 
     string [] drives = new string[] { "ide.img" };
     devices.Add(new XTIDE(drives));
+
+    devices.Add(new MIDI());
 }
 
 // Bus gets the devices for memory mapped i/o
