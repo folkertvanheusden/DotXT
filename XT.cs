@@ -1160,7 +1160,8 @@ internal class P8086
             int irq = _io.GetPIC().GetPendingInterrupt();
             if (irq != 255)
             {
-                Log.DoLog($"Scanning for IRQ {irq}", true);
+                if (irq != 0)
+                    Log.DoLog($"Scanning for IRQ {irq}", true);
 
                 foreach (var device in _devices)
                 {
