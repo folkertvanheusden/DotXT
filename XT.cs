@@ -3678,7 +3678,14 @@ internal class P8086
             Log.Disassemble(prefixStr, $" SALC");
 #endif
         }
-        else if (opcode == 0xdb || opcode==0xdd)
+        else if (opcode == 0x9b)
+        {
+            cycle_count += 2;  // TODO
+#if DEBUG
+            Log.DoLog($"{prefixStr} FWAIT - ignored", true);
+#endif
+        }
+        else if (opcode >= 0xd8 && opcode <= 0xdf)
         {
             byte o1 = GetPcByte();
             int mod = o1 >> 6;
