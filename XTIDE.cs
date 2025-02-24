@@ -7,6 +7,8 @@ class XTIDE : Device
     private int _drv = 0;
     private byte[] _sector_buffer = null;
     private int _sector_buffer_offset = 0;
+    private long _target_lba = 0;
+    private int _target_drive = 255;
     private ushort _cylinder_count = 614;
     private ushort _head_count = 4;
     private ushort _sectors_per_track = 17;
@@ -156,7 +158,6 @@ class XTIDE : Device
             }
         }
 
-//#if DEBUG
         for(int i=0; i<_sector_buffer.Length / 16; i++) {
             string str = $"{i * 16:X02}: ";
             for(int k=0; k<16; k++) {
@@ -168,12 +169,11 @@ class XTIDE : Device
             }
             Log.DoLog($"XT-IDE-ReadData {str}", true);
         }
-//#endif
 
         SetDRDY();
         SetDRQ();
     }
-/*
+
     private void CMDWriteMultiple()
     {
         int sector_count = _registers[2];
@@ -196,21 +196,12 @@ class XTIDE : Device
 
         _sector_buffer = new byte[sector_count * 512];
         _sector_buffer_offset = 0;
+        _target_lba = lba;
+        _target_drive = drive;
 
-        for(int nr=0; nr<sector_count; nr++)
-        {
-            using (FileStream fs = File.Open(_disk_filenames[drive], FileMode.Open, FileAccess.Read, FileShare.None))
-            {
-                fs.Seek(offset, SeekOrigin.Begin);
-                if (fs.Read(_sector_buffer, 512 * nr, 512) != 512)
-                    Log.DoLog($"XT-IDE-ReadData failed reading from backend ({_disk_filenames[drive]}, offset: {offset})", true);
-                if (fs.Position != offset + 512)
-                    Log.DoLog($"XT-IDE-ReadData backend data processing error?", true);
-                offset += 512;
-            }
-        }
+        SetDRDY();
+        SetDRQ();
     }
-*/
 
     public override int GetIRQNumber()
     {
@@ -317,6 +308,15 @@ class XTIDE : Device
         return (rc, false);
     }
 
+    private void StoreSectorBuffer()
+    {
+        using (FileStream fs = File.Open(_disk_filenames[_target_drive], FileMode.Open, FileAccess.Write, FileShare.None))
+        {
+            fs.Seek(_target_lba * 512, SeekOrigin.Begin);
+            fs.Write(_sector_buffer);
+        }
+    }
+
     public override bool IO_Write(ushort port, byte value)
     {
         int register = (port - 0x300) / 2;
@@ -325,7 +325,19 @@ class XTIDE : Device
 
         _registers[register] = value;
 
-        if (port == 0x30c)  // drive/head register
+        if (port == 0x300)  // data register
+        {
+            if (_sector_buffer_offset < _sector_buffer.Length)
+            {
+                _sector_buffer[_sector_buffer_offset++] = value;
+            }
+            else if (_target_drive != 255)
+            {
+                StoreSectorBuffer();
+                _target_drive = 255;
+            }
+        }
+        else if (port == 0x30c)  // drive/head register
         {
             _drv = (value & 16) != 0 ? 1 : 0;
 
@@ -369,9 +381,14 @@ class XTIDE : Device
             {
                 CMDReadMultiple();
             }
-        }
-        else
-        {
+            else if (value == 0xc5)  // write multiple
+            {
+                CMDWriteMultiple();
+            }
+            else
+            {
+                Log.DoLog($"XT-IDE command {value:X02} not implemented");
+            }
         }
 
         return false;
