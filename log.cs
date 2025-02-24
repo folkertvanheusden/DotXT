@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 
+internal enum LogLevel { TRACE, DEBUG, INFO, WARNING, ERRROR, FATAL };
+
 class Log
 {
     private static string _logfile = "logfile.txt";
@@ -67,9 +69,23 @@ class Log
 #endif
     }
 
+    public static void DoLog(string what, LogLevel ll)
+    {
+        string output = $"[{_nr} | {_cs:X04}:{_ip:X04}] {ll} " + (ll != LogLevel.TRACE ? "; " : "") + what + Environment.NewLine;
+
+        lock(_logging_lock)
+        {
+            File.AppendAllText(_logfile, output);
+            _nr++;
+        }
+
+        if (_echo)
+            Console.WriteLine(what);
+    }
+
     public static void DoLog(string what, bool is_meta = false)
     {
-        string output = $"[{_nr} | {_cs:X04}:{_ip:X04}] " + (is_meta ? "; " : "") + what + Environment.NewLine;
+        string output = $"[{_nr} | {_cs:X04}:{_ip:X04}] {LogLevel.TRACE} " + (is_meta ? "; " : "") + what + Environment.NewLine;
 
         lock(_logging_lock)
         {

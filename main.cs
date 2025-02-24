@@ -182,6 +182,8 @@ if (mode != TMode.Blank)
     devices.Add(new XTIDE(drives));
 
     devices.Add(new MIDI());
+
+    devices.Add(new RTC());
 }
 
 // Bus gets the devices for memory mapped i/o
