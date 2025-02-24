@@ -117,14 +117,16 @@ class CGA : Display
             {
                 if ((value & 2) == 2)  // graphics 320x200
                 {
-                    if ((value & 16) == 16)  // graphics 640x00
+                    if ((value & 16) == 16)  // graphics 640x200
                     {
                         _gf.width = 640;
+                        _gf.height = 200;
                         _cga_mode = CGAMode.G640;
                     }
                     else
                     {
-                        _gf.width = 320;
+                        _gf.width = 640;  // pixeldoubler, else 320
+                        _gf.height = 400;  // pixeldoubler, else 200
                         _cga_mode = CGAMode.G320;
                     }
                 }
@@ -140,8 +142,8 @@ class CGA : Display
                         _cga_mode = CGAMode.Text40;
                         _gf.width = 320;
                     }
+                    _gf.height = font_descr.height * 25;
                 }
-                _gf.height = font_descr.height * 25;
                 _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
                 _graphics_mode = value;
                 Console.WriteLine($"CGA mode is now {value:X02} ({_cga_mode}), {_gf.width}x{_gf.height}");
@@ -192,6 +194,30 @@ class CGA : Display
         _gf_version++;
     }
 
+    private byte [] GetPixelColor(int color_index)
+    {
+        byte [] rgb = new byte[3];
+        if ((_color_configuration & 32) != 0)
+        {
+            if (color_index == 1)
+                rgb[1] = rgb[2] = 255;
+            else if (color_index == 2)
+                rgb[0] = rgb[2] = 255;
+            else if (color_index == 3)
+                rgb[0] = rgb[1] = rgb[2] = 255;
+        }
+        else
+        {
+            if (color_index == 1)  // green
+                rgb[1] = 255;
+            else if (color_index == 2)  // red
+                rgb[0] = 255;
+            else if (color_index == 3)  // blue
+                rgb[2] = 255;
+        }
+        return rgb;
+    }
+
     public void DrawOnConsole(uint use_offset)
     {
         if (_cga_mode == CGAMode.G320)
@@ -216,31 +242,20 @@ class CGA : Display
             {
                 byte b = _ram[use_offset];
 
+                int y_offset = y * 320 * 3 * 4;
                 for(int x_i = 0; x_i < 4; x_i++)
                 {
                     int color_index = (b >> (x_i * 2)) & 3;
-                    int offset = (y * 320 + x + 3 - x_i) * 3;
+                    int offset = y_offset + (x + 3 - x_i) * 3 * 2;
 
-                    if ((_color_configuration & 32) != 0)
-                    {
-                        _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 0;
-                        if (color_index == 1)
-                            _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 255;
-                        else if (color_index == 2)
-                            _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 2] = 255;
-                        else if (color_index == 3)
-                            _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 255;
-                    }
-                    else
-                    {
-                        _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = 0;
-                        if (color_index == 1)  // green
-                            _gf.rgb_pixels[offset + 1] = 255;
-                        else if (color_index == 2)  // red
-                            _gf.rgb_pixels[offset + 0] = 255;
-                        else if (color_index == 3)  // blue
-                            _gf.rgb_pixels[offset + 2] = 255;
-                    }
+                    byte [] color = GetPixelColor(color_index);
+                    _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
+                    _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = color[1];
+                    _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = color[2];
+                    offset += 320 * 3 * 2;
+                    _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
+                    _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = color[1];
+                    _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = color[2];
                 }
             }
         }
