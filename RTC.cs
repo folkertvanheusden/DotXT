@@ -43,7 +43,6 @@ internal class RTC : Device
         if (port == 0x71 || port == 0x241 || port == 0x2c1)
         {
             DateTime now = DateTime.Now;
-            Console.WriteLine($"{now} {now.Year}");
 
             if (_cmos_ram_index == 0)
                 rc = ToBCD(now.Second);

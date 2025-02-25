@@ -355,7 +355,7 @@ class VNCServer: GraphicalConsole
         VNCServerThreadParameters parameters = (VNCServerThreadParameters)o_parameters;
         TcpListener tcp_listener = new TcpListener(IPAddress.Parse("0.0.0.0"), parameters.port);
         tcp_listener.Start();
-        Console.WriteLine("VNC server started");
+        Console.WriteLine($"VNC server started on port {parameters.port}");
 
         for(;;)
         {

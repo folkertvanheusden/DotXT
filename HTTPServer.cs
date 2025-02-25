@@ -117,7 +117,7 @@ class HTTPServer: GraphicalConsole
         HTTPServerThreadParameters parameters = (HTTPServerThreadParameters)o_parameters;
         TcpListener tcp_listener = new TcpListener(IPAddress.Parse("0.0.0.0"), parameters.port);
         tcp_listener.Start();
-        Console.WriteLine("HTTP server started");
+        Console.WriteLine($"HTTP server started on port {parameters.port}");
 
         for(;;)
         {
