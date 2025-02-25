@@ -275,7 +275,6 @@ class XTIDE : Device
     {
         int register = (port - 0x300) / 2;
         string name = _io_names[register];
-        Log.DoLog($"XT-IDE IN {name}: {port:X4}", true);
 
         byte rc = 0xee;
 
@@ -290,20 +289,21 @@ class XTIDE : Device
         {
             rc = _error_register;
             _error_register = 0;
+            Log.DoLog($"XT-IDE IN {name}: {port:X4}, value: {rc:X02}", true);
         }
         else if (port == 0x30e)  // status register
         {
             if (_sector_buffer != null && _sector_buffer_offset < _sector_buffer.Length)
                 SetDRQ();
             rc = _status_register;
+            Log.DoLog($"XT-IDE IN {name}: {port:X4}, value: {rc:X02}", true);
             ResetStatusRegister();
         }
         else
         {
             rc = _registers[register];
+            Log.DoLog($"XT-IDE IN {name}: {port:X4}, value: {rc:X02}", true);
         }
-
-        Log.DoLog($"XT-IDE IN {name}: {port:X4}, value {rc:X02}", true);
 
         return (rc, false);
     }
