@@ -9,6 +9,7 @@ class Keyboard : Device
     private Queue<int> _keyboard_buffer = new();
     private bool _clock_low = false;
     private byte _0x61_bits = 0;
+    private byte _last_scan_code = 0;
 
     public Keyboard()
     {
@@ -73,9 +74,12 @@ class Keyboard : Device
         if (port == 0x60)
         {
             _keyboard_buffer_lock.WaitOne();
-            byte rc = 0;
+            byte rc = _last_scan_code;
             if (_keyboard_buffer.Count > 0)
+            {
                 rc = (byte)_keyboard_buffer.Dequeue();
+                _last_scan_code = rc;
+            }
             _keyboard_buffer_lock.ReleaseMutex();
 
             Log.DoLog($"Keyboard: scan code {rc:X02}", true);
