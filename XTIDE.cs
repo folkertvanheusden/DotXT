@@ -1,6 +1,6 @@
 class XTIDE : Device
 {
-    private string [] _disk_filenames;
+    private List<string> _disk_filenames;
     private string [] _io_names = new string[] { "IDE data port", "error register", "sector count", "sector number", "cylinder low", "cylinder high", "drive/head register", "command/status register" };
     private byte _status_register = 0;
     private byte _error_register = 0;
@@ -14,7 +14,7 @@ class XTIDE : Device
     private ushort _sectors_per_track = 17;
     private byte[] _registers = new byte[8];
 
-    public XTIDE(string [] disk_filenames)
+    public XTIDE(List<string> disk_filenames)
     {
         _disk_filenames = disk_filenames;
     }
@@ -44,7 +44,7 @@ class XTIDE : Device
 
         int drive_head = _registers[6];
         int drive = (drive_head & 16) != 0 ? 1 : 0;
-        if (drive == 1 && _disk_filenames.Length == 1)
+        if (drive == 1 && _disk_filenames.Count() == 1)
         {
             _error_register |= 4;  // ABRT
             SetERR();
@@ -64,7 +64,7 @@ class XTIDE : Device
         PushSectorBufferWord(0);  // reserved, 7
         PushSectorBufferWord(0);  // reserved
         PushSectorBufferWord(0);  // reserved, 9
-        PushSectorBufferString("3.145926", 20); // serial number, ascii
+        PushSectorBufferString($"{_disk_filenames[drive].GetHashCode()}", 20); // serial number, ascii
         PushSectorBufferWord(0);  // buffer type
         PushSectorBufferWord(0);  // buffer size
         PushSectorBufferWord(0);  // ECC byte count
@@ -108,7 +108,7 @@ class XTIDE : Device
         int cylinder = _registers[4] | (_registers[5] << 8);
         int drive_head = _registers[6];
         int drive = (drive_head & 16) != 0 ? 1 : 0;
-        if (drive == 1 && _disk_filenames.Length == 1)
+        if (drive == 1 && _disk_filenames.Count() == 1)
         {
             _error_register |= 4;  // ABRT
             SetERR();
@@ -181,7 +181,7 @@ class XTIDE : Device
         int cylinder = _registers[4] | (_registers[5] << 8);
         int drive_head = _registers[6];
         int drive = (drive_head & 16) != 0 ? 1 : 0;
-        if (drive == 1 && _disk_filenames.Length == 1)
+        if (drive == 1 && _disk_filenames.Count() == 1)
         {
             _error_register |= 4;  // ABRT
             SetERR();
