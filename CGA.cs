@@ -108,7 +108,7 @@ class CGA : Display
         {
             _m6845.Write(_m6845_reg, value);
             _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
-            Console.WriteLine($"Set base address to {_display_address:X04}");
+            Log.DoLog($"Set base address to {_display_address:X04}", true);
             Redraw();
         }
         else if (port == 0x3d8)
@@ -146,18 +146,18 @@ class CGA : Display
                 }
                 _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
                 _graphics_mode = value;
-                Console.WriteLine($"CGA mode is now {value:X02} ({_cga_mode}), {_gf.width}x{_gf.height}");
+                Log.DoLog($"CGA mode is now {value:X02} ({_cga_mode}), {_gf.width}x{_gf.height}", true);
                 Redraw();
             }
         }
         else if (port == 0x3d9)
         {
             _color_configuration = value;
-            Console.WriteLine($"CGA color configuration: {_color_configuration:X02}");
+            Log.DoLog($"CGA color configuration: {_color_configuration:X02}", true);
         }
         else
         {
-            Console.WriteLine($"CGA output to this ({port:X04}) port not implemented");
+            Log.DoLog($"CGA output to this ({port:X04}) port not implemented", true);
         }
 
         return false;
