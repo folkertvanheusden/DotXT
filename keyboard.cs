@@ -30,13 +30,6 @@ class Keyboard : Device
         ScheduleInterrupt(_kb_key_irq);
     }
 
-    public static ConsoleKey ConvertChar(char c)
-    {
-        ConsoleKey ck;
-        Enum.TryParse<ConsoleKey>(c.ToString(), out ck);
-        return ck;
-    }
-
     public override String GetName()
     {
         return "Keyboard";
@@ -83,30 +76,18 @@ class Keyboard : Device
             byte rc = 0;
             if (_keyboard_buffer.Count > 0)
                 rc = (byte)_keyboard_buffer.Dequeue();
-            bool interrupt_needed = _keyboard_buffer.Count > 0;
             _keyboard_buffer_lock.ReleaseMutex();
 
-            Console.WriteLine($"Keyboard: scan code {rc:X02}");
+            Log.DoLog($"Keyboard: scan code {rc:X02}", true);
 
-            if (interrupt_needed)
-                ScheduleInterrupt(_kb_key_irq);
-
-            return (rc, interrupt_needed);
+            return (rc, false);
         }
         else if (port == 0x61)
             return (_0x61_bits, false);
         else if (port == 0x64)
         {
             Log.DoLog($"Keyboard: 0x64", true);
-
-            _keyboard_buffer_lock.WaitOne();
-            bool keys_pending = _keyboard_buffer.Count > 0;
-            _keyboard_buffer_lock.ReleaseMutex();
-
-            if (keys_pending)
-                ScheduleInterrupt(_kb_key_irq);
-
-            return ((byte)((keys_pending ? 2 : 0) | 0x10), keys_pending);
+            return (0x10, false);
         }
 
         return (0x00, false);

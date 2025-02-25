@@ -1,7 +1,7 @@
 abstract class Device
 {
     protected pic8259 _pic = null;
-    private int next_interrupt = -1;
+    private List<int> next_interrupt = new();
     protected int _clock = 0;
 
     public abstract String GetName();
@@ -29,19 +29,18 @@ abstract class Device
 
     protected void ScheduleInterrupt(int cycles_delay)
     {
-        next_interrupt = cycles_delay;
+        next_interrupt.Add(cycles_delay);
     }
 
     protected bool CheckScheduledInterrupt(int cycles)
     {
-        if (next_interrupt >= 0)
+        if (next_interrupt.Count() > 0)
         {
             Log.DoLog($"CheckScheduledInterrupt {next_interrupt}, {cycles}");
-            next_interrupt -= cycles;
-
-            if (next_interrupt <= 0)
+            next_interrupt[0] -= cycles;
+            if (next_interrupt[0] <= 0)
             {
-                next_interrupt = -1;
+                next_interrupt.RemoveAt(0);
                 Log.DoLog($"CheckScheduledInterrupt triggered");
                 return true;
             }
