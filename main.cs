@@ -22,7 +22,11 @@ List<Rom> roms = new();
 string key_mda = "mda";
 string key_cga = "cga";
 
+List<string> ide = new();
+
 Dictionary<string, List<Tuple<string, int> > > consoles = new();
+
+bool throttle = false;
 
 for(int i=0; i<args.Length; i++)
 {
@@ -39,13 +43,17 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-D file   disassemble to file");
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-d        enable debugger");
+        Console.WriteLine("-S        try to run at real speed");
         Console.WriteLine("-P        skip prompt");
+        Console.WriteLine("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
         Console.WriteLine($"-p device,type,port   port to listen on. type must be \"telnet\", \"http\" or \"vnc\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
         Console.WriteLine("-o cs,ip  start address (in hexadecimal)");
         System.Environment.Exit(0);
     }
     else if (args[i] == "-t")
         test = args[++i];
+    else if (args[i] == "-S")
+        throttle = true;
     else if (args[i] == "-T")
         load_test_at = (uint)Convert.ToInt32(args[++i], 16);
     else if (args[i] == "-p")
@@ -85,6 +93,8 @@ for(int i=0; i<args.Length; i++)
             System.Environment.Exit(1);
         }
     }
+    else if (args[i] == "-X")
+        ide.Add(args[++i]);
     else if (args[i] == "-l")
         Log.SetLogFile(args[++i]);
     else if (args[i] == "-L")
@@ -178,8 +188,8 @@ if (mode != TMode.Blank)
     if (floppies.Count() > 0)
         devices.Add(new FloppyDisk(floppies));
 
-    string [] drives = new string[] { "ide.img" };
-    devices.Add(new XTIDE(drives));
+    if (ide.Count() > 0)
+        devices.Add(new XTIDE(ide));
 
     devices.Add(new MIDI());
 
@@ -405,8 +415,23 @@ else
 {
     try
     {
+        long prev_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+        int prev_clock = 0;
         while(p.Tick())
         {
+            if (!throttle)
+                continue;
+
+            int now_clock = p.GetClock();
+            if (now_clock - prev_clock >= 4770000 / 50)
+            {
+                long now_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                long diff_time = now_time - prev_time;
+                if (diff_time < 20)
+                    Thread.Sleep((int)(20 - diff_time));
+                prev_time = now_time;
+                prev_clock = now_clock;
+            }
         }
     }
     catch(Exception e)

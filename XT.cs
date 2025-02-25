@@ -109,6 +109,11 @@ internal class P8086
         _flags |= 2;
     }
 
+    public int GetClock()
+    {
+        return _clock;
+    }
+
     public string SegmentAddr(ushort seg, ushort a)
     {
         return $"{seg:X04}:{a:X04}";
