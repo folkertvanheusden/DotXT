@@ -46,6 +46,7 @@ class VNCServer: GraphicalConsole
                 { 0xff08, new byte[] { 0x0e } },  // backspace
                 { 0xff09, new byte[] { 0x0f } },  // tab
                 { 0xffe1, new byte[] { 0x2a } },  // left shift
+                { 0xffe3, new byte[] { 0x1d } },  // left control
                 { 0xffe9, new byte[] { 0x38 } },  // left alt
                 { 0xffbe, new byte[] { 0x3b } },  // F1
                 { 0xffbf, new byte[] { 0x3c } },  // F2
