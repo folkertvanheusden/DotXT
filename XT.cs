@@ -496,7 +496,9 @@ internal class P8086
 
             cycles += 6;
 
+#if DEBUG
             name += $" ({_segment_override_name}:${SegmentAddr(segment, a)} -> {v:X4})";
+#endif
 
             return (v, name, true, segment, a, cycles);
         }
@@ -528,8 +530,9 @@ internal class P8086
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
             cycles += 6;
-
+#if DEBUG
             name += $" ({_segment_override_name}:${SegmentAddr(segment, a)} -> {v:X4})";
+#endif
 
             return (v, name, true, segment, a, cycles);
         }
@@ -781,7 +784,11 @@ internal class P8086
             else
                 WriteMemByte(seg, addr, (byte)v);
 
+#if DEBUG
             return ($"[{addr:X4}]", 4);
+#else
+            return ("", 4);
+#endif
         }
 
         return PutRegisterMem(reg, mod, word, v);
@@ -4001,7 +4008,7 @@ internal class P8086
             // HLT
             _ip--;
 
-            cycle_count += 1;  // FIXME
+            cycle_count += 2;
 
 #if DEBUG
             Log.Disassemble(prefixStr, $" HLT");
