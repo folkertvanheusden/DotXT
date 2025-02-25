@@ -2688,9 +2688,7 @@ internal class P8086
         {
             // CALL
             short a = (short)GetPcWord();
-
             push(_ip);
-
             _ip = (ushort)(a + _ip);
 
             cycle_count += 16;
@@ -2760,7 +2758,6 @@ internal class P8086
             {
                 // NOT
                 (string dummy, int put_cycles) = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)~r1);
-
                 cycle_count += put_cycles;
 
                 cmd_name = "NOT";
@@ -2776,7 +2773,6 @@ internal class P8086
                 SetFlagC(r1 != 0);
 
                 (string dummy, int put_cycles) = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)result);
-
                 cycle_count += put_cycles;
             }
             else if (function == 4)
@@ -2801,6 +2797,8 @@ internal class P8086
 
                     name2 = name1;
                     name1 = "DX:AX";
+
+                    cycle_count += 118;
                 }
                 else {
                     int result = _al * r1;
@@ -2811,6 +2809,8 @@ internal class P8086
                     bool flag = _ah != 0;
                     SetFlagC(flag);
                     SetFlagO(flag);
+
+                    cycle_count += 70;
                 }
 
                 cmd_name = "MUL";
@@ -2837,6 +2837,8 @@ internal class P8086
 
                     name2 = name1;
                     name1 = "DX:AX";
+
+                    cycle_count += 128;
                 }
                 else {
                     int result = (sbyte)_al * (short)(sbyte)r1;
@@ -2848,6 +2850,8 @@ internal class P8086
                     bool flag = (short)(sbyte)_al != (short)result;
                     SetFlagC(flag);
                     SetFlagO(flag);
+
+                    cycle_count += 80;
                 }
 
                 cmd_name = "IMUL";
@@ -3511,7 +3515,7 @@ internal class P8086
                     SetFlagO(((v1 & check_bit) == check_bit) ^ GetFlagC());
                 }
 
-                cycle_count += 2;
+                cycle_count += count * 4;
 
 #if DEBUG
                 Log.Disassemble(prefixStr, $" SAL {vName},{countName}");
@@ -3536,7 +3540,7 @@ internal class P8086
                 else
                     SetFlagO(false);
 
-                cycle_count += 2;
+                cycle_count += count * 4;
 
 #if DEBUG
                 Log.Disassemble(prefixStr, $" SHR {vName},{countName}");
@@ -3985,13 +3989,11 @@ internal class P8086
         {
             // JMP
             byte to = GetPcByte();
-
             _ip = (ushort)(_ip + (sbyte)to);
-
             cycle_count += 15;
 
 #if DEBUG
-            Log.Disassemble(prefixStr, $" JP ${_ip:X4} ({_cs * 16 + _ip:X6})");
+            Log.Disassemble(prefixStr, $" JP ${_ip:X4} ({_cs * 16 + _ip:X6}, {to:X2})");
 #endif
         }
         else if (opcode == 0xf4)
@@ -3999,11 +4001,11 @@ internal class P8086
             // HLT
             _ip--;
 
+            cycle_count += 1;  // FIXME
+
 #if DEBUG
             Log.Disassemble(prefixStr, $" HLT");
 #endif
-
-            rc = false;
         }
         else if (opcode == 0xf5)
         {
