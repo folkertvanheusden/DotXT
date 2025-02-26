@@ -19,6 +19,7 @@ class FloppyDisk : Device
 
     public FloppyDisk(List<string> filenames)
     {
+        Console.WriteLine("Floppy drive instantiated");
         _filenames = filenames;
     }
 

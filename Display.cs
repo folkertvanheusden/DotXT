@@ -112,8 +112,10 @@ abstract class Display : Device
     protected void EmulateTextDisplay(uint x, uint y, byte character, byte attributes)
     {
         // attribute, character
+#if DEBUG
         if (character >= 32 && character < 127)
             Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", true);
+#endif
 
         WriteTextConsole((char)27); // position cursor
         WriteTextConsole($"[{y + 1};{x + 1}H");

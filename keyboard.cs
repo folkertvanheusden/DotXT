@@ -13,6 +13,7 @@ class Keyboard : Device
 
     public Keyboard()
     {
+        Console.WriteLine("Keyboard instantiated");
     }
 
     public override int GetIRQNumber()
