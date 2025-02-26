@@ -472,6 +472,9 @@ else
                 thread.Join();
             }
 
+            b.ClearMemory();
+            p.Reset();
+
             runner_parameters.exit.set(false);
             thread = CreateRunnerThread(runner_parameters);
             running = true;

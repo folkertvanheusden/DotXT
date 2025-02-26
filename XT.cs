@@ -109,6 +109,12 @@ internal class P8086
         _flags |= 2;
     }
 
+    public void Reset()
+    {
+        _cs = 0xf000;
+        _ip = 0xfff0;
+    }
+
     public int GetClock()
     {
         return _clock;
