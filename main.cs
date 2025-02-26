@@ -235,9 +235,7 @@ if (debugger)
         else if (line == "echo")
         {
             echo_state = !echo_state;
-
             Console.WriteLine(echo_state ? "echo on" : "echo off");
-
             Log.EchoToConsole(echo_state);
         }
         else if (parts[0] == "ef")
@@ -247,7 +245,6 @@ if (debugger)
             else
             {
                 int address = Convert.ToInt32(parts[1], 16);
-
                 Console.WriteLine($"{address:X6} {p.HexDump((uint)address)}");
             }
         }
@@ -411,9 +408,13 @@ if (debugger)
 }
 else
 {
-    Thread thread = new Thread(runner);
-    thread.Name = "runner";
-    thread.Start(p);
+    RunnerParameters runner_parameters = new();
+    runner_parameters.cpu = p;
+    runner_parameters.exit = new();
+
+    Thread thread = CreateRunnerThread(runner_parameters);
+
+    bool running = true;
 
     for(;;)
     {
@@ -432,8 +433,48 @@ else
         if (parts[0] == "help")
         {
             Console.WriteLine("quit           terminate application");
+            Console.WriteLine("stop           stop emulation (running: {running})");
+            Console.WriteLine("start          start emulation");
+            Console.WriteLine("reset          reset emulator");
             Console.WriteLine("lsfloppy       list configured floppies");
             Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
+        }
+        else if (parts[0] == "start")
+        {
+            if (running)
+                Console.WriteLine("Already running");
+            else
+            {
+                runner_parameters.exit.set(false);
+                thread = CreateRunnerThread(runner_parameters);
+                Console.WriteLine("OK");
+                running = true;
+            }
+        }
+        else if (parts[0] == "stop")
+        {
+            if (running)
+            {
+                runner_parameters.exit.set(true);
+                thread.Join();
+                running = false;
+            }
+            else
+            {
+                Console.WriteLine("Not running");
+            }
+        }
+        else if (parts[0] == "reset")
+        {
+            if (running)
+            {
+                runner_parameters.exit.set(true);
+                thread.Join();
+            }
+
+            runner_parameters.exit.set(false);
+            thread = CreateRunnerThread(runner_parameters);
+            running = true;
         }
         else if (parts[0] == "lsfloppy")
         {
@@ -474,15 +515,26 @@ if (test != "" && mode == TMode.Binary)
 
 System.Environment.Exit(0);
 
-void runner(object p_in)
+Thread CreateRunnerThread(RunnerParameters runner_parameters)
 {
-    P8086 p = (P8086)p_in;
+    Thread thread = new Thread(runner);
+    thread.Name = "runner";
+    thread.Start(runner_parameters);
+    return thread;
+}
+
+void runner(object o)
+{
+    RunnerParameters runner_parameters = (RunnerParameters)o;
+    P8086 p = runner_parameters.cpu;
 
     try
     {
+        Console.WriteLine("Emulation started");
+
         long prev_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
         int prev_clock = 0;
-        while(p.Tick())
+        while(p.Tick() && runner_parameters.exit.get() == false)
         {
             if (!throttle)
                 continue;
@@ -505,4 +557,38 @@ void runner(object p_in)
         Console.WriteLine(msg);
         Log.DoLog(msg);
     }
+
+    Console.WriteLine("Emulation stopped");
 }
+
+class ThreadSafe_Bool
+{
+    private readonly System.Threading.Lock _lock = new();
+    private bool _state = false;
+
+    public ThreadSafe_Bool()
+    {
+    }
+
+    public bool get()
+    {
+        lock(_lock)
+        {
+            return _state;
+        }
+    }
+
+    public void set(bool new_state)
+    {
+        lock(_lock)
+        {
+            _state = new_state;
+        }
+    }
+}
+
+struct RunnerParameters
+{
+    public P8086 cpu { get; set; }
+    public ThreadSafe_Bool exit;
+};
