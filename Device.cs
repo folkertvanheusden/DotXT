@@ -36,7 +36,6 @@ abstract class Device
     {
         if (next_interrupt.Count() > 0)
         {
-            Log.DoLog($"CheckScheduledInterrupt {next_interrupt}, {cycles}");
             next_interrupt[0] -= cycles;
             if (next_interrupt[0] <= 0)
             {

@@ -4231,10 +4231,10 @@ internal class P8086
             cycle_count = 1;  // TODO workaround
         }
 
+        _clock += cycle_count;
+
         // tick I/O
         _io.Tick(cycle_count, _clock);
-
-        _clock += cycle_count;
 
         return rc;
     }
