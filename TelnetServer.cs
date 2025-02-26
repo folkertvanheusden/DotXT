@@ -15,7 +15,7 @@ class TelnetServer: TextConsole
     private Thread _thread = null;
     private Keyboard _kb = null;
     private int _listen_port = 2300;
-    private static readonly System.Threading.Lock _stream_lock = new();
+    private readonly System.Threading.Lock _stream_lock = new();
     private NetworkStream _ns = null;
     private UTF8Encoding utf8 = new UTF8Encoding();
 

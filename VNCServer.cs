@@ -16,7 +16,6 @@ class VNCServer: GraphicalConsole
     private Keyboard _kb = null;
     private int _listen_port = 5900;
     private bool _compatible = false;
-    private static readonly System.Threading.Lock _stream_lock = new();
     private static int compatible_width = 640;
     private static int compatible_height = 400;
 

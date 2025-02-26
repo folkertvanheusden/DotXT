@@ -15,7 +15,7 @@ class HTTPServer: GraphicalConsole
     private Thread _thread = null;
     private Keyboard _kb = null;
     private int _listen_port = 8080;
-    private static readonly System.Threading.Lock _stream_lock = new();
+    private readonly System.Threading.Lock _stream_lock = new();
 
     public HTTPServer(Keyboard kb, int port)
     {

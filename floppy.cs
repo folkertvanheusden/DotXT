@@ -16,7 +16,7 @@ class FloppyDisk : Device
     private int [] _cylinder = new int[4];
     private int [] _head = new int[4];
     private int _cylinder_seek_result = 0;
-    private static readonly System.Threading.Lock _filenames_lock = new();
+    private readonly System.Threading.Lock _filenames_lock = new();
 
     public FloppyDisk(List<string> filenames)
     {
