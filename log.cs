@@ -4,7 +4,7 @@ internal enum LogLevel { TRACE, DEBUG, INFO, WARNING, ERRROR, FATAL };
 
 class Log
 {
-    private static string _logfile = "logfile.txt";
+    private static string _logfile = null;
     private static string _disassembly = null;
     private static bool _echo = false;
     private static int _nr = 0;
@@ -71,6 +71,9 @@ class Log
 
     public static void DoLog(string what, LogLevel ll)
     {
+        if (_logfile == null)
+            return;
+
         string output = $"[{_nr} | {_cs:X04}:{_ip:X04}] {ll} " + (ll != LogLevel.TRACE ? "; " : "") + what + Environment.NewLine;
 
         lock(_logging_lock)
@@ -85,6 +88,9 @@ class Log
 
     public static void DoLog(string what, bool is_meta = false)
     {
+        if (_logfile == null)
+            return;
+
         string output = $"[{_nr} | {_cs:X04}:{_ip:X04}] {LogLevel.TRACE} " + (is_meta ? "; " : "") + what + Environment.NewLine;
 
         lock(_logging_lock)
