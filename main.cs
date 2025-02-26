@@ -148,9 +148,7 @@ if (test == "")
     Console.WriteLine("Released in the public domain");
 }
 
-Console.CancelKeyPress += delegate {
-    Log.EmitDisassembly();
-};
+Console.TreatControlCAsInput = true;
 
 #if DEBUG
 Console.WriteLine("Debug mode");
