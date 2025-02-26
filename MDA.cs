@@ -51,14 +51,14 @@ class MDA : Display
         return addr >= 0xb0000 && addr < 0xb8000;
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
-        Log.DoLog($"MDA::IO_Write {port:X4} {value:X2}", true);
+        Log.DoLog($"MDA::IO_Write {port:X4} {value:X4}", true);
 
         return false;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         byte rc = 0;
 

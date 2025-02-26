@@ -99,22 +99,22 @@ class CGA : Display
         return false;
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
-        Log.DoLog($"CGA::IO_Write {port:X4} {value:X2}", true);
+        Log.DoLog($"CGA::IO_Write {port:X4} {value:X4}", true);
 
         if (port == 0x3d4 || port == 0x3d6 || port == 0x3d0 || port == 0x3d2)
-            _m6845_reg = value;
+            _m6845_reg = (byte)value;
         else if (port == 0x3d5 || port == 0x3d7 || port == 0x3d1 || port == 0x3d3)
         {
-            _m6845.Write(_m6845_reg, value);
+            _m6845.Write(_m6845_reg, (byte)value);
             _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
             Log.DoLog($"Set base address to {_display_address:X04}", true);
             Redraw();
         }
         else if (port == 0x3d8)
         {
-            if (_graphics_mode != value)
+            if (_graphics_mode != (byte)value)
             {
                 if ((value & 2) == 2)  // graphics 320x200
                 {
@@ -146,14 +146,14 @@ class CGA : Display
                     _gf.height = font_descr.height * 25;
                 }
                 _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
-                _graphics_mode = value;
-                Log.DoLog($"CGA mode is now {value:X02} ({_cga_mode}), {_gf.width}x{_gf.height}", true);
+                _graphics_mode = (byte)value;
+                Log.DoLog($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", true);
                 Redraw();
             }
         }
         else if (port == 0x3d9)
         {
-            _color_configuration = value;
+            _color_configuration = (byte)value;
             Log.DoLog($"CGA color configuration: {_color_configuration:X02}", true);
         }
         else
@@ -164,7 +164,7 @@ class CGA : Display
         return false;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         Log.DoLog("CGA::IO_Read", true);
 

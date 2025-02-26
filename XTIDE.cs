@@ -12,7 +12,7 @@ class XTIDE : Device
     private ushort _cylinder_count = 614;
     private ushort _head_count = 4;
     private ushort _sectors_per_track = 17;
-    private byte[] _registers = new byte[8];
+    private ushort[] _registers = new ushort[8];
 
     public XTIDE(List<string> disk_filenames)
     {
@@ -272,12 +272,12 @@ class XTIDE : Device
         SetDRDY();
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         int register = (port - 0x300) / 2;
         string name = _io_names[register];
 
-        byte rc = 0xee;
+        ushort rc = 0xee;
 
         if (port == 0x300)  // Data register
         {
@@ -318,7 +318,7 @@ class XTIDE : Device
         }
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
         int register = (port - 0x300) / 2;
         string name = _io_names[register];
@@ -330,7 +330,11 @@ class XTIDE : Device
         {
             if (_sector_buffer_offset < _sector_buffer.Length)
             {
-                _sector_buffer[_sector_buffer_offset++] = value;
+                _sector_buffer[_sector_buffer_offset++] = (byte)value;  // FIXME
+                if (value > 255)
+                    Log.DoLog($"XT-IDE DATAREGISTER GREP {_sector_buffer_offset-1}: {value:X04}");
+                else
+                    Log.DoLog($"XT-IDE DATAREGISTER {_sector_buffer_offset-1}: {value:X04}");
             }
             else if (_target_drive != 255)
             {

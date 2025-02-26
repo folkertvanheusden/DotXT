@@ -47,7 +47,7 @@ internal class i8253 : Device
         mappings[0x0043] = this;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         if (port == 0x0040)
             return (GetCounter(0), _timers[0].is_pending);
@@ -61,16 +61,16 @@ internal class i8253 : Device
         return (0xaa, false);
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
         if (port == 0x0040)
-            LatchCounter(0, value);
+            LatchCounter(0, (byte)value);
         else if (port == 0x0041)
-            LatchCounter(1, value);
+            LatchCounter(1, (byte)value);
         else if (port == 0x0042)
-            LatchCounter(2, value);
+            LatchCounter(2, (byte)value);
         else if (port == 0x0043)
-            Command(value);
+            Command((byte)value);
 
         return _timers[0].is_pending || _timers[1].is_pending || _timers[2].is_pending;
     }

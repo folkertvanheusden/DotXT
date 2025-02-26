@@ -30,7 +30,7 @@ internal class MIDI : Device
         mappings[0x0331] = this;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         if (port == 0x331)
             return (0, false);
@@ -38,7 +38,7 @@ internal class MIDI : Device
         return (0xaa, false);
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
         // maybe buffer upto the expected byte-count first?
         if (port == 0x330)
@@ -51,7 +51,7 @@ internal class MIDI : Device
 
             if (_buffer_offset < _buffer.Length)
             {
-                _buffer[_buffer_offset++] = value;
+                _buffer[_buffer_offset++] = (byte)value;
             }
 
             if (_buffer_offset == _buffer.Length)

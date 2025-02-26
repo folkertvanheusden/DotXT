@@ -2,7 +2,7 @@ internal enum DataState { NotSet, WaitCmd, HaveData, WantData }
 
 class FloppyDisk : Device
 {
-    private byte [] _registers = new byte[8];
+    private ushort [] _registers = new ushort[8];
     private i8237 _dma_controller = null;
     protected int _irq_nr = 6;
     private bool _dma = false;
@@ -110,7 +110,7 @@ class FloppyDisk : Device
         return _data_state == DataState.WantData;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         int bytes_left = _data == null ? 0 : (_data.Length - _data_offset);
         Log.DoLog($"Floppy-IN {_io_names[port - 0x3f0]}: {port:X4} {_data_state}, bytes left: {bytes_left}", true);
@@ -280,7 +280,7 @@ class FloppyDisk : Device
 #endif
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
         if (_data_state == DataState.WantData || _data_state == DataState.HaveData)
             Log.DoLog($"Floppy-OUT {_io_names[port - 0x3f0]}: {port:X4} {value:X2} {_data_state} cmd:{_data[0]:X} data left:{_data.Length - _data_offset}", true);
@@ -382,7 +382,7 @@ class FloppyDisk : Device
                         return false;
                 }
 
-                _data[_data_offset++] = value;
+                _data[_data_offset++] = (byte)value;  // FIXME
                 if (_data_offset == _data.Length)
                 {
                     if (_data[0] == 0x06)  // READ DATA

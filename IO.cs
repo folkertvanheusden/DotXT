@@ -94,7 +94,7 @@ class IO
         else
         {
             if (_io_map.ContainsKey(addr))
-                return _io_map[addr].IO_Write(addr, (byte)value);
+                return _io_map[addr].IO_Write(addr, value);
         }
 
 #if DEBUG

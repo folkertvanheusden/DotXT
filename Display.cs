@@ -94,7 +94,7 @@ abstract class Display : Device
 
     public abstract override bool HasAddress(uint addr);
 
-    public abstract override bool IO_Write(ushort port, byte value);
+    public abstract override bool IO_Write(ushort port, ushort value);
 
     protected bool IsHsync()
     {
@@ -107,7 +107,7 @@ abstract class Display : Device
         return hsync;
     }
 
-    public abstract override (byte, bool) IO_Read(ushort port);
+    public abstract override (ushort, bool) IO_Read(ushort port);
 
     protected void EmulateTextDisplay(uint x, uint y, byte character, byte attributes)
     {

@@ -42,22 +42,22 @@ class Keyboard : Device
         // see PPI
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
         if (port == 0x0061)
         {
-            _0x61_bits = value;
+            _0x61_bits = (byte)value;
 
             if ((value & 0x40) == 0x00)
             {
-                Log.DoLog($"Keyboard::IO_Write: clock low ({value:X2})");
+                Log.DoLog($"Keyboard::IO_Write: clock low ({value:X4})");
                 _clock_low = true;
             }
             else if (_clock_low)
             {
                 _clock_low = false;
 
-                Log.DoLog($"Keyboard::IO_Write: reset triggered; clock high ({value:X2})");
+                Log.DoLog($"Keyboard::IO_Write: reset triggered; clock high ({value:X4})");
                 _keyboard_buffer_lock.WaitOne();
                 _keyboard_buffer.Clear();
                 _keyboard_buffer.Enqueue(0xaa);  // power on reset reply
@@ -70,7 +70,7 @@ class Keyboard : Device
         return false;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         if (port == 0x60)
         {

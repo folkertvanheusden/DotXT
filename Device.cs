@@ -7,8 +7,8 @@ abstract class Device
     public abstract String GetName();
 
     public abstract void RegisterDevice(Dictionary <ushort, Device> mappings);
-    public abstract bool IO_Write(ushort port, byte value);
-    public abstract (byte, bool) IO_Read(ushort port);
+    public abstract bool IO_Write(ushort port, ushort value);
+    public abstract (ushort, bool) IO_Read(ushort port);
 
     public int GetWaitStateCycles()
     {
