@@ -23,8 +23,8 @@ string key_mda = "mda";
 string key_cga = "cga";
 
 List<string> ide = new();
-
 Dictionary<string, List<Tuple<string, int> > > consoles = new();
+FloppyDisk floppy_controller = null;
 
 bool throttle = false;
 
@@ -186,7 +186,10 @@ if (mode != TMode.Blank)
     devices.Add(new i8253());
 
     if (floppies.Count() > 0)
-        devices.Add(new FloppyDisk(floppies));
+    {
+        floppy_controller = new FloppyDisk(floppies);
+        devices.Add(floppy_controller);
+    }
 
     if (ide.Count() > 0)
         devices.Add(new XTIDE(ide));
@@ -423,18 +426,42 @@ else
         if (line == "")
             continue;
 
-        if (line == "quit")
+        string [] parts = line.Split(" ");
+
+        if (parts[0] == "quit")
             break;
 
-        if (line == "help")
+        if (parts[0] == "help")
         {
             Console.WriteLine("quit           terminate application");
-//            Console.WriteLine("lsfloppy       list configured floppies");
- //           Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
+            Console.WriteLine("lsfloppy       list configured floppies");
+            Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
         }
-  //      else if (line == "lsfloppy")
-   //     {
-    //    }
+        else if (parts[0] == "lsfloppy")
+        {
+            if (floppy_controller == null)
+                Console.WriteLine("No floppy drive configured");
+            else
+            {
+                for(int i=0; i<floppy_controller.GetUnitCount(); i++)
+                    Console.WriteLine($"{i}] {floppy_controller.GetUnitFilename(i)}");
+            }
+        }
+        else if (parts[0] == "setfloppy")
+        {
+            if (floppy_controller == null)
+                Console.WriteLine("No floppy drive configured");
+            else if (parts.Length != 3)
+                Console.WriteLine("Number of parameters is incorrect");
+            else
+            {
+                int unit = int.Parse(parts[1]);
+                if (floppy_controller.SetUnitFilename(unit, parts[2]))
+                    Console.WriteLine("OK");
+                else
+                    Console.WriteLine("Failed: invalid unit number?");
+            }
+        }
         else
         {
             Console.WriteLine($"\"{line}\" is not understood");
