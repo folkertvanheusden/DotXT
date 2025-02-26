@@ -16,11 +16,44 @@ class FloppyDisk : Device
     private int [] _cylinder = new int[4];
     private int [] _head = new int[4];
     private int _cylinder_seek_result = 0;
+    private static readonly System.Threading.Lock _filenames_lock = new();
 
     public FloppyDisk(List<string> filenames)
     {
         Console.WriteLine("Floppy drive instantiated");
         _filenames = filenames;
+    }
+
+    public int GetUnitCount()
+    {
+        return _filenames.Count();
+    }
+
+    public string GetUnitFilename(int unit)
+    {
+        lock(_filenames_lock)
+        {
+            if (unit < _filenames.Count())
+            {
+                return _filenames[unit];
+            }
+        }
+
+        return null;
+    }
+
+    public bool SetUnitFilename(int unit, string filename)
+    {
+        lock(_filenames_lock)
+        {
+            if (unit < _filenames.Count())
+            {
+                _filenames[unit] = filename;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public override int GetIRQNumber()
@@ -123,29 +156,33 @@ class FloppyDisk : Device
 
     private byte [] GetFromFloppyImage(int unit, int cylinder, int head, int sector, int n)
     {
-        long file_size = new System.IO.FileInfo(_filenames[unit]).Length;
-        int sectors_per_track = 9;
-        if (file_size >= 819200)
-            sectors_per_track = 18;
-
-        if (sector > sectors_per_track)
-            Log.DoLog($"Floppy-ReadData: reading beyond sector-count? ({sector} > {sectors_per_track})");
-
         byte[] b = new byte[256 * n];
-        int lba = (cylinder * 2 + head) * sectors_per_track + sector - 1;
-        long offset = lba * b.Length;
-        Log.DoLog($"Floppy-ReadData LBA {lba}, offset {offset}, n {n} C {cylinder} H {head} S {sector} ({sectors_per_track})", true);
 
-        for(int nr=0; nr<n; nr++)
+        lock(_filenames_lock)
         {
-            using (FileStream fs = File.Open(_filenames[unit], FileMode.Open, FileAccess.Read, FileShare.None))
+            long file_size = new System.IO.FileInfo(_filenames[unit]).Length;
+            int sectors_per_track = 9;
+            if (file_size >= 819200)
+                sectors_per_track = 18;
+
+            if (sector > sectors_per_track)
+                Log.DoLog($"Floppy-ReadData: reading beyond sector-count? ({sector} > {sectors_per_track})");
+
+            int lba = (cylinder * 2 + head) * sectors_per_track + sector - 1;
+            long offset = lba * b.Length;
+            Log.DoLog($"Floppy-ReadData LBA {lba}, offset {offset}, n {n} C {cylinder} H {head} S {sector} ({sectors_per_track})", true);
+
+            for(int nr=0; nr<n; nr++)
             {
-                fs.Seek(offset, SeekOrigin.Begin);
-                if (fs.Read(b, 256 * nr, 256) != 256)
-                    Log.DoLog($"Floppy-ReadData failed reading from backend ({_filenames[unit]}, offset: {offset})", true);
-                if (fs.Position != offset + 256)
-                    Log.DoLog($"Floppy-ReadData backend data processing error?", true);
-                offset += 256;
+                using (FileStream fs = File.Open(_filenames[unit], FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    fs.Seek(offset, SeekOrigin.Begin);
+                    if (fs.Read(b, 256 * nr, 256) != 256)
+                        Log.DoLog($"Floppy-ReadData failed reading from backend ({_filenames[unit]}, offset: {offset})", true);
+                    if (fs.Position != offset + 256)
+                        Log.DoLog($"Floppy-ReadData backend data processing error?", true);
+                    offset += 256;
+                }
             }
         }
 
@@ -154,8 +191,11 @@ class FloppyDisk : Device
 
     private bool ReadData(int unit)
     {
-        if (unit >= _filenames.Count())
-            return false;
+        lock(_filenames_lock)
+        {
+            if (unit >= _filenames.Count())
+                return false;
+        }
 
         int sector = _data[4];
         int head = (_data[1] & 4) == 4 ? 1 : 0;

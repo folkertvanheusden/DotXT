@@ -216,8 +216,7 @@ if (debugger)
             Console.Write("==>");
 
         string line = Console.ReadLine();
-
-        //Log.DoLog(line);
+        Log.DoLog(line, true);
 
         string[] parts = line.Split(' ');
 
@@ -399,9 +398,7 @@ if (debugger)
         {
             p.ResetCrashCounter();
 
-            while(p.Tick())
-            {
-            }
+            runner(p);
         }
         else if (line != "")
         {
@@ -413,6 +410,49 @@ if (debugger)
 }
 else
 {
+    Thread thread = new Thread(runner);
+    thread.Name = "runner";
+    thread.Start(p);
+
+    for(;;)
+    {
+        Console.Write("==>");
+
+        string line = Console.ReadLine();
+        Log.DoLog(line, true);
+        if (line == "")
+            continue;
+
+        if (line == "quit")
+            break;
+
+        if (line == "help")
+        {
+            Console.WriteLine("quit           terminate application");
+//            Console.WriteLine("lsfloppy       list configured floppies");
+ //           Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
+        }
+  //      else if (line == "lsfloppy")
+   //     {
+    //    }
+        else
+        {
+            Console.WriteLine($"\"{line}\" is not understood");
+        }
+    }
+}
+
+Log.EmitDisassembly();
+    
+if (test != "" && mode == TMode.Binary)
+    System.Environment.Exit(p.GetSI() == 0xa5ee ? 123 : 0);
+
+System.Environment.Exit(0);
+
+void runner(object p_in)
+{
+    P8086 p = (P8086)p_in;
+
     try
     {
         long prev_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
@@ -441,10 +481,3 @@ else
         Log.DoLog(msg);
     }
 }
-
-Log.EmitDisassembly();
-    
-if (test != "" && mode == TMode.Binary)
-    System.Environment.Exit(p.GetSI() == 0xa5ee ? 123 : 0);
-
-System.Environment.Exit(0);
