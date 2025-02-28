@@ -52,6 +52,9 @@ class XTIDE : Device
             return;
         }
 
+        if (_sector_buffer != null)
+            Log.DoLog($"XT-IDE: CMDIdentifyDrive previous buffer not deallocated (offset: {_sector_buffer_offset}, length: {_sector_buffer.Length})", true);
+
         _sector_buffer = new byte[512];
         _sector_buffer_offset = 0;
 
@@ -122,11 +125,17 @@ class XTIDE : Device
         long offset = lba * 512;
         Log.DoLog($"XT-IDE CMDReadMultiple, drive {drive}, sector count {sector_count}, number {sector_number}, cylinder {cylinder}, head {head}, lba {lba}, offset {offset}", true);
 
+        if (_sector_buffer != null)
+            Log.DoLog($"XT-IDE: CMDReadMultiple previous buffer not deallocated (offset: {_sector_buffer_offset}, length: {_sector_buffer.Length})", true);
+
         _sector_buffer = new byte[sector_count * 512];
         _sector_buffer_offset = 0;
 
         for(int nr=0; nr<sector_count; nr++)
         {
+            lba = (cylinder * _head_count + head) * _sectors_per_track + sector_number - 1;
+            offset = lba * 512;
+            Log.DoLog($"XT-IDE CMDReadMultiple, do read from lba {lba}, offset {offset}", true);
             using (FileStream fs = File.Open(_disk_filenames[drive], FileMode.Open, FileAccess.Read, FileShare.None))
             {
                 fs.Seek(offset, SeekOrigin.Begin);
@@ -134,11 +143,22 @@ class XTIDE : Device
                     Log.DoLog($"XT-IDE-ReadData failed reading from backend ({_disk_filenames[drive]}, offset: {offset})", true);
                 if (fs.Position != offset + 512)
                     Log.DoLog($"XT-IDE-ReadData backend data processing error?", true);
-                offset += 512;
+            }
+
+            for(int i=nr * 512; i<(nr + 1) * 512 / 16; i++) {
+                string str = $"{i * 16:X02}: ";
+                for(int k=0; k<16; k++) {
+                    int o = k + i * 16;
+                    if (_sector_buffer[o] > 32 && _sector_buffer[o] < 127)
+                        str += $" {(char)_sector_buffer[o]} ";
+                    else
+                        str += $" {_sector_buffer[o]:X02}";
+                }
+                Log.DoLog($"XT-IDE-ReadData {str}", true);
             }
 
             sector_number++;
-            if (sector_number == _sectors_per_track)
+            if (sector_number > _sectors_per_track)  // > because starting at 1!
             {
                 sector_number = 1;
                 head++;
@@ -149,26 +169,11 @@ class XTIDE : Device
                 }
             }
 
-            if (nr < sector_count - 1)
-            {
-                _registers[3] = (byte)sector_number;
-                _registers[4] = (byte)cylinder;
-                _registers[5] = (byte)(cylinder >> 8);
-                _registers[6] &= 0xf0;
-                _registers[6] |= (byte)head;
-            }
-        }
-
-        for(int i=0; i<_sector_buffer.Length / 16; i++) {
-            string str = $"{i * 16:X02}: ";
-            for(int k=0; k<16; k++) {
-                int o = k + i * 16;
-                if (_sector_buffer[o] > 32 && _sector_buffer[o] < 127)
-                    str += $" {(char)_sector_buffer[o]} ";
-                else
-                    str += $" {_sector_buffer[o]:X02}";
-            }
-            Log.DoLog($"XT-IDE-ReadData {str}", true);
+            _registers[3] = (byte)sector_number;
+            _registers[4] = (byte)cylinder;
+            _registers[5] = (byte)(cylinder >> 8);
+            _registers[6] &= 0xf0;
+            _registers[6] |= (byte)head;
         }
 
         SetDRDY();
@@ -194,6 +199,9 @@ class XTIDE : Device
         int lba = (cylinder * _head_count + head) * _sectors_per_track + sector_number - 1;
         long offset = lba * 512;
         Log.DoLog($"XT-IDE CMDWriteMultiple, drive {drive}, sector count {sector_count}, number {sector_number}, cylinder {cylinder}, head {head}, lba {lba}, offset {offset}", true);
+
+        if (_sector_buffer != null)
+            Log.DoLog($"XT-IDE: CMDWriteMultiple previous buffer not deallocated (offset: {_sector_buffer_offset}, length: {_sector_buffer.Length})", true);
 
         _sector_buffer = new byte[sector_count * 512];
         _sector_buffer_offset = 0;
@@ -284,6 +292,13 @@ class XTIDE : Device
             if (_sector_buffer_offset < _sector_buffer.Length)
             {
                 rc = _sector_buffer[_sector_buffer_offset++];
+
+                if (_sector_buffer_offset == _sector_buffer.Length)
+                    _sector_buffer = null;
+            }
+            else
+            {
+                Log.DoLog($"XT-IDE IN reading from empty buffer", true);
             }
         }
         else if (port == 0x302)  // error register
@@ -335,10 +350,18 @@ class XTIDE : Device
 //                Log.DoLog($"XT-IDE DATAREGISTER {_sector_buffer_offset-1}: {value:X04} (expected count: {_sector_buffer.Length}, for unit {_target_drive})", true);
             }
 
-            if (_sector_buffer_offset == _sector_buffer.Length && _target_drive != 255)
+            if (_sector_buffer_offset == _sector_buffer.Length)
             {
-                StoreSectorBuffer();
-                _target_drive = 255;
+                if (_target_drive != 255)
+                {
+                    StoreSectorBuffer();
+                    _target_drive = 255;
+                    _sector_buffer = null;
+                }
+                else
+                {
+                    Log.DoLog($"XT-IDE OUT writing to a deallocated buffer", true);
+                }
             }
         }
         else if (port == 0x30c)  // drive/head register
