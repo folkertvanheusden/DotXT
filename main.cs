@@ -55,7 +55,7 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-S")
         throttle = true;
     else if (args[i] == "-T")
-        load_test_at = (uint)Convert.ToInt32(args[++i], 16);
+        load_test_at = (uint)GetValue(args[++i], true);
     else if (args[i] == "-p")
     {
         string[] parts = args[++i].Split(',');
@@ -110,15 +110,15 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-P")
         prompt = false;
     else if (args[i] == "-s")
-        ram_size = (uint)Convert.ToInt32(args[++i], 10);
+        ram_size = (uint)GetValue(args[++i], false);
     else if (args[i] == "-R")
     {
         string[] parts = args[++i].Split(',');
         string file = parts[0];
 
         string[] aparts = parts[1].Split(':');
-        uint seg = (uint)Convert.ToInt32(aparts[0], 16);
-        uint ip = (uint)Convert.ToInt32(aparts[1], 16);
+        uint seg = (uint)GetValue(aparts[0], true);
+        uint ip = (uint)GetValue(aparts[1], true);
         uint addr = seg * 16 + ip;
 
         Console.WriteLine($"Loading {file} to {addr:X06}");
@@ -129,8 +129,8 @@ for(int i=0; i<args.Length; i++)
     {
         string[] parts = args[++i].Split(',');
 
-        initial_cs = (ushort)Convert.ToInt32(parts[0], 16);
-        initial_ip = (ushort)Convert.ToInt32(parts[1], 16);
+        initial_cs = (ushort)GetValue(parts[0], true);
+        initial_ip = (ushort)GetValue(parts[1], true);
 
         set_initial_ip = true;
     }
@@ -244,7 +244,7 @@ if (debugger)
                 Console.WriteLine("usage: ef 0xhex_address");
             else
             {
-                int address = Convert.ToInt32(parts[1], 16);
+                int address = GetValue(parts[1], true);
                 Console.WriteLine($"{address:X6} {p.HexDump((uint)address)}");
             }
         }
@@ -259,139 +259,11 @@ if (debugger)
         }
         else if (parts[0] == "set")
         {
-            if (parts.Length != 4)
-                Console.WriteLine("usage: set [reg|ram] [regname|address] value");
-            else if (parts[1] == "reg")
-            {
-                string regname = parts[2];
-                ushort value = (ushort)Convert.ToInt32(parts[3], 10);
-
-                try
-                {
-                    if (regname == "ax")
-                        p.SetAX(value);
-                    else if (regname == "bx")
-                        p.SetBX(value);
-                    else if (regname == "cx")
-                        p.SetCX(value);
-                    else if (regname == "dx")
-                        p.SetDX(value);
-                    else if (regname == "ss")
-                        p.SetSS(value);
-                    else if (regname == "cs")
-                        p.SetCS(value);
-                    else if (regname == "ds")
-                        p.SetDS(value);
-                    else if (regname == "es")
-                        p.SetES(value);
-                    else if (regname == "sp")
-                        p.SetSP(value);
-                    else if (regname == "bp")
-                        p.SetBP(value);
-                    else if (regname == "si")
-                        p.SetSI(value);
-                    else if (regname == "di")
-                        p.SetDI(value);
-                    else if (regname == "ip")
-                        p.SetIP(value);
-                    else if (regname == "flags")
-                        p.SetFlags(value);
-                    else
-                    {
-                        Console.WriteLine($"Register {regname} not known");
-                        continue;
-                    }
-
-                    Console.WriteLine($"<SET {regname} {value}");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($"<SET -1 -1 FAILED {e}");
-                }
-            }
-            else if (parts[1] == "ram" || parts[1] == "mem")
-            {
-                try
-                {
-                    uint addr  = (uint)Convert.ToInt32(parts[2], 10);
-                    byte value = (byte)Convert.ToInt32(parts[3], 10);
-
-                    b.WriteByte(addr, value);
-
-                    Console.WriteLine($"<SET {addr} {value}");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($"<SET -1 -1 FAILED {e}");
-                }
-            }
+            CmdSet(parts, p, b);
         }
         else if (parts[0] == "get")
         {
-            if (parts.Length != 3)
-                Console.WriteLine("usage: get [reg|ram] [regname|address]");
-            else if (parts[1] == "reg")
-            {
-                try
-                {
-                    string regname = parts[2];
-                    ushort value   = 0;
-
-                    if (regname == "ax")
-                        value = p.GetAX();
-                    else if (regname == "bx")
-                        value = p.GetBX();
-                    else if (regname == "cx")
-                        value = p.GetCX();
-                    else if (regname == "dx")
-                        value = p.GetDX();
-                    else if (regname == "ss")
-                        value = p.GetSS();
-                    else if (regname == "cs")
-                        value = p.GetCS();
-                    else if (regname == "ds")
-                        value = p.GetDS();
-                    else if (regname == "es")
-                        value = p.GetES();
-                    else if (regname == "sp")
-                        value = p.GetSP();
-                    else if (regname == "bp")
-                        value = p.GetBP();
-                    else if (regname == "si")
-                        value = p.GetSI();
-                    else if (regname == "di")
-                        value = p.GetDI();
-                    else if (regname == "ip")
-                        value = p.GetIP();
-                    else if (regname == "flags")
-                        value = p.GetFlags();
-                    else
-                    {
-                        Console.WriteLine($"Register {regname} not known");
-                        continue;
-                    }
-
-                    Console.WriteLine($">GET {regname} {value}");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($">GET -1 -1 FAILED {e}");
-                }
-            }
-            else if (parts[1] == "ram" || parts[1] == "mem")
-            {
-                try
-                {
-                    uint   addr  = (uint)Convert.ToInt32(parts[2], 10);
-                    ushort value = b.ReadByte(addr).Item1;
-
-                    Console.WriteLine($">GET {addr} {value}");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($">GET -1 -1 FAILED {e}");
-                }
-            }
+            CmdGet(parts, p, b);
         }
         else if (line == "c")
         {
@@ -439,6 +311,11 @@ else
             Console.WriteLine("reset          reset emulator");
             Console.WriteLine("lsfloppy       list configured floppies");
             Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
+            Console.WriteLine("get [reg|ram] [regname|address]  get value from a register/memory location");
+            Console.WriteLine("set [reg|ram] [regname|address] value   set registers/memory to a value");
+            Console.WriteLine("get/set        value/address can be decimal or hexadecimal (prefix with 0x)");
+            Console.WriteLine("hd x           hexdump of a few bytes starting at address x");
+            Console.WriteLine("hd cs:ip       hexdump of a few bytes starting at address cs:ip");
         }
         else if (parts[0] == "start")
         {
@@ -505,6 +382,27 @@ else
                     Console.WriteLine("Failed: invalid unit number or file does not exist");
             }
         }
+        else if (parts[0] == "set")
+        {
+            CmdSet(parts, p, b);
+        }
+        else if (parts[0] == "get")
+        {
+            CmdGet(parts, p, b);
+        }
+        else if (parts[0] == "hd")
+        {
+            if (parts.Length == 3)
+            {
+                uint addr = (uint)(GetValue(parts[1], false) * 16 + GetValue(parts[2], false));
+                Console.WriteLine($"{addr:X6} {p.HexDump(addr)}");
+            }
+            else
+            {
+                uint addr = (uint)GetValue(parts[1], false);
+                Console.WriteLine($"{addr:X6} {p.HexDump(addr)}");
+            }
+        }
         else
         {
             Console.WriteLine($"\"{line}\" is not understood");
@@ -563,6 +461,155 @@ void runner(object o)
     }
 
     Console.WriteLine("Emulation stopped");
+}
+
+int GetValue(string v, bool hex)
+{
+    if (v.Length > 2 && v[0] == '0' && v[1] == 'x')
+        return Convert.ToInt32(v.Substring(2), 16);
+
+    if (hex)
+        return Convert.ToInt32(v, 16);
+
+    return Convert.ToInt32(v, 10);
+}
+
+void CmdGet(string[] tokens, P8086 p, Bus b)
+{
+    if (tokens.Length != 3)
+        Console.WriteLine("usage: get [reg|ram] [regname|address]");
+    else if (tokens[1] == "reg")
+    {
+        try
+        {
+            string regname = tokens[2];
+            ushort value   = 0;
+
+            if (regname == "ax")
+                value = p.GetAX();
+            else if (regname == "bx")
+                value = p.GetBX();
+            else if (regname == "cx")
+                value = p.GetCX();
+            else if (regname == "dx")
+                value = p.GetDX();
+            else if (regname == "ss")
+                value = p.GetSS();
+            else if (regname == "cs")
+                value = p.GetCS();
+            else if (regname == "ds")
+                value = p.GetDS();
+            else if (regname == "es")
+                value = p.GetES();
+            else if (regname == "sp")
+                value = p.GetSP();
+            else if (regname == "bp")
+                value = p.GetBP();
+            else if (regname == "si")
+                value = p.GetSI();
+            else if (regname == "di")
+                value = p.GetDI();
+            else if (regname == "ip")
+                value = p.GetIP();
+            else if (regname == "flags")
+                value = p.GetFlags();
+            else
+            {
+                Console.WriteLine($"Register {regname} not known");
+                return;
+            }
+
+            Console.WriteLine($">GET {regname} {value}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($">GET -1 -1 FAILED {e}");
+        }
+    }
+    else if (tokens[1] == "ram" || tokens[1] == "mem")
+    {
+        try
+        {
+            uint addr = (uint)GetValue(tokens[2], false);
+            ushort value = b.ReadByte(addr).Item1;
+
+            Console.WriteLine($">GET {addr} {value}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($">GET -1 -1 FAILED {e}");
+        }
+    }
+}
+
+void CmdSet(string [] tokens, P8086 p, Bus b)
+{
+    if (tokens.Length != 4)
+        Console.WriteLine("usage: set [reg|ram] [regname|address] value");
+    else if (tokens[1] == "reg")
+    {
+        string regname = tokens[2];
+        ushort value = (ushort)GetValue(tokens[3], false);
+
+        try
+        {
+            if (regname == "ax")
+                p.SetAX(value);
+            else if (regname == "bx")
+                p.SetBX(value);
+            else if (regname == "cx")
+                p.SetCX(value);
+            else if (regname == "dx")
+                p.SetDX(value);
+            else if (regname == "ss")
+                p.SetSS(value);
+            else if (regname == "cs")
+                p.SetCS(value);
+            else if (regname == "ds")
+                p.SetDS(value);
+            else if (regname == "es")
+                p.SetES(value);
+            else if (regname == "sp")
+                p.SetSP(value);
+            else if (regname == "bp")
+                p.SetBP(value);
+            else if (regname == "si")
+                p.SetSI(value);
+            else if (regname == "di")
+                p.SetDI(value);
+            else if (regname == "ip")
+                p.SetIP(value);
+            else if (regname == "flags")
+                p.SetFlags(value);
+            else
+            {
+                Console.WriteLine($"Register {regname} not known");
+                return;
+            }
+
+            Console.WriteLine($"<SET {regname} {value}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"<SET -1 -1 FAILED {e}");
+        }
+    }
+    else if (tokens[1] == "ram" || tokens[1] == "mem")
+    {
+        try
+        {
+            uint addr = (uint)GetValue(tokens[2], false);
+            byte value = (byte)GetValue(tokens[3], false);
+
+            b.WriteByte(addr, value);
+
+            Console.WriteLine($"<SET {addr} {value}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"<SET -1 -1 FAILED {e}");
+        }
+    }
 }
 
 class ThreadSafe_Bool
