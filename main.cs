@@ -206,10 +206,6 @@ if (set_initial_ip)
 
 if (json_processing)
 {
-    bool echo_state = true;
-
-    Log.EchoToConsole(echo_state);
-
     for(;;)
     {
         if (prompt)
@@ -231,22 +227,6 @@ if (json_processing)
         }
         else if (line == "q")
             break;
-        else if (line == "echo")
-        {
-            echo_state = !echo_state;
-            Console.WriteLine(echo_state ? "echo on" : "echo off");
-            Log.EchoToConsole(echo_state);
-        }
-        else if (parts[0] == "ef")
-        {
-            if (parts.Length != 2)
-                Console.WriteLine("usage: ef 0xhex_address");
-            else
-            {
-                int address = GetValue(parts[1], true);
-                Console.WriteLine($"{address:X6} {p.HexDump((uint)address)}");
-            }
-        }
         else if (parts[0] == "dolog")
         {
             Log.DoLog(line);
@@ -286,7 +266,10 @@ else
 
     Thread thread = CreateRunnerThread(runner_parameters);
 
-    bool running = true;
+    bool running = false;
+
+    bool echo_state = false;
+    Log.EchoToConsole(echo_state);
 
     for(;;)
     {
@@ -306,10 +289,12 @@ else
 
             if (parts[0] == "help")
             {
-                Console.WriteLine("quit           terminate application");
+                Console.WriteLine("quit / q       terminate application");
+                Console.WriteLine("step / s / S   invoke 1 instruction, \"S\": step over loop");
                 Console.WriteLine($"stop           stop emulation (running: {running})");
-                Console.WriteLine("start          start emulation");
+                Console.WriteLine("start / go     start emulation");
                 Console.WriteLine("reset          reset emulator");
+                Console.WriteLine("echo           toggle disassembly to console");
                 Console.WriteLine("lsfloppy       list configured floppies");
                 Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
                 Console.WriteLine("get [reg|ram] [regname|address]  get value from a register/memory location");
@@ -323,7 +308,41 @@ else
                 Console.WriteLine("dbp x          delete breakpoint");
                 Console.WriteLine("cbp            remove all breakpoints");
             }
-            else if (parts[0] == "start")
+            else if (parts[0] == "s" || parts[0] == "step" || parts[0] == "S")
+            {
+                bool rc = true;
+
+                if (parts[0] == "S")
+                {
+                    do
+                    {
+                        if (p.Tick() == false)
+                        {
+                            rc = false;
+                            break;
+                        }
+                    }
+                    while(p.IsProcessingRep());
+                }
+                else
+                {
+                    rc = p.Tick();
+                }
+
+                if (rc == false)
+                {
+                    string stop_reason = p.GetStopReason();
+                    if (stop_reason != "")
+                        Console.WriteLine(stop_reason);
+                }
+            }
+            else if (line == "echo")
+            {
+                echo_state = !echo_state;
+                Console.WriteLine(echo_state ? "echo on" : "echo off");
+                Log.EchoToConsole(echo_state);
+            }
+            else if (parts[0] == "start" || parts[0] == "go")
             {
                 if (running)
                     Console.WriteLine("Already running");
