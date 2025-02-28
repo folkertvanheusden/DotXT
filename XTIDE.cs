@@ -332,7 +332,7 @@ class XTIDE : Device
             if (_sector_buffer_offset < _sector_buffer.Length)
             {
                 _sector_buffer[_sector_buffer_offset++] = (byte)value;  // FIXME
-                Log.DoLog($"XT-IDE DATAREGISTER {_sector_buffer_offset-1}: {value:X04} (expected count: {_sector_buffer.Length}, for unit {_target_drive})");
+//                Log.DoLog($"XT-IDE DATAREGISTER {_sector_buffer_offset-1}: {value:X04} (expected count: {_sector_buffer.Length}, for unit {_target_drive})", true);
             }
 
             if (_sector_buffer_offset == _sector_buffer.Length && _target_drive != 255)

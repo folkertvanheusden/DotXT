@@ -59,8 +59,9 @@ class IO
 
         if (_io_map.ContainsKey(addr))
         {
-            Log.DoLog($"IN: reading {addr:X4} from device", true);
-            return _io_map[addr].IO_Read(addr);
+            var rc = _io_map[addr].IO_Read(addr);
+            Log.DoLog($"IN: read {rc.Item1:X02} from device on I/O port {addr:X4}", true);
+            return rc;
         }
 
         Log.DoLog($"IN: I/O port {addr:X4} not implemented", true);
