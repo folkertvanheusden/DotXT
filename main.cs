@@ -502,7 +502,7 @@ else
                 if (floppy_controller.SetUnitFilename(unit, parts[2]))
                     Console.WriteLine("OK");
                 else
-                    Console.WriteLine("Failed: invalid unit number?");
+                    Console.WriteLine("Failed: invalid unit number or file does not exist");
             }
         }
         else

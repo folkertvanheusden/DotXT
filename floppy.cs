@@ -46,7 +46,7 @@ class FloppyDisk : Device
     {
         lock(_filenames_lock)
         {
-            if (unit < _filenames.Count())
+            if (unit < _filenames.Count() && File.Exists(filename))
             {
                 _filenames[unit] = filename;
                 return true;
