@@ -41,6 +41,9 @@ internal class P8086
 
     private ushort _flags;
 
+    private bool _in_hlt = false;
+    private ushort _hlt_ip;
+
     private int _crash_counter = 0;
 
     private const uint MemMask = 0x00ffffff;
@@ -1186,13 +1189,18 @@ internal class P8086
 
                     Log.DoLog($"{device.GetName()} triggers IRQ {irq}", true);
 
-                    InvokeInterrupt(_ip, irq, true);
+                    if (_in_hlt)
+                        InvokeInterrupt(_hlt_ip, irq, true);
+                    else
+                        InvokeInterrupt(_ip, irq, true);
                     cycle_count += 60;
 
                     break;
                 }
             }
         }
+
+        _in_hlt = false;
 
 #if DEBUG
         string flagStr = GetFlagsAsString();
@@ -4012,6 +4020,8 @@ internal class P8086
         else if (opcode == 0xf4)
         {
             // HLT
+            _in_hlt = true;
+            _hlt_ip = _ip;
             _ip--;
 
             cycle_count += 2;

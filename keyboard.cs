@@ -65,6 +65,9 @@ class Keyboard : Device
 
                 ScheduleInterrupt(_kb_reset_irq_delay);  // the value is a guess, need to protect this with a mutex
             }
+
+            if ((value & 0x80) != 0)
+                _last_scan_code = 0;
         }
 
         return false;
@@ -74,8 +77,8 @@ class Keyboard : Device
     {
         if (port == 0x60)
         {
-            _keyboard_buffer_lock.WaitOne();
             byte rc = _last_scan_code;
+            _keyboard_buffer_lock.WaitOne();
             if (_keyboard_buffer.Count > 0)
             {
                 rc = (byte)_keyboard_buffer.Dequeue();
@@ -114,8 +117,10 @@ class Keyboard : Device
 
     public override bool Tick(int cycles, int clock)
     {
-        if (CheckScheduledInterrupt(cycles))
+        if ((_0x61_bits & 0x80) == 0 && CheckScheduledInterrupt(cycles)) {
+            Log.DoLog("Fire keyboard interrupt", true);
             _pic.RequestInterruptPIC(_irq_nr);
+        }
 
         return false;
     }

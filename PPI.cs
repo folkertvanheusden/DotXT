@@ -53,8 +53,8 @@ internal class PPI : Device
             if ((_control & 4) == 4)  // dipswitches selection
                 _dipswitches_high = (value & 8) == 8;
 
-            if ((_control & 2) == 2)  // speaker
-                return false;
+//            if ((_control & 2) == 2)  // speaker
+ //               // return false;
             // fall through for keyboard
         }
         else if (port == 0x0063)
