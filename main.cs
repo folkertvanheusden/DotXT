@@ -303,7 +303,7 @@ else
                 Console.WriteLine("hd x           hexdump of a few bytes starting at address x");
                 Console.WriteLine("hd cs:ip       hexdump of a few bytes starting at address cs:ip");
                 Console.WriteLine("dr             dump all registers");
-                Console.WriteLine("gbp            list breakpoints");
+                Console.WriteLine("gbp / lbp      list breakpoints");
                 Console.WriteLine("sbp x          set breakpoint");
                 Console.WriteLine("dbp x          delete breakpoint");
                 Console.WriteLine("cbp            remove all breakpoints");
@@ -419,7 +419,7 @@ else
             {
                 CmdGet(parts, p, b);
             }
-            else if (parts[0] == "gbp")
+            else if (parts[0] == "gbp" || parts[0] == "lbp")
             {
                 GetBreakpoints(p);
             }
