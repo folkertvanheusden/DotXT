@@ -41,7 +41,7 @@ class XTIDE : Device
 
     private void CMDIdentifyDrive()
     {
-        Log.DoLog("XT-IDE: CMDIdentifyDrive");
+        Log.DoLog("XT-IDE: CMDIdentifyDrive", true);
 
         int drive_head = _registers[6];
         int drive = (drive_head & 16) != 0 ? 1 : 0;
@@ -98,7 +98,7 @@ class XTIDE : Device
 
     private void CMDSeek()
     {
-        Log.DoLog("XT-IDE CMDSeek");
+        Log.DoLog("XT-IDE CMDSeek", true);
         SetDSC();
     }
 
@@ -120,7 +120,7 @@ class XTIDE : Device
             sector_count = 256;
         int lba = (cylinder * _head_count + head) * _sectors_per_track + sector_number - 1;
         long offset = lba * 512;
-        Log.DoLog($"XT-IDE CMDReadMultiple, drive {drive}, sector count {sector_count}, number {sector_number}, cylinder {cylinder}, head {head}, lba {lba}, offset {offset}");
+        Log.DoLog($"XT-IDE CMDReadMultiple, drive {drive}, sector count {sector_count}, number {sector_number}, cylinder {cylinder}, head {head}, lba {lba}, offset {offset}", true);
 
         _sector_buffer = new byte[sector_count * 512];
         _sector_buffer_offset = 0;
@@ -193,7 +193,7 @@ class XTIDE : Device
             sector_count = 256;
         int lba = (cylinder * _head_count + head) * _sectors_per_track + sector_number - 1;
         long offset = lba * 512;
-        Log.DoLog($"XT-IDE CMDWriteMultiple, drive {drive}, sector count {sector_count}, number {sector_number}, cylinder {cylinder}, head {head}, lba {lba}, offset {offset}");
+        Log.DoLog($"XT-IDE CMDWriteMultiple, drive {drive}, sector count {sector_count}, number {sector_number}, cylinder {cylinder}, head {head}, lba {lba}, offset {offset}", true);
 
         _sector_buffer = new byte[sector_count * 512];
         _sector_buffer_offset = 0;
@@ -311,7 +311,7 @@ class XTIDE : Device
 
     private void StoreSectorBuffer()
     {
-        Log.DoLog($"XT-IDE store sector data ({_sector_buffer.Length} bytes) on unit {_target_drive} at LBA {_target_lba} (offset: {_target_lba * 512})");
+        Log.DoLog($"XT-IDE store sector data ({_sector_buffer.Length} bytes) on unit {_target_drive} at LBA {_target_lba} (offset: {_target_lba * 512})", true);
         using (FileStream fs = File.Open(_disk_filenames[_target_drive], FileMode.Open, FileAccess.Write, FileShare.None))
         {
             fs.Seek(_target_lba * 512, SeekOrigin.Begin);
@@ -353,7 +353,7 @@ class XTIDE : Device
             log += $", drive-{_drv}";
             if ((value & 64) == 0)
                 log += $", head {value & 15}";
-            Log.DoLog($"XT-IDE {log}");
+            Log.DoLog($"XT-IDE {log}", true);
         }
         else if (port == 0x30e)  // command register
         {
@@ -391,7 +391,7 @@ class XTIDE : Device
             }
             else
             {
-                Log.DoLog($"XT-IDE command {value:X02} not implemented");
+                Log.DoLog($"XT-IDE command {value:X02} not implemented", true);
             }
         }
 
