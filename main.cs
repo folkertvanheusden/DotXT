@@ -255,6 +255,7 @@ if (debugger)
         else if (parts[0] == "reset")
         {
             b.ClearMemory();
+            p.Reset();
         }
         else if (parts[0] == "set")
         {
@@ -427,7 +428,7 @@ else
 
         string [] parts = line.Split(" ");
 
-        if (parts[0] == "quit")
+        if (parts[0] == "quit" || parts[0] == "q")
             break;
 
         if (parts[0] == "help")

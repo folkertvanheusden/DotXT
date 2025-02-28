@@ -3897,12 +3897,10 @@ internal class P8086
 
                 name = "LOOPNZ";
             }
-#if DEBUG
             else
             {
                 Log.Disassemble(prefixStr, $" opcode {opcode:X2} not implemented");
             }
-#endif
 
 #if DEBUG
             Log.Disassemble(prefixStr, $" {name} {to} ({newAddresses:X4})");
