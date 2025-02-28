@@ -311,6 +311,7 @@ class XTIDE : Device
 
     private void StoreSectorBuffer()
     {
+        Log.DoLog($"XT-IDE store sector data ({_sector_buffer.Length} bytes) on unit {_target_drive} at LBA {_target_lba} (offset: {_target_lba * 512})");
         using (FileStream fs = File.Open(_disk_filenames[_target_drive], FileMode.Open, FileAccess.Write, FileShare.None))
         {
             fs.Seek(_target_lba * 512, SeekOrigin.Begin);
@@ -331,12 +332,10 @@ class XTIDE : Device
             if (_sector_buffer_offset < _sector_buffer.Length)
             {
                 _sector_buffer[_sector_buffer_offset++] = (byte)value;  // FIXME
-                if (value > 255)
-                    Log.DoLog($"XT-IDE DATAREGISTER GREP {_sector_buffer_offset-1}: {value:X04}");
-                else
-                    Log.DoLog($"XT-IDE DATAREGISTER {_sector_buffer_offset-1}: {value:X04}");
+                Log.DoLog($"XT-IDE DATAREGISTER {_sector_buffer_offset-1}: {value:X04} (expected count: {_sector_buffer.Length}, for unit {_target_drive})");
             }
-            else if (_target_drive != 255)
+
+            if (_sector_buffer_offset == _sector_buffer.Length && _target_drive != 255)
             {
                 StoreSectorBuffer();
                 _target_drive = 255;
