@@ -63,6 +63,9 @@ internal class P8086
     private int _clock;
     private List<Device> _devices;
 
+    private List<uint> _breakpoints = new();
+    private string _stop_reason = "";
+
     public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool terminate_on_hlt, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -110,6 +113,33 @@ internal class P8086
         // bit 1 of the flags register is always 1
         // https://www.righto.com/2023/02/silicon-reverse-engineering-intel-8086.html
         _flags |= 2;
+    }
+
+    public string GetStopReason()
+    {
+        string rc = _stop_reason;
+        _stop_reason = "";
+        return rc;
+    }
+
+    public List<uint> GetBreakpoints()
+    {
+        return _breakpoints;
+    }
+
+    public void AddBreakpoint(uint a)
+    {
+        _breakpoints.Add(a);
+    }
+
+    public void DelBreakpoint(uint a)
+    {
+        _breakpoints.Remove(a);
+    }
+
+    public void ClearBreakpoints()
+    {
+        _breakpoints.Clear();
     }
 
     public void Reset()
@@ -1169,8 +1199,6 @@ internal class P8086
     // cycle counts from https://zsmith.co/intel_i.php
     public bool Tick()
     {
-        bool rc = true;
-
         int cycle_count = 0;  // cycles used for an instruction
 
         // check for interrupt
@@ -1210,6 +1238,16 @@ internal class P8086
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
         Log.SetAddress(_cs, _ip);
         byte opcode = GetPcByte();
+
+        foreach(uint check_address in _breakpoints)
+        {
+            if (check_address == instr_start)
+            {
+                _stop_reason = $"Breakpoint reached at address {check_address:X06}";
+                Log.DoLog(_stop_reason);
+                return false;
+            }
+        }
 
         // handle prefixes
         while (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
@@ -1311,7 +1349,8 @@ internal class P8086
         {
             if (++_crash_counter >= 5)
             {
-                Log.DoLog($"Terminating because of {_crash_counter}x 0x00 opcode ({address:X06})", true);
+                _stop_reason = $"Terminating because of {_crash_counter}x 0x00 opcode ({address:X06})";
+                Log.DoLog(_stop_reason);
                 return false;
             }
         }
@@ -4244,6 +4283,6 @@ internal class P8086
         // tick I/O
         _io.Tick(cycle_count, _clock);
 
-        return rc;
+        return true;
     }
 }

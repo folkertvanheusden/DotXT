@@ -268,7 +268,7 @@ if (json_processing)
         {
             p.ResetCrashCounter();
 
-            runner(p);
+            Runner(p);
         }
         else if (line != "")
         {
@@ -318,6 +318,10 @@ else
                 Console.WriteLine("hd x           hexdump of a few bytes starting at address x");
                 Console.WriteLine("hd cs:ip       hexdump of a few bytes starting at address cs:ip");
                 Console.WriteLine("dr             dump all registers");
+                Console.WriteLine("gbp            list breakpoints");
+                Console.WriteLine("sbp x          set breakpoint");
+                Console.WriteLine("dbp x          delete breakpoint");
+                Console.WriteLine("cbp            remove all breakpoints");
             }
             else if (parts[0] == "start")
             {
@@ -392,6 +396,39 @@ else
             {
                 CmdGet(parts, p, b);
             }
+            else if (parts[0] == "gbp")
+            {
+                GetBreakpoints(p);
+            }
+            else if (parts[0] == "sbp")
+            {
+                if (running)
+                    Console.WriteLine("Please stop emulation first");
+                else
+                {
+                    uint addr = (uint)GetValue(parts[1], false);
+                    p.AddBreakpoint(addr);
+                }
+            }
+            else if (parts[0] == "dbp")
+            {
+                if (running)
+                    Console.WriteLine("Please stop emulation first");
+                else
+                {
+                    uint addr = (uint)GetValue(parts[1], false);
+                    p.DelBreakpoint(addr);
+                }
+            }
+            else if (parts[0] == "cbp")
+            {
+                if (running)
+                    Console.WriteLine("Please stop emulation first");
+                else
+                {
+                    p.ClearBreakpoints();
+                }
+            }
             else if (parts[0] == "hd")
             {
                 string[] aparts = parts[1].Split(':');
@@ -446,13 +483,13 @@ System.Environment.Exit(0);
 
 Thread CreateRunnerThread(RunnerParameters runner_parameters)
 {
-    Thread thread = new Thread(runner);
+    Thread thread = new Thread(Runner);
     thread.Name = "runner";
     thread.Start(runner_parameters);
     return thread;
 }
 
-void runner(object o)
+void Runner(object o)
 {
     RunnerParameters runner_parameters = (RunnerParameters)o;
     P8086 p = runner_parameters.cpu;
@@ -479,6 +516,10 @@ void runner(object o)
                 prev_clock = now_clock;
             }
         }
+
+        string stop_reason = p.GetStopReason();
+        if (stop_reason != "")
+            Console.WriteLine(stop_reason);
     }
     catch(Exception e)
     {
@@ -492,6 +533,10 @@ void runner(object o)
 
 int GetValue(string v, bool hex)
 {
+    string[] aparts = v.Split(":");
+    if (aparts.Length == 2)
+        return Convert.ToInt32(aparts[0], 16) * 16 + Convert.ToInt32(aparts[1], 16);
+
     if (v.Length > 2 && v[0] == '0' && v[1] == 'x')
         return Convert.ToInt32(v.Substring(2), 16);
 
@@ -637,6 +682,13 @@ void CmdSet(string [] tokens, P8086 p, Bus b)
             Console.WriteLine($"<SET -1 -1 FAILED {e}");
         }
     }
+}
+
+void GetBreakpoints(P8086 p)
+{
+    Console.WriteLine("Breakpoints:");
+    foreach(uint a in p.GetBreakpoints())
+        Console.WriteLine($"\t{a:X06}");
 }
 
 class ThreadSafe_Bool
