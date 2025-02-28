@@ -12,7 +12,7 @@ bool set_initial_ip = false;
 bool run_IO = true;
 uint load_test_at = 0xffffffff;
 
-bool debugger = false;
+bool json_processing = false;
 bool prompt = true;
 
 uint ram_size = 1024;
@@ -42,7 +42,6 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-F file   load floppy image (multiple for drive A-D)");
         Console.WriteLine("-D file   disassemble to file");
         Console.WriteLine("-I        disable I/O ports");
-        Console.WriteLine("-d        enable debugger");
         Console.WriteLine("-S        try to run at real speed");
         Console.WriteLine("-P        skip prompt");
         Console.WriteLine("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
@@ -106,7 +105,7 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-F")
         floppies.Add(args[++i]);
     else if (args[i] == "-d")
-        debugger = true;
+        json_processing = true;
     else if (args[i] == "-P")
         prompt = false;
     else if (args[i] == "-s")
@@ -205,7 +204,7 @@ var p = new P8086(ref b, test, mode, load_test_at, false, ref devices, run_IO);
 if (set_initial_ip)
     p.set_ip(initial_cs, initial_ip);
 
-if (debugger)
+if (json_processing)
 {
     bool echo_state = true;
 
@@ -298,114 +297,134 @@ else
         if (line == "")
             continue;
 
-        string [] parts = line.Split(" ");
-
-        if (parts[0] == "quit" || parts[0] == "q")
-            break;
-
-        if (parts[0] == "help")
+        try
         {
-            Console.WriteLine("quit           terminate application");
-            Console.WriteLine($"stop           stop emulation (running: {running})");
-            Console.WriteLine("start          start emulation");
-            Console.WriteLine("reset          reset emulator");
-            Console.WriteLine("lsfloppy       list configured floppies");
-            Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
-            Console.WriteLine("get [reg|ram] [regname|address]  get value from a register/memory location");
-            Console.WriteLine("set [reg|ram] [regname|address] value   set registers/memory to a value");
-            Console.WriteLine("get/set        value/address can be decimal or hexadecimal (prefix with 0x)");
-            Console.WriteLine("hd x           hexdump of a few bytes starting at address x");
-            Console.WriteLine("hd cs:ip       hexdump of a few bytes starting at address cs:ip");
-        }
-        else if (parts[0] == "start")
-        {
-            if (running)
-                Console.WriteLine("Already running");
-            else
+            string [] parts = line.Split(" ");
+
+            if (parts[0] == "quit" || parts[0] == "q")
+                break;
+
+            if (parts[0] == "help")
             {
+                Console.WriteLine("quit           terminate application");
+                Console.WriteLine($"stop           stop emulation (running: {running})");
+                Console.WriteLine("start          start emulation");
+                Console.WriteLine("reset          reset emulator");
+                Console.WriteLine("lsfloppy       list configured floppies");
+                Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
+                Console.WriteLine("get [reg|ram] [regname|address]  get value from a register/memory location");
+                Console.WriteLine("set [reg|ram] [regname|address] value   set registers/memory to a value");
+                Console.WriteLine("get/set        value/address can be decimal or hexadecimal (prefix with 0x)");
+                Console.WriteLine("hd x           hexdump of a few bytes starting at address x");
+                Console.WriteLine("hd cs:ip       hexdump of a few bytes starting at address cs:ip");
+                Console.WriteLine("dr             dump all registers");
+            }
+            else if (parts[0] == "start")
+            {
+                if (running)
+                    Console.WriteLine("Already running");
+                else
+                {
+                    runner_parameters.exit.set(false);
+                    thread = CreateRunnerThread(runner_parameters);
+                    Console.WriteLine("OK");
+                    running = true;
+                }
+            }
+            else if (parts[0] == "stop")
+            {
+                if (running)
+                {
+                    runner_parameters.exit.set(true);
+                    thread.Join();
+                    running = false;
+                }
+                else
+                {
+                    Console.WriteLine("Not running");
+                }
+            }
+            else if (parts[0] == "reset")
+            {
+                if (running)
+                {
+                    runner_parameters.exit.set(true);
+                    thread.Join();
+                }
+
+                b.ClearMemory();
+                p.Reset();
+
                 runner_parameters.exit.set(false);
                 thread = CreateRunnerThread(runner_parameters);
-                Console.WriteLine("OK");
                 running = true;
             }
-        }
-        else if (parts[0] == "stop")
-        {
-            if (running)
+            else if (parts[0] == "lsfloppy")
             {
-                runner_parameters.exit.set(true);
-                thread.Join();
-                running = false;
-            }
-            else
-            {
-                Console.WriteLine("Not running");
-            }
-        }
-        else if (parts[0] == "reset")
-        {
-            if (running)
-            {
-                runner_parameters.exit.set(true);
-                thread.Join();
-            }
-
-            b.ClearMemory();
-            p.Reset();
-
-            runner_parameters.exit.set(false);
-            thread = CreateRunnerThread(runner_parameters);
-            running = true;
-        }
-        else if (parts[0] == "lsfloppy")
-        {
-            if (floppy_controller == null)
-                Console.WriteLine("No floppy drive configured");
-            else
-            {
-                for(int i=0; i<floppy_controller.GetUnitCount(); i++)
-                    Console.WriteLine($"{i}] {floppy_controller.GetUnitFilename(i)}");
-            }
-        }
-        else if (parts[0] == "setfloppy")
-        {
-            if (floppy_controller == null)
-                Console.WriteLine("No floppy drive configured");
-            else if (parts.Length != 3)
-                Console.WriteLine("Number of parameters is incorrect");
-            else
-            {
-                int unit = int.Parse(parts[1]);
-                if (floppy_controller.SetUnitFilename(unit, parts[2]))
-                    Console.WriteLine("OK");
+                if (floppy_controller == null)
+                    Console.WriteLine("No floppy drive configured");
                 else
-                    Console.WriteLine("Failed: invalid unit number or file does not exist");
+                {
+                    for(int i=0; i<floppy_controller.GetUnitCount(); i++)
+                        Console.WriteLine($"{i}] {floppy_controller.GetUnitFilename(i)}");
+                }
             }
-        }
-        else if (parts[0] == "set")
-        {
-            CmdSet(parts, p, b);
-        }
-        else if (parts[0] == "get")
-        {
-            CmdGet(parts, p, b);
-        }
-        else if (parts[0] == "hd")
-        {
-            if (parts.Length == 3)
+            else if (parts[0] == "setfloppy")
             {
-                uint addr = (uint)(GetValue(parts[1], false) * 16 + GetValue(parts[2], false));
-                Console.WriteLine($"{addr:X6} {p.HexDump(addr)}");
+                if (floppy_controller == null)
+                    Console.WriteLine("No floppy drive configured");
+                else if (parts.Length != 3)
+                    Console.WriteLine("Number of parameters is incorrect");
+                else
+                {
+                    int unit = int.Parse(parts[1]);
+                    if (floppy_controller.SetUnitFilename(unit, parts[2]))
+                        Console.WriteLine("OK");
+                    else
+                        Console.WriteLine("Failed: invalid unit number or file does not exist");
+                }
+            }
+            else if (parts[0] == "set")
+            {
+                CmdSet(parts, p, b);
+            }
+            else if (parts[0] == "get")
+            {
+                CmdGet(parts, p, b);
+            }
+            else if (parts[0] == "hd")
+            {
+                string[] aparts = parts[1].Split(':');
+
+                if (aparts.Length == 2)
+                {
+                    uint addr = (uint)(GetValue(aparts[0], true) * 16 + GetValue(aparts[1], true));
+                    Console.WriteLine($"{addr:X6} {p.HexDump(addr)}");
+                }
+                else
+                {
+                    uint addr = (uint)GetValue(parts[1], false);
+                    Console.WriteLine($"{addr:X6} {p.HexDump(addr)}");
+                }
+            }
+            else if (parts[0] == "dr")
+            {
+                Console.WriteLine($"AX: {p.GetAX():X04}, BX: {p.GetBX():X04}, CX: {p.GetCX():X04}, DX: {p.GetDX():X04}");
+                Console.WriteLine($"SS: {p.GetSS():X04},           DS: {p.GetDS():X04}, ES: {p.GetES():X04}");
+                Console.WriteLine($"SP: {p.GetSP():X04}, BP: {p.GetBP():X04}, SI: {p.GetSI():X04}, DI: {p.GetDI():X04}");
+                ushort cs = p.GetCS();
+                ushort ip = p.GetIP();
+                Console.WriteLine($"CS: {cs:X04}, IP: {ip:X04} => ${cs * 16 + ip:X06}");
+                Console.WriteLine($"flags: {p.GetFlagsAsString()}");
             }
             else
             {
-                uint addr = (uint)GetValue(parts[1], false);
-                Console.WriteLine($"{addr:X6} {p.HexDump(addr)}");
+                Console.WriteLine($"\"{line}\" is not understood");
             }
         }
-        else
+        catch(Exception e)
         {
-            Console.WriteLine($"\"{line}\" is not understood");
+            Console.WriteLine($"The error \"{e}\" occured while processing \"{line}\"");
         }
     }
 }
