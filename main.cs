@@ -434,7 +434,7 @@ else
         if (parts[0] == "help")
         {
             Console.WriteLine("quit           terminate application");
-            Console.WriteLine("stop           stop emulation (running: {running})");
+            Console.WriteLine($"stop           stop emulation (running: {running})");
             Console.WriteLine("start          start emulation");
             Console.WriteLine("reset          reset emulator");
             Console.WriteLine("lsfloppy       list configured floppies");
