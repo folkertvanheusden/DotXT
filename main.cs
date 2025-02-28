@@ -410,8 +410,12 @@ else
             else if (parts[0] == "dr")
             {
                 Console.WriteLine($"AX: {p.GetAX():X04}, BX: {p.GetBX():X04}, CX: {p.GetCX():X04}, DX: {p.GetDX():X04}");
-                Console.WriteLine($"SS: {p.GetSS():X04},           DS: {p.GetDS():X04}, ES: {p.GetES():X04}");
-                Console.WriteLine($"SP: {p.GetSP():X04}, BP: {p.GetBP():X04}, SI: {p.GetSI():X04}, DI: {p.GetDI():X04}");
+                Console.WriteLine($"DS: {p.GetDS():X04}, ES: {p.GetES():X04}");
+                ushort ss = p.GetSS();
+                ushort sp = p.GetSP();
+                uint full_stack_addr = (uint)(ss * 16 + sp);
+                Console.WriteLine($"SS: {ss:X04}, SP: {sp:X04} => ${full_stack_addr:X06}, {p.HexDump(full_stack_addr)}");
+                Console.WriteLine($"BP: {p.GetBP():X04}, SI: {p.GetSI():X04}, DI: {p.GetDI():X04}");
                 ushort cs = p.GetCS();
                 ushort ip = p.GetIP();
                 Console.WriteLine($"CS: {cs:X04}, IP: {ip:X04} => ${cs * 16 + ip:X06}");
@@ -422,9 +426,13 @@ else
                 Console.WriteLine($"\"{line}\" is not understood");
             }
         }
+        catch(System.FormatException fe)
+        {
+            Console.WriteLine($"An error occured while processing \"{line}\": make sure you prefix hexadecimal values with \"0x\" and enter decimal values where required. Complete error message: \"{fe}\".");
+        }
         catch(Exception e)
         {
-            Console.WriteLine($"The error \"{e}\" occured while processing \"{line}\"");
+            Console.WriteLine($"The error \"{e}\" occured while processing \"{line}\".");
         }
     }
 }

@@ -916,7 +916,7 @@ internal class P8086
     }
 
     // TODO class/struct or enum Flags (with [Flags]) and ToString()
-    private string GetFlagsAsString()
+    public string GetFlagsAsString()
     {
         string @out = String.Empty;
 
