@@ -71,7 +71,7 @@ class Log
 
     public static void DoLog(string what, LogLevel ll)
     {
-        if (_logfile == null)
+        if (_logfile == null && _echo == false)
             return;
 
         string output = $"[{_nr} | {_cs:X04}:{_ip:X04}] {ll} " + (ll != LogLevel.TRACE ? "; " : "") + what + Environment.NewLine;
@@ -88,7 +88,7 @@ class Log
 
     public static void DoLog(string what, bool is_meta = false)
     {
-        if (_logfile == null)
+        if (_logfile == null && _echo == false)
             return;
 
         string output = $"[{_nr} | {_cs:X04}:{_ip:X04}] {LogLevel.TRACE} " + (is_meta ? "; " : "") + what + Environment.NewLine;

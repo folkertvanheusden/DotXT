@@ -264,7 +264,7 @@ else
     runner_parameters.cpu = p;
     runner_parameters.exit = new();
 
-    Thread thread = CreateRunnerThread(runner_parameters);
+    Thread thread = null;
 
     bool running = false;
 
@@ -336,11 +336,15 @@ else
                         Console.WriteLine(stop_reason);
                 }
             }
-            else if (line == "echo")
+            else if (parts[0] == "echo")
             {
+#if DEBUG
                 echo_state = !echo_state;
                 Console.WriteLine(echo_state ? "echo on" : "echo off");
                 Log.EchoToConsole(echo_state);
+#else
+                Console.WriteLine("Not a debug-build");
+#endif
             }
             else if (parts[0] == "start" || parts[0] == "go")
             {
@@ -450,18 +454,10 @@ else
             }
             else if (parts[0] == "hd")
             {
-                string[] aparts = parts[1].Split(':');
+                uint addr = (uint)GetValue(parts[1], true);
 
-                if (aparts.Length == 2)
-                {
-                    uint addr = (uint)(GetValue(aparts[0], true) * 16 + GetValue(aparts[1], true));
-                    Console.WriteLine($"{addr:X6} {p.HexDump(addr)}");
-                }
-                else
-                {
-                    uint addr = (uint)GetValue(parts[1], false);
-                    Console.WriteLine($"{addr:X6} {p.HexDump(addr)}");
-                }
+                for(int i=0; i<256; i+=16)
+                    Console.WriteLine($"{addr + i:X6} {p.HexDump((uint)(addr + i))} {p.CharDump((uint)(addr + i))}");
             }
             else if (parts[0] == "dr")
             {

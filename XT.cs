@@ -1064,10 +1064,25 @@ internal class P8086
     public string HexDump(uint addr)
     {
         string s = "";
-        for(uint o=0; o<32; o++)
+        for(uint o=0; o<16; o++)
         {
             var rc = _b.ReadByte((addr + o) & 0xfffff);
             s += $" {rc.Item1:X2}";
+        }
+        return s;
+    }
+
+    public string CharDump(uint addr)
+    {
+        string s = "";
+        for(uint o=0; o<16; o++)
+        {
+            var rc = _b.ReadByte((addr + o) & 0xfffff);
+            byte b = rc.Item1;
+            if (b >= 33 && b < 127)
+                s += $" {(char)b}";
+            else
+                s += " .";
         }
         return s;
     }
