@@ -174,7 +174,7 @@ class CGA : Display
         if (port == 0x3da)
         {
             int scanline = (_clock / 304) % 262;  // 262 scanlines, 304 cpu cycles per scanline
-            Log.DoLog($"Scanline: {scanline}, clock: {_clock}");
+            Log.DoLog($"Scanline: {scanline}, clock: {_clock}", true);
 
             if (scanline >= 200)  // 200 scanlines visible
                 return (1 /* regen buffer */ | 8 /* in vertical retrace */, false);
@@ -354,7 +354,7 @@ class CGA : Display
         }
         else
         {
-            Log.DoLog($"Unexpected mode {_cga_mode}");
+            Log.DoLog($"Unexpected mode {_cga_mode}", true);
             return;
         }
         for(int i=(int)_display_address; i<_display_address + byte_count; i += interval)

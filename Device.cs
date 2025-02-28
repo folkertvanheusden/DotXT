@@ -40,7 +40,7 @@ abstract class Device
             if (next_interrupt[0] <= 0)
             {
                 next_interrupt.RemoveAt(0);
-                Log.DoLog($"CheckScheduledInterrupt triggered");
+                Log.DoLog($"CheckScheduledInterrupt triggered", true);
                 return true;
             }
         }

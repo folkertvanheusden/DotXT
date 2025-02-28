@@ -50,14 +50,14 @@ class Keyboard : Device
 
             if ((value & 0x40) == 0x00)
             {
-                Log.DoLog($"Keyboard::IO_Write: clock low ({value:X4})");
+                Log.DoLog($"Keyboard::IO_Write: clock low ({value:X4})", true);
                 _clock_low = true;
             }
             else if (_clock_low)
             {
                 _clock_low = false;
 
-                Log.DoLog($"Keyboard::IO_Write: reset triggered; clock high ({value:X4})");
+                Log.DoLog($"Keyboard::IO_Write: reset triggered; clock high ({value:X4})", true);
                 _keyboard_buffer_lock.WaitOne();
                 _keyboard_buffer.Clear();
                 _keyboard_buffer.Enqueue(0xaa);  // power on reset reply

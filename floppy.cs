@@ -166,7 +166,7 @@ class FloppyDisk : Device
                 sectors_per_track = 18;
 
             if (sector > sectors_per_track)
-                Log.DoLog($"Floppy-ReadData: reading beyond sector-count? ({sector} > {sectors_per_track})");
+                Log.DoLog($"Floppy-ReadData: reading beyond sector-count? ({sector} > {sectors_per_track})", true);
 
             int lba = (cylinder * 2 + head) * sectors_per_track + sector - 1;
             long offset = lba * b.Length;
@@ -254,7 +254,7 @@ class FloppyDisk : Device
         }
         while(dma_finished == false);
 
-        Log.DoLog($"Floppy-ReadData {sector - old_data[4]} sector(s) read");
+        Log.DoLog($"Floppy-ReadData {sector - old_data[4]} sector(s) read", true);
 
         return true;
     }
@@ -378,7 +378,7 @@ class FloppyDisk : Device
             {
                 if (_data_offset >= _data.Length)
                 {
-                        Log.DoLog($"Floppy-OUT command buffer overflow");
+                        Log.DoLog($"Floppy-OUT command buffer overflow", true);
                         return false;
                 }
 

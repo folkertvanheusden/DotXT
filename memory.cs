@@ -14,7 +14,7 @@ internal class Memory
         if (address >= _m.Length)
         {
 #if DEBUG
-            Log.DoLog($"Memory::ReadByte: {address} > {_m.Length}");
+            Log.DoLog($"Memory::ReadByte: {address} > {_m.Length}", true);
 #endif
             return 0xee;
         }

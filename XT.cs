@@ -1311,7 +1311,7 @@ internal class P8086
         {
             if (++_crash_counter >= 5)
             {
-                Log.DoLog($"Terminating because of {_crash_counter}x 0x00 opcode ({address:X06})");
+                Log.DoLog($"Terminating because of {_crash_counter}x 0x00 opcode ({address:X06})", true);
                 return false;
             }
         }
@@ -4235,7 +4235,7 @@ internal class P8086
 
         if (cycle_count == 0)
         {
-            Log.DoLog($"cyclecount not set for {opcode:X02}");
+            Log.DoLog($"cyclecount not set for {opcode:X02}", true);
             cycle_count = 1;  // TODO workaround
         }
 

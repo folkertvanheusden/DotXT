@@ -72,22 +72,22 @@ internal class RTC : Device
             else
             {
                 rc = _ram[_cmos_ram_index];
-                Log.DoLog($"RTC register {_cmos_ram_index:X02} not implemented");
+                Log.DoLog($"RTC register {_cmos_ram_index:X02} not implemented", true);
             }
         }
         else
         {
-            Log.DoLog($"RTC reading from {port:X04} not implemented");
+            Log.DoLog($"RTC reading from {port:X04} not implemented", true);
         }
 
-        Log.DoLog($"RTC IN {port:X04} (index: {_cmos_ram_index:X02}), returning {rc:X02}");
+        Log.DoLog($"RTC IN {port:X04} (index: {_cmos_ram_index:X02}), returning {rc:X02}", true);
 
         return (rc, false);
     }
 
     public override bool IO_Write(ushort port, ushort value)
     {
-        Log.DoLog($"RTC OUT {port:X04}, value {value:X02} (index: {_cmos_ram_index:X02})");
+        Log.DoLog($"RTC OUT {port:X04}, value {value:X02} (index: {_cmos_ram_index:X02})", true);
 
         if (port == 0x070 || port == 0x240 || port == 0x2c0)
             _cmos_ram_index = (byte)(value & 127);
