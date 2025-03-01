@@ -44,6 +44,7 @@ internal class P8086
     private ushort _hlt_ip;
 
     private int _crash_counter = 0;
+    private bool _terminate_on_off_the_rails = false;
 
     private const uint MemMask = 0x00ffffff;
 
@@ -57,7 +58,6 @@ internal class P8086
     private byte _rep_opcode;
 
     private bool _is_test;
-    private bool _terminate_on_hlt;
 
     private int _clock;
     private List<Device> _devices;
@@ -65,13 +65,12 @@ internal class P8086
     private List<uint> _breakpoints = new();
     private string _stop_reason = "";
 
-    public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool terminate_on_hlt, ref List<Device> devices, bool run_IO)
+    public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, ref List<Device> devices, bool run_IO)
     {
         _b = b;
         _devices = devices;
         _io = new IO(b, ref devices, !run_IO);
-
-        _terminate_on_hlt = terminate_on_hlt;
+        _terminate_on_off_the_rails = run_IO;
 
         if (test != "" && t_mode == TMode.Binary)
         {
@@ -1179,7 +1178,7 @@ internal class P8086
 
         if (opcode == 0x00)
         {
-            if (++_crash_counter >= 5)
+            if (_terminate_on_off_the_rails == true && ++_crash_counter >= 5)
             {
                 _stop_reason = $"Terminating because of {_crash_counter}x 0x00 opcode ({address:X06})";
                 Log.DoLog(_stop_reason);
