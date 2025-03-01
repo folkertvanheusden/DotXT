@@ -353,6 +353,8 @@ else
             {
                 runner_parameters.disassemble = !runner_parameters.disassemble;
                 Console.WriteLine(runner_parameters.disassemble ? "disassembly on" : "disassembly off");
+                if (running)
+                    Console.WriteLine("Please stop+start emulation to activate tracing");
             }
             else if (parts[0] == "echo")
             {
@@ -526,7 +528,7 @@ void Disassemble(ushort cs, ushort ip)
     (int length, string instruction, string meta, string hex) = p.Disassemble(cs, ip);
 
     uint flat_addr = (uint)(cs * 16 + ip);
-    Log.DoLog($"{p.GetClock()} {flat_addr:X6} | {registers_str} | {hex} | {instruction} | {meta}");
+    Log.DoLog($"{p.GetClock()} {flat_addr:X6} | {registers_str} | {instruction} | {hex} | {meta}");
 }
 
 void Runner(object o)
