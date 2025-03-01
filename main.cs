@@ -300,7 +300,7 @@ else
                 Console.WriteLine($"stop           stop emulation (running: {running})");
                 Console.WriteLine("start / go     start emulation");
                 Console.WriteLine("reset          reset emulator");
-                Console.WriteLine("disassemble /da  toggle disassembly while emulating");
+                Console.WriteLine("disassemble / da  toggle disassembly while emulating");
                 Console.WriteLine("echo           toggle logging to console");
                 Console.WriteLine("lsfloppy       list configured floppies");
                 Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
