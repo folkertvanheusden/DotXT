@@ -4407,7 +4407,7 @@ internal class P8086
         {
             short a = (short)DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
             instr = $"CALL {a:X4}";
-            meta = $"{SegmentAddr(_cs, _ip)})";
+            meta = $"{SegmentAddr(_cs, _ip)}";
         }
         else if (opcode == 0xea)
         {
