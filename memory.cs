@@ -38,6 +38,13 @@ internal class Rom
     {
         _contents = File.ReadAllBytes(filename);
         _offset = offset;
+
+        if (_contents[0] != 0x55 || _contents[1] != 0xaa)
+        {
+            string msg = $"ROM {filename} might not be valid! (0x55aa header missing)";
+            Log.DoLog(msg);
+            Console.WriteLine(msg);
+        }
     }
 
     public uint GetSize()
