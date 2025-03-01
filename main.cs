@@ -28,6 +28,9 @@ FloppyDisk floppy_controller = null;
 
 bool throttle = false;
 
+bool use_midi = false;
+bool use_rtc = false;
+
 for(int i=0; i<args.Length; i++)
 {
     if (args[i] == "-h") {
@@ -44,6 +47,7 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-I        disable I/O ports");
         Console.WriteLine("-S        try to run at real speed");
         Console.WriteLine("-P        skip prompt");
+        Console.WriteLine("-O        enable option. currently: midi, rtc");
         Console.WriteLine("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
         Console.WriteLine($"-p device,type,port   port to listen on. type must be \"telnet\", \"http\" or \"vnc\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
         Console.WriteLine("-o cs,ip  start address (in hexadecimal)");
@@ -55,6 +59,19 @@ for(int i=0; i<args.Length; i++)
         throttle = true;
     else if (args[i] == "-T")
         load_test_at = (uint)GetValue(args[++i], true);
+    else if (args[i] == "-O")
+    {
+        string what = args[++i];
+        if (what == "midi")
+            use_midi = true;
+        else if (what == "rtc")
+            use_rtc = true;
+        else
+        {
+            Console.WriteLine($"{what} is not understood");
+            System.Environment.Exit(1);
+        }
+    }
     else if (args[i] == "-p")
     {
         string[] parts = args[++i].Split(',');
@@ -191,9 +208,11 @@ if (mode != TMode.Blank)
     if (ide.Count() > 0)
         devices.Add(new XTIDE(ide));
 
-    devices.Add(new MIDI());
+    if (use_midi)
+        devices.Add(new MIDI());
 
-    devices.Add(new RTC());
+    if (use_rtc)
+        devices.Add(new RTC());
 }
 
 // Bus gets the devices for memory mapped i/o
