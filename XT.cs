@@ -4790,6 +4790,7 @@ internal class P8086
                 instr = $"opcode {opcode:X2} not implemented";
 
             meta = $"{newAddresses:X4}";
+            instr = name;
         }
         else if (opcode == 0xe4)
         {

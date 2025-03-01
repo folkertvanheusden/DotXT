@@ -150,7 +150,7 @@ if (test == "")
 Console.TreatControlCAsInput = true;
 
 #if DEBUG
-Console.WriteLine("Debug mode");
+Console.WriteLine("Debug build");
 #endif
 
 List<Device> devices = new();
@@ -217,10 +217,15 @@ if (json_processing)
         string[] parts = line.Split(' ');
 
         if (line == "s")
+        {
+            Disassemble(p.GetCS(), p.GetIP());
             p.Tick();
+        }
         else if (line == "S")
         {
-            do {
+            Disassemble(p.GetCS(), p.GetIP());
+            do
+            {
                 p.Tick();
             }
             while(p.IsProcessingRep());
@@ -263,6 +268,7 @@ else
     RunnerParameters runner_parameters = new();
     runner_parameters.cpu = p;
     runner_parameters.exit = new();
+    runner_parameters.disassemble = false;
 
     Thread thread = null;
 
@@ -294,7 +300,8 @@ else
                 Console.WriteLine($"stop           stop emulation (running: {running})");
                 Console.WriteLine("start / go     start emulation");
                 Console.WriteLine("reset          reset emulator");
-                Console.WriteLine("echo           toggle disassembly to console");
+                Console.WriteLine("disassemble /da  toggle disassembly while emulating");
+                Console.WriteLine("echo           toggle logging to console");
                 Console.WriteLine("lsfloppy       list configured floppies");
                 Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
                 Console.WriteLine("get [reg|ram] [regname|address]  get value from a register/memory location");
@@ -316,6 +323,9 @@ else
                 {
                     do
                     {
+                        if (runner_parameters.disassemble)
+                            Disassemble(p.GetCS(), p.GetIP());
+
                         if (p.Tick() == false)
                         {
                             rc = false;
@@ -326,6 +336,9 @@ else
                 }
                 else
                 {
+                    if (runner_parameters.disassemble)
+                        Disassemble(p.GetCS(), p.GetIP());
+
                     rc = p.Tick();
                 }
 
@@ -336,15 +349,16 @@ else
                         Console.WriteLine(stop_reason);
                 }
             }
+            else if (parts[0] == "disassemble" || parts[0] == "da")
+            {
+                runner_parameters.disassemble = !runner_parameters.disassemble;
+                Console.WriteLine(runner_parameters.disassemble ? "disassembly on" : "disassembly off");
+            }
             else if (parts[0] == "echo")
             {
-#if DEBUG
                 echo_state = !echo_state;
                 Console.WriteLine(echo_state ? "echo on" : "echo off");
                 Log.EchoToConsole(echo_state);
-#else
-                Console.WriteLine("Not a debug-build");
-#endif
             }
             else if (parts[0] == "start" || parts[0] == "go")
             {
@@ -504,6 +518,17 @@ Thread CreateRunnerThread(RunnerParameters runner_parameters)
     return thread;
 }
 
+void Disassemble(ushort cs, ushort ip)
+{
+    string registers_str = $"{p.GetFlagsAsString()} AX:{p.GetAX():X4} BX:{p.GetBX():X4} CX:{p.GetCX():X4} DX:{p.GetDX():X4} SP:{p.GetSP():X4} BP:{p.GetBP():X4} SI:{p.GetSI():X4} DI:{p.GetDI():X4} flags:{p.GetFlags():X4} ES:{p.GetES():X4} CS:{cs:X4} SS:{p.GetSS():X4} DS:{p.GetDS():X4} IP:{ip:X4}";
+
+    // instruction length, instruction string, additional info, hex-string
+    (int length, string instruction, string meta, string hex) = p.Disassemble(cs, ip);
+
+    uint flat_addr = (uint)(cs * 16 + ip);
+    Log.DoLog($"{flat_addr:X6} | {registers_str} | {hex} | {instruction} | {meta}");
+}
+
 void Runner(object o)
 {
     RunnerParameters runner_parameters = (RunnerParameters)o;
@@ -515,8 +540,14 @@ void Runner(object o)
 
         long prev_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
         int prev_clock = 0;
-        while(p.Tick() && runner_parameters.exit.get() == false)
+        for(;;)
         {
+            if (runner_parameters.disassemble)
+                Disassemble(p.GetCS(), p.GetIP());
+
+            if (p.Tick() == false || runner_parameters.exit.get() == true)
+                break;
+
             if (!throttle)
                 continue;
 
@@ -736,4 +767,5 @@ struct RunnerParameters
 {
     public P8086 cpu { get; set; }
     public ThreadSafe_Bool exit;
+    public bool disassemble;
 };
