@@ -2,7 +2,6 @@ internal class PPI : Device
 {
     private byte _control = 0;
     private bool _dipswitches_high = false;
-    private byte [] _cache = new byte[4];
     private Keyboard _kb = null;
 
     public PPI(Keyboard kb)
@@ -28,7 +27,7 @@ internal class PPI : Device
         mappings[0x0063] = this;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         Log.DoLog($"PPI::IO_Read: {port:X4}", true);
 
@@ -45,24 +44,22 @@ internal class PPI : Device
         return _kb.IO_Read(port);
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
         Log.DoLog($"PPI::IO_Write: {port:X4} {value:X2}", true);
-
-        _cache[port - 0x0060] = value;
 
         if (port == 0x0061)
         {
             if ((_control & 4) == 4)  // dipswitches selection
                 _dipswitches_high = (value & 8) == 8;
 
-            if ((_control & 2) == 2)  // speaker
-                return false;
+//            if ((_control & 2) == 2)  // speaker
+ //               // return false;
             // fall through for keyboard
         }
         else if (port == 0x0063)
         {
-            _control = value;
+            _control = (byte)value;
             return false;
         }
 

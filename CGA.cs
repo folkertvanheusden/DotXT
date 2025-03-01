@@ -57,6 +57,7 @@ class CGA : Display
 
     public CGA(List<EmulatorConsole> consoles): base(consoles)
     {
+        Console.WriteLine("CGA instantiated");
         font_descr = fonts.get_font(FontName.VGA);
         _gf.rgb_pixels = null;
     }
@@ -98,22 +99,22 @@ class CGA : Display
         return false;
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
-        Log.DoLog($"CGA::IO_Write {port:X4} {value:X2}", true);
+        Log.DoLog($"CGA::IO_Write {port:X4} {value:X4}", true);
 
         if (port == 0x3d4 || port == 0x3d6 || port == 0x3d0 || port == 0x3d2)
-            _m6845_reg = value;
+            _m6845_reg = (byte)value;
         else if (port == 0x3d5 || port == 0x3d7 || port == 0x3d1 || port == 0x3d3)
         {
-            _m6845.Write(_m6845_reg, value);
+            _m6845.Write(_m6845_reg, (byte)value);
             _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
-            Console.WriteLine($"Set base address to {_display_address:X04}");
+            Log.DoLog($"Set base address to {_display_address:X04}", true);
             Redraw();
         }
         else if (port == 0x3d8)
         {
-            if (_graphics_mode != value)
+            if (_graphics_mode != (byte)value)
             {
                 if ((value & 2) == 2)  // graphics 320x200
                 {
@@ -145,25 +146,25 @@ class CGA : Display
                     _gf.height = font_descr.height * 25;
                 }
                 _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
-                _graphics_mode = value;
-                Console.WriteLine($"CGA mode is now {value:X02} ({_cga_mode}), {_gf.width}x{_gf.height}");
+                _graphics_mode = (byte)value;
+                Log.DoLog($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", true);
                 Redraw();
             }
         }
         else if (port == 0x3d9)
         {
-            _color_configuration = value;
-            Console.WriteLine($"CGA color configuration: {_color_configuration:X02}");
+            _color_configuration = (byte)value;
+            Log.DoLog($"CGA color configuration: {_color_configuration:X02}", true);
         }
         else
         {
-            Console.WriteLine($"CGA output to this ({port:X04}) port not implemented");
+            Log.DoLog($"CGA output to this ({port:X04}) port not implemented", true);
         }
 
         return false;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         Log.DoLog("CGA::IO_Read", true);
 
@@ -172,8 +173,8 @@ class CGA : Display
 
         if (port == 0x3da)
         {
-            int scanline = (_clock / 304) % 262;  // 262 scanlines, 304 cpu cycles per scanline
-            Log.DoLog($"Scanline: {scanline}, clock: {_clock}");
+            int scanline = (int)((_clock / 304) % 262);  // 262 scanlines, 304 cpu cycles per scanline
+            Log.DoLog($"Scanline: {scanline}, clock: {_clock}", true);
 
             if (scanline >= 200)  // 200 scanlines visible
                 return (1 /* regen buffer */ | 8 /* in vertical retrace */, false);
@@ -353,7 +354,7 @@ class CGA : Display
         }
         else
         {
-            Log.DoLog($"Unexpected mode {_cga_mode}");
+            Log.DoLog($"Unexpected mode {_cga_mode}", true);
             return;
         }
         for(int i=(int)_display_address; i<_display_address + byte_count; i += interval)

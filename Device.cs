@@ -1,14 +1,14 @@
 abstract class Device
 {
     protected pic8259 _pic = null;
-    private int next_interrupt = -1;
-    protected int _clock = 0;
+    private List<int> next_interrupt = new();
+    protected long _clock = 0;
 
     public abstract String GetName();
 
     public abstract void RegisterDevice(Dictionary <ushort, Device> mappings);
-    public abstract bool IO_Write(ushort port, byte value);
-    public abstract (byte, bool) IO_Read(ushort port);
+    public abstract bool IO_Write(ushort port, ushort value);
+    public abstract (ushort, bool) IO_Read(ushort port);
 
     public int GetWaitStateCycles()
     {
@@ -19,7 +19,7 @@ abstract class Device
     public abstract void WriteByte(uint offset, byte value);
     public abstract byte ReadByte(uint offset);
 
-    public virtual bool Tick(int cycles, int clock)
+    public virtual bool Tick(int cycles, long clock)
     {
         _clock = clock;
         return false;
@@ -29,20 +29,18 @@ abstract class Device
 
     protected void ScheduleInterrupt(int cycles_delay)
     {
-        next_interrupt = cycles_delay;
+        next_interrupt.Add(cycles_delay);
     }
 
     protected bool CheckScheduledInterrupt(int cycles)
     {
-        if (next_interrupt >= 0)
+        if (next_interrupt.Count() > 0)
         {
-            Log.DoLog($"CheckScheduledInterrupt {next_interrupt}, {cycles}");
-            next_interrupt -= cycles;
-
-            if (next_interrupt <= 0)
+            next_interrupt[0] -= cycles;
+            if (next_interrupt[0] <= 0)
             {
-                next_interrupt = -1;
-                Log.DoLog($"CheckScheduledInterrupt triggered");
+                next_interrupt.RemoveAt(0);
+                Log.DoLog($"CheckScheduledInterrupt triggered", true);
                 return true;
             }
         }

@@ -16,7 +16,7 @@ internal class i8253 : Device
     Timer [] _timers = new Timer[3];
     protected int _irq_nr = 0;
     i8237 _i8237 = null;
-    int clock = 0;
+    long clock = 0;
 
     // using a static seed to make it behave
     // the same every invocation (until threads
@@ -47,7 +47,7 @@ internal class i8253 : Device
         mappings[0x0043] = this;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         if (port == 0x0040)
             return (GetCounter(0), _timers[0].is_pending);
@@ -61,16 +61,16 @@ internal class i8253 : Device
         return (0xaa, false);
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
         if (port == 0x0040)
-            LatchCounter(0, value);
+            LatchCounter(0, (byte)value);
         else if (port == 0x0041)
-            LatchCounter(1, value);
+            LatchCounter(1, (byte)value);
         else if (port == 0x0042)
-            LatchCounter(2, value);
+            LatchCounter(2, (byte)value);
         else if (port == 0x0043)
-            Command(value);
+            Command((byte)value);
 
         return _timers[0].is_pending || _timers[1].is_pending || _timers[2].is_pending;
     }
@@ -220,7 +220,7 @@ internal class i8253 : Device
         }
     }
 
-    public override bool Tick(int ticks, int ignored)
+    public override bool Tick(int ticks, long ignored)
     {
         clock += ticks;
 

@@ -59,8 +59,9 @@ class IO
 
         if (_io_map.ContainsKey(addr))
         {
-            Log.DoLog($"IN: reading {addr:X4} from device", true);
-            return _io_map[addr].IO_Read(addr);
+            var rc = _io_map[addr].IO_Read(addr);
+            Log.DoLog($"IN: read {rc.Item1:X02} from device on I/O port {addr:X4}", true);
+            return rc;
         }
 
         Log.DoLog($"IN: I/O port {addr:X4} not implemented", true);
@@ -68,7 +69,7 @@ class IO
         return (0xff, false);
     }
 
-    public bool Tick(int ticks, int clock)
+    public bool Tick(int ticks, long clock)
     {
         bool rc = false;
 
@@ -94,7 +95,7 @@ class IO
         else
         {
             if (_io_map.ContainsKey(addr))
-                return _io_map[addr].IO_Write(addr, (byte)value);
+                return _io_map[addr].IO_Write(addr, value);
         }
 
 #if DEBUG

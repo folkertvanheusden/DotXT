@@ -2,7 +2,7 @@ internal enum DataState { NotSet, WaitCmd, HaveData, WantData }
 
 class FloppyDisk : Device
 {
-    private byte [] _registers = new byte[8];
+    private ushort [] _registers = new ushort[8];
     private i8237 _dma_controller = null;
     protected int _irq_nr = 6;
     private bool _dma = false;
@@ -16,10 +16,44 @@ class FloppyDisk : Device
     private int [] _cylinder = new int[4];
     private int [] _head = new int[4];
     private int _cylinder_seek_result = 0;
+    private readonly System.Threading.Lock _filenames_lock = new();
 
     public FloppyDisk(List<string> filenames)
     {
+        Console.WriteLine("Floppy drive instantiated");
         _filenames = filenames;
+    }
+
+    public int GetUnitCount()
+    {
+        return _filenames.Count();
+    }
+
+    public string GetUnitFilename(int unit)
+    {
+        lock(_filenames_lock)
+        {
+            if (unit < _filenames.Count())
+            {
+                return _filenames[unit];
+            }
+        }
+
+        return null;
+    }
+
+    public bool SetUnitFilename(int unit, string filename)
+    {
+        lock(_filenames_lock)
+        {
+            if (unit < _filenames.Count() && File.Exists(filename))
+            {
+                _filenames[unit] = filename;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public override int GetIRQNumber()
@@ -76,7 +110,7 @@ class FloppyDisk : Device
         return _data_state == DataState.WantData;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         int bytes_left = _data == null ? 0 : (_data.Length - _data_offset);
         Log.DoLog($"Floppy-IN {_io_names[port - 0x3f0]}: {port:X4} {_data_state}, bytes left: {bytes_left}", true);
@@ -141,16 +175,22 @@ class FloppyDisk : Device
         long offset = lba * b.Length;
         Log.DoLog($"GetFromFloppyImage {unit}, LBA {lba}, offset {offset}, n {n} C {cylinder} H {head} S {sector} ({sectors_per_track})", true);
 
-        for(int nr=0; nr<n; nr++)
+        lock(_filenames_lock)
         {
-            using (FileStream fs = File.Open(_filenames[unit], FileMode.Open, FileAccess.Read, FileShare.None))
+            if (sector > sectors_per_track)
+                Log.DoLog($"Floppy-ReadData: reading beyond sector-count? ({sector} > {sectors_per_track})", true);
+
+            for(int nr=0; nr<n; nr++)
             {
-                fs.Seek(offset, SeekOrigin.Begin);
-                if (fs.Read(b, 256 * nr, 256) != 256)
-                    Log.DoLog($"GetFromFloppyImage failed reading from backend ({_filenames[unit]}, offset: {offset})", true);
-                if (fs.Position != offset + 256)
-                    Log.DoLog($"GetFromFloppyImage backend data processing error?", true);
-                offset += 256;
+                using (FileStream fs = File.Open(_filenames[unit], FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    fs.Seek(offset, SeekOrigin.Begin);
+                    if (fs.Read(b, 256 * nr, 256) != 256)
+                        Log.DoLog($"Floppy-ReadData failed reading from backend ({_filenames[unit]}, offset: {offset})", true);
+                    if (fs.Position != offset + 256)
+                        Log.DoLog($"Floppy-ReadData backend data processing error?", true);
+                    offset += 256;
+                }
             }
         }
 
@@ -159,8 +199,11 @@ class FloppyDisk : Device
 
     private bool ReadData(int unit)
     {
-        if (unit >= _filenames.Count())
-            return false;
+        lock(_filenames_lock)
+        {
+            if (unit >= _filenames.Count())
+                return false;
+        }
 
         int sector = _data[4];
         int head = (_data[1] & 4) == 4 ? 1 : 0;
@@ -233,7 +276,7 @@ class FloppyDisk : Device
             Log.DoLog($"set count {sector}");
         }
 
-        Log.DoLog($"Floppy-ReadData {sector - old_data[4]} sector(s) read");
+        Log.DoLog($"Floppy-ReadData {sector - old_data[4]} sector(s) read", true);
 
         return true;
     }
@@ -400,7 +443,7 @@ class FloppyDisk : Device
 #endif
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
         if (_data_state == DataState.WantData || _data_state == DataState.HaveData)
             Log.DoLog($"Floppy-OUT {_io_names[port - 0x3f0]}: {port:X4} {value:X2} {_data_state} cmd:{_data[0]:X} data left:{_data.Length - _data_offset}", true);
@@ -514,11 +557,11 @@ class FloppyDisk : Device
             {
                 if (_data_offset >= _data.Length)
                 {
-                        Log.DoLog($"Floppy-OUT command buffer overflow");
+                        Log.DoLog($"Floppy-OUT command buffer overflow", true);
                         return false;
                 }
 
-                _data[_data_offset++] = value;
+                _data[_data_offset++] = (byte)value;  // FIXME
                 if (_data_offset == _data.Length)
                 {
                     if (_data[0] == 0x06)  // READ DATA

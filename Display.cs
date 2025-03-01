@@ -4,7 +4,7 @@ abstract class Display : Device
 {
     private DateTime _prev_ts = DateTime.UtcNow;
     private int _prev_clock = 0;
-    private int _last_hsync = 0;
+    private long _last_hsync = 0;
     private List<EmulatorConsole> _consoles = null;
     protected GraphicalFrame _gf = new();
     protected ulong _gf_version = 1;
@@ -71,7 +71,7 @@ abstract class Display : Device
     public abstract void Redraw();
 
 /*
-    public void SyncClock(int clock)
+    public void SyncClock(long clock)
     {
         DateTime now_ts = DateTime.UtcNow;
         TimeSpan elapsed_time = now_ts.Subtract(_prev_ts);
@@ -94,7 +94,7 @@ abstract class Display : Device
 
     public abstract override bool HasAddress(uint addr);
 
-    public abstract override bool IO_Write(ushort port, byte value);
+    public abstract override bool IO_Write(ushort port, ushort value);
 
     protected bool IsHsync()
     {
@@ -107,12 +107,15 @@ abstract class Display : Device
         return hsync;
     }
 
-    public abstract override (byte, bool) IO_Read(ushort port);
+    public abstract override (ushort, bool) IO_Read(ushort port);
 
     protected void EmulateTextDisplay(uint x, uint y, byte character, byte attributes)
     {
         // attribute, character
-        Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", true);
+#if DEBUG
+        if (character >= 32 && character < 127)
+            Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", true);
+#endif
 
         WriteTextConsole((char)27); // position cursor
         WriteTextConsole($"[{y + 1};{x + 1}H");

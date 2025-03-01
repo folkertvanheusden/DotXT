@@ -12,7 +12,7 @@ bool set_initial_ip = false;
 bool run_IO = true;
 uint load_test_at = 0xffffffff;
 
-bool debugger = false;
+bool json_processing = false;
 bool prompt = true;
 
 uint ram_size = 1024;
@@ -22,7 +22,11 @@ List<Rom> roms = new();
 string key_mda = "mda";
 string key_cga = "cga";
 
+List<string> ide = new();
 Dictionary<string, List<Tuple<string, int> > > consoles = new();
+FloppyDisk floppy_controller = null;
+
+bool throttle = false;
 
 for(int i=0; i<args.Length; i++)
 {
@@ -38,16 +42,19 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-F file   load floppy image (multiple for drive A-D)");
         Console.WriteLine("-D file   disassemble to file");
         Console.WriteLine("-I        disable I/O ports");
-        Console.WriteLine("-d        enable debugger");
+        Console.WriteLine("-S        try to run at real speed");
         Console.WriteLine("-P        skip prompt");
+        Console.WriteLine("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
         Console.WriteLine($"-p device,type,port   port to listen on. type must be \"telnet\", \"http\" or \"vnc\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
         Console.WriteLine("-o cs,ip  start address (in hexadecimal)");
         System.Environment.Exit(0);
     }
     else if (args[i] == "-t")
         test = args[++i];
+    else if (args[i] == "-S")
+        throttle = true;
     else if (args[i] == "-T")
-        load_test_at = (uint)Convert.ToInt32(args[++i], 16);
+        load_test_at = (uint)GetValue(args[++i], true);
     else if (args[i] == "-p")
     {
         string[] parts = args[++i].Split(',');
@@ -85,6 +92,8 @@ for(int i=0; i<args.Length; i++)
             System.Environment.Exit(1);
         }
     }
+    else if (args[i] == "-X")
+        ide.Add(args[++i]);
     else if (args[i] == "-l")
         Log.SetLogFile(args[++i]);
     else if (args[i] == "-L")
@@ -96,19 +105,19 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-F")
         floppies.Add(args[++i]);
     else if (args[i] == "-d")
-        debugger = true;
+        json_processing = true;
     else if (args[i] == "-P")
         prompt = false;
     else if (args[i] == "-s")
-        ram_size = (uint)Convert.ToInt32(args[++i], 10);
+        ram_size = (uint)GetValue(args[++i], false);
     else if (args[i] == "-R")
     {
         string[] parts = args[++i].Split(',');
         string file = parts[0];
 
         string[] aparts = parts[1].Split(':');
-        uint seg = (uint)Convert.ToInt32(aparts[0], 16);
-        uint ip = (uint)Convert.ToInt32(aparts[1], 16);
+        uint seg = (uint)GetValue(aparts[0], true);
+        uint ip = (uint)GetValue(aparts[1], true);
         uint addr = seg * 16 + ip;
 
         Console.WriteLine($"Loading {file} to {addr:X06}");
@@ -119,8 +128,8 @@ for(int i=0; i<args.Length; i++)
     {
         string[] parts = args[++i].Split(',');
 
-        initial_cs = (ushort)Convert.ToInt32(parts[0], 16);
-        initial_ip = (ushort)Convert.ToInt32(parts[1], 16);
+        initial_cs = (ushort)GetValue(parts[0], true);
+        initial_ip = (ushort)GetValue(parts[1], true);
 
         set_initial_ip = true;
     }
@@ -138,12 +147,10 @@ if (test == "")
     Console.WriteLine("Released in the public domain");
 }
 
-Console.CancelKeyPress += delegate {
-    Log.EmitDisassembly();
-};
+Console.TreatControlCAsInput = true;
 
 #if DEBUG
-Console.WriteLine("Debug mode");
+Console.WriteLine("Debug build");
 #endif
 
 List<Device> devices = new();
@@ -176,69 +183,55 @@ if (mode != TMode.Blank)
     devices.Add(new i8253());
 
     if (floppies.Count() > 0)
-        devices.Add(new FloppyDisk(floppies));
+    {
+        floppy_controller = new FloppyDisk(floppies);
+        devices.Add(floppy_controller);
+    }
 
-    string [] drives = new string[] { "ide.img" };
-    devices.Add(new XTIDE(drives));
+    if (ide.Count() > 0)
+        devices.Add(new XTIDE(ide));
 
     devices.Add(new MIDI());
+
+    devices.Add(new RTC());
 }
 
 // Bus gets the devices for memory mapped i/o
 Bus b = new Bus(ram_size * 1024, ref devices, ref roms);
 
-var p = new P8086(ref b, test, mode, load_test_at, false, ref devices, run_IO);
+var p = new P8086(ref b, test, mode, load_test_at, ref devices, run_IO);
 
 if (set_initial_ip)
     p.set_ip(initial_cs, initial_ip);
 
-if (debugger)
+if (json_processing)
 {
-    bool echo_state = true;
-
-    Log.EchoToConsole(echo_state);
-
     for(;;)
     {
         if (prompt)
             Console.Write("==>");
 
         string line = Console.ReadLine();
-
-        //Log.DoLog(line);
+        Log.DoLog($"CMDLINE: {line}", true);
 
         string[] parts = line.Split(' ');
 
         if (line == "s")
+        {
+            Disassemble(p.GetCS(), p.GetIP());
             p.Tick();
+        }
         else if (line == "S")
         {
-            do {
+            Disassemble(p.GetCS(), p.GetIP());
+            do
+            {
                 p.Tick();
             }
             while(p.IsProcessingRep());
         }
         else if (line == "q")
             break;
-        else if (line == "echo")
-        {
-            echo_state = !echo_state;
-
-            Console.WriteLine(echo_state ? "echo on" : "echo off");
-
-            Log.EchoToConsole(echo_state);
-        }
-        else if (parts[0] == "ef")
-        {
-            if (parts.Length != 2)
-                Console.WriteLine("usage: ef 0xhex_address");
-            else
-            {
-                int address = Convert.ToInt32(parts[1], 16);
-
-                Console.WriteLine($"{address:X6} {p.HexDump((uint)address)}");
-            }
-        }
         else if (parts[0] == "dolog")
         {
             Log.DoLog(line);
@@ -246,150 +239,21 @@ if (debugger)
         else if (parts[0] == "reset")
         {
             b.ClearMemory();
+            p.Reset();
         }
         else if (parts[0] == "set")
         {
-            if (parts.Length != 4)
-                Console.WriteLine("usage: set [reg|ram] [regname|address] value");
-            else if (parts[1] == "reg")
-            {
-                string regname = parts[2];
-                ushort value = (ushort)Convert.ToInt32(parts[3], 10);
-
-                try
-                {
-                    if (regname == "ax")
-                        p.SetAX(value);
-                    else if (regname == "bx")
-                        p.SetBX(value);
-                    else if (regname == "cx")
-                        p.SetCX(value);
-                    else if (regname == "dx")
-                        p.SetDX(value);
-                    else if (regname == "ss")
-                        p.SetSS(value);
-                    else if (regname == "cs")
-                        p.SetCS(value);
-                    else if (regname == "ds")
-                        p.SetDS(value);
-                    else if (regname == "es")
-                        p.SetES(value);
-                    else if (regname == "sp")
-                        p.SetSP(value);
-                    else if (regname == "bp")
-                        p.SetBP(value);
-                    else if (regname == "si")
-                        p.SetSI(value);
-                    else if (regname == "di")
-                        p.SetDI(value);
-                    else if (regname == "ip")
-                        p.SetIP(value);
-                    else if (regname == "flags")
-                        p.SetFlags(value);
-                    else
-                    {
-                        Console.WriteLine($"Register {regname} not known");
-                        continue;
-                    }
-
-                    Console.WriteLine($"<SET {regname} {value}");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($"<SET -1 -1 FAILED {e}");
-                }
-            }
-            else if (parts[1] == "ram" || parts[1] == "mem")
-            {
-                try
-                {
-                    uint addr  = (uint)Convert.ToInt32(parts[2], 10);
-                    byte value = (byte)Convert.ToInt32(parts[3], 10);
-
-                    b.WriteByte(addr, value);
-
-                    Console.WriteLine($"<SET {addr} {value}");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($"<SET -1 -1 FAILED {e}");
-                }
-            }
+            CmdSet(parts, p, b);
         }
         else if (parts[0] == "get")
         {
-            if (parts.Length != 3)
-                Console.WriteLine("usage: get [reg|ram] [regname|address]");
-            else if (parts[1] == "reg")
-            {
-                try
-                {
-                    string regname = parts[2];
-                    ushort value   = 0;
-
-                    if (regname == "ax")
-                        value = p.GetAX();
-                    else if (regname == "bx")
-                        value = p.GetBX();
-                    else if (regname == "cx")
-                        value = p.GetCX();
-                    else if (regname == "dx")
-                        value = p.GetDX();
-                    else if (regname == "ss")
-                        value = p.GetSS();
-                    else if (regname == "cs")
-                        value = p.GetCS();
-                    else if (regname == "ds")
-                        value = p.GetDS();
-                    else if (regname == "es")
-                        value = p.GetES();
-                    else if (regname == "sp")
-                        value = p.GetSP();
-                    else if (regname == "bp")
-                        value = p.GetBP();
-                    else if (regname == "si")
-                        value = p.GetSI();
-                    else if (regname == "di")
-                        value = p.GetDI();
-                    else if (regname == "ip")
-                        value = p.GetIP();
-                    else if (regname == "flags")
-                        value = p.GetFlags();
-                    else
-                    {
-                        Console.WriteLine($"Register {regname} not known");
-                        continue;
-                    }
-
-                    Console.WriteLine($">GET {regname} {value}");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($">GET -1 -1 FAILED {e}");
-                }
-            }
-            else if (parts[1] == "ram" || parts[1] == "mem")
-            {
-                try
-                {
-                    uint   addr  = (uint)Convert.ToInt32(parts[2], 10);
-                    ushort value = b.ReadByte(addr).Item1;
-
-                    Console.WriteLine($">GET {addr} {value}");
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine($">GET -1 -1 FAILED {e}");
-                }
-            }
+            CmdGet(parts, p, b);
         }
         else if (line == "c")
         {
             p.ResetCrashCounter();
 
-            while(p.Tick())
-            {
-            }
+            Runner(p);
         }
         else if (line != "")
         {
@@ -401,17 +265,243 @@ if (debugger)
 }
 else
 {
-    try
+    RunnerParameters runner_parameters = new();
+    runner_parameters.cpu = p;
+    runner_parameters.exit = new();
+    runner_parameters.disassemble = false;
+
+    Thread thread = null;
+
+    bool running = false;
+
+    bool echo_state = false;
+    Log.EchoToConsole(echo_state);
+
+    for(;;)
     {
-        while(p.Tick())
+        Console.Write("==>");
+
+        string line = Console.ReadLine();
+        Log.DoLog($"CMDLINE: {line}", true);
+        if (line == "")
+            continue;
+
+        try
         {
+            string [] parts = line.Split(" ");
+
+            if (parts[0] == "quit" || parts[0] == "q")
+                break;
+
+            if (parts[0] == "help")
+            {
+                Console.WriteLine("quit / q       terminate application");
+                Console.WriteLine("step / s / S   invoke 1 instruction, \"S\": step over loop");
+                Console.WriteLine($"stop           stop emulation (running: {running})");
+                Console.WriteLine("start / go     start emulation");
+                Console.WriteLine("reset          reset emulator");
+                Console.WriteLine("disassemble /da  toggle disassembly while emulating");
+                Console.WriteLine("echo           toggle logging to console");
+                Console.WriteLine("lsfloppy       list configured floppies");
+                Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
+                Console.WriteLine("get [reg|ram] [regname|address]  get value from a register/memory location");
+                Console.WriteLine("set [reg|ram] [regname|address] value   set registers/memory to a value");
+                Console.WriteLine("get/set        value/address can be decimal or hexadecimal (prefix with 0x)");
+                Console.WriteLine("hd x           hexdump of a few bytes starting at address x");
+                Console.WriteLine("hd cs:ip       hexdump of a few bytes starting at address cs:ip");
+                Console.WriteLine("dr             dump all registers");
+                Console.WriteLine("gbp / lbp      list breakpoints");
+                Console.WriteLine("sbp x          set breakpoint");
+                Console.WriteLine("dbp x          delete breakpoint");
+                Console.WriteLine("cbp            remove all breakpoints");
+            }
+            else if (parts[0] == "s" || parts[0] == "step" || parts[0] == "S")
+            {
+                bool rc = true;
+
+                if (parts[0] == "S")
+                {
+                    do
+                    {
+                        if (runner_parameters.disassemble)
+                            Disassemble(p.GetCS(), p.GetIP());
+
+                        if (p.Tick() == false)
+                        {
+                            rc = false;
+                            break;
+                        }
+                    }
+                    while(p.IsProcessingRep());
+                }
+                else
+                {
+                    if (runner_parameters.disassemble)
+                        Disassemble(p.GetCS(), p.GetIP());
+
+                    rc = p.Tick();
+                }
+
+                if (rc == false)
+                {
+                    string stop_reason = p.GetStopReason();
+                    if (stop_reason != "")
+                        Console.WriteLine(stop_reason);
+                }
+            }
+            else if (parts[0] == "disassemble" || parts[0] == "da")
+            {
+                runner_parameters.disassemble = !runner_parameters.disassemble;
+                Console.WriteLine(runner_parameters.disassemble ? "disassembly on" : "disassembly off");
+                if (running)
+                    Console.WriteLine("Please stop+start emulation to activate tracing");
+            }
+            else if (parts[0] == "echo")
+            {
+                echo_state = !echo_state;
+                Console.WriteLine(echo_state ? "echo on" : "echo off");
+                Log.EchoToConsole(echo_state);
+            }
+            else if (parts[0] == "start" || parts[0] == "go")
+            {
+                if (running)
+                    Console.WriteLine("Already running");
+                else
+                {
+                    runner_parameters.exit.set(false);
+                    thread = CreateRunnerThread(runner_parameters);
+                    Console.WriteLine("OK");
+                    running = true;
+                }
+            }
+            else if (parts[0] == "stop")
+            {
+                if (running)
+                {
+                    runner_parameters.exit.set(true);
+                    thread.Join();
+                    running = false;
+                }
+                else
+                {
+                    Console.WriteLine("Not running");
+                }
+            }
+            else if (parts[0] == "reset")
+            {
+                if (running)
+                {
+                    runner_parameters.exit.set(true);
+                    thread.Join();
+                }
+
+                b.ClearMemory();
+                p.Reset();
+
+                runner_parameters.exit.set(false);
+                thread = CreateRunnerThread(runner_parameters);
+                running = true;
+            }
+            else if (parts[0] == "lsfloppy")
+            {
+                if (floppy_controller == null)
+                    Console.WriteLine("No floppy drive configured");
+                else
+                {
+                    for(int i=0; i<floppy_controller.GetUnitCount(); i++)
+                        Console.WriteLine($"{i}] {floppy_controller.GetUnitFilename(i)}");
+                }
+            }
+            else if (parts[0] == "setfloppy")
+            {
+                if (floppy_controller == null)
+                    Console.WriteLine("No floppy drive configured");
+                else if (parts.Length != 3)
+                    Console.WriteLine("Number of parameters is incorrect");
+                else
+                {
+                    int unit = int.Parse(parts[1]);
+                    if (floppy_controller.SetUnitFilename(unit, parts[2]))
+                        Console.WriteLine("OK");
+                    else
+                        Console.WriteLine("Failed: invalid unit number or file does not exist");
+                }
+            }
+            else if (parts[0] == "set")
+            {
+                CmdSet(parts, p, b);
+            }
+            else if (parts[0] == "get")
+            {
+                CmdGet(parts, p, b);
+            }
+            else if (parts[0] == "gbp" || parts[0] == "lbp")
+            {
+                GetBreakpoints(p);
+            }
+            else if (parts[0] == "sbp")
+            {
+                if (running)
+                    Console.WriteLine("Please stop emulation first");
+                else
+                {
+                    uint addr = (uint)GetValue(parts[1], false);
+                    p.AddBreakpoint(addr);
+                }
+            }
+            else if (parts[0] == "dbp")
+            {
+                if (running)
+                    Console.WriteLine("Please stop emulation first");
+                else
+                {
+                    uint addr = (uint)GetValue(parts[1], false);
+                    p.DelBreakpoint(addr);
+                }
+            }
+            else if (parts[0] == "cbp")
+            {
+                if (running)
+                    Console.WriteLine("Please stop emulation first");
+                else
+                {
+                    p.ClearBreakpoints();
+                }
+            }
+            else if (parts[0] == "hd")
+            {
+                uint addr = (uint)GetValue(parts[1], true);
+
+                for(int i=0; i<256; i+=16)
+                    Console.WriteLine($"{addr + i:X6} {p.HexDump((uint)(addr + i))} {p.CharDump((uint)(addr + i))}");
+            }
+            else if (parts[0] == "dr")
+            {
+                Console.WriteLine($"AX: {p.GetAX():X04}, BX: {p.GetBX():X04}, CX: {p.GetCX():X04}, DX: {p.GetDX():X04}");
+                Console.WriteLine($"DS: {p.GetDS():X04}, ES: {p.GetES():X04}");
+                ushort ss = p.GetSS();
+                ushort sp = p.GetSP();
+                uint full_stack_addr = (uint)(ss * 16 + sp);
+                Console.WriteLine($"SS: {ss:X04}, SP: {sp:X04} => ${full_stack_addr:X06}, {p.HexDump(full_stack_addr)}");
+                Console.WriteLine($"BP: {p.GetBP():X04}, SI: {p.GetSI():X04}, DI: {p.GetDI():X04}");
+                ushort cs = p.GetCS();
+                ushort ip = p.GetIP();
+                Console.WriteLine($"CS: {cs:X04}, IP: {ip:X04} => ${cs * 16 + ip:X06}");
+                Console.WriteLine($"flags: {p.GetFlagsAsString()}");
+            }
+            else
+            {
+                Console.WriteLine($"\"{line}\" is not understood");
+            }
         }
-    }
-    catch(Exception e)
-    {
-        string msg = $"An exception occured: {e.ToString()}";
-        Console.WriteLine(msg);
-        Log.DoLog(msg);
+        catch(System.FormatException fe)
+        {
+            Console.WriteLine($"An error occured while processing \"{line}\": make sure you prefix hexadecimal values with \"0x\" and enter decimal values where required. Complete error message: \"{fe}\".");
+        }
+        catch(Exception e)
+        {
+            Console.WriteLine($"The error \"{e}\" occured while processing \"{line}\".");
+        }
     }
 }
 
@@ -421,3 +511,263 @@ if (test != "" && mode == TMode.Binary)
     System.Environment.Exit(p.GetSI() == 0xa5ee ? 123 : 0);
 
 System.Environment.Exit(0);
+
+Thread CreateRunnerThread(RunnerParameters runner_parameters)
+{
+    Thread thread = new Thread(Runner);
+    thread.Name = "runner";
+    thread.Start(runner_parameters);
+    return thread;
+}
+
+void Disassemble(ushort cs, ushort ip)
+{
+    string registers_str = $"{p.GetFlagsAsString()} AX:{p.GetAX():X4} BX:{p.GetBX():X4} CX:{p.GetCX():X4} DX:{p.GetDX():X4} SP:{p.GetSP():X4} BP:{p.GetBP():X4} SI:{p.GetSI():X4} DI:{p.GetDI():X4} flags:{p.GetFlags():X4} ES:{p.GetES():X4} CS:{cs:X4} SS:{p.GetSS():X4} DS:{p.GetDS():X4} IP:{ip:X4}";
+
+    // instruction length, instruction string, additional info, hex-string
+    (int length, string instruction, string meta, string hex) = p.Disassemble(cs, ip);
+
+    uint flat_addr = (uint)(cs * 16 + ip);
+    Log.DoLog($"{p.GetClock()} {flat_addr:X6} | {registers_str} | {instruction} | {hex} | {meta}");
+}
+
+void Runner(object o)
+{
+    RunnerParameters runner_parameters = (RunnerParameters)o;
+    P8086 p = runner_parameters.cpu;
+
+    try
+    {
+        Console.WriteLine("Emulation started");
+
+        long prev_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+        long prev_clock = 0;
+        for(;;)
+        {
+            if (runner_parameters.disassemble)
+                Disassemble(p.GetCS(), p.GetIP());
+
+            if (p.Tick() == false || runner_parameters.exit.get() == true)
+                break;
+
+            if (!throttle)
+                continue;
+
+            long now_clock = p.GetClock();
+            if (now_clock - prev_clock >= 4770000 / 50)
+            {
+                long now_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                long diff_time = now_time - prev_time;
+                if (diff_time < 20)
+                    Thread.Sleep((int)(20 - diff_time));
+                prev_time = now_time;
+                prev_clock = now_clock;
+            }
+        }
+
+        string stop_reason = p.GetStopReason();
+        if (stop_reason != "")
+            Console.WriteLine(stop_reason);
+    }
+    catch(Exception e)
+    {
+        string msg = $"An exception occured: {e.ToString()}";
+        Console.WriteLine(msg);
+        Log.DoLog(msg);
+    }
+
+    Console.WriteLine("Emulation stopped");
+}
+
+int GetValue(string v, bool hex)
+{
+    string[] aparts = v.Split(":");
+    if (aparts.Length == 2)
+        return Convert.ToInt32(aparts[0], 16) * 16 + Convert.ToInt32(aparts[1], 16);
+
+    if (v.Length > 2 && v[0] == '0' && v[1] == 'x')
+        return Convert.ToInt32(v.Substring(2), 16);
+
+    if (hex)
+        return Convert.ToInt32(v, 16);
+
+    return Convert.ToInt32(v, 10);
+}
+
+void CmdGet(string[] tokens, P8086 p, Bus b)
+{
+    if (tokens.Length != 3)
+        Console.WriteLine("usage: get [reg|ram] [regname|address]");
+    else if (tokens[1] == "reg")
+    {
+        try
+        {
+            string regname = tokens[2];
+            ushort value   = 0;
+
+            if (regname == "ax")
+                value = p.GetAX();
+            else if (regname == "bx")
+                value = p.GetBX();
+            else if (regname == "cx")
+                value = p.GetCX();
+            else if (regname == "dx")
+                value = p.GetDX();
+            else if (regname == "ss")
+                value = p.GetSS();
+            else if (regname == "cs")
+                value = p.GetCS();
+            else if (regname == "ds")
+                value = p.GetDS();
+            else if (regname == "es")
+                value = p.GetES();
+            else if (regname == "sp")
+                value = p.GetSP();
+            else if (regname == "bp")
+                value = p.GetBP();
+            else if (regname == "si")
+                value = p.GetSI();
+            else if (regname == "di")
+                value = p.GetDI();
+            else if (regname == "ip")
+                value = p.GetIP();
+            else if (regname == "flags")
+                value = p.GetFlags();
+            else
+            {
+                Console.WriteLine($"Register {regname} not known");
+                return;
+            }
+
+            Console.WriteLine($">GET {regname} {value}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($">GET -1 -1 FAILED {e}");
+        }
+    }
+    else if (tokens[1] == "ram" || tokens[1] == "mem")
+    {
+        try
+        {
+            uint addr = (uint)GetValue(tokens[2], false);
+            ushort value = b.ReadByte(addr).Item1;
+
+            Console.WriteLine($">GET {addr} {value}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($">GET -1 -1 FAILED {e}");
+        }
+    }
+}
+
+void CmdSet(string [] tokens, P8086 p, Bus b)
+{
+    if (tokens.Length != 4)
+        Console.WriteLine("usage: set [reg|ram] [regname|address] value");
+    else if (tokens[1] == "reg")
+    {
+        string regname = tokens[2];
+        ushort value = (ushort)GetValue(tokens[3], false);
+
+        try
+        {
+            if (regname == "ax")
+                p.SetAX(value);
+            else if (regname == "bx")
+                p.SetBX(value);
+            else if (regname == "cx")
+                p.SetCX(value);
+            else if (regname == "dx")
+                p.SetDX(value);
+            else if (regname == "ss")
+                p.SetSS(value);
+            else if (regname == "cs")
+                p.SetCS(value);
+            else if (regname == "ds")
+                p.SetDS(value);
+            else if (regname == "es")
+                p.SetES(value);
+            else if (regname == "sp")
+                p.SetSP(value);
+            else if (regname == "bp")
+                p.SetBP(value);
+            else if (regname == "si")
+                p.SetSI(value);
+            else if (regname == "di")
+                p.SetDI(value);
+            else if (regname == "ip")
+                p.SetIP(value);
+            else if (regname == "flags")
+                p.SetFlags(value);
+            else
+            {
+                Console.WriteLine($"Register {regname} not known");
+                return;
+            }
+
+            Console.WriteLine($"<SET {regname} {value}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"<SET -1 -1 FAILED {e}");
+        }
+    }
+    else if (tokens[1] == "ram" || tokens[1] == "mem")
+    {
+        try
+        {
+            uint addr = (uint)GetValue(tokens[2], false);
+            byte value = (byte)GetValue(tokens[3], false);
+
+            b.WriteByte(addr, value);
+
+            Console.WriteLine($"<SET {addr} {value}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"<SET -1 -1 FAILED {e}");
+        }
+    }
+}
+
+void GetBreakpoints(P8086 p)
+{
+    Console.WriteLine("Breakpoints:");
+    foreach(uint a in p.GetBreakpoints())
+        Console.WriteLine($"\t{a:X06}");
+}
+
+class ThreadSafe_Bool
+{
+    private readonly System.Threading.Lock _lock = new();
+    private bool _state = false;
+
+    public ThreadSafe_Bool()
+    {
+    }
+
+    public bool get()
+    {
+        lock(_lock)
+        {
+            return _state;
+        }
+    }
+
+    public void set(bool new_state)
+    {
+        lock(_lock)
+        {
+            _state = new_state;
+        }
+    }
+}
+
+struct RunnerParameters
+{
+    public P8086 cpu { get; set; }
+    public ThreadSafe_Bool exit;
+    public bool disassemble;
+};

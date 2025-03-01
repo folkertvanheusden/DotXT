@@ -2,9 +2,35 @@ class MDA : Display
 {
     private byte [] _ram = new byte[16384];
     private bool _hsync = false;
+    private Fonts fonts = new();
+    private FontDescriptor font_descr;
+    private List<byte []> palette = new() {
+            new byte[] {   0,   0,   0 },
+            new byte[] {   0,   0, 127 },
+            new byte[] {   0, 127,   0 },
+            new byte[] {   0, 127, 127 },
+            new byte[] { 127,   0,   0 },
+            new byte[] { 127,   0, 127 },
+            new byte[] { 127, 127,   0 },
+            new byte[] { 127, 127, 127 },
+            new byte[] { 127, 127, 127 },
+            new byte[] {   0,   0, 255 },
+            new byte[] {   0, 255,   0 },
+            new byte[] {   0, 255, 255 },
+            new byte[] { 255,   0,   0 },
+            new byte[] { 255,   0, 255 },
+            new byte[] { 255, 255,   0 },
+            new byte[] { 255, 255, 255 }
+    };
 
     public MDA(List<EmulatorConsole> consoles) : base(consoles)
     {
+        Console.WriteLine("MDA instantiated");
+        font_descr = fonts.get_font(FontName.VGA);
+        _gf.rgb_pixels = null;
+        _gf.width = 640;
+        _gf.height = font_descr.height * 25;
+        _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
     }
 
     public override String GetName()
@@ -25,14 +51,14 @@ class MDA : Display
         return addr >= 0xb0000 && addr < 0xb8000;
     }
 
-    public override bool IO_Write(ushort port, byte value)
+    public override bool IO_Write(ushort port, ushort value)
     {
-        Log.DoLog($"MDA::IO_Write {port:X4} {value:X2}", true);
+        Log.DoLog($"MDA::IO_Write {port:X4} {value:X4}", true);
 
         return false;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override (ushort, bool) IO_Read(ushort port)
     {
         byte rc = 0;
 
@@ -64,7 +90,41 @@ class MDA : Display
             uint mask = uint.MaxValue - 1;
             uint char_base_offset = offset & mask;
 
-            EmulateTextDisplay(x, y, _ram[char_base_offset + 0], _ram[char_base_offset + 1]);
+            byte character = _ram[char_base_offset + 0];
+            byte attributes = _ram[char_base_offset + 1];
+
+            EmulateTextDisplay(x, y, character, attributes);
+
+            if (_gf.rgb_pixels != null)
+            {
+                int char_offset = character * font_descr.height;
+                int fg = attributes & 15;
+                int bg = (attributes >> 4) & 7;
+                for(int yo=0; yo<font_descr.height; yo++)
+                {
+                    int y_pixel_offset = ((int)y * font_descr.height + yo) * _gf.width * 3;
+                    byte line = font_descr.pixels[char_offset + yo];
+                    byte bit_mask = 128;
+                    for(int xo=0; xo<8; xo++)
+                    {
+                        int x_pixel_offset = y_pixel_offset + ((int)x * 8 + xo) * 3;
+                        bool is_fg = (line & bit_mask) != 0;
+                        bit_mask >>= 1;
+                        if (is_fg)
+                        {
+                            _gf.rgb_pixels[x_pixel_offset + 0] = palette[fg][0];
+                            _gf.rgb_pixels[x_pixel_offset + 1] = palette[fg][1];
+                            _gf.rgb_pixels[x_pixel_offset + 2] = palette[fg][2];
+                        }
+                        else
+                        {
+                            _gf.rgb_pixels[x_pixel_offset + 0] = palette[bg][0];
+                            _gf.rgb_pixels[x_pixel_offset + 1] = palette[bg][1];
+                            _gf.rgb_pixels[x_pixel_offset + 2] = palette[bg][2];
+                        }
+                    }
+                }
+            }
         }
     }
 
