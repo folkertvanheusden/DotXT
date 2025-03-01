@@ -37,7 +37,6 @@ internal class P8086
     // replace by an Optional-type when available
     private ushort _segment_override;
     private bool _segment_override_set;
-    private string _segment_override_name = "";
 
     private ushort _flags;
 
@@ -45,6 +44,7 @@ internal class P8086
     private ushort _hlt_ip;
 
     private int _crash_counter = 0;
+    private bool _terminate_on_off_the_rails = false;
 
     private const uint MemMask = 0x00ffffff;
 
@@ -58,7 +58,6 @@ internal class P8086
     private byte _rep_opcode;
 
     private bool _is_test;
-    private bool _terminate_on_hlt;
 
     private int _clock;
     private List<Device> _devices;
@@ -66,13 +65,12 @@ internal class P8086
     private List<uint> _breakpoints = new();
     private string _stop_reason = "";
 
-    public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, bool terminate_on_hlt, ref List<Device> devices, bool run_IO)
+    public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, ref List<Device> devices, bool run_IO)
     {
         _b = b;
         _devices = devices;
         _io = new IO(b, ref devices, !run_IO);
-
-        _terminate_on_hlt = terminate_on_hlt;
+        _terminate_on_off_the_rails = run_IO;
 
         if (test != "" && t_mode == TMode.Binary)
         {
@@ -175,7 +173,7 @@ internal class P8086
 
     private byte GetPcByte()
     {
-        return ReadMemByte(_cs, _ip++);
+        return ReadMemByte(_cs, _ip++);  // what about segments? FIXME
     }
 
     private ushort GetPcWord()
@@ -361,123 +359,114 @@ internal class P8086
         return (ushort)(ReadMemByte(segment, offset) + (ReadMemByte(segment, (ushort)(offset + 1)) << 8));
     } 
 
-    private (ushort, string) GetRegister(int reg, bool w)
+    private ushort GetRegister(int reg, bool w)
     {
         if (w)
         {
             if (reg == 0)
-                return (GetAX(), "AX");
+                return GetAX();
             if (reg == 1)
-                return (GetCX(), "CX");
+                return GetCX();
             if (reg == 2)
-                return (GetDX(), "DX");
+                return GetDX();
             if (reg == 3)
-                return (GetBX(), "BX");
+                return GetBX();
             if (reg == 4)
-                return (_sp, "SP");
+                return _sp;
             if (reg == 5)
-                return (_bp, "BP");
+                return _bp;
             if (reg == 6)
-                return (_si, "SI");
+                return _si;
             if (reg == 7)
-                return (_di, "DI");
+                return _di;
         }
         else
         {
             if (reg == 0)
-                return (_al, "AL");
+                return _al;
             if (reg == 1)
-                return (_cl, "CL");
+                return _cl;
             if (reg == 2)
-                return (_dl, "DL");
+                return _dl;
             if (reg == 3)
-                return (_bl, "BL");
+                return _bl;
             if (reg == 4)
-                return (_ah, "AH");
+                return _ah;
             if (reg == 5)
-                return (_ch, "CH");
+                return _ch;
             if (reg == 6)
-                return (_dh, "DH");
+                return _dh;
             if (reg == 7)
-                return (_bh, "BH");
+                return _bh;
         }
 
         Log.DoLog($"reg {reg} w {w} not supported for {nameof(GetRegister)}", true);
 
-        return (0, "error");
+        return 0;
     }
 
-    private (ushort, string) GetSRegister(int reg)
+    private ushort GetSRegister(int reg)
     {
         reg &= 0b00000011;
 
         if (reg == 0b000)
-            return (_es, "ES");
+            return _es;
         if (reg == 0b001)
-            return (_cs, "CS");
+            return _cs;
         if (reg == 0b010)
-            return (_ss, "SS");
+            return _ss;
         if (reg == 0b011)
-            return (_ds, "DS");
+            return _ds;
 
         Log.DoLog($"reg {reg} not supported for {nameof(GetSRegister)}", true);
 
-        return (0, "error");
+        return 0;
     }
 
-    // value, name, cycles
-    private (ushort, string, int) GetDoubleRegisterMod00(int reg)
+    // value, cycles
+    private (ushort, int) GetDoubleRegisterMod00(int reg)
     {
         ushort a = 0;
-        string name = "error";
         int cycles = 0;
 
         if (reg == 0)
         {
             a = (ushort)(GetBX() + _si);
-            name = "[BX+SI]";
             cycles = 7;
         }
         else if (reg == 1)
         {
             a = (ushort)(GetBX() + _di);
-            name = "[BX+DI]";
             cycles = 8;
         }
         else if (reg == 2)
         {
             a = (ushort)(_bp + _si);
-            name = "[BP+SI]";
             cycles = 8;
         }
         else if (reg == 3)
         {
             a = (ushort)(_bp + _di);
-            name = "[BP+DI]";
             cycles = 7;
         }
         else if (reg == 4)
         {
             a = _si;
-            name = "[SI]";
             cycles = 5;
         }
         else if (reg == 5)
         {
             a = _di;
-            name = "[DI]";
             cycles = 5;
         }
         else if (reg == 6)
         {
             a = GetPcWord();
-            name = $"[${a:X4}]";
             cycles = 6;
         }
         else if (reg == 7)
         {
             a = GetBX();
-            name = "[BX]";
             cycles = 5;
         }
         else
@@ -485,14 +474,13 @@ internal class P8086
             Log.DoLog($"{nameof(GetDoubleRegisterMod00)} {reg} not implemented", true);
         }
 
-        return (a, name, cycles);
+        return (a, cycles);
     }
 
-    // value, name, cycles
-    private (ushort, string, int, bool, ushort) GetDoubleRegisterMod01_02(int reg, bool word)
+    // value, cycles
+    private (ushort, int, bool, ushort) GetDoubleRegisterMod01_02(int reg, bool word)
     {
         ushort a = 0;
-        string name = "error";
         int cycles = 0;
         bool override_segment = false;
         ushort new_segment = 0;
@@ -500,265 +488,164 @@ internal class P8086
         if (reg == 6)
         {
             a = _bp;
-            name = "[BP]";
             cycles = 5;
             override_segment = true;
             new_segment = _ss;
         }
         else
         {
-            (a, name, cycles) = GetDoubleRegisterMod00(reg);
+            (a, cycles) = GetDoubleRegisterMod00(reg);
         }
 
         short disp = word ? (short)GetPcWord() : (sbyte)GetPcByte();
 
-        return ((ushort)(a + disp), name + $" disp {disp:X4}", cycles, override_segment, new_segment);
+        return ((ushort)(a + disp), cycles, override_segment, new_segment);
     }
 
-    // value, name_of_source, segment_a_valid, segment/, address of value, number of cycles
-    private (ushort, string, bool, ushort, ushort, int) GetRegisterMem(int reg, int mod, bool w)
+    // value, segment_a_valid, segment/, address of value, number of cycles
+    private (ushort, bool, ushort, ushort, int) GetRegisterMem(int reg, int mod, bool w)
     {
         if (mod == 0)
         {
-            (ushort a, string name, int cycles) = GetDoubleRegisterMod00(reg);
+            (ushort a, int cycles) = GetDoubleRegisterMod00(reg);
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
             if (_segment_override_set == false && (reg == 2 || reg == 3)) {  // BP uses SS
                 segment = _ss;
-#if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [1]", true);
-#endif
             }
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
             cycles += 6;
 
-#if DEBUG
-            name += $" ({_segment_override_name}:${SegmentAddr(segment, a)} -> {v:X4})";
-#endif
-
-            return (v, name, true, segment, a, cycles);
+            return (v, true, segment, a, cycles);
         }
 
         if (mod == 1 || mod == 2)
         {
             bool word = mod == 2;
 
-            (ushort a, string name, int cycles, bool override_segment, ushort new_segment) = GetDoubleRegisterMod01_02(reg, word);
+            (ushort a, int cycles, bool override_segment, ushort new_segment) = GetDoubleRegisterMod01_02(reg, word);
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
             if (_segment_override_set == false && override_segment)
-            {
                 segment = new_segment;
-#if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [2]", true);
-#endif
-            }
 
             if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
-            {
                 segment = _ss;
-#if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [3]", true);
-#endif
-            }
 
             ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
 
             cycles += 6;
-#if DEBUG
-            name += $" ({_segment_override_name}:${SegmentAddr(segment, a)} -> {v:X4})";
-#endif
 
-            return (v, name, true, segment, a, cycles);
+            return (v, true, segment, a, cycles);
         }
 
         if (mod == 3)
         {
-            (ushort v, string name) = GetRegister(reg, w);
+            ushort v = GetRegister(reg, w);
 
-            return (v, name, false, 0, 0, 0);
+            return (v, false, 0, 0, 0);
         }
 
         Log.DoLog($"reg {reg} mod {mod} w {w} not supported for {nameof(GetRegisterMem)}", true);
 
-        return (0, "error", false, 0, 0, 0);
+        return (0, false, 0, 0, 0);
     }
 
-    private string PutRegister(int reg, bool w, ushort val)
+    private void PutRegister(int reg, bool w, ushort val)
     {
         if (reg == 0)
         {
             if (w)
-            {
                 SetAX(val);
-
-                return "AX";
-            }
-
-            _al = (byte)val;
-
-            return "AL";
+            else
+                _al = (byte)val;
         }
-
-        if (reg == 1)
+        else if (reg == 1)
         {
             if (w)
-            {
                 SetCX(val);
-
-                return "CX";
-            }
-
-            _cl = (byte)val;
-
-            return "CL";
+            else
+                _cl = (byte)val;
         }
-
-        if (reg == 2)
+        else if (reg == 2)
         {
             if (w)
-            {
                 SetDX(val);
-
-                return "DX";
-            }
-
-            _dl = (byte)val;
-
-            return "DL";
+            else
+                _dl = (byte)val;
         }
-
-        if (reg == 3)
+        else if (reg == 3)
         {
             if (w)
-            {
                 SetBX(val);
-
-                return "BX";
-            }
-
-            _bl = (byte)val;
-
-            return "BL";
+            else
+                _bl = (byte)val;
         }
-
-        if (reg == 4)
+        else if (reg == 4)
         {
             if (w)
-            {
                 _sp = val;
-
-                return "SP";
-            }
-
-            _ah = (byte)val;
-
-            return "AH";
+            else
+                _ah = (byte)val;
         }
-
-        if (reg == 5)
+        else if (reg == 5)
         {
             if (w)
-            {
                 _bp = val;
-
-                return "BP";
-            }
-
-            _ch = (byte)val;
-
-            return "CH";
+            else
+                _ch = (byte)val;
         }
-
-        if (reg == 6)
+        else if (reg == 6)
         {
             if (w)
-            {
                 _si = val;
-
-                return "SI";
-            }
-
-            _dh = (byte)val;
-
-            return "DH";
+            else
+                _dh = (byte)val;
         }
-
-        if (reg == 7)
+        else if (reg == 7)
         {
             if (w)
-            {
                 _di = val;
-
-                return "DI";
-            }
-
-            _bh = (byte)val;
-
-            return "BH";
+            else
+                _bh = (byte)val;
         }
-
-        Log.DoLog($"reg {reg} w {w} not supported for {nameof(PutRegister)} ({val:X})", true);
-
-        return "error";
+        else
+        {
+            Log.DoLog($"reg {reg} w {w} not supported for {nameof(PutRegister)} ({val:X})", true);
+        }
     }
 
-    private string PutSRegister(int reg, ushort v)
+    private void PutSRegister(int reg, ushort v)
     {
         reg &= 0b00000011;
 
         if (reg == 0b000)
-        {
             _es = v;
-            return "ES";
-        }
-
-        if (reg == 0b001)
-        {
+        else if (reg == 0b001)
             _cs = v;
-            return "CS";
-        }
-
-        if (reg == 0b010)
-        {
+        else if (reg == 0b010)
             _ss = v;
-            return "SS";
-        }
-
-        if (reg == 0b011)
-        {
+        else if (reg == 0b011)
             _ds = v;
-            return "DS";
-        }
-
-        Log.DoLog($"reg {reg} not supported for {nameof(PutSRegister)}", true);
-
-        return "error";
+        else
+            Log.DoLog($"reg {reg} not supported for {nameof(PutSRegister)}", true);
     }
 
-    // name, cycles
-    private (string, int) PutRegisterMem(int reg, int mod, bool w, ushort val)
+    // cycles
+    private int PutRegisterMem(int reg, int mod, bool w, ushort val)
     {
-        //        Log.DoLog($"PutRegisterMem {mod},{w}", true);
-
         if (mod == 0)
         {
-            (ushort a, string name, int cycles) = GetDoubleRegisterMod00(reg);
+            (ushort a, int cycles) = GetDoubleRegisterMod00(reg);
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
-            if (_segment_override_set == false && (reg == 2 || reg == 3)) {  // BP uses SS
+            if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
                 segment = _ss;
-#if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [4]", true);
-#endif
-            }
-
-            name += $" ({_segment_override_name}:${segment * 16 + a:X6})";
 
             if (w)
                 WriteMemWord(segment, a, val);
@@ -767,34 +654,20 @@ internal class P8086
 
             cycles += 4;
 
-            return (name, cycles);
+            return cycles;
         }
 
         if (mod == 1 || mod == 2)
         {
-            (ushort a, string name, int cycles, bool override_segment, ushort new_segment) = GetDoubleRegisterMod01_02(reg, mod == 2);
+            (ushort a, int cycles, bool override_segment, ushort new_segment) = GetDoubleRegisterMod01_02(reg, mod == 2);
 
             ushort segment = _segment_override_set ? _segment_override : _ds;
 
             if (_segment_override_set == false && override_segment)
-            {
                 segment = new_segment;
-#if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [5]", true);
-#endif
-            }
 
             if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
-            {
                 segment = _ss;
-#if DEBUG
-                Log.DoLog($"BP SS-override ${_ss:X4} [6]", true);
-#endif
-            }
-
-#if DEBUG
-            name += $" ({_segment_override_name}:${segment * 16 + a:X6})";
-#endif
 
             if (w)
                 WriteMemWord(segment, a, val);
@@ -803,18 +676,21 @@ internal class P8086
 
             cycles += 4;
 
-            return (name, cycles);
+            return cycles;
         }
 
         if (mod == 3)
-            return (PutRegister(reg, w, val), 0);
+        {
+            PutRegister(reg, w, val);
+            return 0;  // TODO
+        }
 
         Log.DoLog($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(PutRegisterMem)}", true);
 
-        return ("error", 0);
+        return 0;
     }
 
-    (string, int) UpdateRegisterMem(int reg, int mod, bool a_valid, ushort seg, ushort addr, bool word, ushort v)
+    int UpdateRegisterMem(int reg, int mod, bool a_valid, ushort seg, ushort addr, bool word, ushort v)
     {
         if (a_valid)
         {
@@ -822,12 +698,7 @@ internal class P8086
                 WriteMemWord(seg, addr, v);
             else
                 WriteMemByte(seg, addr, (byte)v);
-
-#if DEBUG
-            return ($"[{addr:X4}]", 4);
-#else
-            return ("", 4);
-#endif
+            return 4;
         }
 
         return PutRegisterMem(reg, mod, word, v);
@@ -963,10 +834,6 @@ internal class P8086
 
     private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub, bool flag_c)
     {
-#if DEBUG
-        // Log.DoLog($"word {word}, r1 {r1}, r2 {r2}, result {result:X}, issub {issub}", true);
-#endif
-
         ushort in_reg_result = word ? (ushort)result : (byte)result;
 
         uint u_result = (uint)result;
@@ -1029,7 +896,6 @@ internal class P8086
     void InvokeInterrupt(ushort instr_start, int interrupt_nr, bool pic)
     {
         _segment_override_set = false;
-        _segment_override_name = "";
 
         if (pic)
         {
@@ -1055,10 +921,6 @@ internal class P8086
 
         _ip = ReadMemWord(0, addr);
         _cs = ReadMemWord(0, (ushort)(addr + 2));
-
-#if DEBUG
-        Log.DoLog($"----- ------ INT {interrupt_nr:X2} (int offset: {addr:X4}, addr: {_cs:X4}:{_ip:X4}, PIC: {pic})", true);
-#endif
     }
 
     public string HexDump(uint addr)
@@ -1107,17 +969,6 @@ internal class P8086
         }
 
         return out_;
-    }
-
-    public ushort GetRegisterByName(string name)
-    {
-        if (name == "si")
-            return _si;
-
-        if (name == "cs")
-            return _cs;
-
-        return 0xffff;
     }
 
     public bool IsProcessingRep()
@@ -1199,7 +1050,6 @@ internal class P8086
         if (_rep == false)
         {
             _segment_override_set = false;
-            _segment_override_name = "";
         }
 
         if (_rep)
@@ -1245,10 +1095,6 @@ internal class P8086
 
         _in_hlt = false;
 
-#if DEBUG
-        string flagStr = GetFlagsAsString();
-#endif
-
         ushort instr_start = _ip;
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
         Log.SetAddress(_cs, _ip);
@@ -1268,25 +1114,13 @@ internal class P8086
         while (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
         {
             if (opcode == 0x26)
-            {
                 _segment_override = _es;
-                _segment_override_name = "ES";
-            }
             else if (opcode == 0x2e)
-            {
                 _segment_override = _cs;
-                _segment_override_name = "CS";
-            }
             else if (opcode == 0x36)
-            {
                 _segment_override = _ss;
-                _segment_override_name = "SS";
-            }
             else if (opcode == 0x3e)
-            {
                 _segment_override = _ds;
-                _segment_override_name = "DS";
-            }
             else if (opcode is (0xf2 or 0xf3))
             {
                 _rep = true;
@@ -1297,7 +1131,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"------ prefix {opcode:X2} not implemented", true);
+                Log.DoLog($"prefix {opcode:X2} not implemented", true);
             }
 
             address = (uint)(_cs * 16 + _ip) & MemMask;
@@ -1339,30 +1173,12 @@ internal class P8086
                 cycle_count += 2;
             }
 
-            //if (_segment_override_set)
-            //    Log.DoLog($"segment override to {_segment_override_name}: {_segment_override:X4}, opcode(s): {opcode:X2} {HexDump(address):X2}", true);
-
-            //if (_rep)
-            //    Log.DoLog($"repetition mode {_rep_mode}, addr {_rep_addr:X4}, instr start {instr_start:X4}", true);
-
             opcode = next_opcode;
         }
 
-#if DEBUG
-        if (_rep)
-            Log.DoLog($"repstate: {_rep} {_rep_mode} {_rep_addr:X4} {_rep_opcode:X2}", true);
-
-        string prefixStr =
-            $"{flagStr} {opcode:X2} AX:{_ah:X2}{_al:X2} BX:{_bh:X2}{_bl:X2} CX:{_ch:X2}{_cl:X2} DX:{_dh:X2}{_dl:X2} SP:{_sp:X4} BP:{_bp:X4} SI:{_si:X4} DI:{_di:X4} flags:{_flags:X4} ES:{_es:X4} CS:{_cs:X4} SS:{_ss:X4} DS:{_ds:X4} IP:{instr_start:X4} | ";
-
-        // Log.DoLog(HexDump(address), true);
-#else
-        string prefixStr = "";
-#endif
-
         if (opcode == 0x00)
         {
-            if (++_crash_counter >= 5)
+            if (_terminate_on_off_the_rails == true && ++_crash_counter >= 5)
             {
                 _stop_reason = $"Terminating because of {_crash_counter}x 0x00 opcode ({address:X06})";
                 Log.DoLog(_stop_reason);
@@ -1380,8 +1196,6 @@ internal class P8086
             // ADD AL,xx
             byte v = GetPcByte();
 
-            string name = "ADD";
-
             bool flag_c = GetFlagC();
             bool use_flag_c = false;
 
@@ -1393,7 +1207,6 @@ internal class P8086
                     result++;
 
                 use_flag_c = true;
-                name = "ADC";
             }
 
             cycle_count += 3;
@@ -1401,17 +1214,11 @@ internal class P8086
             SetAddSubFlags(false, _al, v, result, false, use_flag_c ? flag_c : false);
 
             _al = (byte)result;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" {name} AL,${v:X2}");
-#endif
         }
         else if (opcode == 0x05 || opcode == 0x15)
         {
             // ADD AX,xxxx
             ushort v = GetPcWord();
-
-            string name = "ADD";
 
             bool flag_c = GetFlagC();
             bool use_flag_c = false;
@@ -1426,7 +1233,6 @@ internal class P8086
                     result++;
 
                 use_flag_c = true;
-                name = "ADC";
             }
 
             SetAddSubFlags(true, before, v, result, false, use_flag_c ? flag_c : false);
@@ -1434,10 +1240,6 @@ internal class P8086
             SetAX((ushort)result);
 
             cycle_count += 3;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" {name} AX,${v:X4}");
-#endif
         }
         else if (opcode == 0x06)
         {
@@ -1445,10 +1247,6 @@ internal class P8086
             push(_es);
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH ES");
-#endif
         }
         else if (opcode == 0x07)
         {
@@ -1456,10 +1254,6 @@ internal class P8086
             _es = pop();
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP ES");
-#endif
         }
         else if (opcode == 0x0e)
         {
@@ -1467,10 +1261,6 @@ internal class P8086
             push(_cs);
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH CS");
-#endif
         }
         else if (opcode == 0x0f)
         {
@@ -1478,10 +1268,6 @@ internal class P8086
             _cs = pop();
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP CS");
-#endif
         }
         else if (opcode == 0x16)
         {
@@ -1489,10 +1275,6 @@ internal class P8086
             push(_ss);
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH SS");
-#endif
         }
         else if (opcode == 0x17)
         {
@@ -1500,10 +1282,6 @@ internal class P8086
             _ss = pop();
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP SS");
-#endif
         }
         else if (opcode == 0x1c)
         {
@@ -1522,10 +1300,6 @@ internal class P8086
             _al = (byte)result;
 
             cycle_count += 3;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" SBB ${v:X4}");
-#endif
         }
         else if (opcode == 0x1d)
         {
@@ -1546,10 +1320,6 @@ internal class P8086
             SetAX((ushort)result);
 
             cycle_count += 3;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" SBB ${v:X4}");
-#endif
         }
         else if (opcode == 0x1e)
         {
@@ -1557,10 +1327,6 @@ internal class P8086
             push(_ds);
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH DS");
-#endif
         }
         else if (opcode == 0x1f)
         {
@@ -1568,10 +1334,6 @@ internal class P8086
             _ds = pop();
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP DS");
-#endif
         }
         else if (opcode == 0x27)
         {
@@ -1613,10 +1375,6 @@ internal class P8086
             SetZSPFlags(_al);
 
             cycle_count += 4;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" DAA");
-#endif
         }
         else if (opcode == 0x2c)
         {
@@ -1630,10 +1388,6 @@ internal class P8086
             _al = (byte)result;
 
             cycle_count += 3;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" SUB ${v:X2}");
-#endif
         }
         else if (opcode == 0x2f)
         {
@@ -1666,10 +1420,6 @@ internal class P8086
             SetZSPFlags(_al);
 
             cycle_count += 4;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" DAS");
-#endif
         }
         else if (opcode == 0x37)
         {
@@ -1691,9 +1441,6 @@ internal class P8086
             _al &= 0x0f;
 
             cycle_count += 8;
-#if DEBUG
-            Log.Disassemble(prefixStr, $" AAA");
-#endif
         }
         else if (opcode == 0x3f)
         {
@@ -1714,9 +1461,6 @@ internal class P8086
             _al &= 0x0f;
 
             cycle_count += 8;
-#if DEBUG
-            Log.Disassemble(prefixStr, $" AAS");
-#endif
         }
         else if (opcode == 0x2d)
         {
@@ -1732,10 +1476,6 @@ internal class P8086
             SetAX((ushort)result);
 
             cycle_count += 3;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" SUB ${v:X4}");
-#endif
         }
         else if (opcode == 0x58)
         {
@@ -1743,10 +1483,6 @@ internal class P8086
             SetAX(pop());
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP AX");
-#endif
         }
         else if (opcode == 0x59)
         {
@@ -1754,10 +1490,6 @@ internal class P8086
             SetCX(pop());
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP CX");
-#endif
         }
         else if (opcode == 0x5a)
         {
@@ -1765,10 +1497,6 @@ internal class P8086
             SetDX(pop());
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP DX");
-#endif
         }
         else if (opcode == 0x5b)
         {
@@ -1776,10 +1504,6 @@ internal class P8086
             SetBX(pop());
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP BX");
-#endif
         }
         else if (opcode == 0x5c)
         {
@@ -1787,10 +1511,6 @@ internal class P8086
             _sp = pop();
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP SP");
-#endif
         }
         else if (opcode == 0x5d)
         {
@@ -1798,10 +1518,6 @@ internal class P8086
             _bp = pop();
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP BP");
-#endif
         }
         else if (opcode == 0x5e)
         {
@@ -1809,10 +1525,6 @@ internal class P8086
             _si = pop();
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP SI");
-#endif
         }
         else if (opcode == 0x5f)
         {
@@ -1820,10 +1532,6 @@ internal class P8086
             _di = pop();
 
             cycle_count += 8;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP DI");
-#endif
         }
         else if (opcode == 0xa4)
         {
@@ -1833,10 +1541,6 @@ internal class P8086
                 ushort segment = _segment_override_set ? _segment_override : _ds;
                 byte v = ReadMemByte(segment, _si);
                 WriteMemByte(_es, _di, v);
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" MOVSB ({v:X2} / {(v > 32 && v < 127 ? (char)v : ' ')}, {_rep}) {_segment_override_set}: {_segment_override_name} {SegmentAddr(segment, _si)} -> {SegmentAddr(_es, _di)}");
-#endif
 
                 _si += (ushort)(GetFlagD() ? -1 : 1);
                 _di += (ushort)(GetFlagD() ? -1 : 1);
@@ -1855,10 +1559,6 @@ internal class P8086
                 _di += (ushort)(GetFlagD() ? -2 : 2);
 
                 cycle_count += 18;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" MOVSW");
-#endif
             }
         }
         else if (opcode == 0xa6)
@@ -1877,10 +1577,6 @@ internal class P8086
                 SetAddSubFlags(false, v1, v2, result, true, false);
 
                 cycle_count += 22;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" CMPSB ({v1:X2}/{(v1 > 32 && v1 < 127 ? (char)v1 : ' ')}, {v2:X2}/{(v2 > 32 && v2 < 127 ? (char)v2 : ' ')}) {GetCX()}");
-#endif
             }
         }
         else if (opcode == 0xa7)
@@ -1899,10 +1595,6 @@ internal class P8086
                 SetAddSubFlags(true, v1, v2, result, true, false);
 
                 cycle_count += 22;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" CMPSW (${v1:X4},${v2:X4})");
-#endif
             }
         }
         else if (opcode == 0xe3)
@@ -1921,10 +1613,6 @@ internal class P8086
             {
                 cycle_count += 6;
             }
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" JCXZ {addr:X}");
-#endif
         }
         else if (opcode == 0xe9)
         {
@@ -1934,10 +1622,6 @@ internal class P8086
             _ip = (ushort)(_ip + offset);
 
             cycle_count += 15;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" JMP {_ip:X} ({offset:X4})");
-#endif
         }
         else if (opcode == 0x50)
         {
@@ -1945,10 +1629,6 @@ internal class P8086
             push(GetAX());
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH AX");
-#endif
         }
         else if (opcode == 0x51)
         {
@@ -1956,10 +1636,6 @@ internal class P8086
             push(GetCX());
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH CX");
-#endif
         }
         else if (opcode == 0x52)
         {
@@ -1967,10 +1643,6 @@ internal class P8086
             push(GetDX());
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH DX");
-#endif
         }
         else if (opcode == 0x53)
         {
@@ -1978,10 +1650,6 @@ internal class P8086
             push(GetBX());
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH BX");
-#endif
         }
         else if (opcode == 0x54)
         {
@@ -1992,10 +1660,6 @@ internal class P8086
             WriteMemWord(_ss, _sp, _sp);
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH SP");
-#endif
         }
         else if (opcode == 0x55)
         {
@@ -2003,10 +1667,6 @@ internal class P8086
             push(_bp);
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH BP");
-#endif
         }
         else if (opcode == 0x56)
         {
@@ -2014,10 +1674,6 @@ internal class P8086
             push(_si);
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH SI");
-#endif
         }
         else if (opcode == 0x57)
         {
@@ -2025,10 +1681,6 @@ internal class P8086
             push(_di);
 
             cycle_count += 11;  // 15
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSH DI");
-#endif
         }
         else if (opcode is (0x80 or 0x81 or 0x82 or 0x83))
         {
@@ -2041,7 +1693,6 @@ internal class P8086
             int function = (o1 >> 3) & 7;
 
             ushort r1 = 0;
-            string name1 = "error";
             bool a_valid = false;
             ushort seg = 0;
             ushort addr = 0;
@@ -2059,13 +1710,13 @@ internal class P8086
 
             if (opcode == 0x80)
             {
-                (r1, name1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, false);
+                (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, false);
 
                 r2 = GetPcByte();
             }
             else if (opcode == 0x81)
             {
-                (r1, name1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, true);
+                (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, true);
 
                 r2 = GetPcWord();
 
@@ -2073,13 +1724,13 @@ internal class P8086
             }
             else if (opcode == 0x82)
             {
-                (r1, name1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, false);
+                (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, false);
 
                 r2 = GetPcByte();
             }
             else if (opcode == 0x83)
             {
-                (r1, name1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, true);
+                (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, true);
 
                 r2 = GetPcByte();
 
@@ -2090,66 +1741,57 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} not implemented", true);
             }
 
-            string iname = "error";
             bool apply = true;
             bool use_flag_c = false;
 
             if (function == 0)
             {
                 result = r1 + r2;
-                iname = "ADD";
             }
             else if (function == 1)
             {
                 result = r1 | r2;
                 is_logic = true;
-                iname = "OR";
             }
             else if (function == 2)
             {
                 result = r1 + r2 + (GetFlagC() ? 1 : 0);
                 use_flag_c = true;
-                iname = "ADC";
             }
             else if (function == 3)
             {
                 result = r1 - r2 - (GetFlagC() ? 1 : 0);
                 is_sub = true;
                 use_flag_c = true;
-                iname = "SBB";
             }
             else if (function == 4)
             {
                 result = r1 & r2;
                 is_logic = true;
-                iname = "AND";
                 SetFlagC(false);
             }
             else if (function == 5)
             {
                 result = r1 - r2;
                 is_sub = true;
-                iname = "SUB";
             }
             else if (function == 6)
             {
                 result = r1 ^ r2;
                 is_logic = true;
-                iname = "XOR";
             }
             else if (function == 7)
             {
                 result = r1 - r2;
                 is_sub = true;
                 apply = false;
-                iname = "CMP";
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", true);
             }
 
             if (is_logic)
@@ -2159,16 +1801,12 @@ internal class P8086
 
             if (apply)
             {
-                (string dummy, int put_cycles) = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, (ushort)result);
+                int put_cycles = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, (ushort)result);
 
                 cycles += put_cycles;
             }
 
             cycle_count += 3 + cycles;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" {iname} {name1},${r2:X2}");
-#endif
         }
         else if (opcode == 0x84 || opcode == 0x85)
         {
@@ -2180,8 +1818,8 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int cycles) = GetRegisterMem(reg2, mod, word);
-            (ushort r2, string name2) = GetRegister(reg1, word);
+            (ushort r1, bool a_valid, ushort seg, ushort addr, int cycles) = GetRegisterMem(reg2, mod, word);
+            ushort r2 = GetRegister(reg1, word);
 
             if (word)
             {
@@ -2197,10 +1835,6 @@ internal class P8086
             SetFlagC(false);
 
             cycle_count += 3 + cycles;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" TEST {name1},{name2}");
-#endif
         }
         else if (opcode == 0x86 || opcode == 0x87)
         {
@@ -2212,18 +1846,14 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
-            (ushort r2, string name2) = GetRegister(reg1, word);
+            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
+            ushort r2 = GetRegister(reg1, word);
 
-            (string dummy, int put_cycles) = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, r2);
+            int put_cycles = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, r2);
 
             PutRegister(reg1, word, r1);
 
             cycle_count += 3 + get_cycles + put_cycles;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" XCHG {name1},{name2}");
-#endif
         }
         else if (opcode == 0x8f)
         {
@@ -2233,32 +1863,24 @@ internal class P8086
             int mod = o1 >> 6;
             int reg2 = o1 & 7;
 
-            (string toName, int put_cycles) = PutRegisterMem(reg2, mod, true, pop());
+            int put_cycles = PutRegisterMem(reg2, mod, true, pop());
 
             cycle_count += put_cycles;
 
             cycle_count += 17;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POP {toName}");
-#endif
         }
         else if (opcode == 0x90)
         {
             // NOP
 
             cycle_count += 3;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" NOP");
-#endif
         }
         else if (opcode >= 0x91 && opcode <= 0x97)
         {
             // XCHG AX,...
             int reg_nr = opcode - 0x90;
 
-            (ushort v, string name_other) = GetRegister(reg_nr, true);
+            ushort v = GetRegister(reg_nr, true);
 
             ushort old_ax = GetAX();
             SetAX(v);
@@ -2266,10 +1888,6 @@ internal class P8086
             PutRegister(reg_nr, true, old_ax);
 
             cycle_count += 3;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" XCHG AX,{name_other}");
-#endif
         }
         else if (opcode == 0x98)
         {
@@ -2282,10 +1900,6 @@ internal class P8086
             SetAX(new_value);
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" CBW");
-#endif
         }
         else if (opcode == 0x99)
         {
@@ -2296,10 +1910,6 @@ internal class P8086
                 SetDX(0);
 
             cycle_count += 5;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" CDW");
-#endif
         }
         else if (opcode == 0x9a)
         {
@@ -2314,10 +1924,6 @@ internal class P8086
             _cs = temp_cs;
 
             cycle_count += 37;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" CALL ${_cs:X} ${_ip:X}: ${_cs * 16 + _ip:X}");
-#endif
         }
         else if (opcode == 0x9c)
         {
@@ -2325,10 +1931,6 @@ internal class P8086
             push(_flags);
 
             cycle_count += 10;  // 14
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" PUSHF");
-#endif
         }
         else if (opcode == 0x9d)
         {
@@ -2338,10 +1940,6 @@ internal class P8086
             cycle_count += 8;  // 12
 
             FixFlags();
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" POPF");
-#endif
         }
         else if (opcode == 0xac)
         {
@@ -2353,10 +1951,6 @@ internal class P8086
                 _si += (ushort)(GetFlagD() ? -1 : 1);
 
                 cycle_count += 5;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" LODSB");
-#endif
             }
         }
         else if (opcode == 0xad)
@@ -2369,10 +1963,6 @@ internal class P8086
                 _si += (ushort)(GetFlagD() ? -2 : 2);
 
                 cycle_count += 5;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" LODSW");
-#endif
             }
         }
         else if (opcode == 0xc2 || opcode == 0xc0)
@@ -2385,10 +1975,6 @@ internal class P8086
             _sp += nToRelease;
 
             cycle_count += 16;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" RET ${nToRelease:X4}");
-#endif
         }
         else if (opcode == 0xc3 || opcode == 0xc1)
         {
@@ -2396,10 +1982,6 @@ internal class P8086
             _ip = pop();
 
             cycle_count += 16;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" RET");
-#endif
         }
         else if (opcode == 0xc4 || opcode == 0xc5)
         {
@@ -2409,28 +1991,16 @@ internal class P8086
             int reg = (o1 >> 3) & 7;
             int rm = o1 & 7;
 
-            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
-
-            string name;
+            (ushort val, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
 
             if (opcode == 0xc4)
-            {
                 _es = ReadMemWord(seg, (ushort)(addr + 2));
-                name = "LES";
-            }
             else
-            {
                 _ds = ReadMemWord(seg, (ushort)(addr + 2));
-                name = "LDS";
-            }
 
-            string affected = PutRegister(reg, true, val);
+            PutRegister(reg, true, val);
 
             cycle_count += 7 + get_cycles;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" {name} {affected},{name_from}");
-#endif
         }
         else if (opcode == 0xcc || opcode == 0xcd || opcode == 0xce)
         {
@@ -2466,13 +2036,6 @@ internal class P8086
                 _cs = ReadMemWord(0, (ushort)(addr + 2));
 
                 cycle_count += 51;  // 71  TODO
-
-#if DEBUG
-                if (opcode == 0xce)
-                    Log.Disassemble(prefixStr, $" INTO {@int:X2} -> {SegmentAddr(_cs, _ip)} (from {addr:X4})");
-                else
-                    Log.Disassemble(prefixStr, $" INT {@int:X2} -> {SegmentAddr(_cs, _ip)} (from {addr:X4})");
-#endif
             }
         }
         else if (opcode == 0xcf)
@@ -2484,10 +2047,6 @@ internal class P8086
             FixFlags();
 
             cycle_count += 32;  // 44
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" IRET");
-#endif
         }
         else if ((opcode >= 0x00 && opcode <= 0x03) || (opcode >= 0x10 && opcode <= 0x13) || (opcode >= 0x28 && opcode <= 0x2b) || (opcode >= 0x18 && opcode <= 0x1b) || (opcode >= 0x38 && opcode <= 0x3b))
         {
@@ -2499,12 +2058,11 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
-            (ushort r2, string name2) = GetRegister(reg1, word);
+            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
+            ushort r2 = GetRegister(reg1, word);
 
             cycle_count += get_cycles;
 
-            string name = "error";
             int result = 0;
             bool is_sub = false;
             bool apply = true;
@@ -2515,8 +2073,6 @@ internal class P8086
                 result = r1 + r2;
 
                 cycle_count += 4;
-
-                name = "ADD";
             }
             else if (opcode >= 0x10 && opcode <= 0x13)
             {
@@ -2525,8 +2081,6 @@ internal class P8086
                 result = r1 + r2 + (GetFlagC() ? 1 : 0);
 
                 cycle_count += 4;
-
-                name = "ADC";
             }
             else
             {
@@ -2540,19 +2094,15 @@ internal class P8086
                 if (opcode >= 0x38 && opcode <= 0x3b)
                 {
                     apply = false;
-                    name = "CMP";
                 }
                 else if (opcode >= 0x28 && opcode <= 0x2b)
                 {
-                    name = "SUB";
                 }
                 else  // 0x18...0x1b
                 {
                     use_flag_c = true;
 
                     result -= (GetFlagC() ? 1 : 0);
-
-                    name = "SBB";
                 }
 
                 cycle_count += 4;
@@ -2569,10 +2119,6 @@ internal class P8086
                 if (direction)
                 {
                     PutRegister(reg1, word, (ushort)result);
-
-#if DEBUG
-                    Log.Disassemble(prefixStr, $" {name} {name2},{name1}");
-#endif
                 }
                 else
                 {
@@ -2584,22 +2130,9 @@ internal class P8086
                     if (override_to_ss)
                         seg = _ss;
 
-                    (string dummy, int put_cycles) = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result);
+                    int put_cycles = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result);
                     cycle_count += put_cycles;
-
-#if DEBUG
-                    Log.Disassemble(prefixStr, $" {name} {name1},{name2}");
-#endif
                 }
-            }
-            else
-            {
-#if DEBUG
-                if (direction)
-                    Log.Disassemble(prefixStr, $" {name} {name2},{name1}");
-                else
-                    Log.Disassemble(prefixStr, $" {name} {name1},{name2}");
-#endif
             }
         }
         else if (opcode == 0x3c || opcode == 0x3d)
@@ -2620,10 +2153,6 @@ internal class P8086
                 r2 = GetPcWord();
 
                 result = r1 - r2;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" CMP AX,#${r2:X4}");
-#endif
             }
             else if (opcode == 0x3c)
             {
@@ -2631,14 +2160,10 @@ internal class P8086
                 r2 = GetPcByte();
 
                 result = r1 - r2;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" CMP AL,#${r2:X2}");
-#endif
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} not implemented", true);
             }
 
             SetAddSubFlags(word, r1, r2, result, true, false);
@@ -2653,55 +2178,44 @@ internal class P8086
             int reg1 = (o1 >> 3) & 7;
             int reg2 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
-            (ushort r2, string name2) = GetRegister(reg1, word);
+            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
+            ushort r2 = GetRegister(reg1, word);
 
             cycle_count += get_cycles;
-
-            string name = "error";
+            cycle_count += 3;
 
             ushort result = 0;
 
             int function = opcode >> 4;
-
-            cycle_count += 3;
-
             if (function == 0)
             {
                 result = (ushort)(r1 | r2);
-                name = "OR";
             }
             else if (function == 2)
             {
                 result = (ushort)(r2 & r1);
-                name = "AND";
             }
             else if (function == 3)
             {
                 result = (ushort)(r2 ^ r1);
-                name = "XOR";
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", true);
             }
 
             SetLogicFuncFlags(word, result);
 
             if (direction)
             {
-                string affected = PutRegister(reg1, word, result);
+                PutRegister(reg1, word, result);
             }
             else
             {
-                (string affected, int put_cycles) = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, result);
+                int put_cycles = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, result);
 
                 cycle_count += put_cycles;
             }
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" {name} {name1},{name2}");
-#endif
         }
         else if (opcode is (0x34 or 0x35 or 0x24 or 0x25 or 0x0c or 0x0d))
         {
@@ -2709,9 +2223,6 @@ internal class P8086
 
             byte bLow = GetPcByte();
             byte bHigh = word ? GetPcByte() : (byte)0;
-
-            string tgt_name = word ? "AX" : "AL";
-            string name = "error";
 
             int function = opcode >> 4;
 
@@ -2721,8 +2232,6 @@ internal class P8086
 
                 if (word)
                     _ah |= bHigh;
-
-                name = "OR";
             }
             else if (function == 2)
             {
@@ -2730,8 +2239,6 @@ internal class P8086
 
                 if (word)
                     _ah &= bHigh;
-
-                name = "AND";
 
                 SetFlagC(false);
             }
@@ -2741,12 +2248,10 @@ internal class P8086
 
                 if (word)
                     _ah ^= bHigh;
-
-                name = "XOR";
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", true);
             }
 
             SetLogicFuncFlags(word, word ? GetAX() : _al);
@@ -2754,10 +2259,6 @@ internal class P8086
             SetFlagP(_al);
 
             cycle_count += 4;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" {name} {tgt_name},${bHigh:X2}{bLow:X2}");
-#endif
         }
         else if (opcode == 0xe8)
         {
@@ -2767,10 +2268,6 @@ internal class P8086
             _ip = (ushort)(a + _ip);
 
             cycle_count += 16;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" CALL {a:X4} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
-#endif
         }
         else if (opcode == 0xea)
         {
@@ -2782,10 +2279,6 @@ internal class P8086
             _cs = temp_cs;
 
             cycle_count += 15;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" JMP ${_cs:X} ${_ip:X}: {SegmentAddr(_cs, _ip)}");
-#endif
         }
         else if (opcode == 0xf6 || opcode == 0xf7)
         {
@@ -2796,11 +2289,8 @@ internal class P8086
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
 
-            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
+            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
             cycle_count += get_cycles;
-
-            string name2 = "";
-            string cmd_name = "error";
 
             int function = (o1 >> 3) & 7;
             if (function == 0 || function == 1)
@@ -2808,46 +2298,35 @@ internal class P8086
                 // TEST
                 if (word) {
                     ushort r2 = GetPcWord();
-                    name2 = $"{r2:X4}";
 
                     ushort result = (ushort)(r1 & r2);
                     SetLogicFuncFlags(true, result);
 
                     SetFlagC(false);
-
-                    cmd_name = "TEST";
                 }
                 else {
                     byte r2 = GetPcByte();
-                    name2 = $",{r2:X2}";
-
                     ushort result = (ushort)(r1 & r2);
                     SetLogicFuncFlags(word, result);
 
                     SetFlagC(false);
                 }
-
-                cmd_name = "TEST";
             }
             else if (function == 2)
             {
                 // NOT
-                (string dummy, int put_cycles) = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)~r1);
+                int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)~r1);
                 cycle_count += put_cycles;
-
-                cmd_name = "NOT";
             }
             else if (function == 3)
             {
                 // NEG
                 int result = (ushort)-r1;
 
-                cmd_name = "NEG";
-
                 SetAddSubFlags(word, 0, r1, -r1, true, false);
                 SetFlagC(r1 != 0);
 
-                (string dummy, int put_cycles) = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)result);
+                int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)result);
                 cycle_count += put_cycles;
             }
             else if (function == 4)
@@ -2870,9 +2349,6 @@ internal class P8086
                     SetFlagC(flag);
                     SetFlagO(flag);
 
-                    name2 = name1;
-                    name1 = "DX:AX";
-
                     cycle_count += 118;
                 }
                 else {
@@ -2887,8 +2363,6 @@ internal class P8086
 
                     cycle_count += 70;
                 }
-
-                cmd_name = "MUL";
             }
             else if (function == 5)
             {
@@ -2910,9 +2384,6 @@ internal class P8086
                     SetFlagC(flag);
                     SetFlagO(flag);
 
-                    name2 = name1;
-                    name1 = "DX:AX";
-
                     cycle_count += 128;
                 }
                 else {
@@ -2928,8 +2399,6 @@ internal class P8086
 
                     cycle_count += 80;
                 }
-
-                cmd_name = "IMUL";
             }
             else if (function == 6)
             {
@@ -2967,8 +2436,6 @@ internal class P8086
                         _ah = (byte)(ax % r1);
                     }
                 }
-
-                cmd_name = "DIV";
             }
             else if (function == 7)
             {
@@ -3017,22 +2484,13 @@ internal class P8086
                         _ah = (byte)(ax % r1s);
                     }
                 }
-
-                cmd_name = "IDIV";
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} o1 {o1:X2} function {function} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} o1 {o1:X2} function {function} not implemented", true);
             }
 
             cycle_count += 4;
-
-#if DEBUG
-            if (name2 != "")
-                Log.Disassemble(prefixStr, $" {cmd_name} {name1},{name2} word:{word}");
-            else
-                Log.Disassemble(prefixStr, $" {cmd_name} {name1} word:{word}");
-#endif
         }
         else if (opcode == 0xfa)
         {
@@ -3040,10 +2498,6 @@ internal class P8086
             SetFlagI(false); // IF
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" CLI");
-#endif
         }
         else if ((opcode & 0xf0) == 0xb0)
         {
@@ -3057,13 +2511,9 @@ internal class P8086
             if (word)
                 v |= (ushort)(GetPcByte() << 8);
 
-            string name = PutRegister(reg, word, v);
+            PutRegister(reg, word, v);
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" MOV {name},${v:X}");
-#endif
         }
         else if (opcode == 0xa0)
         {
@@ -3073,10 +2523,6 @@ internal class P8086
             _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, a);
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" MOV AL,[${a:X4}]");
-#endif
         }
         else if (opcode == 0xa1)
         {
@@ -3086,10 +2532,6 @@ internal class P8086
             SetAX(ReadMemWord(_segment_override_set ? _segment_override : _ds, a));
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" MOV AX,[${a:X4}]");
-#endif
         }
         else if (opcode == 0xa2)
         {
@@ -3099,10 +2541,6 @@ internal class P8086
             WriteMemByte(_segment_override_set ? _segment_override : _ds, a, _al);
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" MOV [${a:X4}],AL");
-#endif
         }
         else if (opcode == 0xa3)
         {
@@ -3112,10 +2550,6 @@ internal class P8086
             WriteMemWord(_segment_override_set ? _segment_override : _ds, a, GetAX());
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" MOV [${a:X4}],AX");
-#endif
         }
         else if (opcode == 0xa8)
         {
@@ -3129,10 +2563,6 @@ internal class P8086
             SetFlagC(false);
 
             cycle_count += 3;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" TEST AL,${v:X2}");
-#endif
         }
         else if (opcode == 0xa9)
         {
@@ -3146,10 +2576,6 @@ internal class P8086
             SetFlagC(false);
 
             cycle_count += 3;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" TEST AX,${v:X4}");
-#endif
         }
         else if (opcode is (0x88 or 0x89 or 0x8a or 0x8b or 0x8e or 0x8c))
         {
@@ -3180,20 +2606,16 @@ internal class P8086
             if (dir)
             {
                 // to 'REG' from 'rm'
-                (ushort v, string fromName, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mode, word);
+                (ushort v, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mode, word);
 
                 cycle_count += get_cycles;
 
                 string toName;
 
                 if (sreg)
-                    toName = PutSRegister(reg, v);
+                    PutSRegister(reg, v);
                 else
-                    toName = PutRegister(reg, word, v);
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" MOV {toName},{fromName}");
-#endif
+                    PutRegister(reg, word, v);
             }
             else
             {
@@ -3202,17 +2624,13 @@ internal class P8086
                 string fromName;
 
                 if (sreg)
-                    (v, fromName) = GetSRegister(reg);
+                    v = GetSRegister(reg);
                 else
-                    (v, fromName) = GetRegister(reg, word);
+                    v = GetRegister(reg, word);
 
-                (string toName, int put_cycles) = PutRegisterMem(rm, mode, word, v);
+                int put_cycles = PutRegisterMem(rm, mode, word, v);
 
                 cycle_count += put_cycles;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" MOV {toName},{fromName} ({v:X4})");
-#endif
             }
 
             cycle_count += 3;
@@ -3229,15 +2647,11 @@ internal class P8086
 
             // might introduce problems when the dereference of *addr reads from i/o even
             // when it is not required
-            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
+            (ushort val, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
 
             cycle_count += get_cycles;
 
-            string name_to = PutRegister(reg, true, addr);
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" LEA {name_to},{name_from}");
-#endif
+            PutRegister(reg, true, addr);
         }
         else if (opcode == 0x9e)
         {
@@ -3250,10 +2664,6 @@ internal class P8086
             FixFlags();
 
             cycle_count += 4;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" SAHF (set to {GetFlagsAsString()})");
-#endif
         }
         else if (opcode == 0x9f)
         {
@@ -3261,17 +2671,13 @@ internal class P8086
             _ah = (byte)_flags;
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" LAHF");
-#endif
         }
         else if (opcode is >= 0x40 and <= 0x4f)
         {
             // INC/DECw
             int reg = (opcode - 0x40) & 7;
 
-            (ushort v, string name) = GetRegister(reg, true);
+            ushort v = GetRegister(reg, true);
 
             bool isDec = opcode >= 0x48;
 
@@ -3298,13 +2704,6 @@ internal class P8086
             PutRegister(reg, true, v);
 
             cycle_count += 3;
-
-#if DEBUG
-            if (isDec)
-                Log.Disassemble(prefixStr, $" DEC {name}");
-            else
-                Log.Disassemble(prefixStr, $" INC {name}");
-#endif
         }
         else if (opcode == 0xaa)
         {
@@ -3316,10 +2715,6 @@ internal class P8086
                 _di += (ushort)(GetFlagD() ? -1 : 1);
 
                 cycle_count += 11;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" STOSB");
-#endif
             }
         }
         else if (opcode == 0xab)
@@ -3332,10 +2727,6 @@ internal class P8086
                 _di += (ushort)(GetFlagD() ? -2 : 2);
 
                 cycle_count += 11;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" STOSW");
-#endif
             }
         }
         else if (opcode == 0xae)
@@ -3350,10 +2741,6 @@ internal class P8086
                 _di += (ushort)(GetFlagD() ? -1 : 1);
 
                 cycle_count += 15;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" SCASB");
-#endif
             }
         }
         else if (opcode == 0xaf)
@@ -3369,10 +2756,6 @@ internal class P8086
                 _di += (ushort)(GetFlagD() ? -2 : 2);
 
                 cycle_count += 15;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" SCASW");
-#endif
             }
         }
         else if (opcode == 0xc6 || opcode == 0xc7)
@@ -3389,7 +2772,7 @@ internal class P8086
             cycle_count += 2;  // base (correct?)
 
             // get address to write to ('seg, addr')
-            (ushort dummy, string name, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(mreg, mod, word);
+            (ushort dummy, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(mreg, mod, word);
 
             cycle_count += get_cycles;
 
@@ -3397,23 +2780,15 @@ internal class P8086
             {
                 // the value follows
                 ushort v = GetPcWord();
-                (string dummy2, int put_cycles) = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
+                int put_cycles = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
                 cycle_count += put_cycles;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" MOV word {name},${v:X4}");
-#endif
             }
             else
             {
                 // the value follows
                 byte v = GetPcByte();
-                (string dummy2, int put_cycles) = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
+                int put_cycles = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
                 cycle_count += put_cycles;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" MOV byte {name},${v:X2}");
-#endif
             }
         }
         else if (opcode >= 0xc8 && opcode <= 0xcb)
@@ -3429,15 +2804,9 @@ internal class P8086
                 _sp += nToRelease;
 
                 cycle_count += 16;
-#if DEBUG
-                Log.Disassemble(prefixStr, $" RETF ${nToRelease:X4}");
-#endif
             }
             else
             {
-#if DEBUG
-                Log.Disassemble(prefixStr, $" RETF");
-#endif
                 cycle_count += 26;
             }
         }
@@ -3449,7 +2818,7 @@ internal class P8086
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
 
-            (ushort v1, string vName, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
+            (ushort v1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
 
             cycle_count += get_cycles;
 
@@ -3493,10 +2862,6 @@ internal class P8086
                     SetFlagO(GetFlagC() ^ ((v1 & check_bit) == check_bit));
 
                 cycle_count += 2;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" ROL {vName},{countName}");
-#endif
             }
             else if (mode == 1)
             {
@@ -3517,10 +2882,6 @@ internal class P8086
                     SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
 
                 cycle_count += 2;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" ROR {vName},{countName}");
-#endif
             }
             else if (mode == 2)
             {
@@ -3542,10 +2903,6 @@ internal class P8086
                     SetFlagO(GetFlagC() ^ ((v1 & check_bit) == check_bit));
 
                 cycle_count += 2;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" RCL {vName},{countName}");
-#endif
             }
             else if (mode == 3)
             {
@@ -3567,10 +2924,6 @@ internal class P8086
                     SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
 
                 cycle_count += 2;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" RCR {vName},{countName}");
-#endif
             }
             else if (mode == 4)
             {
@@ -3591,10 +2944,6 @@ internal class P8086
                 }
 
                 cycle_count += count * 4;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" SAL {vName},{countName}");
-#endif
             }
             else if (mode == 5)
             {
@@ -3616,10 +2965,6 @@ internal class P8086
                     SetFlagO(false);
 
                 cycle_count += count * 4;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" SHR {vName},{countName}");
-#endif
             }
             else if (mode == 6)
             {
@@ -3636,10 +2981,6 @@ internal class P8086
 
                         v1 = (ushort)(word ? 0xffff : 0xff);
                     }
-
-#if DEBUG
-                    Log.Disassemble(prefixStr, $" SETMOC");
-#endif
                 }
                 else
                 {
@@ -3651,10 +2992,6 @@ internal class P8086
                     SetFlagS(true);
 
                     v1 = (ushort)(word ? 0xffff : 0xff);
-
-#if DEBUG
-                    Log.Disassemble(prefixStr, $" SETMO");
-#endif
                 }
             }
             else if (mode == 7)
@@ -3675,14 +3012,10 @@ internal class P8086
                     SetFlagO(false);
 
                 cycle_count += 2;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" SAR {vName},{countName}");
-#endif
             }
             else
             {
-                Log.DoLog($"{prefixStr} RCR/SHR/{opcode:X2} mode {mode} not implemented", true);
+                Log.DoLog($"RCR/SHR/{opcode:X2} mode {mode} not implemented", true);
             }
 
             if (!word)
@@ -3695,7 +3028,7 @@ internal class P8086
                 SetFlagP((byte)v1);
             }
 
-            (string dummy, int put_cycles) = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, v1);
+            int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, v1);
 
             cycle_count += put_cycles;
         }
@@ -3723,10 +3056,6 @@ internal class P8086
             }
 
             cycle_count += 83;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" AAM");
-#endif
         }
         else if (opcode == 0xd5)
         {
@@ -3739,10 +3068,6 @@ internal class P8086
             SetZSPFlags(_al);
 
             cycle_count += 60;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" AAD");
-#endif
         }
         else if (opcode == 0xd6)
         {
@@ -3753,31 +3078,22 @@ internal class P8086
                 _al = 0x00;
 
             cycle_count += 2;  // TODO
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" SALC");
-#endif
         }
         else if (opcode == 0x9b)
         {
+            // FWAIT
             cycle_count += 2;  // TODO
-#if DEBUG
-            Log.DoLog($"{prefixStr} FWAIT - ignored", true);
-#endif
         }
         else if (opcode >= 0xd8 && opcode <= 0xdf)
         {
+            // FPU
             byte o1 = GetPcByte();
             int mod = o1 >> 6;
             int reg1 = o1 & 7;
-            (ushort v1, string vName, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, false);
+            (ushort v1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, false);
             cycle_count += get_cycles;
 
             cycle_count += 2;  // TODO
-
-#if DEBUG
-            Log.DoLog($"{prefixStr} FPU - ignored", true);
-#endif
         }
         else if ((opcode & 0xf0) == 0x70 || (opcode & 0xf0) == 0x60)
         {
@@ -3785,91 +3101,74 @@ internal class P8086
             byte to = GetPcByte();
 
             bool state = false;
-            string name = String.Empty;
 
             if (opcode == 0x70 || opcode == 0x60)
             {
                 state = GetFlagO();
-                name = "JO";
             }
             else if (opcode == 0x71 || opcode == 0x61)
             {
                 state = GetFlagO() == false;
-                name = "JNO";
             }
             else if (opcode == 0x72 || opcode == 0x62)
             {
                 state = GetFlagC();
-                name = "JC/JB";
             }
             else if (opcode == 0x73 || opcode == 0x63)
             {
                 state = GetFlagC() == false;
-                name = "JNC";
             }
             else if (opcode == 0x74 || opcode == 0x64)
             {
                 state = GetFlagZ();
-                name = "JE/JZ";
             }
             else if (opcode == 0x75 || opcode == 0x65)
             {
                 state = GetFlagZ() == false;
-                name = "JNE/JNZ";
             }
             else if (opcode == 0x76 || opcode == 0x66)
             {
                 state = GetFlagC() || GetFlagZ();
-                name = "JBE/JNA";
             }
             else if (opcode == 0x77 || opcode == 0x67)
             {
                 state = GetFlagC() == false && GetFlagZ() == false;
-                name = "JA/JNBE";
             }
             else if (opcode == 0x78 || opcode == 0x68)
             {
                 state = GetFlagS();
-                name = "JS";
             }
             else if (opcode == 0x79 || opcode == 0x69)
             {
                 state = GetFlagS() == false;
-                name = "JNS";
             }
             else if (opcode == 0x7a || opcode == 0x6a)
             {
                 state = GetFlagP();
-                name = "JNP/JPO";
             }
             else if (opcode == 0x7b || opcode == 0x6b)
             {
                 state = GetFlagP() == false;
-                name = "JNP/JPO";
             }
             else if (opcode == 0x7c || opcode == 0x6c)
             {
                 state = GetFlagS() != GetFlagO();
-                name = "JNGE";
             }
             else if (opcode == 0x7d || opcode == 0x6d)
             {
                 state = GetFlagS() == GetFlagO();
-                name = "JNL";
             }
             else if (opcode == 0x7e || opcode == 0x6e)
             {
                 state = GetFlagZ() == true || GetFlagS() != GetFlagO();
-                name = "JLE";
             }
             else if (opcode == 0x7f || opcode == 0x6f)
             {
                 state = GetFlagZ() == false && GetFlagS() == GetFlagO();
-                name = "JNLE";
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:x2} not implemented", true);
+                Log.DoLog($"opcode {opcode:x2} not implemented", true);
             }
 
             ushort newAddress = (ushort)(_ip + (sbyte)to);
@@ -3883,10 +3182,6 @@ internal class P8086
             {
                 cycle_count += 4;
             }
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" {name} {to} ({_cs:X4}:{newAddress:X4} -> {SegmentAddr(_cs, newAddress)})");
-#endif
         }
         else if (opcode == 0xd7)
         {
@@ -3896,10 +3191,6 @@ internal class P8086
             _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, (ushort)(GetBX() + _al));
 
             cycle_count += 11;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" XLATB ({_ds:X4}:{GetBX():X4} + {old_al:X2})");
-#endif
         }
         else if (opcode == 0xe0 || opcode == 0xe1 || opcode == 0xe2)
         {
@@ -3910,7 +3201,6 @@ internal class P8086
             cx--;
             SetCX(cx);
 
-            string name = "?";
             ushort newAddresses = (ushort)(_ip + (sbyte)to);
 
             cycle_count += 4;
@@ -3922,14 +3212,6 @@ internal class P8086
                     _ip = newAddresses;
                     cycle_count += 4;
                 }
-                else
-                {
-#if DEBUG
-                    Log.DoLog("LOOP end", true);
-#endif
-                }
-
-                name = "LOOP";
             }
             else if (opcode == 0xe1)
             {
@@ -3938,8 +3220,6 @@ internal class P8086
                     _ip = newAddresses;
                     cycle_count += 4;
                 }
-
-                name = "LOOPZ";
             }
             else if (opcode == 0xe0)
             {
@@ -3948,17 +3228,11 @@ internal class P8086
                     _ip = newAddresses;
                     cycle_count += 4;
                 }
-
-                name = "LOOPNZ";
             }
             else
             {
-                Log.Disassemble(prefixStr, $" opcode {opcode:X2} not implemented");
+                Log.DoLog($" opcode {opcode:X2} not implemented");
             }
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" {name} {to} ({newAddresses:X4})");
-#endif
         }
         else if (opcode == 0xe4)
         {
@@ -3969,10 +3243,6 @@ internal class P8086
             _al = (byte)val;
 
             cycle_count += 10;  // or 14
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" IN AL,${from:X2}");
-#endif
         }
         else if (opcode == 0xe5)
         {
@@ -3983,10 +3253,6 @@ internal class P8086
             SetAX(val);
 
             cycle_count += 10;  // or 14
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" IN AX,${from:X2}");
-#endif
         }
         else if (opcode == 0xe6)
         {
@@ -3995,10 +3261,6 @@ internal class P8086
             _io.Out(@to, _al);
 
             cycle_count += 10;  // max 14
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" OUT ${to:X2},AL");
-#endif
         }
         else if (opcode == 0xe7)
         {
@@ -4007,10 +3269,6 @@ internal class P8086
             _io.Out(@to, GetAX());
 
             cycle_count += 10;  // max 14
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" OUT ${to:X2},AX");
-#endif
         }
         else if (opcode == 0xec)
         {
@@ -4019,10 +3277,6 @@ internal class P8086
             _al = (byte)val;
 
             cycle_count += 8;  // or 12
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" IN AL,DX");
-#endif
         }
         else if (opcode == 0xed)
         {
@@ -4031,10 +3285,6 @@ internal class P8086
             SetAX(val);
 
             cycle_count += 12;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" IN AX,DX");
-#endif
         }
         else if (opcode == 0xee)
         {
@@ -4042,10 +3292,6 @@ internal class P8086
             _io.Out(GetDX(), _al);
 
             cycle_count += 8;  // or 12
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" OUT DX,AL");
-#endif
         }
         else if (opcode == 0xef)
         {
@@ -4053,10 +3299,6 @@ internal class P8086
             _io.Out(GetDX(), GetAX());
 
             cycle_count += 12;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" OUT DX,AX");
-#endif
         }
         else if (opcode == 0xeb)
         {
@@ -4064,10 +3306,6 @@ internal class P8086
             byte to = GetPcByte();
             _ip = (ushort)(_ip + (sbyte)to);
             cycle_count += 15;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" JP ${_ip:X4} ({_cs * 16 + _ip:X6}, {to:X2})");
-#endif
         }
         else if (opcode == 0xf4)
         {
@@ -4077,10 +3315,6 @@ internal class P8086
             _ip--;
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" HLT");
-#endif
         }
         else if (opcode == 0xf5)
         {
@@ -4088,10 +3322,6 @@ internal class P8086
             SetFlagC(! GetFlagC());
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" CMC");
-#endif
         }
         else if (opcode == 0xf8)
         {
@@ -4099,10 +3329,6 @@ internal class P8086
             SetFlagC(false);
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" CLC");
-#endif
         }
         else if (opcode == 0xf9)
         {
@@ -4110,10 +3336,6 @@ internal class P8086
             SetFlagC(true);
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" STC");
-#endif
         }
         else if (opcode == 0xfb)
         {
@@ -4121,10 +3343,6 @@ internal class P8086
             SetFlagI(true); // IF
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" STI");
-#endif
         }
         else if (opcode == 0xfc)
         {
@@ -4132,10 +3350,6 @@ internal class P8086
             SetFlagD(false);
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" CLD");
-#endif
         }
         else if (opcode == 0xfd)
         {
@@ -4143,10 +3357,6 @@ internal class P8086
             SetFlagD(true);
 
             cycle_count += 2;
-
-#if DEBUG
-            Log.Disassemble(prefixStr, $" STD");
-#endif
         }
         else if (opcode == 0xfe || opcode == 0xff)
         {
@@ -4159,7 +3369,7 @@ internal class P8086
 
             // Log.DoLog($"mod {mod} reg {reg} word {word} function {function}", true);
 
-            (ushort v, string name, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg, mod, word);
+            (ushort v, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg, mod, word);
             cycle_count += get_cycles;
 
             if (function == 0)
@@ -4175,10 +3385,6 @@ internal class P8086
                 SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
                 SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
                 SetFlagP((byte)v);
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" INC {name}");
-#endif
             }
             else if (function == 1)
             {
@@ -4193,10 +3399,6 @@ internal class P8086
                 SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
                 SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
                 SetFlagP((byte)v);
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" DEC {name}");
-#endif
             }
             else if (function == 2)
             {
@@ -4207,10 +3409,6 @@ internal class P8086
                 _ip = v;
 
                 cycle_count += 16;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" CALL {name} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
-#endif
             }
             else if (function == 3)
             {
@@ -4222,10 +3420,6 @@ internal class P8086
                 _cs = ReadMemWord(seg, (ushort)(addr + 2));
 
                 cycle_count += 37;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" CALL {name} (${_ip:X4} -> {SegmentAddr(_cs, _ip)})");
-#endif
             }
             else if (function == 4)
             {
@@ -4233,10 +3427,6 @@ internal class P8086
                 _ip = v;
 
                 cycle_count += 18;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" JMP {name} ({_cs * 16 + _ip:X6})");
-#endif
             }
             else if (function == 5)
             {
@@ -4245,10 +3435,6 @@ internal class P8086
                 _ip = ReadMemWord(seg, addr);
 
                 cycle_count += 15;
-
-#if DEBUG
-                Log.Disassemble(prefixStr, $" JMP {_cs:X4}:{_ip:X4}");
-#endif
             }
             else if (function == 6)
             {
@@ -4264,25 +3450,22 @@ internal class P8086
                 }
 
                 cycle_count += 16;
-#if DEBUG
-                Log.Disassemble(prefixStr, $" PUSH ${v:X4}");
-#endif
             }
             else
             {
-                Log.DoLog($"{prefixStr} opcode {opcode:X2} function {function} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", true);
             }
 
             if (!word)
                 v &= 0xff;
 
-            (string dummy, int put_cycles) = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, v);
+            int put_cycles = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, v);
 
             cycle_count += put_cycles;
         }
         else
         {
-            Log.DoLog($"{prefixStr} opcode {opcode:x} not implemented", true);
+            Log.DoLog($"opcode {opcode:x} not implemented", true);
         }
 
         PrefixEnd(opcode);
@@ -4299,5 +3482,1450 @@ internal class P8086
         _io.Tick(cycle_count, _clock);
 
         return true;
+    }
+
+    public byte DisassembleGetByte(ref ushort d_cs, ref ushort d_ip, ref int instr_len, ref List<byte> bytes)
+    {
+        byte opcode = ReadMemByte(d_cs, d_ip);
+        bytes.Add(opcode);
+        d_ip++;
+        instr_len++;
+        return opcode;
+    }
+
+    public ushort DisassembleGetWord(ref ushort d_cs, ref ushort d_ip, ref int instr_len, ref List<byte> bytes)
+    {
+        byte low = ReadMemByte(d_cs, d_ip);
+        bytes.Add(low);
+        byte high = ReadMemByte(d_cs, d_ip);
+        bytes.Add(high);
+        return (ushort)(low + (high << 8));
+    }
+
+    // value, name, meta
+    private (ushort, string, string) DisassemblyGetDoubleRegisterMod00(int reg, ref ushort d_cs, ref ushort d_ip, ref int instr_len, ref List<byte> bytes)
+    {
+        ushort a = 0;
+        string name = "error";
+        string meta = "";
+
+        if (reg == 0)
+        {
+            a = (ushort)(GetBX() + _si);
+            name = "[BX+SI]";
+        }
+        else if (reg == 1)
+        {
+            a = (ushort)(GetBX() + _di);
+            name = "[BX+DI]";
+        }
+        else if (reg == 2)
+        {
+            a = (ushort)(_bp + _si);
+            name = "[BP+SI]";
+        }
+        else if (reg == 3)
+        {
+            a = (ushort)(_bp + _di);
+            name = "[BP+DI]";
+        }
+        else if (reg == 4)
+        {
+            a = _si;
+            name = "[SI]";
+        }
+        else if (reg == 5)
+        {
+            a = _di;
+            name = "[DI]";
+        }
+        else if (reg == 6)
+        {
+            a = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            name = $"[${a:X4}]";
+        }
+        else if (reg == 7)
+        {
+            a = GetBX();
+            name = "[BX]";
+        }
+        else
+        {
+            meta = $"{nameof(GetDoubleRegisterMod00)} {reg} not implemented";
+        }
+
+        return (a, name, meta);
+    }
+
+    // value, name, meta, cycles
+    private (ushort, string, string, bool, ushort) DisassemblyGetDoubleRegisterMod01_02(int reg, bool word, ref ushort d_cs, ref ushort d_ip, ref int instr_len, ref List<byte> bytes)
+    {
+        ushort a = 0;
+        string name = "error";
+        int cycles = 0;
+        bool override_segment = false;
+        ushort new_segment = 0;
+        string meta = "";
+
+        if (reg == 6)
+        {
+            a = _bp;
+            name = "[BP]";
+            cycles = 5;
+            override_segment = true;
+            new_segment = _ss;
+        }
+        else
+        {
+            (a, name, meta) = DisassemblyGetDoubleRegisterMod00(reg, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+        }
+
+
+        short disp = word ? (short)DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes) : (sbyte)DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+        return ((ushort)(a + disp), name, $"disp {disp:X4} " + meta, override_segment, new_segment);
+    }
+
+    // value, name_of_source, segment_a_valid, segment/, address of value, meta
+    private (ushort, string, bool, ushort, ushort, string) DisassemblyGetRegisterMem(int reg, int mod, bool w, ref ushort d_cs, ref ushort d_ip, ref int instr_len, ref List<byte> bytes)
+    {
+        string meta = "";
+
+        if (mod == 0)
+        {
+            (ushort a, string name, meta) = DisassemblyGetDoubleRegisterMod00(reg, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            ushort segment = _segment_override_set ? _segment_override : _ds;
+            if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            {
+                segment = _ss;
+                meta = $"BP SS-override ${_ss:X4}";
+            }
+
+            ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
+
+            return (v, name, true, segment, a, meta);
+        }
+
+        if (mod == 1 || mod == 2)
+        {
+            bool word = mod == 2;
+
+            (ushort a, string name, meta, bool override_segment, ushort new_segment) = DisassemblyGetDoubleRegisterMod01_02(reg, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            ushort segment = _segment_override_set ? _segment_override : _ds;
+            if (_segment_override_set == false && override_segment)
+            {
+                segment = new_segment;
+                meta += $"BP SS-override ${_ss:X4} [2]";
+            }
+            if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            {
+                segment = _ss;
+                meta += $"BP SS-override ${_ss:X4} [3]";
+            }
+
+            ushort v = w ? ReadMemWord(segment, a) : ReadMemByte(segment, a);
+
+            return (v, name, true, segment, a, meta);
+        }
+
+        if (mod == 3)
+        {
+            (ushort v, string name) = DisassemblyGetRegister(reg, w);
+            return (v, name, false, 0, 0, "");
+        }
+
+        return (0, "error", false, 0, 0, $"reg {reg} mod {mod} w {w} not supported for {nameof(DisassemblyGetRegisterMem)}");
+    }
+
+    private string DisassemblyPutRegister(int reg, bool w, ushort val)
+    {
+        if (reg == 0)
+        {
+            if (w)
+                return "AX";
+            return "AL";
+        }
+
+        if (reg == 1)
+        {
+            if (w)
+                return "CX";
+            return "CL";
+        }
+
+        if (reg == 2)
+        {
+            if (w)
+                return "DX";
+            return "DL";
+        }
+
+        if (reg == 3)
+        {
+            if (w)
+                return "BX";
+            return "BL";
+        }
+
+        if (reg == 4)
+        {
+            if (w)
+                return "SP";
+            return "AH";
+        }
+
+        if (reg == 5)
+        {
+            if (w)
+                return "BP";
+            return "CH";
+        }
+
+        if (reg == 6)
+        {
+            if (w)
+                return "SI";
+            return "DH";
+        }
+
+        if (reg == 7)
+        {
+            if (w)
+                return "DI";
+            return "BH";
+        }
+
+        return "error";
+    }
+
+    private string DisassemblyPutSRegister(int reg, ushort v)
+    {
+        reg &= 0b00000011;
+
+        if (reg == 0b000)
+            return "ES";
+
+        if (reg == 0b001)
+            return "CS";
+
+        if (reg == 0b010)
+            return "SS";
+
+        if (reg == 0b011)
+            return "DS";
+
+        return "error";
+    }
+
+    private (ushort, string) DisassemblyGetRegister(int reg, bool w)
+    {
+        if (w)
+        {
+            if (reg == 0)
+                return (GetAX(), "AX");
+            if (reg == 1)
+                return (GetCX(), "CX");
+            if (reg == 2)
+                return (GetDX(), "DX");
+            if (reg == 3)
+                return (GetBX(), "BX");
+            if (reg == 4)
+                return (_sp, "SP");
+            if (reg == 5)
+                return (_bp, "BP");
+            if (reg == 6)
+                return (_si, "SI");
+            if (reg == 7)
+                return (_di, "DI");
+        }
+        else
+        {
+            if (reg == 0)
+                return (_al, "AL");
+            if (reg == 1)
+                return (_cl, "CL");
+            if (reg == 2)
+                return (_dl, "DL");
+            if (reg == 3)
+                return (_bl, "BL");
+            if (reg == 4)
+                return (_ah, "AH");
+            if (reg == 5)
+                return (_ch, "CH");
+            if (reg == 6)
+                return (_dh, "DH");
+            if (reg == 7)
+                return (_bh, "BH");
+        }
+
+        return (0, "error");
+    }
+
+    private (string, int) DisassemblyPutRegisterMem(int reg, int mod, bool w, ushort val, ref ushort d_cs, ref ushort d_ip, ref int instr_len, ref List<byte> bytes)
+    {
+        if (mod == 0)
+        {
+            (ushort a, string name, string meta) = DisassemblyGetDoubleRegisterMod00(reg, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            ushort segment = _segment_override_set ? _segment_override : _ds;
+
+            if (_segment_override_set == false && (reg == 2 || reg == 3)) {  // BP uses SS
+                segment = _ss;
+                meta = $"BP SS-override ${_ss:X4}";
+            }
+
+            return (name, 0);
+        }
+
+        if (mod == 1 || mod == 2)
+        {
+            (ushort a, string name, string meta, bool override_segment, ushort new_segment) = DisassemblyGetDoubleRegisterMod01_02(reg, mod == 2, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            ushort segment = _segment_override_set ? _segment_override : _ds;
+
+            if (_segment_override_set == false && override_segment)
+            {
+                segment = new_segment;
+                meta = $"BP SS-override ${_ss:X4} [5]";
+            }
+
+            if (_segment_override_set == false && (reg == 2 || reg == 3))  // BP uses SS
+            {
+                segment = _ss;
+                meta = $"BP SS-override ${_ss:X4} [6]";
+            }
+
+            return (name, 0);
+        }
+
+        if (mod == 3)
+            return (DisassemblyPutRegister(reg, w, val), 0);
+
+        return ("error", 0);
+    }
+
+    (string, int) DisassemblyUpdateRegisterMem(int reg, int mod, bool a_valid, ushort seg, ushort addr, bool word, ushort v, ref ushort d_cs, ref ushort d_ip, ref int instr_len, ref List<byte> bytes)
+    {
+        if (a_valid)
+            return ($"[{addr:X4}]", 4);
+
+        return DisassemblyPutRegisterMem(reg, mod, word, v, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+    }
+
+    private (ushort, string) DisassemblyGetSRegister(int reg)
+    {
+        reg &= 0b00000011;
+ 
+        if (reg == 0b000)
+            return (_es, "ES");
+        if (reg == 0b001)
+            return (_cs, "CS");
+        if (reg == 0b010)
+            return (_ss, "SS");
+        if (reg == 0b011)
+            return (_ds, "DS");
+
+        Log.DoLog($"reg {reg} not supported for {nameof(GetSRegister)}", true);
+
+        return (0, "error");
+    }
+
+    // instruction length, instruction string, additional info, hex-string
+    public Tuple<int, string, string, string> Disassemble(ushort d_cs, ushort d_ip)
+    {
+        int instr_len = 0;
+        List<byte> bytes = new();
+        byte opcode = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+        string meta = "";
+        string prefix = "";
+        string instr = "";
+
+        // handle prefixes
+        while (opcode is (0x26 or 0x2e or 0x36 or 0x3e or 0xf2 or 0xf3))
+        {
+            if (opcode == 0x26)
+                prefix = "ES ";
+            else if (opcode == 0x2e)
+                prefix = "CS ";
+            else if (opcode == 0x36)
+                prefix = "SS ";
+            else if (opcode  == 0x3e)
+                prefix = "DS ";
+            else if (opcode is (0xf2 or 0xf3))
+            {
+            }
+            else
+            {
+                return new Tuple<int, string, string, string>(1, "?", $"prefix {opcode:X2} not implemented", "" );
+            }
+
+            byte next_opcode = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            if (opcode == 0xf2)
+            {
+                if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
+                    prefix += "REPNZ ";
+                else
+                    prefix += "REP ";
+            }
+            else if (opcode == 0xf3)
+            {
+                if (next_opcode is (0xa6 or 0xa7 or 0xae or 0xaf))
+                    prefix += "REPE/Z ";
+                else
+                    prefix += "REP ";
+            }
+
+            opcode = next_opcode;
+        }
+
+        // main instruction handling
+        if (opcode == 0x04 || opcode == 0x14)
+        {
+            // ADD AL,xx
+            byte v = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $" ADD AL,#{v:X2}";
+        }
+        else if (opcode == 0x05 || opcode == 0x15)
+        {
+            // ADD AX,xxxx
+            ushort v = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            if (opcode == 0x05)
+                instr = $" ADD AX,${v:X4}";
+            else
+                instr = $" ADC AX,${v:X4}";
+        }
+        else if (opcode == 0x06)
+        {
+            instr = "PUSH ES";
+        }
+        else if (opcode == 0x07)
+        {
+            instr = "POP ES";
+        }
+        else if (opcode == 0x0e)
+        {
+            instr = "PUSH CS";
+        }
+        else if (opcode == 0x0f)
+        {
+            instr = "POP CS";
+        }
+        else if (opcode == 0x16)
+        {
+            instr = "PUSH SS";
+        }
+        else if (opcode == 0x17)
+        {
+            instr = "POP SS";
+        }
+        else if (opcode == 0x1c)
+        {
+            byte v = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"SBB AL,${v:X2}";
+        }
+        else if (opcode == 0x1d)
+        {
+            ushort v = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"SBB AX,${v:X4}";
+        }
+        else if (opcode == 0x1e)
+        {
+            instr = "PUSH DS";
+        }
+        else if (opcode == 0x1f)
+        {
+            instr = "POP DS";
+        }
+        else if (opcode == 0x27)
+        {
+            instr = "DAA";
+        }
+        else if (opcode == 0x2c)
+        {
+            byte v = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $" SUB AL,${v:X2}";
+        }
+        else if (opcode == 0x2f)
+        {
+            instr = "DAS";
+        }
+        else if (opcode == 0x37)
+        {
+            instr = "AAA";
+        }
+        else if (opcode == 0x3f)
+        {
+            instr = "AAS";
+        }
+        else if (opcode == 0x2d)
+        {
+            ushort v = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"SUB AX,${v:X4}";
+        }
+        else if (opcode == 0x58)
+        {
+            instr = "POP AX";
+        }
+        else if (opcode == 0x59)
+        {
+            instr = "POP CX";
+        }
+        else if (opcode == 0x5a)
+        {
+            instr = "POP DX";
+        }
+        else if (opcode == 0x5b)
+        {
+            instr = "POP BX";
+        }
+        else if (opcode == 0x5c)
+        {
+            instr = "POP SP";
+        }
+        else if (opcode == 0x5d)
+        {
+            instr = "POP BP";
+        }
+        else if (opcode == 0x5e)
+        {
+            instr = "POP SI";
+        }
+        else if (opcode == 0x5f)
+        {
+            instr = "POP DI";
+        }
+        else if (opcode == 0xa4)
+        {
+            instr = "MOVSB";
+        }
+        else if (opcode == 0xa5)
+        {
+            instr = "MOVSW";
+        }
+        else if (opcode == 0xa6)
+        {
+            instr = "CMPSB";
+        }
+        else if (opcode == 0xa7)
+        {
+            instr = "CMPSW";
+        }
+        else if (opcode == 0xe3)
+        {
+            // JCXZ np
+            byte offset = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = "JCXZ ${offset:X02}";
+        }
+        else if (opcode == 0xe9)
+        {
+            short offset = (short)DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            ushort word = (ushort)(_ip + offset);
+            instr = $"JMP {_ip:X}";
+            meta = $"{offset:X4}";
+        }
+        else if (opcode == 0x50)
+        {
+            instr = "PUSH AX";
+        }
+        else if (opcode == 0x51)
+        {
+            instr = "PUSH CX";
+        }
+        else if (opcode == 0x52)
+        {
+            instr = "PUSH DX";
+        }
+        else if (opcode == 0x53)
+        {
+            instr = "PUSH BX";
+        }
+        else if (opcode == 0x54)
+        {
+            instr = "PUSH SP";
+        }
+        else if (opcode == 0x55)
+        {
+            instr = "PUSH BP";
+        }
+        else if (opcode == 0x56)
+        {
+            instr = "PUSH SI";
+        }
+        else if (opcode == 0x57)
+        {
+            instr = "PUSH DI";
+        }
+        else if (opcode is (0x80 or 0x81 or 0x82 or 0x83))
+        {
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            int mod = o1 >> 6;
+            int reg = o1 & 7;
+            int function = (o1 >> 3) & 7;
+
+            ushort r1 = 0;
+            string name1 = "error";
+            bool a_valid = false;
+            ushort seg = 0;
+            ushort addr = 0;
+
+            ushort r2 = 0;
+
+            bool word = false;
+            int cycles = 0;
+
+            if (opcode == 0x80)
+            {
+                (r1, name1, a_valid, seg, addr, meta) = DisassemblyGetRegisterMem(reg, mod, false, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+                r2 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            }
+            else if (opcode == 0x81)
+            {
+                (r1, name1, a_valid, seg, addr, meta) = DisassemblyGetRegisterMem(reg, mod, true, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+                r2 = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+                word = true;
+            }
+            else if (opcode == 0x82)
+            {
+                (r1, name1, a_valid, seg, addr, meta) = DisassemblyGetRegisterMem(reg, mod, false, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+                r2 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            }
+            else if (opcode == 0x83)
+            {
+                (r1, name1, a_valid, seg, addr, meta) = DisassemblyGetRegisterMem(reg, mod, true, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+                r2 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+                if ((r2 & 128) == 128)
+                    r2 |= 0xff00;
+            }
+            else
+            {
+                meta = $"opcode {opcode:X2} not implemented";
+            }
+
+            string iname = "error";
+
+            if (function == 0)
+                iname = "ADD";
+            else if (function == 1)
+                iname = "OR";
+            else if (function == 2)
+                iname = "ADC";
+            else if (function == 3)
+                iname = "SBC";
+            else if (function == 4)
+                iname = "AND";
+            else if (function == 5)
+                iname = "SUB";
+            else if (function == 6)
+                iname = "XOR";
+            else if (function == 7)
+                iname = "CMP";
+            else
+            {
+                iname = "?";
+                meta = $"opcode {opcode:X2} function {function} not implemented";
+            }
+
+            instr = $"{iname} {name1},${r2:X2}";
+        }
+        else if (opcode == 0x84 || opcode == 0x85)
+        {
+            // TEST ...,...
+            bool word = (opcode & 1) == 1;
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(reg2, mod, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            (ushort r2, string name2) = DisassemblyGetRegister(reg1, word);
+
+            instr = $"TEST {name1},{name2}";
+        }
+        else if (opcode == 0x86 || opcode == 0x87)
+        {
+            // XCHG
+            bool word = (opcode & 1) == 1;
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(reg2, mod, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            (ushort r2, string name2) = DisassemblyGetRegister(reg1, word);
+
+            instr = $"XCHG {name1},{name2}";
+        }
+        else if (opcode == 0x8f)
+        {
+            // POP rmw
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            int mod = o1 >> 6;
+            int reg2 = o1 & 7;
+            (string toName, int put_cycles) = DisassemblyPutRegisterMem(reg2, mod, true, ReadMemWord(_ss, _sp), ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"POP {toName}";
+        }
+        else if (opcode == 0x90)
+        {
+            instr = "NOP";
+        }
+        else if (opcode >= 0x91 && opcode <= 0x97)
+        {
+            // XCHG AX,...
+            int reg_nr = opcode - 0x90;
+            (ushort v, string name_other) = DisassemblyGetRegister(reg_nr, true);
+            instr = $"XCHG AX,{name_other}";
+        }
+        else if (opcode == 0x98)
+        {
+            instr = $"CBW";
+        }
+        else if (opcode == 0x99)
+        {
+            instr = $"CDW";
+        }
+        else if (opcode == 0x9a)
+        {
+            // CALL far ptr
+            ushort temp_ip = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            ushort temp_cs = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            instr = $"CALL ${_cs:X} ${_ip:X}";
+            meta = $"${_cs * 16 + _ip:X}";
+        }
+        else if (opcode == 0x9c)
+        {
+            instr = "PUSHF";
+        }
+        else if (opcode == 0x9d)
+        {
+            instr = "POPF";
+        }
+        else if (opcode == 0xac)
+        {
+            instr = "LODSB";
+        }
+        else if (opcode == 0xad)
+        {
+            instr = "LODSW";
+        }
+        else if (opcode == 0xc2 || opcode == 0xc0)
+        {
+            ushort nToRelease = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"RET ${nToRelease:X4}";
+        }
+        else if (opcode == 0xc3 || opcode == 0xc1)
+        {
+            instr = "RET";
+        }
+        else if (opcode == 0xc4 || opcode == 0xc5)
+        {
+            // LES (c4) / LDS (c5)
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            int mod = o1 >> 6;
+            int reg = (o1 >> 3) & 7;
+            int rm = o1 & 7;
+
+            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(rm, mod, true, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            string name;
+            if (opcode == 0xc4)
+                name = "LES";
+            else
+                name = "LDS";
+
+            string affected = DisassemblyPutRegister(reg, true, val);
+            instr = $"{name} {affected},{name_from}";
+        }
+        else if (opcode == 0xcc || opcode == 0xcd || opcode == 0xce)
+        {
+            // INT 0x..
+            if (opcode != 0xce || GetFlagO())
+            {
+                byte @int = 0;
+                if (opcode == 0xcc)
+                    @int = 3;
+                else if (opcode == 0xce)
+                    @int = 4;
+                else
+                    @int = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+                ushort addr = (ushort)(@int * 4);
+
+                if (opcode == 0xce)
+                {
+                    instr = $" INTO {@int:X2}";
+                    meta = $"{SegmentAddr(_cs, _ip)} (from {addr:X4})";
+                }
+                else 
+                {
+                    instr = $" INT {@int:X2}";
+                    meta = $"{SegmentAddr(_cs, _ip)} (from {addr:X4})";
+                }
+            }
+        }
+        else if (opcode == 0xcf)
+        {
+            instr = "IRET";
+        }
+        else if ((opcode >= 0x00 && opcode <= 0x03) || (opcode >= 0x10 && opcode <= 0x13) || (opcode >= 0x28 && opcode <= 0x2b) || (opcode >= 0x18 && opcode <= 0x1b) || (opcode >= 0x38 && opcode <= 0x3b))
+        {
+            bool word = (opcode & 1) == 1;
+            bool direction = (opcode & 2) == 2;
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(reg2, mod, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            (ushort r2, string name2) = DisassemblyGetRegister(reg1, word);
+
+            string name = "error";
+            int result = 0;
+            bool is_sub = false;
+            bool apply = true;
+            bool use_flag_c = false;
+
+            if (opcode <= 0x03)
+                name = "ADD";
+            else if (opcode >= 0x10 && opcode <= 0x13)
+                name = "ADC";
+            else if (opcode >= 0x38 && opcode <= 0x3b)
+            {
+                apply = false;
+                name = "CMP";
+            }
+            else if (opcode >= 0x28 && opcode <= 0x2b)
+                name = "SUB";
+            else  // 0x18...0x1b
+            {
+                name = "SBB";
+            }
+
+
+            // 0x38...0x3b are CMP
+            if (apply)
+            {
+                (string dummy, int put_cycles) = DisassemblyUpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+                instr = $"{name} {name1},{name2}";
+            }
+            else
+            {
+                if (direction)
+                    instr = $"{name} {name2},{name1}";
+                else
+                    instr = $"{name} {name1},{name2}";
+            }
+        }
+        else if (opcode == 0x3c || opcode == 0x3d)
+        {
+            // CMP
+            bool word = (opcode & 1) == 1;
+
+            ushort r1 = 0;
+            ushort r2 = 0;
+
+            if (opcode == 0x3d)
+            {
+                r1 = GetAX();
+                r2 = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+                instr = $"CMP AX,#${r2:X4}";
+            }
+            else if (opcode == 0x3c)
+            {
+                r1 = _al;
+                r2 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+                instr = $"CMP AL,#${r2:X2}";
+            }
+            else
+            {
+                meta = $"opcode {opcode:X2} not implemented";
+            }
+        }
+        else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
+        {
+            bool word = (opcode & 1) == 1;
+            bool direction = (opcode & 2) == 2;
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(reg2, mod, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            (ushort r2, string name2) = DisassemblyGetRegister(reg1, word);
+
+            string name = "error";
+            int function = opcode >> 4;
+
+            if (function == 0)
+                name = "OR";
+            else if (function == 2)
+                name = "AND";
+            else if (function == 3)
+                name = "XOR";
+            else
+                meta = "opcode {opcode:X2} function {function} not implemented";
+
+            instr = $"{name} {name1},{name2}";
+        }
+        else if (opcode is (0x34 or 0x35 or 0x24 or 0x25 or 0x0c or 0x0d))
+        {
+            bool word = (opcode & 1) == 1;
+
+            byte bLow = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            byte bHigh = word ? DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes) : (byte)0;
+
+            string tgt_name = word ? "AX" : "AL";
+            string name = "error";
+
+            int function = opcode >> 4;
+
+            if (function == 0)
+                name = "OR";
+            else if (function == 2)
+                name = "AND";
+            else if (function == 3)
+                name = "XOR";
+            else
+                meta = "opcode {opcode:X2} function {function} not implemented";
+
+            instr = $"{name} {tgt_name},${bHigh:X2}{bLow:X2}";
+        }
+        else if (opcode == 0xe8)
+        {
+            short a = (short)DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"CALL {a:X4} (${_ip:X4}";
+            meta = "{SegmentAddr(_cs, _ip)})";
+        }
+        else if (opcode == 0xea)
+        {
+            // JMP far ptr
+            ushort temp_ip = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            ushort temp_cs = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"JMP ${_cs:X} ${_ip:X}";
+            meta = $"{SegmentAddr(_cs, _ip)}";
+        }
+        else if (opcode == 0xf6 || opcode == 0xf7)
+        {
+            // TEST and others
+            bool word = (opcode & 1) == 1;
+
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            int mod = o1 >> 6;
+            int reg1 = o1 & 7;
+
+            (ushort r1, string name1, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(reg1, mod, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            string name2 = "";
+            string name = "error";
+
+            int function = (o1 >> 3) & 7;
+            if (function == 0 || function == 1)
+                name = "TEST";
+            else if (function == 2)
+                name = "NOT";
+            else if (function == 3)
+                name = "NEG";
+            else if (function == 4)
+            {
+                name = "MUL";
+                if (word)
+                {
+                    name2 = name1;
+                    name1 = "DX:AX";
+                }
+            }
+            else if (function == 5)
+            {
+                name = "IMUL";
+                if (word)
+                {
+                    name2 = name1;
+                    name1 = "DX:AX";
+                }
+            }
+            else if (function == 6)
+                name = "DIV";
+            else if (function == 7)
+                name = "IDIV";
+            else
+            {
+                meta = $"opcode {opcode:X2} o1 {o1:X2} function {function} not implemented";
+            }
+
+            if (name2 != "")
+                instr = $"{name} {name1},{name2}";
+            else
+                instr = $"{name} {name1}";
+            if (meta == "")
+                meta = $"word: {word}";
+        }
+        else if (opcode == 0xfa)
+            instr = "CLI";
+        else if ((opcode & 0xf0) == 0xb0)
+        {
+            int reg = opcode & 0x07;
+            bool word = (opcode & 0x08) == 0x08;
+
+            ushort v = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            if (word)
+                v |= (ushort)(DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes) << 8);
+
+            string name = DisassemblyPutRegister(reg, word, v);
+            instr = $"MOV {name},${v:X}";
+        }
+        else if (opcode == 0xa0)
+        {
+            ushort a = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"MOV AL,[${a:X4}]";
+        }
+        else if (opcode == 0xa1)
+        {
+            // MOV AX,[...]
+            ushort a = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"MOV AX,[${a:X4}]";
+        }
+        else if (opcode == 0xa2)
+        {
+            // MOV [...],AL
+            ushort a = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"MOV [${a:X4}],AL";
+        }
+        else if (opcode == 0xa3)
+        {
+            ushort a = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"MOV [${a:X4}],AX";
+        }
+        else if (opcode == 0xa8)
+        {
+            // TEST AL,..
+            byte v = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"TEST AL,${v:X2}";
+        }
+        else if (opcode == 0xa9)
+        {
+            // TEST AX,..
+            ushort v = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"TEST AX,${v:X4}";
+        }
+        else if (opcode is (0x88 or 0x89 or 0x8a or 0x8b or 0x8e or 0x8c))
+        {
+            bool dir = (opcode & 2) == 2; // direction
+            bool word = (opcode & 1) == 1; // b/w
+
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            int mode = o1 >> 6;
+            int reg = (o1 >> 3) & 7;
+            int rm = o1 & 7;
+
+            bool sreg = opcode == 0x8e || opcode == 0x8c;
+            if (sreg)
+                word = true;
+
+            if (dir)
+            {
+                // to 'REG' from 'rm'
+                (ushort v, string fromName, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(rm, mode, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+                string toName;
+                if (sreg)
+                    toName = DisassemblyPutSRegister(reg, v);
+                else
+                    toName = DisassemblyPutRegister(reg, word, v);
+
+                instr = $"MOV {toName},{fromName}";
+            }
+            else
+            {
+                // from 'REG' to 'rm'
+                ushort v;
+                string fromName;
+                if (sreg)
+                    (v, fromName) = DisassemblyGetSRegister(reg);
+                else
+                    (v, fromName) = DisassemblyGetRegister(reg, word);
+
+                (string toName, int put_cycles) = DisassemblyPutRegisterMem(rm, mode, word, v, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+                instr = $"MOV {toName},{fromName}";
+                meta = $"{v:X4}";
+            }
+        }
+        else if (opcode == 0x8d)
+        {
+            // LEA
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            int mod = o1 >> 6;
+            int reg = (o1 >> 3) & 7;
+            int rm = o1 & 7;
+
+            // might introduce problems when the dereference of *addr reads from i/o even
+            // when it is not required
+            (ushort val, string name_from, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(rm, mod, true, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            string name_to = DisassemblyPutRegister(reg, true, addr);
+            instr = $"LEA {name_to},{name_from}";
+        }
+        else if (opcode == 0x9e)
+        {
+            instr = "SAHF";
+        }
+        else if (opcode == 0x9f)
+        {
+            instr = "LAHF";
+        }
+        else if (opcode is >= 0x40 and <= 0x4f)
+        {
+            int reg = (opcode - 0x40) & 7;
+            (ushort v, string name) = DisassemblyGetRegister(reg, true);
+            bool isDec = opcode >= 0x48;
+
+            if (isDec)
+                instr = $"DEC {name}";
+            else
+                instr = $"INC {name}";
+        }
+        else if (opcode == 0xaa)
+        {
+            instr = "STOSB";
+        }
+        else if (opcode == 0xab)
+        {
+            instr = "STOSW";
+        }
+        else if (opcode == 0xae)
+        {
+            instr = "SCASB";
+        }
+        else if (opcode == 0xaf)
+        {
+            instr = "SCASW";
+        }
+        else if (opcode == 0xc6 || opcode == 0xc7)
+        {
+            // MOV
+            bool word = (opcode & 1) == 1;
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            int mod = o1 >> 6;
+            int mreg = o1 & 7;
+
+            (ushort dummy, string name, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(mreg, mod, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            if (word)
+            {
+                ushort v = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+                instr = $"MOV word {name},${v:X4}";
+            }
+            else
+            {
+                // the value follows
+                byte v = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+                instr = $"MOV byte {name},${v:X2}";
+            }
+        }
+        else if (opcode >= 0xc8 && opcode <= 0xcb)
+        {
+            // RETF n / RETF
+            if (opcode == 0xca || opcode == 0xc8)
+            {
+                ushort nToRelease = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+                instr = $"RETF ${nToRelease:X4}";
+            }
+            else
+            {
+                instr = $"RETF";
+            }
+        }
+        else if ((opcode & 0xfc) == 0xd0)
+        {
+            bool word = (opcode & 1) == 1;
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            int mod = o1 >> 6;
+            int reg1 = o1 & 7;
+            (ushort v1, string vName, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(reg1, mod, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            int count = 1;
+            string countName = "1";
+            int count_mask = 0x1f;
+
+            if ((opcode & 2) == 2)
+                countName = "CL";
+
+            bool count_1_of = opcode is (0xd0 or 0xd1 or 0xd2 or 0xd3);
+            bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
+            bool set_flags = false;
+            int mode = (o1 >> 3) & 7;
+
+            ushort check_bit = (ushort)(word ? 32768 : 128);
+            ushort check_bit2 = (ushort)(word ? 16384 : 64);
+
+            if (mode == 0)
+                instr = $"ROL {vName},{countName}";
+            else if (mode == 1)
+                instr = $"ROR {vName},{countName}";
+            else if (mode == 2)
+                instr = $"RCL {vName},{countName}";
+            else if (mode == 3)
+                instr = $"RCR {vName},{countName}";
+            else if (mode == 4)
+                instr = $"SAL {vName},{countName}";
+            else if (mode == 5)
+                instr = $"SHR {vName},{countName}";
+            else if (mode == 6)
+            {
+                if (opcode >= 0xd2)
+                    instr = $"SETMOC";
+                else
+                    instr = $"SETMO";
+            }
+            else if (mode == 7)
+                instr = $"SAR {vName},{countName}";
+            else
+            {
+                meta = $"RCR/SHR/{opcode:X2} mode {mode} not implemented";
+            }
+        }
+        else if (opcode == 0xd4)
+        {
+            instr = "AAM";
+        }
+        else if (opcode == 0xd5)
+        {
+            instr = "AAD";
+        }
+        else if (opcode == 0xd6)
+        {
+            instr = "SALC";
+        }
+        else if (opcode == 0x9b)
+        {
+            instr = "FWAIT";
+            meta = "ignored";
+        }
+        else if (opcode >= 0xd8 && opcode <= 0xdf)
+        {
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            int mod = o1 >> 6;
+            int reg1 = o1 & 7;
+            (ushort v1, string vName, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(reg1, mod, false, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            meta = $"FPU ({opcode:X02} {o1:X02}) - ignored";
+        }
+        else if ((opcode & 0xf0) == 0x70 || (opcode & 0xf0) == 0x60)
+        {
+            // J..., 0x70/0x60
+            byte to = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            string name = String.Empty;
+            if (opcode == 0x70 || opcode == 0x60)
+                name = "JO";
+            else if (opcode == 0x71 || opcode == 0x61)
+                name = "JNO";
+            else if (opcode == 0x72 || opcode == 0x62)
+                name = "JC/JB";
+            else if (opcode == 0x73 || opcode == 0x63)
+                name = "JNC";
+            else if (opcode == 0x74 || opcode == 0x64)
+                name = "JE/JZ";
+            else if (opcode == 0x75 || opcode == 0x65)
+                name = "JNE/JNZ";
+            else if (opcode == 0x76 || opcode == 0x66)
+                name = "JBE/JNA";
+            else if (opcode == 0x77 || opcode == 0x67)
+                name = "JA/JNBE";
+            else if (opcode == 0x78 || opcode == 0x68)
+                name = "JS";
+            else if (opcode == 0x79 || opcode == 0x69)
+                name = "JNS";
+            else if (opcode == 0x7a || opcode == 0x6a)
+                name = "JNP/JPO";
+            else if (opcode == 0x7b || opcode == 0x6b)
+                name = "JNP/JPO";
+            else if (opcode == 0x7c || opcode == 0x6c)
+                name = "JNGE";
+            else if (opcode == 0x7d || opcode == 0x6d)
+                name = "JNL";
+            else if (opcode == 0x7e || opcode == 0x6e)
+                name = "JLE";
+            else if (opcode == 0x7f || opcode == 0x6f)
+                name = "JNLE";
+            else
+                meta = "opcode {opcode:x2} not implemented";
+
+            ushort newAddress = (ushort)(_ip + (sbyte)to);
+
+            instr = $"{name} {to}";
+            meta = $"{_cs:X4}:{newAddress:X4} -> {SegmentAddr(_cs, newAddress)}";
+        }
+        else if (opcode == 0xd7)
+        {
+            instr = "XLATB";
+        }
+        else if (opcode == 0xe0 || opcode == 0xe1 || opcode == 0xe2)
+        {
+            // LOOP
+            byte to = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            string name = "?";
+            ushort newAddresses = (ushort)(_ip + (sbyte)to);
+
+            if (opcode == 0xe2)
+                name = "LOOP";
+            else if (opcode == 0xe1)
+                name = "LOOPZ";
+            else if (opcode == 0xe0)
+                name = "LOOPNZ";
+            else
+                instr = $"opcode {opcode:X2} not implemented";
+
+            meta = $"{newAddresses:X4}";
+            instr = name;
+        }
+        else if (opcode == 0xe4)
+        {
+            // IN AL,ib
+            byte @from = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"IN AL,${from:X2}";
+        }
+        else if (opcode == 0xe5)
+        {
+            byte @from = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"IN AX,${from:X2}";
+        }
+        else if (opcode == 0xe6)
+        {
+            byte @to = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"OUT ${to:X2},AL";
+        }
+        else if (opcode == 0xe7)
+        {
+            byte @to = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"OUT ${to:X2},AX";
+        }
+        else if (opcode == 0xec)
+        {
+            instr = "IN AL,DX";
+        }
+        else if (opcode == 0xed)
+        {
+            instr = "IN AX,DX";
+        }
+        else if (opcode == 0xee)
+        {
+            instr = "OUT DX,AL";
+        }
+        else if (opcode == 0xef)
+        {
+            instr = "OUT DX,AX";
+        }
+        else if (opcode == 0xeb)
+        {
+            // JMP
+            sbyte to = (sbyte)DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            instr = $"JP ${_ip:X4}";
+            meta = $"{_cs * 16 + _ip:X6 + to}, {to:X2}";
+        }
+        else if (opcode == 0xf4)
+        {
+            instr = "HLT";
+        }
+        else if (opcode == 0xf5)
+        {
+            instr = "CMC";
+        }
+        else if (opcode == 0xf8)
+        {
+            instr = "CLC";
+        }
+        else if (opcode == 0xf9)
+        {
+            instr = "STC";
+        }
+        else if (opcode == 0xfb)
+        {
+            instr = "STI";
+        }
+        else if (opcode == 0xfc)
+        {
+            instr = "CLD";
+        }
+        else if (opcode == 0xfd)
+        {
+            instr = "STD";
+        }
+        else if (opcode == 0xfe || opcode == 0xff)
+        {
+            bool word = (opcode & 1) == 1;
+            byte o1 = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            int mod = o1 >> 6;
+            int reg = o1 & 7;
+            int function = (o1 >> 3) & 7;
+
+            (ushort v, string name, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(reg, mod, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
+
+            if (function == 0)
+                instr = $"INC {name}";
+            else if (function == 1)
+                instr = $"DEC {name}";
+            else if (function == 2)
+            {
+                instr = $"CALL {name}";
+                meta = $"${v:X4} -> {SegmentAddr(_cs, _ip)}";
+            }
+            else if (function == 3)
+            {
+                ushort temp_cs = ReadMemWord(seg, (ushort)(addr + 2));
+                instr = $"CALL {name}";
+                meta = "${v:X4} -> {SegmentAddr(temp_cs, v)})";
+            }
+            else if (function == 4)
+            {
+                instr = $"JMP {name}";
+                meta = $"{_cs * 16 + v:X6}";
+            }
+            else if (function == 5)
+            {
+                // JMP
+                ushort temp_cs = ReadMemWord(seg, (ushort)(addr + 2));
+                ushort temp_ip = ReadMemWord(seg, addr);
+                instr = $"JMP {temp_cs:X4}:{temp_ip:X4}";
+            }
+            else if (function == 6)
+            {
+                instr = $"PUSH ${v:X4}";
+            }
+            else
+            {
+                meta = "opcode {opcode:X2} function {function} not implemented";
+            }
+        }
+        else
+        {
+            instr = "?";
+            meta = $"opcode {opcode:x} not implemented";
+        }
+
+        string hex_string = null;
+        foreach(var v in bytes)
+        {
+            if (hex_string == null)
+                hex_string = "";
+            else
+                hex_string += " ";
+            hex_string += $"{v:X02}";
+        }
+
+        return new Tuple<int, string, string, string>(instr_len, prefix + instr, meta, hex_string);
     }
 }
