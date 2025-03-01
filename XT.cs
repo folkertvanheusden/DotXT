@@ -63,6 +63,7 @@ internal class P8086
     private List<Device> _devices;
 
     private List<uint> _breakpoints = new();
+    private bool _ignore_breakpoints = false;
     private string _stop_reason = "";
 
     public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, ref List<Device> devices, bool run_IO)
@@ -138,6 +139,12 @@ internal class P8086
     public void ClearBreakpoints()
     {
         _breakpoints.Clear();
+    }
+
+    // is only once
+    public void SetIgnoreBreakpoints()
+    {
+        _ignore_breakpoints = true;
     }
 
     public void Reset()
@@ -1099,13 +1106,18 @@ internal class P8086
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
         byte opcode = GetPcByte();
 
-        foreach(uint check_address in _breakpoints)
+        if (_ignore_breakpoints)
+            _ignore_breakpoints = false;
+        else
         {
-            if (check_address == instr_start)
+            foreach(uint check_address in _breakpoints)
             {
-                _stop_reason = $"Breakpoint reached at address {check_address:X06}";
-                Log.DoLog(_stop_reason);
-                return false;
+                if (check_address == instr_start)
+                {
+                    _stop_reason = $"Breakpoint reached at address {check_address:X06}";
+                    Log.DoLog(_stop_reason);
+                    return false;
+                }
             }
         }
 

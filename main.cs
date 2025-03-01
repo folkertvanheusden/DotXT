@@ -238,6 +238,7 @@ if (json_processing)
         if (line == "s")
         {
             Disassemble(p.GetCS(), p.GetIP());
+            p.SetIgnoreBreakpoints();
             p.Tick();
         }
         else if (line == "S")
@@ -245,6 +246,7 @@ if (json_processing)
             Disassemble(p.GetCS(), p.GetIP());
             do
             {
+                p.SetIgnoreBreakpoints();
                 p.Tick();
             }
             while(p.IsProcessingRep());
@@ -579,7 +581,10 @@ void Runner(object o)
                 Disassemble(p.GetCS(), p.GetIP());
 
             if (p.Tick() == false || runner_parameters.exit.get() == true)
+            {
+                p.SetIgnoreBreakpoints();
                 break;
+            }
 
             if (!throttle)
                 continue;
