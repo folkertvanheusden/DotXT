@@ -69,7 +69,7 @@ class IO
         return (0xff, false);
     }
 
-    public bool Tick(int ticks, int clock)
+    public bool Tick(int ticks, long clock)
     {
         bool rc = false;
 

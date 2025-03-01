@@ -4,7 +4,7 @@ abstract class Display : Device
 {
     private DateTime _prev_ts = DateTime.UtcNow;
     private int _prev_clock = 0;
-    private int _last_hsync = 0;
+    private long _last_hsync = 0;
     private List<EmulatorConsole> _consoles = null;
     protected GraphicalFrame _gf = new();
     protected ulong _gf_version = 1;
@@ -71,7 +71,7 @@ abstract class Display : Device
     public abstract void Redraw();
 
 /*
-    public void SyncClock(int clock)
+    public void SyncClock(long clock)
     {
         DateTime now_ts = DateTime.UtcNow;
         TimeSpan elapsed_time = now_ts.Subtract(_prev_ts);

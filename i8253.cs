@@ -16,7 +16,7 @@ internal class i8253 : Device
     Timer [] _timers = new Timer[3];
     protected int _irq_nr = 0;
     i8237 _i8237 = null;
-    int clock = 0;
+    long clock = 0;
 
     // using a static seed to make it behave
     // the same every invocation (until threads
@@ -220,7 +220,7 @@ internal class i8253 : Device
         }
     }
 
-    public override bool Tick(int ticks, int ignored)
+    public override bool Tick(int ticks, long ignored)
     {
         clock += ticks;
 

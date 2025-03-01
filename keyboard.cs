@@ -115,7 +115,7 @@ class Keyboard : Device
         return 0xee;
     }
 
-    public override bool Tick(int cycles, int clock)
+    public override bool Tick(int cycles, long clock)
     {
         if ((_0x61_bits & 0x80) == 0 && CheckScheduledInterrupt(cycles)) {
             Log.DoLog("Fire keyboard interrupt", true);

@@ -526,7 +526,7 @@ void Disassemble(ushort cs, ushort ip)
     (int length, string instruction, string meta, string hex) = p.Disassemble(cs, ip);
 
     uint flat_addr = (uint)(cs * 16 + ip);
-    Log.DoLog($"{flat_addr:X6} | {registers_str} | {hex} | {instruction} | {meta}");
+    Log.DoLog($"{p.GetClock()} {flat_addr:X6} | {registers_str} | {hex} | {instruction} | {meta}");
 }
 
 void Runner(object o)
@@ -539,7 +539,7 @@ void Runner(object o)
         Console.WriteLine("Emulation started");
 
         long prev_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-        int prev_clock = 0;
+        long prev_clock = 0;
         for(;;)
         {
             if (runner_parameters.disassemble)
@@ -551,7 +551,7 @@ void Runner(object o)
             if (!throttle)
                 continue;
 
-            int now_clock = p.GetClock();
+            long now_clock = p.GetClock();
             if (now_clock - prev_clock >= 4770000 / 50)
             {
                 long now_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;

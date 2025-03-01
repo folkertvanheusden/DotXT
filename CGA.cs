@@ -173,7 +173,7 @@ class CGA : Display
 
         if (port == 0x3da)
         {
-            int scanline = (_clock / 304) % 262;  // 262 scanlines, 304 cpu cycles per scanline
+            int scanline = (int)((_clock / 304) % 262);  // 262 scanlines, 304 cpu cycles per scanline
             Log.DoLog($"Scanline: {scanline}, clock: {_clock}", true);
 
             if (scanline >= 200)  // 200 scanlines visible

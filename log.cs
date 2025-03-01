@@ -7,9 +7,6 @@ class Log
     private static string _logfile = null;
     private static string _disassembly = null;
     private static bool _echo = false;
-    private static int _nr = 0;
-    private static ushort _cs = 0;
-    private static ushort _ip = 0;
     private static SortedDictionary<string, Tuple<string, string> > disassembly = new();
     private static readonly System.Threading.Lock _disassembly_lock = new();
     private static readonly System.Threading.Lock _logging_lock = new();  // for windows
@@ -27,12 +24,6 @@ class Log
     public static void EchoToConsole(bool state)
     {
         _echo = state;
-    }
-
-    public static void SetAddress(ushort cs, ushort ip)
-    {
-        _cs = cs;
-        _ip = ip;
     }
 
     public static void Disassemble(string prefix, string assembly)
@@ -74,12 +65,12 @@ class Log
         if (_logfile == null && _echo == false)
             return;
 
-        string output = $"[{_nr} | {_cs:X04}:{_ip:X04}] {ll} " + (ll != LogLevel.TRACE ? "; " : "") + what + Environment.NewLine;
+        //string output = $"{ll} " + (ll != LogLevel.TRACE ? "; " : "") + what + Environment.NewLine;
+        string output = what + Environment.NewLine;
 
         lock(_logging_lock)
         {
             File.AppendAllText(_logfile, output);
-            _nr++;
         }
 
         if (_echo)
@@ -91,12 +82,12 @@ class Log
         if (_logfile == null && _echo == false)
             return;
 
-        string output = $"[{_nr} | {_cs:X04}:{_ip:X04}] {LogLevel.TRACE} " + (is_meta ? "; " : "") + what + Environment.NewLine;
+        //string output = $"{LogLevel.TRACE} " + (is_meta ? "; " : "") + what + Environment.NewLine;
+        string output = what + Environment.NewLine;
 
         lock(_logging_lock)
         {
             File.AppendAllText(_logfile, output);
-            _nr++;
         }
 
         if (_echo)

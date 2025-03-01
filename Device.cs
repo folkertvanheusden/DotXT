@@ -2,7 +2,7 @@ abstract class Device
 {
     protected pic8259 _pic = null;
     private List<int> next_interrupt = new();
-    protected int _clock = 0;
+    protected long _clock = 0;
 
     public abstract String GetName();
 
@@ -19,7 +19,7 @@ abstract class Device
     public abstract void WriteByte(uint offset, byte value);
     public abstract byte ReadByte(uint offset);
 
-    public virtual bool Tick(int cycles, int clock)
+    public virtual bool Tick(int cycles, long clock)
     {
         _clock = clock;
         return false;

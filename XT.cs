@@ -59,7 +59,7 @@ internal class P8086
 
     private bool _is_test;
 
-    private int _clock;
+    private long _clock;
     private List<Device> _devices;
 
     private List<uint> _breakpoints = new();
@@ -146,7 +146,7 @@ internal class P8086
         _ip = 0xfff0;
     }
 
-    public int GetClock()
+    public long GetClock()
     {
         return _clock;
     }
@@ -1097,7 +1097,6 @@ internal class P8086
 
         ushort instr_start = _ip;
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
-        Log.SetAddress(_cs, _ip);
         byte opcode = GetPcByte();
 
         foreach(uint check_address in _breakpoints)
@@ -1135,7 +1134,6 @@ internal class P8086
             }
 
             address = (uint)(_cs * 16 + _ip) & MemMask;
-            Log.SetAddress(_cs, _ip);
             byte next_opcode = GetPcByte();
 
             _rep_opcode = next_opcode;  // TODO: only allow for certain instructions

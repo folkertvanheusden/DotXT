@@ -113,7 +113,7 @@ internal class RTC : Device
         return 0xee;
     }
 
-    public override bool Tick(int ticks, int ignored)
+    public override bool Tick(int ticks, long ignored)
     {
         return false;
     }
