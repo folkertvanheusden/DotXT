@@ -369,6 +369,7 @@ class VNCServer: GraphicalConsole
                 VNCSecurityHandshake(stream);
                 VNCClientServerInit(stream, parameters.vs);
 
+                Console.WriteLine("Starting graphics transmission");
                 parameters.vs.Redraw();
                 ulong version = 0;
                 for(;;)
@@ -392,6 +393,8 @@ class VNCServer: GraphicalConsole
             {
                 Log.DoLog($"VNCServer exception: {e.ToString()}", true);
             }
+
+            Console.WriteLine("VNC session ended");
 
             client.Close();
         }
