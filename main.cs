@@ -333,6 +333,7 @@ else
                 Console.WriteLine("sbp x          set breakpoint");
                 Console.WriteLine("dbp x          delete breakpoint");
                 Console.WriteLine("cbp            remove all breakpoints");
+                Console.WriteLine("stats x        \"x\" must be \"cpu-speed\" currently");
             }
             else if (parts[0] == "s" || parts[0] == "step" || parts[0] == "S")
             {
@@ -374,6 +375,18 @@ else
                 Console.WriteLine(runner_parameters.disassemble ? "disassembly on" : "disassembly off");
                 if (running)
                     Console.WriteLine("Please stop+start emulation to activate tracing");
+            }
+            else if (parts[0] == "stats")
+            {
+                if (parts.Length != 2)
+                    Console.WriteLine("Parameter missing");
+                else if (parts[1] == "cpu-speed")
+                {
+                    if (running)
+                        MeasureSpeed(p);
+                    else
+                        Console.WriteLine("Emulation not running");
+                }
             }
             else if (parts[0] == "echo")
             {
@@ -755,6 +768,15 @@ void GetBreakpoints(P8086 p)
     Console.WriteLine("Breakpoints:");
     foreach(uint a in p.GetBreakpoints())
         Console.WriteLine($"\t{a:X06}");
+}
+
+void MeasureSpeed(P8086 p)
+{
+    long start_clock = p.GetClock();
+    Thread.Sleep(1000);
+    long end_clock = p.GetClock();
+
+    Console.WriteLine($"Estimated emulation speed: {(end_clock - start_clock) * 100 / 4772730}%");
 }
 
 class ThreadSafe_Bool
