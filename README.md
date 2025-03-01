@@ -1,7 +1,7 @@
 DotXT
 =====
 
-A IBM PC emulator written in C# with dotnet 9.0. It runs on Linux and probably on other C#/.NET platforms as well.
+An IBM PC emulator written in C# with dotnet 9.0. It runs on Linux and probably on other C#/.NET platforms as well.
 
 Please no "pull requests" (via github or other way), but tips/hints/suggestions are welcome.
 
