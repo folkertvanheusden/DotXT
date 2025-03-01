@@ -40,6 +40,15 @@ Run `dotxt -h` to get a list fo commandline parameters.
 In the console ("==>" on your screen), you can enter e.g. "help" to get a list of commands. For example for changing the floppy drive image for an other.
 
 
+demo
+====
+
+See https://vanheusden.com/emulation/ibmpc/demo.zip contains all the bios-files etc.
+
+And https://www.youtube.com/watch?v=9jfngoD6r70 and https://www.youtube.com/watch?v=9jfngoD6r70
+
+
+
 This software is © Folkert van Heusden.
 
 Released in the public domain.
