@@ -527,8 +527,7 @@ void Disassemble(ushort cs, ushort ip)
     // instruction length, instruction string, additional info, hex-string
     (int length, string instruction, string meta, string hex) = p.Disassemble(cs, ip);
 
-    uint flat_addr = (uint)(cs * 16 + ip);
-    Log.DoLog($"{p.GetClock()} {flat_addr:X6} | {registers_str} | {instruction} | {hex} | {meta}");
+    Log.DoLog($"{p.GetClock()} {cs:X4}:{ip:X4} | {registers_str} | {instruction} | {hex} | {meta}");
 }
 
 void Runner(object o)
