@@ -28,19 +28,6 @@ class Log
 
     public static void Disassemble(string prefix, string assembly)
     {
-#if DEBUG
-        lock(_disassembly_lock)
-        {
-            string key = $"{_cs * 16 + _ip:X06}";
-
-            if (disassembly.ContainsKey(key) == false)
-            {
-                string addr = $"{_cs:X04}:{_ip:X04}";
-                disassembly.Add(key, new Tuple<string, string>(addr, assembly));
-            }
-        }
-#endif
-
         DoLog(prefix + " " + assembly);
     }
 
