@@ -4832,7 +4832,7 @@ internal class P8086
             // JMP
             sbyte to = (sbyte)DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
             instr = $"JP ${_ip:X4}";
-            meta = $"{_cs * 16 + _ip:X6 + to}, {to:X2}";
+            meta = $"{_cs * 16 + _ip + to:X6}, {to:X2}";
         }
         else if (opcode == 0xf4)
         {
