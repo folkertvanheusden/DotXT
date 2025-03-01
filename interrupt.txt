@@ -1,2 +1,0 @@
-- apt install bin86
-- as86 -0 -b interrupt.bin -l interrupt.list interrupt.asm
