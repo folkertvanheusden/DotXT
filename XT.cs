@@ -2620,8 +2620,6 @@ internal class P8086
 
                 cycle_count += get_cycles;
 
-                string toName;
-
                 if (sreg)
                     PutSRegister(reg, v);
                 else
@@ -2630,9 +2628,7 @@ internal class P8086
             else
             {
                 // from 'REG' to 'rm'
-                ushort v;
-                string fromName;
-
+                ushort v = 0;
                 if (sreg)
                     v = GetSRegister(reg);
                 else
@@ -4083,11 +4079,7 @@ internal class P8086
             bool a_valid = false;
             ushort seg = 0;
             ushort addr = 0;
-
             ushort r2 = 0;
-
-            bool word = false;
-            int cycles = 0;
 
             if (opcode == 0x80)
             {
@@ -4100,8 +4092,6 @@ internal class P8086
                 (r1, name1, a_valid, seg, addr, meta) = DisassemblyGetRegisterMem(reg, mod, true, ref d_cs, ref d_ip, ref instr_len, ref bytes);
 
                 r2 = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
-
-                word = true;
             }
             else if (opcode == 0x82)
             {
@@ -4305,9 +4295,7 @@ internal class P8086
 
             string name = "error";
             int result = 0;
-            bool is_sub = false;
             bool apply = true;
-            bool use_flag_c = false;
 
             if (opcode <= 0x03)
                 name = "ADD";
@@ -4667,16 +4655,12 @@ internal class P8086
             int reg1 = o1 & 7;
             (ushort v1, string vName, bool a_valid, ushort seg, ushort addr, meta) = DisassemblyGetRegisterMem(reg1, mod, word, ref d_cs, ref d_ip, ref instr_len, ref bytes);
 
-            int count = 1;
             string countName = "1";
-            int count_mask = 0x1f;
-
             if ((opcode & 2) == 2)
                 countName = "CL";
 
             bool count_1_of = opcode is (0xd0 or 0xd1 or 0xd2 or 0xd3);
             bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
-            bool set_flags = false;
             int mode = (o1 >> 3) & 7;
 
             ushort check_bit = (ushort)(word ? 32768 : 128);
@@ -4926,12 +4910,10 @@ internal class P8086
             meta = $"opcode {opcode:x} not implemented";
         }
 
-        string hex_string = null;
+        string hex_string = "";
         foreach(var v in bytes)
         {
-            if (hex_string == null)
-                hex_string = "";
-            else
+            if (hex_string != "")
                 hex_string += " ";
             hex_string += $"{v:X02}";
         }
