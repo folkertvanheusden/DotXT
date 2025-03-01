@@ -93,10 +93,7 @@ class CGA : Display
 
     public override bool HasAddress(uint addr)
     {
-        if (addr >= 0xb8000 && addr < 0xc0000)
-            return true;
-
-        return false;
+        return addr >= 0xb8000 && addr < 0xc0000;
     }
 
     public override bool IO_Write(ushort port, ushort value)
