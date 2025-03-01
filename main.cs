@@ -378,12 +378,12 @@ else
             }
             else if (parts[0] == "stats")
             {
-                if (parts.Length != 2)
+                if (parts.Length < 2)
                     Console.WriteLine("Parameter missing");
                 else if (parts[1] == "cpu-speed")
                 {
                     if (running)
-                        MeasureSpeed(p);
+                        MeasureSpeed(p, parts.Length == 3 && parts[2] == "-c");
                     else
                         Console.WriteLine("Emulation not running");
                 }
@@ -770,13 +770,28 @@ void GetBreakpoints(P8086 p)
         Console.WriteLine($"\t{a:X06}");
 }
 
-void MeasureSpeed(P8086 p)
+void ClearConsoleInputBuffer()
 {
-    long start_clock = p.GetClock();
-    Thread.Sleep(1000);
-    long end_clock = p.GetClock();
+    while(Console.KeyAvailable)
+        Console.ReadKey(true);
+}
 
-    Console.WriteLine($"Estimated emulation speed: {(end_clock - start_clock) * 100 / 4772730}%");
+void MeasureSpeed(P8086 p, bool continuously)
+{
+    if (continuously)
+        Console.WriteLine("Press any key to stop measuring");
+    do
+    {
+        long start_clock = p.GetClock();
+        Thread.Sleep(1000);
+        long end_clock = p.GetClock();
+
+        Console.WriteLine($"Estimated emulation speed: {(end_clock - start_clock) * 100 / 4772730}%");
+    }
+    while(continuously && Console.KeyAvailable == false);
+
+    if (continuously)
+        ClearConsoleInputBuffer();
 }
 
 class ThreadSafe_Bool
