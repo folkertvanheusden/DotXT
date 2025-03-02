@@ -247,8 +247,7 @@ internal class i8253 : Device
                     if (_timers[i].mode != 1)
                         _timers[i].counter_cur = _timers[i].counter_ini;
 
-                    // mode 0 generates an interrupt
-                    if ((_timers[i].mode == 0 || _timers[i].mode == 3) && i == 0)
+                    if (i == 0)
                     {
                         _timers[i].is_pending = true;
                         interrupt = true;
