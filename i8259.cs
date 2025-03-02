@@ -31,7 +31,7 @@ class pic8259
             byte mask = (byte)(1 << i);
             if ((_irr & mask) == mask /* requested? */ && (_isr & mask) == 0 /* not in service? */ && (_imr & mask) == 0 /* not masked off? */)
             {
-                Log.DoLog($"i8259 pending interrupt: {i:X2}, (irr: {_irr:X2}, isr: {_isr:X2}, imr: {_imr:X2})", true);
+                Log.DoLog($"i8259 pending interrupt: {i:X2}, (irr: {_irr:X2}, isr: {_isr:X2}, imr: {_imr:X2})", LogLevel.TRACE);
                 return i;
             }
         }
@@ -50,25 +50,23 @@ class pic8259
         byte mask = (byte)(1 << interrupt_nr);
         _irr |= mask;
 
-        Log.DoLog($"i8259 interrupt {interrupt_nr} requested (irr: {_irr:X2}, imr: {_imr:X2})", true);
+        Log.DoLog($"i8259 interrupt {interrupt_nr} requested (irr: {_irr:X2}, imr: {_imr:X2})", LogLevel.TRACE);
     }
 
     public void SetIRQBeingServiced(int interrupt_nr)
     {
         if (_int_in_service != -1)
-            Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service", true);
+            Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service", LogLevel.DEBUG);
 
         _int_in_service = interrupt_nr;
         byte mask = (byte)(1 << interrupt_nr);
         if ((_irr & mask) == 0)
-            Log.DoLog($"i8259: interrupt {interrupt_nr} was not requested", true);
+            Log.DoLog($"i8259: interrupt {interrupt_nr} was not requested", LogLevel.DEBUG);
         if ((_isr & mask) == mask)
-            Log.DoLog($"i8259: interrupt {interrupt_nr} was already in service", true);
+            Log.DoLog($"i8259: interrupt {interrupt_nr} was already in service", LogLevel.DEBUG);
         if ((_imr & mask) == mask)
-            Log.DoLog($"i8259: interrupt {interrupt_nr} was masked off", true);
+            Log.DoLog($"i8259: interrupt {interrupt_nr} was masked off", LogLevel.DEBUG);
         _isr |= mask;
-
-        //Log.DoLog($"i8259: EOI mask is now {_isr:X2} by setting {interrupt_nr} in service", true);
     }
 
     public (byte, bool) In(ushort addr)
@@ -77,7 +75,7 @@ class pic8259
 
         if (addr == 0x0020)
         {
-            Log.DoLog($"i8259 IN: read status register IRR: {_read_irr} (irr: {_irr:X2}, isr: {_isr:X2})", true);
+            Log.DoLog($"i8259 IN: read status register IRR: {_read_irr} (irr: {_irr:X2}, isr: {_isr:X2})", LogLevel.TRACE);
             if (_read_irr)
                 rc = _irr;
             else
@@ -88,14 +86,14 @@ class pic8259
             rc = _imr;
         }
 
-        Log.DoLog($"i8259 IN: read addr {addr:X4}: {rc:X2}", true);
+        Log.DoLog($"i8259 IN: read addr {addr:X4}: {rc:X2}", LogLevel.TRACE);
 
         return (rc, false);
     }
 
     public bool Out(ushort addr, byte value)
     {
-        Log.DoLog($"i8259 OUT port {addr:X2} value {value:X2}", true);
+        Log.DoLog($"i8259 OUT port {addr:X2} value {value:X2}", LogLevel.TRACE);
 
         if (addr == 0x0020)
         {
@@ -105,7 +103,7 @@ class pic8259
 
             if (_in_init)  // ICW
             {
-                Log.DoLog($"i8259 OUT is init (start ICW)", true);
+                Log.DoLog($"i8259 OUT is init (start ICW)", LogLevel.TRACE);
 
                 _ii_icw2 = false;
                 _ii_icw3 = false;
@@ -113,7 +111,7 @@ class pic8259
                 _ii_icw4_req = (value & 1) == 1;
 
                 if (_int_in_service != -1)
-                    Log.DoLog($"i8259 implicit EOI of {_int_in_service}", true);
+                    Log.DoLog($"i8259 implicit EOI of {_int_in_service}", LogLevel.TRACE);
 
                 _imr = 0;  // TODO 255?
                 _isr = 0;
@@ -125,12 +123,12 @@ class pic8259
             {
                 if ((value & 8) == 8)  // OCW3
                 {
-                    Log.DoLog($"i8259 OUT: OCW3", true);
+                    Log.DoLog($"i8259 OUT: OCW3", LogLevel.TRACE);
                     _read_irr = (value & 3) == 2;
                 }
                 else  // OCW2
                 {
-                    Log.DoLog($"i8259 OUT: OCW2", true);
+                    Log.DoLog($"i8259 OUT: OCW2", LogLevel.TRACE);
                     _irq_request_level = value & 7;
 
                     // EOI
@@ -139,7 +137,7 @@ class pic8259
                         if ((value & 0x60) == 0x60)  // ack a certain level
                         {
                             int i = value & 7;
-                            Log.DoLog($"i8259 EOI of {i}, level: {_irq_request_level}", true);
+                            Log.DoLog($"i8259 EOI of {i}, level: {_irq_request_level}", LogLevel.TRACE);
 
                             byte mask = (byte)~(1 << i);
                             _irr &= mask;
@@ -149,10 +147,10 @@ class pic8259
                         }
                         else
                         {
-                            Log.DoLog($"i8259 EOI of {_int_in_service}, level: {_irq_request_level}", true);
+                            Log.DoLog($"i8259 EOI of {_int_in_service}, level: {_irq_request_level}", LogLevel.TRACE);
 
                             if (_int_in_service == -1)
-                                Log.DoLog($"i8259 EOI with no int in service?", true);
+                                Log.DoLog($"i8259 EOI with no int in service?", LogLevel.DEBUG);
                             else
                             {
                                 byte mask = (byte)~(1 << _int_in_service);
@@ -163,7 +161,7 @@ class pic8259
                         }
                     }
 
-                    Log.DoLog($"i8259 set level to: {_irq_request_level}", true);
+                    Log.DoLog($"i8259 set level to: {_irq_request_level}", LogLevel.TRACE);
                 }
             }
         }
@@ -173,16 +171,16 @@ class pic8259
             {
                 if (_ii_icw2 == false)
                 {
-                    Log.DoLog($"i8259 OUT: is ICW2", true);
+                    Log.DoLog($"i8259 OUT: is ICW2", LogLevel.TRACE);
 
                     _ii_icw2 = true;
                     if (value != 0x00 && value != 0x08)
-                        Log.DoLog($"i8259 OUT: ICW2 assigned strange value: 0x{value:X2}", true);
+                        Log.DoLog($"i8259 OUT: ICW2 assigned strange value: 0x{value:X2}", LogLevel.DEBUG);
                     _int_offset = value;
                 }
                 else if (_ii_icw3 == false && _has_slave)
                 {
-                    Log.DoLog($"i8259 OUT: is ICW3", true);
+                    Log.DoLog($"i8259 OUT: is ICW3", LogLevel.TRACE);
 
                     _ii_icw3 = true;
 
@@ -191,32 +189,32 @@ class pic8259
                     if (_ii_icw4_req == false)
                     {
                         _in_init = false;
-                        Log.DoLog($"i8259 OUT: end of ICW", true);
+                        Log.DoLog($"i8259 OUT: end of ICW", LogLevel.TRACE);
                     }
                 }
                 else if (_ii_icw4 == false)
                 {
-                    Log.DoLog($"i8259 OUT: is ICW4", true);
+                    Log.DoLog($"i8259 OUT: is ICW4", LogLevel.TRACE);
 
                     _ii_icw4 = true;
                     _in_init = false;
                     bool new_auto_eoi = (value & 2) == 2;
                     if (new_auto_eoi != _auto_eoi)
                     {
-                        Log.DoLog($"i8259 OUT: _auto_eoi is now {new_auto_eoi}", true);
+                        Log.DoLog($"i8259 OUT: _auto_eoi is now {new_auto_eoi}", LogLevel.TRACE);
                         _auto_eoi = new_auto_eoi;
                     }
                 }
             }
             else
             {
-                Log.DoLog($"i8259 OUT: is OCW1, value {value:X2}", true);
+                Log.DoLog($"i8259 OUT: is OCW1, value {value:X2}", LogLevel.TRACE);
                 _imr = value;
             }
         }
         else
         {
-            Log.DoLog($"i8259 OUT has no port {addr:X2}", true);
+            Log.DoLog($"i8259 OUT has no port {addr:X2}", LogLevel.ERROR);
         }
 
         // when reconfiguring the PIC8259, force an interrupt recheck

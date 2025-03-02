@@ -69,7 +69,7 @@ class CGA : Display
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
-        Log.DoLog("CGA::RegisterDevice", true);
+        Log.DoLog("CGA::RegisterDevice", LogLevel.INFO);
 
         mappings[0x3d0] = this;
         mappings[0x3d1] = this;
@@ -98,7 +98,7 @@ class CGA : Display
 
     public override bool IO_Write(ushort port, ushort value)
     {
-        Log.DoLog($"CGA::IO_Write {port:X4} {value:X4}", true);
+        Log.DoLog($"CGA::IO_Write {port:X4} {value:X4}", LogLevel.TRACE);
 
         if (port == 0x3d4 || port == 0x3d6 || port == 0x3d0 || port == 0x3d2)
             _m6845_reg = (byte)value;
@@ -106,7 +106,7 @@ class CGA : Display
         {
             _m6845.Write(_m6845_reg, (byte)value);
             _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
-            Log.DoLog($"Set base address to {_display_address:X04}", true);
+            Log.DoLog($"Set base address to {_display_address:X04}", LogLevel.DEBUG);
             Redraw();
         }
         else if (port == 0x3d8)
@@ -144,18 +144,18 @@ class CGA : Display
                 }
                 _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
                 _graphics_mode = (byte)value;
-                Log.DoLog($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", true);
+                Log.DoLog($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
                 Redraw();
             }
         }
         else if (port == 0x3d9)
         {
             _color_configuration = (byte)value;
-            Log.DoLog($"CGA color configuration: {_color_configuration:X02}", true);
+            Log.DoLog($"CGA color configuration: {_color_configuration:X02}", LogLevel.DEBUG);
         }
         else
         {
-            Log.DoLog($"CGA output to this ({port:X04}) port not implemented", true);
+            Log.DoLog($"CGA output to this ({port:X04}) port not implemented", LogLevel.DEBUG);
         }
 
         return false;
@@ -163,7 +163,7 @@ class CGA : Display
 
     public override (ushort, bool) IO_Read(ushort port)
     {
-        Log.DoLog("CGA::IO_Read", true);
+        Log.DoLog("CGA::IO_Read", LogLevel.TRACE);
 
         if ((port == 0x3d5 || port == 0x3d7) && _m6845_reg >= 0x0c)
             return (_m6845.Read(_m6845_reg), false);
@@ -171,7 +171,7 @@ class CGA : Display
         if (port == 0x3da)
         {
             int scanline = (int)((_clock / 304) % 262);  // 262 scanlines, 304 cpu cycles per scanline
-            Log.DoLog($"Scanline: {scanline}, clock: {_clock}", true);
+            Log.DoLog($"Scanline: {scanline}, clock: {_clock}", LogLevel.TRACE);
 
             if (scanline >= 200)  // 200 scanlines visible
                 return (1 /* regen buffer */ | 8 /* in vertical retrace */, false);
@@ -351,7 +351,7 @@ class CGA : Display
         }
         else
         {
-            Log.DoLog($"Unexpected mode {_cga_mode}", true);
+            Log.DoLog($"Unexpected mode {_cga_mode}", LogLevel.DEBUG);
             return;
         }
         for(int i=(int)_display_address; i<_display_address + byte_count; i += interval)

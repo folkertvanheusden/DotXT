@@ -113,7 +113,7 @@ internal class i8237
         }
         else if (addr == 8)  // status register
         {
-            Log.DoLog($"i8237_IN: read status register", true);
+            Log.DoLog($"i8237_IN: read status register", LogLevel.DEBUG);
 
             for(int i=0; i<4; i++)
             {
@@ -125,7 +125,7 @@ internal class i8237
             }
         }
 
-        Log.DoLog($"i8237_IN: {addr:X4} {v:X2}", true);
+        Log.DoLog($"i8237_IN: {addr:X4} {v:X2}", LogLevel.DEBUG);
 
         return (v, false);
     }
@@ -138,17 +138,17 @@ internal class i8237
 
     public bool Out(ushort addr, byte value)
     {
-        Log.DoLog($"i8237_OUT: addr {addr:X4} value {value:X2}", true);
+        Log.DoLog($"i8237_OUT: addr {addr:X4} value {value:X2}", LogLevel.DEBUG);
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
             _channel_address_register[addr / 2].Put(value);
-            Log.DoLog($"i8237 set channel {addr / 2} to address {_channel_address_register[addr / 2].GetValue():X04}", true);
+            Log.DoLog($"i8237 set channel {addr / 2} to address {_channel_address_register[addr / 2].GetValue():X04}", LogLevel.DEBUG);
         }
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
         {
             _channel_word_count[addr / 2].Put(value);
-            Log.DoLog($"i8237 set channel {addr / 2} to count {_channel_word_count[addr / 2].GetValue()}", true);
+            Log.DoLog($"i8237 set channel {addr / 2} to count {_channel_word_count[addr / 2].GetValue()}", LogLevel.DEBUG);
             _reached_tc[addr / 2] = false;
         }
         else if (addr == 8)
@@ -172,13 +172,13 @@ internal class i8237
                 extra += ", decrement address";
             else
                 extra += ", increment address";
-            Log.DoLog($"i8237 mode register channel {value & 3}: {value:X02} {type[(value >> 2) & 3]}, {mode[(value >> 6) & 3]}{extra}", true);
+            Log.DoLog($"i8237 mode register channel {value & 3}: {value:X02} {type[(value >> 2) & 3]}, {mode[(value >> 6) & 3]}{extra}", LogLevel.DEBUG);
         }
         else if (addr == 0x0c)  // reset flipflop
             _ff.reset();
         else if (addr == 0x0d)  // master reset
         {
-            Log.DoLog($"i8237_IN: MASTER RESET", true);
+            Log.DoLog($"i8237_IN: MASTER RESET", LogLevel.DEBUG);
             reset_masks(true);
             _ff.reset();
             for(int i=0; i<4; i++)
@@ -217,19 +217,19 @@ internal class i8237
     {
         if (_dma_enabled == false)
         {
-            Log.DoLog($"i8237 ReceiveFromChannel channel {channel}: dma not enabled", true);
+            Log.DoLog($"i8237 ReceiveFromChannel channel {channel}: dma not enabled", LogLevel.DEBUG);
             return -1;
         }
 
         if (_channel_mask[channel])
         {
-            Log.DoLog($"i8237 ReceiveFromChannel channel {channel}: channel masked", true);
+            Log.DoLog($"i8237 ReceiveFromChannel channel {channel}: channel masked", LogLevel.DEBUG);
             return -1;
         }
 
         if (_reached_tc[channel])
         {
-            Log.DoLog($"i8237 ReceiveFromChannel channel {channel}: reached tc, channel address {_channel_address_register[channel].GetValue():X04}", true);
+            Log.DoLog($"i8237 ReceiveFromChannel channel {channel}: reached tc, channel address {_channel_address_register[channel].GetValue():X04}", LogLevel.DEBUG);
             return -1;
         }
 
@@ -244,7 +244,7 @@ internal class i8237
         count--;
         if (count == 0xffff)
         {
-            Log.DoLog($"i8237 ReceiveFromChannel channel {channel} count has reached -1, set tc, address {full_addr:X06}", true);
+            Log.DoLog($"i8237 ReceiveFromChannel channel {channel} count has reached -1, set tc, address {full_addr:X06}", LogLevel.TRACE);
             _reached_tc[channel] = true;
         }
         _channel_word_count[channel].SetValue(count);
@@ -257,19 +257,19 @@ internal class i8237
     {
         if (_dma_enabled == false)
         {
-            Log.DoLog($"i8237 SendToChannel channel {channel} value {value:X2}: dma not enabled", true);
+            Log.DoLog($"i8237 SendToChannel channel {channel} value {value:X2}: dma not enabled", LogLevel.DEBUG);
             return false;
         }
 
         if (_channel_mask[channel])
         {
-            Log.DoLog($"i8237 SendToChannel channel {channel} value {value:X2}: channel masked", true);
+            Log.DoLog($"i8237 SendToChannel channel {channel} value {value:X2}: channel masked", LogLevel.DEBUG);
             return false;
         }
 
         if (_reached_tc[channel])
         {
-            Log.DoLog($"i8237 SendToChannel channel {channel} value {value:X2}: reached tc, channel address {_channel_address_register[channel].GetValue():X04}", true);
+            Log.DoLog($"i8237 SendToChannel channel {channel} value {value:X2}: reached tc, channel address {_channel_address_register[channel].GetValue():X04}", LogLevel.DEBUG);
             return false;
         }
 
@@ -284,7 +284,7 @@ internal class i8237
         count--;
         if (count == 0xffff)
         {
-            Log.DoLog($"i8237 SendToChannel channel {channel} count has reached -1, set tc, address {full_addr:X06}", true);
+            Log.DoLog($"i8237 SendToChannel channel {channel} count has reached -1, set tc, address {full_addr:X06}", LogLevel.DEBUG);
             _reached_tc[channel] = true;
         }
 

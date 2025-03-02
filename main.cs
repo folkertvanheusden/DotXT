@@ -38,7 +38,7 @@ for(int i=0; i<args.Length; i++)
         Console.WriteLine("-T addr   sets the load-address for -t");
         Console.WriteLine("-x type   set type for -T: binary, blank");
         Console.WriteLine("-l file   log to file");
-        Console.WriteLine("-L        log to screen");
+        Console.WriteLine("-L        set loglevel (trace, debug, ...)");
         Console.WriteLine("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
         Console.WriteLine("          e.g. load the bios from f000:e000");
         Console.WriteLine("-s size   RAM size in kilobytes, decimal");
@@ -114,7 +114,7 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-l")
         Log.SetLogFile(args[++i]);
     else if (args[i] == "-L")
-        Log.EchoToConsole(true);
+        Log.SetLogLevel(Log.StringToLogLevel(args[++i]));
     else if (args[i] == "-D")
         Log.SetDisassemblyFile(args[++i]);
     else if (args[i] == "-I")
@@ -231,7 +231,7 @@ if (json_processing)
             Console.Write("==>");
 
         string line = Console.ReadLine();
-        Log.DoLog($"CMDLINE: {line}", true);
+        Log.DoLog($"CMDLINE: {line}", LogLevel.DEBUG);
 
         string[] parts = line.Split(' ');
 
@@ -255,7 +255,7 @@ if (json_processing)
             break;
         else if (parts[0] == "dolog")
         {
-            Log.DoLog(line);
+            Log.DoLog(line, LogLevel.INFO);
         }
         else if (parts[0] == "reset")
         {
@@ -303,7 +303,7 @@ else
         Console.Write("==>");
 
         string line = Console.ReadLine();
-        Log.DoLog($"CMDLINE: {line}", true);
+        Log.DoLog($"CMDLINE: {line}", LogLevel.DEBUG);
         if (line == "")
             continue;
 
@@ -336,6 +336,7 @@ else
                 Console.WriteLine("dbp x          delete breakpoint");
                 Console.WriteLine("cbp            remove all breakpoints");
                 Console.WriteLine("stats x        \"x\" must be \"cpu-speed\" currently");
+                Console.WriteLine("setll x        set loglevel (trace, debug, ...)");
             }
             else if (parts[0] == "s" || parts[0] == "step" || parts[0] == "S")
             {
@@ -377,6 +378,13 @@ else
                 Console.WriteLine(runner_parameters.disassemble ? "disassembly on" : "disassembly off");
                 if (running)
                     Console.WriteLine("Please stop+start emulation to activate tracing");
+            }
+            else if (parts[0] == "setll")
+            {
+                if (parts.Length != 2)
+                    Console.WriteLine("Parameter missing");
+                else
+                    Log.SetLogLevel(Log.StringToLogLevel(parts[1]));
             }
             else if (parts[0] == "stats")
             {
@@ -561,7 +569,7 @@ void Disassemble(ushort cs, ushort ip)
     // instruction length, instruction string, additional info, hex-string
     (int length, string instruction, string meta, string hex) = p.Disassemble(cs, ip);
 
-    Log.DoLog($"{p.GetClock()} {cs:X4}:{ip:X4} | {registers_str} | {instruction} | {hex} | {meta}");
+    Log.DoLog($"{registers_str} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
 }
 
 void Runner(object o)
@@ -609,7 +617,7 @@ void Runner(object o)
     {
         string msg = $"An exception occured: {e.ToString()}";
         Console.WriteLine(msg);
-        Log.DoLog(msg);
+        Log.DoLog(msg, LogLevel.WARNING);
     }
 
     Console.WriteLine("Emulation stopped");

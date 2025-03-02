@@ -228,7 +228,7 @@ class VNCServer: GraphicalConsole
 
         stream.ReadTimeout = 1000;  // sane(?) timeout
 
-        Log.DoLog($"Client message {type[0]} received", true);
+        Log.DoLog($"Client message {type[0]} received", LogLevel.TRACE);
 
         if (type[0] == 0)  // SetPixelFormat
         {
@@ -240,7 +240,7 @@ class VNCServer: GraphicalConsole
             byte[] temp = new byte[3];
             stream.ReadExactly(temp);
             ushort no_encodings = (ushort)((temp[1] << 8) | temp[2]);
-            Log.DoLog($"retrieve {no_encodings} encodings", true);
+            Log.DoLog($"retrieve {no_encodings} encodings", LogLevel.TRACE);
             byte[] encodings = new byte[no_encodings * 4];
             stream.ReadExactly(encodings);
         }
@@ -255,7 +255,7 @@ class VNCServer: GraphicalConsole
             byte[] buffer = new byte[7];
             stream.ReadExactly(buffer);
             uint vnc_scan_code = (uint)((buffer[3] << 24) | (buffer[4] << 16) | (buffer[5] << 8) | buffer[6]);
-            Log.DoLog($"Key {buffer[0]} {vnc_scan_code:x04}", true);
+            Log.DoLog($"Key {buffer[0]} {vnc_scan_code:x04}", LogLevel.DEBUG);
             vnc.PushChar(vnc_scan_code, buffer[0] != 0);
         }
         else if (type[0] == 5)  // PointerEvent
@@ -274,7 +274,7 @@ class VNCServer: GraphicalConsole
         }
         else
         {
-            Log.DoLog($"Client message {type[0]} not understood", true);
+            Log.DoLog($"Client message {type[0]} not understood", LogLevel.WARNING);
         }
     }
 
@@ -387,14 +387,14 @@ class VNCServer: GraphicalConsole
             }
             catch(SocketException e)
             {
-                Log.DoLog($"VNCServer socket exception: {e.ToString()}", true);
+                Log.DoLog($"VNCServer socket exception: {e.ToString()}", LogLevel.INFO);
             }
             catch(Exception e)
             {
-                Log.DoLog($"VNCServer exception: {e.ToString()}", true);
+                Log.DoLog($"VNCServer exception: {e.ToString()}", LogLevel.WARNING);
             }
 
-            Console.WriteLine("VNC session ended");
+            Console.WriteLine("VNC session ended", LogLevel.DEBUG);
 
             client.Close();
         }

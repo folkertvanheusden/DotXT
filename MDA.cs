@@ -40,7 +40,7 @@ class MDA : Display
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
-        Log.DoLog("MDA::RegisterDevice", true);
+        Log.DoLog("MDA::RegisterDevice", LogLevel.DEBUG);
 
         for(ushort port=0x3b0; port<0x3c0; port++)
             mappings[port] = this;
@@ -53,7 +53,7 @@ class MDA : Display
 
     public override bool IO_Write(ushort port, ushort value)
     {
-        Log.DoLog($"MDA::IO_Write {port:X4} {value:X4}", true);
+        Log.DoLog($"MDA::IO_Write {port:X4} {value:X4}", LogLevel.TRACE);
 
         return false;
     }
@@ -68,7 +68,7 @@ class MDA : Display
             _hsync = !_hsync;
         }
 
-        Log.DoLog($"MDA::IO_Read {port:X4}: {rc:X2}", true);
+        Log.DoLog($"MDA::IO_Read {port:X4}: {rc:X2}", LogLevel.TRACE);
 
         return (rc, false);
     }

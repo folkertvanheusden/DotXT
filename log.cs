@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-internal enum LogLevel { TRACE, DEBUG, INFO, WARNING, ERRROR, FATAL };
+internal enum LogLevel { TRACE, DEBUG, INFO, WARNING, ERROR, FATAL };
 
 class Log
 {
@@ -10,6 +10,7 @@ class Log
     private static long _clock = 0;
     private static ushort _cs = 0;
     private static ushort _ip = 0;
+    private static LogLevel _ll = LogLevel.INFO;
     private static SortedDictionary<string, Tuple<string, string> > disassembly = new();
     private static readonly System.Threading.Lock _disassembly_lock = new();
     private static readonly System.Threading.Lock _logging_lock = new();  // for windows
@@ -17,6 +18,30 @@ class Log
     public static void SetLogFile(string file)
     {
         _logfile = file;
+    }
+
+    public static void SetLogLevel(LogLevel ll)
+    {
+        _ll = ll;
+    }
+
+    public static LogLevel StringToLogLevel(string name)
+    {
+        name = name.ToLower();
+        if (name == "trace")
+            return LogLevel.TRACE;
+        if (name == "debug")
+            return LogLevel.DEBUG;
+        if (name == "info")
+            return LogLevel.INFO;
+        if (name == "warning")
+            return LogLevel.WARNING;
+        if (name == "error")
+            return LogLevel.ERROR;
+        if (name == "fatal")
+            return LogLevel.FATAL;
+        Console.WriteLine($"Loglevel \"{name}\" not understood, using debug instead");
+        return LogLevel.DEBUG;
     }
 
     public static void SetMeta(long clock, ushort cs, ushort ip)
@@ -38,7 +63,7 @@ class Log
 
     public static void Disassemble(string prefix, string assembly)
     {
-        DoLog(prefix + " " + assembly);
+        DoLog(prefix + " " + assembly, LogLevel.DEBUG);
     }
 
     public static void EmitDisassembly()
@@ -59,28 +84,10 @@ class Log
 
     public static void DoLog(string what, LogLevel ll)
     {
-        if (_logfile == null && _echo == false)
+        if ((_logfile == null && _echo == false) || ll < _ll)
             return;
 
-        //string output = $"{ll} " + (ll != LogLevel.TRACE ? "; " : "") + what + Environment.NewLine;
-        string output = what + Environment.NewLine;
-
-        lock(_logging_lock)
-        {
-            File.AppendAllText(_logfile, output);
-        }
-
-        if (_echo)
-            Console.WriteLine(what);
-    }
-
-    public static void DoLog(string what, bool is_meta = false)
-    {
-        if (_logfile == null && _echo == false)
-            return;
-
-        //string output = $"{LogLevel.TRACE} " + (is_meta ? "; " : "") + what + Environment.NewLine;
-        string output = (is_meta ? $"{_clock} {_cs:X4}:{_ip:X4} |; " : "") + what + Environment.NewLine;
+        string output = $"{_clock} {_cs:X4}:{_ip:X4} | {ll} | " + what + Environment.NewLine;
 
         lock(_logging_lock)
         {

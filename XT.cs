@@ -57,8 +57,6 @@ internal class P8086
     private ushort _rep_addr;
     private byte _rep_opcode;
 
-    private bool _is_test;
-
     private long _clock;
     private List<Device> _devices;
 
@@ -75,14 +73,12 @@ internal class P8086
 
         if (test != "" && t_mode == TMode.Binary)
         {
-            _is_test = true;
-
             _cs = 0;
             _ip = 0x0800;
 
             uint addr = load_test_at == 0xffffffff ? 0 : load_test_at;
 
-            Log.DoLog($"Load {test} at {addr:X6}", true);
+            Log.DoLog($"Load {test} at {addr:X6}", LogLevel.INFO);
 
             using(Stream source = File.Open(test, FileMode.Open))
             {
@@ -165,7 +161,7 @@ internal class P8086
 
     public void set_ip(ushort cs, ushort ip)
     {
-        Log.DoLog($"Set CS/IP to {cs:X4}:{ip:X4}", true);
+        Log.DoLog($"Set CS/IP to {cs:X4}:{ip:X4}", LogLevel.DEBUG);
 
         _cs = cs;
         _ip = ip;
@@ -407,7 +403,7 @@ internal class P8086
                 return _bh;
         }
 
-        Log.DoLog($"reg {reg} w {w} not supported for {nameof(GetRegister)}", true);
+        Log.DoLog($"reg {reg} w {w} not supported for {nameof(GetRegister)}", LogLevel.WARNING);
 
         return 0;
     }
@@ -425,7 +421,7 @@ internal class P8086
         if (reg == 0b011)
             return _ds;
 
-        Log.DoLog($"reg {reg} not supported for {nameof(GetSRegister)}", true);
+        Log.DoLog($"reg {reg} not supported for {nameof(GetSRegister)}", LogLevel.WARNING);
 
         return 0;
     }
@@ -478,7 +474,7 @@ internal class P8086
         }
         else
         {
-            Log.DoLog($"{nameof(GetDoubleRegisterMod00)} {reg} not implemented", true);
+            Log.DoLog($"{nameof(GetDoubleRegisterMod00)} {reg} not implemented", LogLevel.WARNING);
         }
 
         return (a, cycles);
@@ -557,7 +553,7 @@ internal class P8086
             return (v, false, 0, 0, 0);
         }
 
-        Log.DoLog($"reg {reg} mod {mod} w {w} not supported for {nameof(GetRegisterMem)}", true);
+        Log.DoLog($"reg {reg} mod {mod} w {w} not supported for {nameof(GetRegisterMem)}", LogLevel.WARNING);
 
         return (0, false, 0, 0, 0);
     }
@@ -622,7 +618,7 @@ internal class P8086
         }
         else
         {
-            Log.DoLog($"reg {reg} w {w} not supported for {nameof(PutRegister)} ({val:X})", true);
+            Log.DoLog($"reg {reg} w {w} not supported for {nameof(PutRegister)} ({val:X})", LogLevel.WARNING);
         }
     }
 
@@ -639,7 +635,7 @@ internal class P8086
         else if (reg == 0b011)
             _ds = v;
         else
-            Log.DoLog($"reg {reg} not supported for {nameof(PutSRegister)}", true);
+            Log.DoLog($"reg {reg} not supported for {nameof(PutSRegister)}", LogLevel.WARNING);
     }
 
     // cycles
@@ -692,7 +688,7 @@ internal class P8086
             return 0;  // TODO
         }
 
-        Log.DoLog($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(PutRegisterMem)}", true);
+        Log.DoLog($"reg {reg} mod {mod} w {w} value {val} not supported for {nameof(PutRegisterMem)}", LogLevel.WARNING);
 
         return 0;
     }
@@ -1016,7 +1012,7 @@ internal class P8086
                 }
                 else
                 {
-                    Log.DoLog($"unknown _rep_mode {_rep_mode}", true);
+                    Log.DoLog($"unknown _rep_mode {_rep_mode}", LogLevel.WARNING);
                     _rep = false;
                     rc = false;
                 }
@@ -1082,14 +1078,14 @@ internal class P8086
             if (irq != 255)
             {
                 if (irq != 0)
-                    Log.DoLog($"Scanning for IRQ {irq}", true);
+                    Log.DoLog($"Scanning for IRQ {irq}", LogLevel.TRACE);
 
                 foreach (var device in _devices)
                 {
                     if (device.GetIRQNumber() != irq)
                         continue;
 
-                    Log.DoLog($"{device.GetName()} triggers IRQ {irq}", true);
+                    Log.DoLog($"{device.GetName()} triggers IRQ {irq}", LogLevel.TRACE);
 
                     if (_in_hlt)
                         InvokeInterrupt(_hlt_ip, irq, true);
@@ -1117,7 +1113,7 @@ internal class P8086
                 if (check_address == instr_start)
                 {
                     _stop_reason = $"Breakpoint reached at address {check_address:X06}";
-                    Log.DoLog(_stop_reason);
+                    Log.DoLog(_stop_reason, LogLevel.INFO);
                     return false;
                 }
             }
@@ -1144,7 +1140,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"prefix {opcode:X2} not implemented", true);
+                Log.DoLog($"prefix {opcode:X2} not implemented", LogLevel.WARNING);
             }
 
             address = (uint)(_cs * 16 + _ip) & MemMask;
@@ -1193,7 +1189,7 @@ internal class P8086
             if (_terminate_on_off_the_rails == true && ++_crash_counter >= 5)
             {
                 _stop_reason = $"Terminating because of {_crash_counter}x 0x00 opcode ({address:X06})";
-                Log.DoLog(_stop_reason);
+                Log.DoLog(_stop_reason, LogLevel.WARNING);
                 return false;
             }
         }
@@ -1753,7 +1749,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"opcode {opcode:X2} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} not implemented", LogLevel.WARNING);
             }
 
             bool apply = true;
@@ -1803,7 +1799,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
             }
 
             if (is_logic)
@@ -2035,7 +2031,7 @@ internal class P8086
                 if (_rep)
                 {
                     push(_rep_addr);
-                    Log.DoLog($"INT from rep {_rep_addr:X04}", true);
+                    Log.DoLog($"INT from rep {_rep_addr:X04}", LogLevel.TRACE);
                 }
                 else
                 {
@@ -2175,7 +2171,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"opcode {opcode:X2} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} not implemented", LogLevel.WARNING);
             }
 
             SetAddSubFlags(word, r1, r2, result, true, false);
@@ -2213,7 +2209,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
             }
 
             SetLogicFuncFlags(word, result);
@@ -2263,7 +2259,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
             }
 
             SetLogicFuncFlags(word, word ? GetAX() : _al);
@@ -2499,7 +2495,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"opcode {opcode:X2} o1 {o1:X2} function {function} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} o1 {o1:X2} function {function} not implemented", LogLevel.WARNING);
             }
 
             cycle_count += 4;
@@ -2831,14 +2827,9 @@ internal class P8086
             cycle_count += get_cycles;
 
             int count = 1;
-            string countName = "1";
-            int count_mask = 0x1f;
 
             if ((opcode & 2) == 2)
-            {
                 count = _cl;
-                countName = "CL";
-            }
 
             bool count_1_of = opcode is (0xd0 or 0xd1 or 0xd2 or 0xd3);
 
@@ -3023,7 +3014,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"RCR/SHR/{opcode:X2} mode {mode} not implemented", true);
+                Log.DoLog($"RCR/SHR/{opcode:X2} mode {mode} not implemented", LogLevel.WARNING);
             }
 
             if (!word)
@@ -3176,7 +3167,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"opcode {opcode:x2} not implemented", true);
+                Log.DoLog($"opcode {opcode:x2} not implemented", LogLevel.WARNING);
             }
 
             ushort newAddress = (ushort)(_ip + (sbyte)to);
@@ -3239,7 +3230,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($" opcode {opcode:X2} not implemented");
+                Log.DoLog($" opcode {opcode:X2} not implemented", LogLevel.WARNING);
             }
         }
         else if (opcode == 0xe4)
@@ -3461,7 +3452,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", true);
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
             }
 
             if (!word)
@@ -3473,14 +3464,14 @@ internal class P8086
         }
         else
         {
-            Log.DoLog($"opcode {opcode:x} not implemented", true);
+            Log.DoLog($"opcode {opcode:x} not implemented", LogLevel.WARNING);
         }
 
         PrefixEnd(opcode);
 
         if (cycle_count == 0)
         {
-            Log.DoLog($"cyclecount not set for {opcode:X02}", true);
+            Log.DoLog($"cyclecount not set for {opcode:X02}", LogLevel.WARNING);
             cycle_count = 1;  // TODO workaround
         }
 
@@ -3570,7 +3561,6 @@ internal class P8086
     {
         ushort a = 0;
         string name = "error";
-        int cycles = 0;
         bool override_segment = false;
         ushort new_segment = 0;
         string meta = "";
@@ -3579,7 +3569,6 @@ internal class P8086
         {
             a = _bp;
             name = "[BP]";
-            cycles = 5;
             override_segment = true;
             new_segment = _ss;
         }
@@ -3587,7 +3576,6 @@ internal class P8086
         {
             (a, name, meta) = DisassemblyGetDoubleRegisterMod00(reg, ref d_cs, ref d_ip, ref instr_len, ref bytes);
         }
-
 
         short disp = word ? (short)DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes) : (sbyte)DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
 
@@ -3835,7 +3823,7 @@ internal class P8086
         if (reg == 0b011)
             return (_ds, "DS");
 
-        Log.DoLog($"reg {reg} not supported for {nameof(GetSRegister)}", true);
+        Log.DoLog($"reg {reg} not supported for {nameof(GetSRegister)}", LogLevel.WARNING);
 
         return (0, "error");
     }

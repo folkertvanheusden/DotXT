@@ -23,7 +23,7 @@ class Keyboard : Device
 
     public void PushKeyboardScancode(int scan_code)
     {
-        Log.DoLog($"PushKeyboardScancode({scan_code})", true);
+        Log.DoLog($"PushKeyboardScancode({scan_code})", LogLevel.DEBUG);
 
         _keyboard_buffer_lock.WaitOne();
         _keyboard_buffer.Enqueue(scan_code);
@@ -50,14 +50,14 @@ class Keyboard : Device
 
             if ((value & 0x40) == 0x00)
             {
-                Log.DoLog($"Keyboard::IO_Write: clock low ({value:X4})", true);
+                Log.DoLog($"Keyboard::IO_Write: clock low ({value:X4})", LogLevel.TRACE);
                 _clock_low = true;
             }
             else if (_clock_low)
             {
                 _clock_low = false;
 
-                Log.DoLog($"Keyboard::IO_Write: reset triggered; clock high ({value:X4})", true);
+                Log.DoLog($"Keyboard::IO_Write: reset triggered; clock high ({value:X4})", LogLevel.TRACE);
                 _keyboard_buffer_lock.WaitOne();
                 _keyboard_buffer.Clear();
                 _keyboard_buffer.Enqueue(0xaa);  // power on reset reply
@@ -86,7 +86,7 @@ class Keyboard : Device
             }
             _keyboard_buffer_lock.ReleaseMutex();
 
-            Log.DoLog($"Keyboard: scan code {rc:X02}", true);
+            Log.DoLog($"Keyboard: scan code {rc:X02}", LogLevel.TRACE);
 
             return (rc, false);
         }
@@ -94,7 +94,7 @@ class Keyboard : Device
             return (_0x61_bits, false);
         else if (port == 0x64)
         {
-            Log.DoLog($"Keyboard: 0x64", true);
+            Log.DoLog($"Keyboard: 0x64", LogLevel.TRACE);
             return (0x10, false);
         }
 
@@ -118,7 +118,7 @@ class Keyboard : Device
     public override bool Tick(int cycles, long clock)
     {
         if ((_0x61_bits & 0x80) == 0 && CheckScheduledInterrupt(cycles)) {
-            Log.DoLog("Fire keyboard interrupt", true);
+            Log.DoLog("Fire keyboard interrupt", LogLevel.TRACE);
             _pic.RequestInterruptPIC(_irq_nr);
         }
 

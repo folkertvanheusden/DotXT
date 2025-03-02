@@ -96,9 +96,7 @@ internal class i8253 : Device
 
     private void LatchCounter(int nr, byte v)
     {
-#if DEBUG
-        Log.DoLog($"OUT 8253: timer {nr} to {v} (type {_timers[nr].latch_type}, {_timers[nr].latch_n_cur} out of {_timers[nr].latch_n})", true);
-#endif
+        Log.DoLog($"OUT 8253: timer {nr} to {v} (type {_timers[nr].latch_type}, {_timers[nr].latch_n_cur} out of {_timers[nr].latch_n})", LogLevel.DEBUG);
 
         if (_timers[nr].latch_n_cur > 0)
         {
@@ -134,9 +132,7 @@ internal class i8253 : Device
 
             if (_timers[nr].latch_n_cur == 0)
             {
-#if DEBUG
-                Log.DoLog($"OUT 8253: timer {nr} started (count start: {_timers[nr].counter_ini})", true);
-#endif
+                Log.DoLog($"OUT 8253: timer {nr} started (count start: {_timers[nr].counter_ini})", LogLevel.DEBUG);
 
                 _timers[nr].latch_n_cur = _timers[nr].latch_n;  // restart setup
                 _timers[nr].counter_cur = _timers[nr].counter_ini;
@@ -161,9 +157,7 @@ internal class i8253 : Device
 
     private byte GetCounter(int nr)
     {
-#if DEBUG
-        Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur} ({_timers[nr].latch_type}|{_timers[nr].latch_n_cur}/{_timers[nr].latch_n})", true);
-#endif
+        Log.DoLog($"OUT 8253: GetCounter {nr}: {(byte)_timers[nr].counter_cur} ({_timers[nr].latch_type}|{_timers[nr].latch_n_cur}/{_timers[nr].latch_n})", LogLevel.DEBUG);
 
         byte rc = 0;
 
@@ -196,9 +190,7 @@ internal class i8253 : Device
 
         if (latch != 0)
         {
-#if DEBUG
-            Log.DoLog($"OUT 8253: command timer {nr}, latch {latch}, mode {mode}, type {type}", true);
-#endif
+            Log.DoLog($"OUT 8253: command timer {nr}, latch {latch}, mode {mode}, type {type}", LogLevel.DEBUG);
             _timers[nr].mode       = mode;
             _timers[nr].latch_type = latch;
             _timers[nr].is_running = false;
@@ -214,19 +206,13 @@ internal class i8253 : Device
         }
         else
         {
-#if DEBUG
-            Log.DoLog($"OUT 8253: query timer {nr} (reset value: {_timers[nr].counter_ini}, current value: {_timers[nr].counter_cur})", true);
-#endif
+            Log.DoLog($"OUT 8253: query timer {nr} (reset value: {_timers[nr].counter_ini}, current value: {_timers[nr].counter_cur})", LogLevel.DEBUG);
         }
     }
 
     public override bool Tick(int ticks, long ignored)
     {
         clock += ticks;
-
-#if DEBUG
-        //        Log.DoLog($"i8253: {clock} cycles, {ticks} added", true);
-#endif
 
         bool interrupt = false;
 
@@ -239,14 +225,8 @@ internal class i8253 : Device
 
                 _timers[i].counter_cur--;
 
-#if DEBUG
-                //                Log.DoLog($"i8253: timer {i} is now {_timers[i].counter_cur}", true);
-#endif
-
                 if (_timers[i].counter_cur == 0)
                 {
-                    //                    Log.DoLog($"i8253 reset counter", true);
-
                     // timer 1 is RAM refresh counter
                     if (i == 1)
                         _i8237.TickChannel0();
@@ -259,9 +239,7 @@ internal class i8253 : Device
                     {
                         _timers[i].is_pending = true;
                         interrupt = true;
-#if DEBUG
-                        Log.DoLog($"i8253: interrupt for timer {i} fires ({_timers[i].counter_ini})", true);
-#endif
+                        Log.DoLog($"i8253: interrupt for timer {i} fires ({_timers[i].counter_ini})", LogLevel.TRACE);
                     }
                 }   
             }

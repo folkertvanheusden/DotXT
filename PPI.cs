@@ -29,7 +29,7 @@ internal class PPI : Device
 
     public override (ushort, bool) IO_Read(ushort port)
     {
-        Log.DoLog($"PPI::IO_Read: {port:X4}", true);
+        Log.DoLog($"PPI::IO_Read: {port:X4}", LogLevel.TRACE);
 
         if (port == 0x0062)
         {
@@ -46,7 +46,7 @@ internal class PPI : Device
 
     public override bool IO_Write(ushort port, ushort value)
     {
-        Log.DoLog($"PPI::IO_Write: {port:X4} {value:X2}", true);
+        Log.DoLog($"PPI::IO_Write: {port:X4} {value:X2}", LogLevel.TRACE);
 
         if (port == 0x0061)
         {

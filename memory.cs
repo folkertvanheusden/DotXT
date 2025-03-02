@@ -14,7 +14,7 @@ internal class Memory
         if (address >= _m.Length)
         {
 #if DEBUG
-            Log.DoLog($"Memory::ReadByte: {address} > {_m.Length}", true);
+            Log.DoLog($"Memory::ReadByte: {address} > {_m.Length}", LogLevel.TRACE);
 #endif
             return 0xee;
         }
@@ -42,7 +42,7 @@ internal class Rom
         if (_contents[0] != 0x55 || _contents[1] != 0xaa)
         {
             string msg = $"ROM {filename} might not be valid! (0x55aa header missing)";
-            Log.DoLog(msg);
+            Log.DoLog(msg, LogLevel.INFO);
             Console.WriteLine(msg);
         }
     }

@@ -3,7 +3,6 @@ using System.Text;
 abstract class Display : Device
 {
     private DateTime _prev_ts = DateTime.UtcNow;
-    private int _prev_clock = 0;
     private long _last_hsync = 0;
     private List<EmulatorConsole> _consoles = null;
     protected GraphicalFrame _gf = new();
@@ -70,26 +69,6 @@ abstract class Display : Device
 
     public abstract void Redraw();
 
-/*
-    public void SyncClock(long clock)
-    {
-        DateTime now_ts = DateTime.UtcNow;
-        TimeSpan elapsed_time = now_ts.Subtract(_prev_ts);
-        _prev_ts = now_ts;
-
-        double target_cycles = 14318180 * elapsed_time.TotalMilliseconds / 3000;
-        int done_cycles = clock - _prev_clock;
-
-        int speed_percentage = (int)(done_cycles * 100.0 / target_cycles);
-
-//        Console.Write((char)27);
-//        Console.Write($"[1;82H{speed_percentage}%  ");
-
-        _prev_clock = _clock;
-
-        _clock = clock;
-    }
-*/
     public abstract override void RegisterDevice(Dictionary <ushort, Device> mappings);
 
     public abstract override bool HasAddress(uint addr);
@@ -114,7 +93,7 @@ abstract class Display : Device
         // attribute, character
 #if DEBUG
         if (character >= 32 && character < 127)
-            Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", true);
+            Log.DoLog($"Display::WriteByte {x},{y} = {(char)character}", LogLevel.TRACE);
 #endif
 
         WriteTextConsole((char)27); // position cursor

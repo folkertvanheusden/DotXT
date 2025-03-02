@@ -43,8 +43,6 @@ class IO
         if (_test_mode)
             return (65535, false);
 
-        // Log.DoLog($"IN: {addr:X4}", true);
-
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87)
             return _i8237.In(addr);
 
@@ -60,11 +58,11 @@ class IO
         if (_io_map.ContainsKey(addr))
         {
             var rc = _io_map[addr].IO_Read(addr);
-            Log.DoLog($"IN: read {rc.Item1:X02} from device on I/O port {addr:X4}", true);
+            Log.DoLog($"IN: read {rc.Item1:X02} from device on I/O port {addr:X4}", LogLevel.TRACE);
             return rc;
         }
 
-        Log.DoLog($"IN: I/O port {addr:X4} not implemented", true);
+        Log.DoLog($"IN: I/O port {addr:X4} not implemented", LogLevel.WARNING);
 
         return (0xff, false);
     }
@@ -90,7 +88,7 @@ class IO
             return _pic.Out(addr, (byte)value);
 
         else if (addr == 0x0080)
-            Log.DoLog($"Manufacturer systems checkpoint {value:X2}", true);
+            Log.DoLog($"Manufacturer systems checkpoint {value:X2}", LogLevel.DEBUG);
 
         else
         {
@@ -98,9 +96,7 @@ class IO
                 return _io_map[addr].IO_Write(addr, value);
         }
 
-#if DEBUG
-        Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", true);
-#endif
+        Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", LogLevel.WARNING);
         _values[addr] = (byte)value;
 
         return false;
