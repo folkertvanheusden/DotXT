@@ -34,7 +34,7 @@ abstract class Device
 
     protected bool CheckScheduledInterrupt(int cycles)
     {
-        if (next_interrupt.Count() > 0)
+        if (next_interrupt.Count > 0)
         {
             next_interrupt[0] -= cycles;
             if (next_interrupt[0] <= 0)
