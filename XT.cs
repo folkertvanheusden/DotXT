@@ -176,7 +176,7 @@ internal class P8086
 
     private byte GetPcByte()
     {
-        return ReadMemByte(_cs, _ip++);  // what about segments? FIXME
+        return ReadMemByte(_cs, _ip++);
     }
 
     private ushort GetPcWord()
@@ -3817,7 +3817,7 @@ internal class P8086
         if (reg == 0b000)
             return (_es, "ES");
         if (reg == 0b001)
-            return (_cs, "CS");
+            return (_cs, "CS");  // TODO use d_cs from Disassemble invocation?
         if (reg == 0b010)
             return (_ss, "SS");
         if (reg == 0b011)
@@ -4020,8 +4020,8 @@ internal class P8086
         else if (opcode == 0xe9)
         {
             short offset = (short)DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
-            ushort word = (ushort)(_ip + offset);
-            instr = $"JMP {_ip:X}";
+            ushort word = (ushort)(d_ip + offset);
+            instr = $"JMP {d_ip:X}";
             meta = $"{offset:X4}";
         }
         else if (opcode == 0x50)
@@ -4192,8 +4192,8 @@ internal class P8086
             ushort temp_ip = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
             ushort temp_cs = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
 
-            instr = $"CALL ${_cs:X} ${_ip:X}";
-            meta = $"${_cs * 16 + _ip:X}";
+            instr = $"CALL ${temp_cs:X} ${temp_ip:X}";
+            meta = $"${temp_cs * 16 + temp_ip:X}";
         }
         else if (opcode == 0x9c)
         {
@@ -4256,13 +4256,13 @@ internal class P8086
 
                 if (opcode == 0xce)
                 {
-                    instr = $" INTO {@int:X2}";
-                    meta = $"{SegmentAddr(_cs, _ip)} (from {addr:X4})";
+                    instr = $"INTO {@int:X2}";
+                    meta = $"{SegmentAddr(d_cs, d_ip)} (from {addr:X4})";
                 }
                 else 
                 {
-                    instr = $" INT {@int:X2}";
-                    meta = $"{SegmentAddr(_cs, _ip)} (from {addr:X4})";
+                    instr = $"INT {@int:X2}";
+                    meta = $"{SegmentAddr(d_cs, d_ip)} (from {addr:X4})";
                 }
             }
         }
@@ -4397,15 +4397,15 @@ internal class P8086
         {
             short a = (short)DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
             instr = $"CALL {a:X4}";
-            meta = $"{SegmentAddr(_cs, _ip)}";
+            meta = $"{SegmentAddr(d_cs, d_ip)}";
         }
         else if (opcode == 0xea)
         {
             // JMP far ptr
             ushort temp_ip = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
             ushort temp_cs = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
-            instr = $"JMP ${_cs:X} ${_ip:X}";
-            meta = $"{SegmentAddr(_cs, _ip)}";
+            instr = $"JMP ${d_cs:X} ${d_ip:X}";
+            meta = $"{SegmentAddr(d_cs, d_ip)}";
         }
         else if (opcode == 0xf6 || opcode == 0xf7)
         {
@@ -4748,10 +4748,10 @@ internal class P8086
             else
                 meta = "opcode {opcode:x2} not implemented";
 
-            ushort newAddress = (ushort)(_ip + (sbyte)to);
+            ushort newAddress = (ushort)(d_ip + (sbyte)to);
 
             instr = $"{name} {to}";
-            meta = $"{_cs:X4}:{newAddress:X4} -> {SegmentAddr(_cs, newAddress)}";
+            meta = $"{d_cs:X4}:{newAddress:X4} -> {SegmentAddr(d_cs, newAddress)}";
         }
         else if (opcode == 0xd7)
         {
@@ -4762,7 +4762,7 @@ internal class P8086
             // LOOP
             byte to = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
             string name = "?";
-            ushort newAddresses = (ushort)(_ip + (sbyte)to);
+            ushort newAddresses = (ushort)(d_ip + (sbyte)to);
 
             if (opcode == 0xe2)
                 name = "LOOP";
@@ -4817,8 +4817,8 @@ internal class P8086
         {
             // JMP
             sbyte to = (sbyte)DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
-            instr = $"JP ${_ip:X4}";
-            meta = $"{_cs * 16 + _ip + to:X6}, {to:X2}";
+            instr = $"JP ${d_ip:X4}";
+            meta = $"{d_cs * 16 + d_ip + to:X6}, {to:X2}";
         }
         else if (opcode == 0xf4)
         {
@@ -4865,7 +4865,7 @@ internal class P8086
             else if (function == 2)
             {
                 instr = $"CALL {name}";
-                meta = $"${v:X4} -> {SegmentAddr(_cs, _ip)}";
+                meta = $"${v:X4} -> {SegmentAddr(d_cs, d_ip)}";
             }
             else if (function == 3)
             {
@@ -4876,7 +4876,7 @@ internal class P8086
             else if (function == 4)
             {
                 instr = $"JMP {name}";
-                meta = $"{_cs * 16 + v:X6}";
+                meta = $"{d_cs * 16 + v:X6}";
             }
             else if (function == 5)
             {
