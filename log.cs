@@ -27,6 +27,11 @@ class Log
         _thread.Start();
     }
 
+    public static void EndLogging()
+    {
+        _log_queue.CompleteAdding();
+    }
+
     public static void SetLogLevel(LogLevel ll)
     {
         _ll = ll;
@@ -93,7 +98,7 @@ class Log
     {
         StreamWriter _file_handle = new StreamWriter(_logfile);
 
-        for(;;)
+        while(!_log_queue.IsCompleted)
         {
             string item;
             if (_log_queue.TryTake(out item, 1500))
@@ -101,6 +106,8 @@ class Log
             else
                 _file_handle.Flush();
         }
+
+        _file_handle.Close();
     }
 
     public static void DoLog(string what, LogLevel ll)

@@ -548,7 +548,9 @@ else
 }
 
 Log.EmitDisassembly();
-    
+
+Log.EndLogging();
+
 if (test != "" && mode == TMode.Binary)
     System.Environment.Exit(p.GetSI() == 0xa5ee ? 123 : 0);
 
