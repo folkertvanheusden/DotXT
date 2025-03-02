@@ -41,7 +41,6 @@ internal class P8086
     private ushort _flags;
 
     private bool _in_hlt = false;
-    private ushort _hlt_ip;
 
     private int _crash_counter = 0;
     private bool _terminate_on_off_the_rails = false;
@@ -147,6 +146,7 @@ internal class P8086
     {
         _cs = 0xf000;
         _ip = 0xfff0;
+        _in_hlt = false;
     }
 
     public long GetClock()
@@ -1064,6 +1064,11 @@ internal class P8086
         _crash_counter = 0;
     }
 
+    public bool IsInHlt()
+    {
+        return _in_hlt;
+    }
+
     // cycle counts from https://zsmith.co/intel_i.php
     public bool Tick()
     {
@@ -1087,10 +1092,8 @@ internal class P8086
 
                     Log.DoLog($"{device.GetName()} triggers IRQ {irq}", LogLevel.TRACE);
 
-                    if (_in_hlt)
-                        InvokeInterrupt(_hlt_ip, irq, true);
-                    else
-                        InvokeInterrupt(_ip, irq, true);
+                    _in_hlt = false;
+                    InvokeInterrupt(_ip, irq, true);
                     cycle_count += 60;
 
                     break;
@@ -1098,7 +1101,13 @@ internal class P8086
             }
         }
 
-        _in_hlt = false;
+        if (_in_hlt)
+        {
+            cycle_count += 2;
+            _clock += cycle_count;  // time needs to progress for timers etc
+            _io.Tick(cycle_count, _clock);
+            return true;
+        }
 
         ushort instr_start = _ip;
         uint address = (uint)(_cs * 16 + _ip) & MemMask;
@@ -2990,6 +2999,8 @@ internal class P8086
 
                     v1 = (ushort)(word ? 0xffff : 0xff);
                 }
+
+                // TODO cycle_count
             }
             else if (mode == 7)
             {
@@ -3308,9 +3319,6 @@ internal class P8086
         {
             // HLT
             _in_hlt = true;
-            _hlt_ip = _ip;
-            _ip--;
-
             cycle_count += 2;
         }
         else if (opcode == 0xf5)
@@ -4396,16 +4404,17 @@ internal class P8086
         else if (opcode == 0xe8)
         {
             short a = (short)DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
+            ushort temp_ip = (ushort)(a + _ip);
             instr = $"CALL {a:X4}";
-            meta = $"{SegmentAddr(d_cs, d_ip)}";
+            meta = $"{SegmentAddr(d_cs, temp_ip)}";
         }
         else if (opcode == 0xea)
         {
             // JMP far ptr
             ushort temp_ip = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
             ushort temp_cs = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
-            instr = $"JMP ${d_cs:X} ${d_ip:X}";
-            meta = $"{SegmentAddr(d_cs, d_ip)}";
+            instr = $"JMP ${temp_cs:X04}:${temp_ip:X04}";
+            meta = $"{SegmentAddr(temp_cs, temp_ip)}";
         }
         else if (opcode == 0xf6 || opcode == 0xf7)
         {
