@@ -1979,7 +1979,6 @@ internal class P8086
 
             // RET
             _ip = pop();
-
             _sp += nToRelease;
 
             cycle_count += 16;
@@ -2806,7 +2805,6 @@ internal class P8086
             if (opcode == 0xca || opcode == 0xc8)
             {
                 _sp += nToRelease;
-
                 cycle_count += 16;
             }
             else
@@ -3482,6 +3480,8 @@ internal class P8086
 
         return true;
     }
+
+    // Disassembly code
 
     public byte DisassembleGetByte(ref ushort d_cs, ref ushort d_ip, ref int instr_len, ref List<byte> bytes)
     {

@@ -237,13 +237,13 @@ if (json_processing)
 
         if (line == "s")
         {
-            Disassemble(p.GetCS(), p.GetIP());
+            Disassemble(p);
             p.SetIgnoreBreakpoints();
             p.Tick();
         }
         else if (line == "S")
         {
-            Disassemble(p.GetCS(), p.GetIP());
+            Disassemble(p);
             do
             {
                 p.SetIgnoreBreakpoints();
@@ -347,7 +347,7 @@ else
                     do
                     {
                         if (runner_parameters.disassemble)
-                            Disassemble(p.GetCS(), p.GetIP());
+                            Disassemble(p);
 
                         if (p.Tick() == false)
                         {
@@ -360,7 +360,7 @@ else
                 else
                 {
                     if (runner_parameters.disassemble)
-                        Disassemble(p.GetCS(), p.GetIP());
+                        Disassemble(p);
 
                     rc = p.Tick();
                 }
@@ -564,8 +564,12 @@ Thread CreateRunnerThread(RunnerParameters runner_parameters)
     return thread;
 }
 
-void Disassemble(ushort cs, ushort ip)
+void Disassemble(P8086 p)
 {
+    ushort cs = p.GetCS();
+    ushort ip = p.GetIP();
+    Log.SetMeta(p.GetClock(), cs, ip);
+
     string registers_str = $"{p.GetFlagsAsString()} AX:{p.GetAX():X4} BX:{p.GetBX():X4} CX:{p.GetCX():X4} DX:{p.GetDX():X4} SP:{p.GetSP():X4} BP:{p.GetBP():X4} SI:{p.GetSI():X4} DI:{p.GetDI():X4} flags:{p.GetFlags():X4} ES:{p.GetES():X4} CS:{cs:X4} SS:{p.GetSS():X4} DS:{p.GetDS():X4} IP:{ip:X4}";
 
     // instruction length, instruction string, additional info, hex-string
@@ -588,7 +592,7 @@ void Runner(object o)
         for(;;)
         {
             if (runner_parameters.disassemble)
-                Disassemble(p.GetCS(), p.GetIP());
+                Disassemble(p);
 
             if (p.Tick() == false || runner_parameters.exit.get() == true)
             {
