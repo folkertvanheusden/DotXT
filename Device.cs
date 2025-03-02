@@ -6,6 +6,11 @@ abstract class Device
 
     public abstract String GetName();
 
+    public virtual List<string> GetState()
+    {
+        return new List<string>();
+    }
+
     public abstract void RegisterDevice(Dictionary <ushort, Device> mappings);
     public abstract bool IO_Write(ushort port, ushort value);
     public abstract (ushort, bool) IO_Read(ushort port);

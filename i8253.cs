@@ -29,6 +29,19 @@ internal class i8253 : Device
             _timers[i] = new Timer();
     }
 
+    public override List<string> GetState()
+    {
+        List<string> out_ = new();
+
+        for(int i=0; i<_timers.Length; i++)
+        {
+            Timer t = _timers[i];
+            out_.Add($"Timer {i}: counter cur/prv/ini {t.counter_cur}/{t.counter_prv}/{t.counter_ini}, mode {t.mode} running {t.is_running} pending {t.is_pending}");
+        }
+
+        return out_;
+    }
+
     public override int GetIRQNumber()
     {
         return _irq_nr;

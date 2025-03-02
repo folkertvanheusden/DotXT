@@ -397,6 +397,18 @@ else
                     else
                         Console.WriteLine("Emulation not running");
                 }
+                else if (parts[1] == "i8253" || parts[1] == "timers")
+                {
+                    foreach(var device in devices)
+                    {
+                        if (device is i8253)
+                        {
+                            var state = device.GetState();
+                            foreach(var state_line in state)
+                                Console.WriteLine(state_line);
+                        }
+                    }
+                }
             }
             else if (parts[0] == "echo")
             {
