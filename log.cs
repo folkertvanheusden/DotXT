@@ -7,6 +7,9 @@ class Log
     private static string _logfile = null;
     private static string _disassembly = null;
     private static bool _echo = false;
+    private static long _clock = 0;
+    private static ushort _cs = 0;
+    private static ushort _ip = 0;
     private static SortedDictionary<string, Tuple<string, string> > disassembly = new();
     private static readonly System.Threading.Lock _disassembly_lock = new();
     private static readonly System.Threading.Lock _logging_lock = new();  // for windows
@@ -14,6 +17,13 @@ class Log
     public static void SetLogFile(string file)
     {
         _logfile = file;
+    }
+
+    public static void SetMeta(long clock, ushort cs, ushort ip)
+    {
+        _clock = clock;
+        _cs = cs;
+        _ip = ip;
     }
 
     public static void SetDisassemblyFile(string file)
@@ -70,7 +80,7 @@ class Log
             return;
 
         //string output = $"{LogLevel.TRACE} " + (is_meta ? "; " : "") + what + Environment.NewLine;
-        string output = what + Environment.NewLine;
+        string output = (is_meta ? $"{_clock} {_cs:X4}:{_ip:X4} |; " : "") + what + Environment.NewLine;
 
         lock(_logging_lock)
         {

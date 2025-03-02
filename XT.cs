@@ -1073,6 +1073,8 @@ internal class P8086
     {
         int cycle_count = 0;  // cycles used for an instruction
 
+        Log.SetMeta(_clock, _cs, _ip);
+
         // check for interrupt
         if (GetFlagI() == true)
         {
