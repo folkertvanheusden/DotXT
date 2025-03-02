@@ -108,7 +108,7 @@ class Log
         if ((_logfile == null && _echo == false) || ll < _ll)
             return;
 
-        string output = $"{_clock} {_cs:X4}:{_ip:X4} | {ll} | " + what + Environment.NewLine;
+        string output = $"{_clock} {_cs:X4}:{_ip:X4} | {ll} | " + what;
         _log_queue.Add(output);
 
         if (_echo)
