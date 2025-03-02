@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 
 internal enum LogLevel { TRACE, DEBUG, INFO, WARNING, ERROR, FATAL };
 
@@ -14,10 +16,15 @@ class Log
     private static SortedDictionary<string, Tuple<string, string> > disassembly = new();
     private static readonly System.Threading.Lock _disassembly_lock = new();
     private static readonly System.Threading.Lock _logging_lock = new();  // for windows
+    private static BlockingCollection<string> _log_queue = new(1024);
+    private static Thread _thread = null;
 
     public static void SetLogFile(string file)
     {
         _logfile = file;
+        _thread = new Thread(Log.LogWriter);
+        _thread.Name = "LogWriter";
+        _thread.Start();
     }
 
     public static void SetLogLevel(LogLevel ll)
@@ -82,17 +89,27 @@ class Log
 #endif
     }
 
+    public static void LogWriter()
+    {
+        StreamWriter _file_handle = new StreamWriter(_logfile);
+
+        for(;;)
+        {
+            string item;
+            if (_log_queue.TryTake(out item, 1500))
+                _file_handle.WriteLine(item);
+            else
+                _file_handle.Flush();
+        }
+    }
+
     public static void DoLog(string what, LogLevel ll)
     {
         if ((_logfile == null && _echo == false) || ll < _ll)
             return;
 
         string output = $"{_clock} {_cs:X4}:{_ip:X4} | {ll} | " + what + Environment.NewLine;
-
-        lock(_logging_lock)
-        {
-            File.AppendAllText(_logfile, output);
-        }
+        _log_queue.Add(output);
 
         if (_echo)
             Console.WriteLine(what);
