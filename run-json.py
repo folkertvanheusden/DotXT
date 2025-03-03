@@ -67,6 +67,7 @@ jm = json.loads(open(sys.argv[2], 'rb').read())
 
 error_nr = 0
 test_nr = 0
+diffs = []
 
 for set in j:
     test_nr += 1
@@ -181,11 +182,15 @@ for set in j:
     cycles_used = int(docmd(process, 'cycles', True))
     cycles_required = len(set['cycles'])
     #if cycles_used != cycles_required:
-    if abs(cycles_used - cycles_required) > 1:
+    if abs(cycles_used - cycles_required) > 0:
         hex_ = [ f'{v:02x}' for v in set['bytes']]
         while len(hex_) < 3:
             hex_.append('-')
         bytes_ = ', '.join(hex_[0:3])
-        print(f'{bytes_}\t{set["name"]}\tcycles used: {cycles_used}, should be: {cycles_required}')
+        diffs.append((cycles_used / cycles_required, f'{bytes_}\t{set["name"]}\tcycles used: {cycles_used}, should be: {cycles_required}'))
+
+diffs.sort(key=lambda x: x[0])
+for e in diffs[-25:]:
+    print(e[0], e[1])
 
 sys.exit(1 if error_nr > 0 else 0)

@@ -2695,13 +2695,8 @@ internal class P8086
             int reg = (o1 >> 3) & 7;
             int rm = o1 & 7;
 
-            cycle_count += 3;
-
-            // might introduce problems when the dereference of *addr reads from i/o even
-            // when it is not required
             (ushort val, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
-
-            cycle_count += get_cycles;
+            cycle_count += get_cycles + 3;
 
             PutRegister(reg, true, addr);
         }
