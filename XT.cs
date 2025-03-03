@@ -41,6 +41,7 @@ internal class P8086
     private ushort _flags;
 
     private bool _in_hlt = false;
+    private bool _inhibit_interrupts = false;  // for 1 instruction after loading segment registers
 
     private int _crash_counter = 0;
     private bool _terminate_on_off_the_rails = false;
@@ -1094,7 +1095,7 @@ internal class P8086
         Log.SetMeta(_clock, _cs, _ip);
 
         // check for interrupt
-        if (GetFlagI() == true)
+        if (GetFlagI() == true && _inhibit_interrupts == false)
         {
             int irq = _io.GetPIC().GetPendingInterrupt();
             if (irq != 255)
@@ -1117,6 +1118,8 @@ internal class P8086
                 }
             }
         }
+
+        _inhibit_interrupts = false;
 
         // T-flag produces an interrupt after each instruction
         if (_in_hlt)
@@ -1287,6 +1290,7 @@ internal class P8086
         {
             // POP ES
             _es = pop();
+            _inhibit_interrupts = true;
 
             cycle_count += 8;
         }
@@ -1301,6 +1305,7 @@ internal class P8086
         {
             // POP CS
             _cs = pop();
+            _inhibit_interrupts = true;
 
             cycle_count += 8;
         }
@@ -1315,6 +1320,7 @@ internal class P8086
         {
             // POP SS
             _ss = pop();
+            _inhibit_interrupts = true;
 
             cycle_count += 11;  // 15
         }
@@ -1367,6 +1373,7 @@ internal class P8086
         {
             // POP DS
             _ds = pop();
+            _inhibit_interrupts = true;
 
             cycle_count += 8;
         }
@@ -2626,9 +2633,11 @@ internal class P8086
             int rm = o1 & 7;
 
             bool sreg = opcode == 0x8e || opcode == 0x8c;
-
             if (sreg)
+            {
                 word = true;
+                _inhibit_interrupts = opcode == 0x8e;
+            }
 
             cycle_count += 13;
 
@@ -3367,6 +3376,7 @@ internal class P8086
         {
             // STI
             SetFlagI(true); // IF
+            _inhibit_interrupts = true;
 
             cycle_count += 2;
         }
@@ -3507,7 +3517,7 @@ internal class P8086
         // tick I/O
         _io.Tick(cycle_count, _clock);
 
-        if (GetFlagT() && back_from_trace == false)
+        if (GetFlagT() && back_from_trace == false && _inhibit_interrupts == false)
             InvokeInterrupt(_ip, 1, false);
 
         return true;
