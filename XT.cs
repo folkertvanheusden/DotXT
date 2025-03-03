@@ -4826,8 +4826,8 @@ internal class P8086
         {
             // JMP
             sbyte to = (sbyte)DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
-            instr = $"JP ${d_ip:X4}";
-            meta = $"{d_cs * 16 + d_ip + to:X6}, {to:X2}";
+            instr = $"JP ${to:X2}";
+            meta = $"{d_cs * 16 + d_ip + to:X6} {d_cs:X04}:{d_ip:X04}";
         }
         else if (opcode == 0xf4)
         {
