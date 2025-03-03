@@ -2630,7 +2630,7 @@ internal class P8086
             if (sreg)
                 word = true;
 
-            cycle_count += 2;
+            cycle_count += 13;
 
             // Log.Disassemble($"{opcode:X}|{o1:X} mode {mode}, reg {reg}, rm {rm}, dir {dir}, word {word}, sreg {sreg}");
 
@@ -2643,10 +2643,8 @@ internal class P8086
 
             if (dir)
             {
-                // to 'REG' from 'rm'
+                // to 'rm' from 'REG'
                 (ushort v, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mode, word);
-
-                cycle_count += get_cycles;
 
                 if (sreg)
                     PutSRegister(reg, v);
@@ -2663,11 +2661,8 @@ internal class P8086
                     v = GetRegister(reg, word);
 
                 int put_cycles = PutRegisterMem(rm, mode, word, v);
-
-                cycle_count += put_cycles;
+                cycle_count += 1;
             }
-
-            cycle_count += 3;
         }
         else if (opcode == 0x8d)
         {
