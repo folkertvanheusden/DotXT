@@ -1593,7 +1593,7 @@ internal class P8086
                 _si += (ushort)(GetFlagD() ? -2 : 2);
                 _di += (ushort)(GetFlagD() ? -2 : 2);
 
-                cycle_count += 18;
+                cycle_count += 26;
             }
         }
         else if (opcode == 0xa6)
@@ -1611,7 +1611,7 @@ internal class P8086
 
                 SetAddSubFlags(false, v1, v2, result, true, false);
 
-                cycle_count += 22;
+                cycle_count += 30;
             }
         }
         else if (opcode == 0xa7)
@@ -1629,7 +1629,7 @@ internal class P8086
 
                 SetAddSubFlags(true, v1, v2, result, true, false);
 
-                cycle_count += 22;
+                cycle_count += 30;
             }
         }
         else if (opcode == 0xe3)
@@ -2566,7 +2566,7 @@ internal class P8086
 
             _al = ReadMemByte(_segment_override_set ? _segment_override : _ds, a);
 
-            cycle_count += 2;
+            cycle_count += 12;
         }
         else if (opcode == 0xa1)
         {
@@ -2575,7 +2575,7 @@ internal class P8086
 
             SetAX(ReadMemWord(_segment_override_set ? _segment_override : _ds, a));
 
-            cycle_count += 2;
+            cycle_count += 12;
         }
         else if (opcode == 0xa2)
         {
@@ -2584,7 +2584,7 @@ internal class P8086
 
             WriteMemByte(_segment_override_set ? _segment_override : _ds, a, _al);
 
-            cycle_count += 2;
+            cycle_count += 13;
         }
         else if (opcode == 0xa3)
         {
@@ -2593,33 +2593,27 @@ internal class P8086
 
             WriteMemWord(_segment_override_set ? _segment_override : _ds, a, GetAX());
 
-            cycle_count += 2;
+            cycle_count += 13;
         }
         else if (opcode == 0xa8)
         {
             // TEST AL,..
             byte v = GetPcByte();
-
             byte result = (byte)(_al & v);
-
             SetLogicFuncFlags(false, result);
-
             SetFlagC(false);
 
-            cycle_count += 3;
+            cycle_count += 5;
         }
         else if (opcode == 0xa9)
         {
             // TEST AX,..
             ushort v = GetPcWord();
-
             ushort result = (ushort)(GetAX() & v);
-
             SetLogicFuncFlags(true, result);
-
             SetFlagC(false);
 
-            cycle_count += 3;
+            cycle_count += 5;
         }
         else if (opcode is (0x88 or 0x89 or 0x8a or 0x8b or 0x8e or 0x8c))
         {
@@ -3004,6 +2998,7 @@ internal class P8086
             {
                 if (opcode >= 0xd2)
                 {
+                    // SETMOC
                     if (_cl != 0)
                     {
                         SetFlagC(false);
@@ -3014,10 +3009,13 @@ internal class P8086
                         SetFlagS(true);
 
                         v1 = (ushort)(word ? 0xffff : 0xff);
+
+                        cycle_count += word ? 5 : 4;
                     }
                 }
                 else
                 {
+                    // SETMO
                     SetFlagC(false);
                     SetFlagA(false);
                     SetFlagZ(false);
@@ -3026,9 +3024,9 @@ internal class P8086
                     SetFlagS(true);
 
                     v1 = (ushort)(word ? 0xffff : 0xff);
-                }
 
-                // TODO cycle_count
+                    cycle_count += word ? 3 : 2;
+                }
             }
             else if (mode == 7)
             {
@@ -3312,7 +3310,7 @@ internal class P8086
             (ushort val, bool i) = _io.In(GetDX());
             _al = (byte)val;
 
-            cycle_count += 8;  // or 12
+            cycle_count += 12;
         }
         else if (opcode == 0xed)
         {
@@ -4341,7 +4339,6 @@ internal class P8086
             {
                 name = "SBB";
             }
-
 
             // 0x38...0x3b are CMP
             if (apply)
