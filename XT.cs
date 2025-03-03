@@ -3267,7 +3267,7 @@ internal class P8086
             }
             else
             {
-                Log.DoLog($" opcode {opcode:X2} not implemented", LogLevel.WARNING);
+                Log.DoLog($"opcode {opcode:X2} not implemented", LogLevel.WARNING);
             }
         }
         else if (opcode == 0xe4)
@@ -3922,7 +3922,7 @@ internal class P8086
         {
             // ADD AL,xx
             byte v = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
-            instr = $" ADD AL,#{v:X2}";
+            instr = $"ADD AL,#{v:X2}";
         }
         else if (opcode == 0x05 || opcode == 0x15)
         {
@@ -3930,9 +3930,9 @@ internal class P8086
             ushort v = DisassembleGetWord(ref d_cs, ref d_ip, ref instr_len, ref bytes);
 
             if (opcode == 0x05)
-                instr = $" ADD AX,${v:X4}";
+                instr = $"ADD AX,${v:X4}";
             else
-                instr = $" ADC AX,${v:X4}";
+                instr = $"ADC AX,${v:X4}";
         }
         else if (opcode == 0x06)
         {
@@ -3983,7 +3983,7 @@ internal class P8086
         else if (opcode == 0x2c)
         {
             byte v = DisassembleGetByte(ref d_cs, ref d_ip, ref instr_len, ref bytes);
-            instr = $" SUB AL,${v:X2}";
+            instr = $"SUB AL,${v:X2}";
         }
         else if (opcode == 0x2f)
         {
