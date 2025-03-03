@@ -585,9 +585,9 @@ void Disassemble(P8086 p)
     string registers_str = $"{p.GetFlagsAsString()} AX:{p.GetAX():X4} BX:{p.GetBX():X4} CX:{p.GetCX():X4} DX:{p.GetDX():X4} SP:{p.GetSP():X4} BP:{p.GetBP():X4} SI:{p.GetSI():X4} DI:{p.GetDI():X4} flags:{p.GetFlags():X4} ES:{p.GetES():X4} CS:{cs:X4} SS:{p.GetSS():X4} DS:{p.GetDS():X4} IP:{ip:X4}";
 
     // instruction length, instruction string, additional info, hex-string
-    (int length, string instruction, string meta, string hex) = p.Disassemble(cs, ip);
-
-    Log.DoLog($"{registers_str} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
+//    (int length, string instruction, string meta, string hex) = p.Disassemble(cs, ip);
+// FIXME
+//    Log.DoLog($"{registers_str} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
 }
 
 void Runner(object o)
