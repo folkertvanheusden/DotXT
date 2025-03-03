@@ -789,6 +789,16 @@ internal class P8086
         return GetFlag(7);
     }
 
+    private void SetFlagT(bool state)
+    {
+        SetFlag(8, state);
+    }
+
+    private bool GetFlagT()
+    {
+        return GetFlag(8);
+    }
+
     private void SetFlagI(bool state)
     {
         SetFlag(9, state);
@@ -826,6 +836,7 @@ internal class P8086
 
         @out += GetFlagO() ? "o" : "-";
         @out += GetFlagI() ? "I" : "-";
+        @out += GetFlagT() ? "T" : "-";
         @out += GetFlagS() ? "s" : "-";
         @out += GetFlagZ() ? "z" : "-";
         @out += GetFlagA() ? "a" : "-";
@@ -905,6 +916,10 @@ internal class P8086
             _io.GetPIC().SetIRQBeingServiced(interrupt_nr);
             interrupt_nr += _io.GetPIC().GetInterruptOffset();
         }
+        else
+        {
+            Log.DoLog($"Invoke interrupt {interrupt_nr}", LogLevel.DEBUG);
+        }
 
         push(_flags);
         push(_cs);
@@ -919,6 +934,7 @@ internal class P8086
         }
 
         SetFlagI(false);
+        SetFlagT(false);
 
         ushort addr = (ushort)(interrupt_nr * 4);
 
@@ -1073,6 +1089,7 @@ internal class P8086
     public bool Tick()
     {
         int cycle_count = 0;  // cycles used for an instruction
+        bool back_from_trace = false;
 
         Log.SetMeta(_clock, _cs, _ip);
 
@@ -1101,6 +1118,7 @@ internal class P8086
             }
         }
 
+        // T-flag produces an interrupt after each instruction
         if (_in_hlt)
         {
             cycle_count += 2;
@@ -1951,8 +1969,13 @@ internal class P8086
         }
         else if (opcode == 0x9d)
         {
+            bool before = GetFlagT();
+
             // POPF
             _flags = pop();
+
+            if (GetFlagT() && before == false)
+                back_from_trace = true;
 
             cycle_count += 8;  // 12
 
@@ -2057,10 +2080,15 @@ internal class P8086
         else if (opcode == 0xcf)
         {
             // IRET
+            bool before = GetFlagT();
+
             _ip = pop();
             _cs = pop();
             _flags = pop();
             FixFlags();
+
+            if (GetFlagT() && before == false)
+                back_from_trace = true;
 
             cycle_count += 32;  // 44
         }
@@ -3485,6 +3513,9 @@ internal class P8086
 
         // tick I/O
         _io.Tick(cycle_count, _clock);
+
+        if (GetFlagT() && back_from_trace == false)
+            InvokeInterrupt(_ip, 1, false);
 
         return true;
     }
