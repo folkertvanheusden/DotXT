@@ -502,9 +502,13 @@ class P8086Disassembler
         return @out;
     }
 
-    public P8086Disassembler(Bus b, in State8086 state)
+    public P8086Disassembler(Bus b)
     {
         _b = b;
+    }
+
+    public void SetCPUState(in State8086 state)
+    {
         _state = state;
     }
 

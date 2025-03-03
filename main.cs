@@ -217,7 +217,7 @@ if (mode != TMode.Blank)
 
 // Bus gets the devices for memory mapped i/o
 Bus b = new Bus(ram_size * 1024, ref devices, ref roms);
-
+var d = new P8086Disassembler(b);
 var p = new P8086(ref b, test, mode, load_test_at, ref devices, run_IO);
 
 if (set_initial_ip)
@@ -237,13 +237,13 @@ if (json_processing)
 
         if (line == "s")
         {
-            Disassemble(b, p);
+            Disassemble(d, p);
             p.SetIgnoreBreakpoints();
             p.Tick();
         }
         else if (line == "S")
         {
-            Disassemble(b, p);
+            Disassemble(d, p);
             do
             {
                 p.SetIgnoreBreakpoints();
@@ -347,7 +347,7 @@ else
                     do
                     {
                         if (runner_parameters.disassemble)
-                            Disassemble(b, p);
+                            Disassemble(d, p);
 
                         if (p.Tick() == false)
                         {
@@ -360,7 +360,7 @@ else
                 else
                 {
                     if (runner_parameters.disassemble)
-                        Disassemble(b, p);
+                        Disassemble(d, p);
 
                     rc = p.Tick();
                 }
@@ -576,22 +576,21 @@ Thread CreateRunnerThread(RunnerParameters runner_parameters)
     return thread;
 }
 
-void Disassemble(Bus b, in P8086 p)
+void Disassemble(P8086Disassembler d, in P8086 p)
 {
     State8086 state = p.GetState();
     ushort cs = state.cs;
     ushort ip = state.ip;
+
     Log.SetMeta(state.clock, cs, ip);
 
-    P8086Disassembler d = new P8086Disassembler(b, state);
+    d.SetCPUState(state);
 
-    string registers_str = d.GetRegisters();
-
-    // instruction length, instruction string, additional info, hex-string
     (int length, string instruction, string meta, string hex) = d.Disassemble();
-    System.Diagnostics.Debug.Assert(cs == state.cs && ip == state.ip, "Not modified by disassembler");
-
+    string registers_str = d.GetRegisters();
     Log.DoLog($"{d.GetRegisters()} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
+
+    System.Diagnostics.Debug.Assert(cs == state.cs && ip == state.ip, "Should not be modified by disassembler");
 }
 
 void Runner(object o)
@@ -608,7 +607,7 @@ void Runner(object o)
         for(;;)
         {
             if (runner_parameters.disassemble)
-                Disassemble(b, p);
+                Disassemble(d, p);
 
             if (p.Tick() == false || runner_parameters.exit.get() == true)
             {
