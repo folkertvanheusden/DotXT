@@ -1,6 +1,8 @@
 move registers into a state structure
 that structure must then be given to the disassembler
 
+Console.WriteLine => also log
+
 https://cp437.github.io/
 
 byte 6 (EOT) zegt hoeveel sectors te lezen, dat samen met het aantal bytes dat de dma verwacht kan meerdere sectoren laden
