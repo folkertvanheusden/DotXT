@@ -225,6 +225,8 @@ if (set_initial_ip)
 
 if (json_processing)
 {
+    int cycle_count = 0;
+
     for(;;)
     {
         if (prompt)
@@ -239,7 +241,7 @@ if (json_processing)
         {
             Disassemble(p);
             p.SetIgnoreBreakpoints();
-            p.Tick();
+            cycle_count = p.Tick();
         }
         else if (line == "S")
         {
@@ -247,10 +249,15 @@ if (json_processing)
             do
             {
                 p.SetIgnoreBreakpoints();
-                p.Tick();
+                int rc = p.Tick();
+                if (rc == -1)
+                    break;
+                cycle_count += rc;
             }
             while(p.IsProcessingRep());
         }
+        else if (line == "cycles")
+            Console.WriteLine($">CYCLES {cycle_count}");
         else if (line == "q")
             break;
         else if (parts[0] == "dolog")
@@ -259,6 +266,7 @@ if (json_processing)
         }
         else if (parts[0] == "reset")
         {
+            cycle_count = 0;
             b.ClearMemory();
             p.Reset();
         }
@@ -349,7 +357,7 @@ else
                         if (runner_parameters.disassemble)
                             Disassemble(p);
 
-                        if (p.Tick() == false)
+                        if (p.Tick() == -1)
                         {
                             rc = false;
                             break;
@@ -362,7 +370,7 @@ else
                     if (runner_parameters.disassemble)
                         Disassemble(p);
 
-                    rc = p.Tick();
+                    rc = p.Tick() >= 0;
                 }
 
                 if (rc == false)
@@ -606,7 +614,7 @@ void Runner(object o)
             if (runner_parameters.disassemble)
                 Disassemble(p);
 
-            if (p.Tick() == false || runner_parameters.exit.get() == true)
+            if (p.Tick() == -1 || runner_parameters.exit.get() == true)
             {
                 p.SetIgnoreBreakpoints();
                 break;

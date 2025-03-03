@@ -26,6 +26,10 @@ def docmd(p, str, wait=True):
         if idx != -1:
             return line[idx + 5:]
 
+        idx = line.find('>CYCLES')
+        if idx != -1:
+            return line[idx + 8:]
+
 def flag(v, b, c):
     if v & (1 << b):
         return c
@@ -173,5 +177,15 @@ for set in j:
 
         #process.stdin.write(f'q\r\n'.encode('ascii'))
         #sys.exit(1)
+
+    cycles_used = int(docmd(process, 'cycles', True))
+    cycles_required = len(set['cycles'])
+    #if cycles_used != cycles_required:
+    if abs(cycles_used - cycles_required) > 1:
+        hex_ = [ f'{v:02x}' for v in set['bytes']]
+        while len(hex_) < 3:
+            hex_.append('-')
+        bytes_ = ', '.join(hex_[0:3])
+        print(f'{bytes_}\t{set["name"]}\tcycles used: {cycles_used}, should be: {cycles_required}')
 
 sys.exit(1 if error_nr > 0 else 0)

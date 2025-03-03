@@ -1086,7 +1086,7 @@ internal class P8086
     }
 
     // cycle counts from https://zsmith.co/intel_i.php
-    public bool Tick()
+    public int Tick()
     {
         int cycle_count = 0;  // cycles used for an instruction
         bool back_from_trace = false;
@@ -1118,13 +1118,12 @@ internal class P8086
             }
         }
 
-        // T-flag produces an interrupt after each instruction
         if (_in_hlt)
         {
             cycle_count += 2;
             _clock += cycle_count;  // time needs to progress for timers etc
             _io.Tick(cycle_count, _clock);
-            return true;
+            return cycle_count;
         }
 
         ushort instr_start = _ip;
@@ -1141,7 +1140,7 @@ internal class P8086
                 {
                     _stop_reason = $"Breakpoint reached at address {check_address:X06}";
                     Log.DoLog(_stop_reason, LogLevel.INFO);
-                    return false;
+                    return -1;
                 }
             }
         }
@@ -1217,7 +1216,7 @@ internal class P8086
             {
                 _stop_reason = $"Terminating because of {_crash_counter}x 0x00 opcode ({address:X06})";
                 Log.DoLog(_stop_reason, LogLevel.WARNING);
-                return false;
+                return -1;
             }
         }
         else
@@ -3507,10 +3506,11 @@ internal class P8086
         // tick I/O
         _io.Tick(cycle_count, _clock);
 
+        // T-flag produces an interrupt after each instruction
         if (GetFlagT() && back_from_trace == false)
             InvokeInterrupt(_ip, 1, false);
 
-        return true;
+        return cycle_count;
     }
 
     // Disassembly code
