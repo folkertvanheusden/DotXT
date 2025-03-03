@@ -1,5 +1,7 @@
 namespace DotXT;
 
+// TODO this needs a rewrite/clean-up
+
 internal enum TMode
 {
     NotSet,
@@ -15,7 +17,7 @@ internal enum RepMode
     REP
 }
 
-internal struct State8086
+struct State8086
 {
     public byte ah { get; set; }
     public byte al { get; set; }
@@ -73,6 +75,11 @@ internal class P8086
     private string _stop_reason = "";
 
     private State8086 _state = new();
+
+    public State8086 GetState()
+    {
+        return _state;
+    }
 
     public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, ref List<Device> devices, bool run_IO)
     {
@@ -840,7 +847,6 @@ internal class P8086
         return GetFlag(11);
     }
 
-    // TODO class/struct or enum Flags (with [Flags]) and ToString()
     public string GetFlagsAsString()
     {
         string @out = String.Empty;

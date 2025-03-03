@@ -237,13 +237,13 @@ if (json_processing)
 
         if (line == "s")
         {
-            Disassemble(p);
+            Disassemble(b, p);
             p.SetIgnoreBreakpoints();
             p.Tick();
         }
         else if (line == "S")
         {
-            Disassemble(p);
+            Disassemble(b, p);
             do
             {
                 p.SetIgnoreBreakpoints();
@@ -347,7 +347,7 @@ else
                     do
                     {
                         if (runner_parameters.disassemble)
-                            Disassemble(p);
+                            Disassemble(b, p);
 
                         if (p.Tick() == false)
                         {
@@ -360,7 +360,7 @@ else
                 else
                 {
                     if (runner_parameters.disassemble)
-                        Disassemble(p);
+                        Disassemble(b, p);
 
                     rc = p.Tick();
                 }
@@ -576,18 +576,22 @@ Thread CreateRunnerThread(RunnerParameters runner_parameters)
     return thread;
 }
 
-void Disassemble(P8086 p)
+void Disassemble(Bus b, in P8086 p)
 {
-    ushort cs = p.GetCS();
-    ushort ip = p.GetIP();
-    Log.SetMeta(p.GetClock(), cs, ip);
+    State8086 state = p.GetState();
+    ushort cs = state.cs;
+    ushort ip = state.ip;
+    Log.SetMeta(state.clock, cs, ip);
 
-    string registers_str = $"{p.GetFlagsAsString()} AX:{p.GetAX():X4} BX:{p.GetBX():X4} CX:{p.GetCX():X4} DX:{p.GetDX():X4} SP:{p.GetSP():X4} BP:{p.GetBP():X4} SI:{p.GetSI():X4} DI:{p.GetDI():X4} flags:{p.GetFlags():X4} ES:{p.GetES():X4} CS:{cs:X4} SS:{p.GetSS():X4} DS:{p.GetDS():X4} IP:{ip:X4}";
+    P8086Disassembler d = new P8086Disassembler(b, state);
+
+    string registers_str = d.GetRegisters();
 
     // instruction length, instruction string, additional info, hex-string
-//    (int length, string instruction, string meta, string hex) = p.Disassemble(cs, ip);
-// FIXME
-//    Log.DoLog($"{registers_str} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
+    (int length, string instruction, string meta, string hex) = d.Disassemble();
+    System.Diagnostics.Debug.Assert(cs == state.cs && ip == state.ip, "Not modified by disassembler");
+
+    Log.DoLog($"{d.GetRegisters()} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
 }
 
 void Runner(object o)
@@ -604,7 +608,7 @@ void Runner(object o)
         for(;;)
         {
             if (runner_parameters.disassemble)
-                Disassemble(p);
+                Disassemble(b, p);
 
             if (p.Tick() == false || runner_parameters.exit.get() == true)
             {
