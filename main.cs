@@ -375,7 +375,10 @@ else
             }
             else if (parts[0] == "disassemble" || parts[0] == "da")
             {
-                runner_parameters.disassemble = !runner_parameters.disassemble;
+                if (parts.Length == 2)
+                    runner_parameters.disassemble = parts[1].ToLower() == "on";
+                else
+                    runner_parameters.disassemble = !runner_parameters.disassemble;
                 Log.Cnsl(runner_parameters.disassemble ? "disassembly on" : "disassembly off");
                 if (running)
                     Log.Cnsl("Please stop+start emulation to activate tracing");
