@@ -120,6 +120,8 @@ class Log
         }
 
         _file_handle.Close();
+
+        Console.WriteLine("Log writer thread stopped");
     }
 
     public static void TruncateLogfile()
