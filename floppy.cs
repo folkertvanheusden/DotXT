@@ -322,7 +322,7 @@ class FloppyDisk : Device
             }
             while(dma_finished == false && sector <= sectors_per_track);
 
-            _data[5] = (byte)sector;
+            _data[5] = (byte)(old_data[4] + read_count);
         }
 
         _data_offset = 0;
