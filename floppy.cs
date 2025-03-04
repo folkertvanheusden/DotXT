@@ -536,7 +536,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command READ DATA", LogLevel.DEBUG);
                     _data = new byte[9];
-                    _data[0] = cmd;
+                    _data[0] = (byte)value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -544,7 +544,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command WRITE DATA", LogLevel.DEBUG);
                     _data = new byte[9];
-                    _data[0] = cmd;
+                    _data[0] = (byte)value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -552,7 +552,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command FORMAT", LogLevel.DEBUG);
                     _data = new byte[6];
-                    _data[0] = cmd;
+                    _data[0] = (byte)value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -560,7 +560,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command SEEK", LogLevel.DEBUG);
                     _data = new byte[3];
-                    _data[0] = cmd;
+                    _data[0] = (byte)value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -568,7 +568,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command SPECIFY", LogLevel.DEBUG);
                     _data = new byte[3];
-                    _data[0] = cmd;
+                    _data[0] = (byte)value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -576,7 +576,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command RECALIBRATE", LogLevel.DEBUG);
                     _data = new byte[2];
-                    _data[0] = cmd;
+                    _data[0] = (byte)value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -606,32 +606,33 @@ class FloppyDisk : Device
                 _data[_data_offset++] = (byte)value;  // FIXME
                 if (_data_offset == _data.Length)
                 {
-                    if (_data[0] == 0x06)  // READ DATA
+                    byte cmd = (byte)(_data[0] & 31);
+                    if (cmd == 0x06)  // READ DATA
                     {
                         want_interrupt |= ReadData(_data[1] & 3);
                         DumpReply();
                     }
-                    else if (_data[0] == 0x05)  // WRITE DATA
+                    else if (cmd == 0x05)  // WRITE DATA
                     {
                         want_interrupt |= WriteData(_data[1] & 3);
                         DumpReply();
                     }
-                    else if (_data[0] == 0x0f)  // SEEK
+                    else if (cmd == 0x0f)  // SEEK
                     {
                         want_interrupt |= Seek(_data[1] & 3);
                         DumpReply();
                     }
-                    else if (_data[0] == 0x0d)  // FORMAT
+                    else if (cmd == 0x0d)  // FORMAT
                     {
                         want_interrupt |= Format(_data[1] & 3);
                         DumpReply();
                     }
-                    else if (_data[0] == 0x03)  // SPECIFY
+                    else if (cmd == 0x03)  // SPECIFY
                     {
                         // do nothing (normally it sets timing parameters)
                         _data_state = DataState.WaitCmd;
                     }
-                    else if (_data[0] == 0x07)  // RECALIBRATE
+                    else if (cmd == 0x07)  // RECALIBRATE
                     {
                         int unit = _data[1] & 3;
                         _head[unit] = 0;
