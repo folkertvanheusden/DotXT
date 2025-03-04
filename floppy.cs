@@ -590,6 +590,14 @@ class FloppyDisk : Device
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
+                else if (cmd == 0x10)
+                {
+                    Log.DoLog($"Floppy-OUT command VERSION", LogLevel.DEBUG);
+                    _data = new byte[1];
+                    _data[0] = 0x90;
+                    _data_offset = 0;
+                    _data_state = DataState.HaveData;
+                }
                 else
                 {
                     Log.DoLog($"Floppy-OUT command {cmd:X2} not implemented ({value:X2})", LogLevel.WARNING);
