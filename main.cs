@@ -375,7 +375,10 @@ else
             }
             else if (parts[0] == "disassemble" || parts[0] == "da")
             {
-                runner_parameters.disassemble = !runner_parameters.disassemble;
+                if (parts.Length == 2)
+                    runner_parameters.disassemble = parts[1].ToLower() == "on";
+                else
+                    runner_parameters.disassemble = !runner_parameters.disassemble;
                 Log.Cnsl(runner_parameters.disassemble ? "disassembly on" : "disassembly off");
                 if (running)
                     Log.Cnsl("Please stop+start emulation to activate tracing");
@@ -479,7 +482,14 @@ else
                     Log.Cnsl("Number of parameters is incorrect");
                 else
                 {
-                    int unit = int.Parse(parts[1]);
+                    string unit_str = parts[1].ToLower();
+                    int unit = -1;
+                    if (parts[1] == "a" || parts[1] == "a:")
+                        unit = 0;
+                    else if (parts[1] == "b" || parts[1] == "b:")
+                        unit = 1;
+                    else
+                        unit = int.Parse(parts[1]);
                     if (floppy_controller.SetUnitFilename(unit, parts[2]))
                         Log.Cnsl("OK");
                     else
