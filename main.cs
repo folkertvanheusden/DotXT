@@ -479,7 +479,14 @@ else
                     Log.Cnsl("Number of parameters is incorrect");
                 else
                 {
-                    int unit = int.Parse(parts[1]);
+                    string unit_str = parts[1].ToLower();
+                    int unit = -1;
+                    if (parts[1] == "a" || parts[1] == "a:")
+                        unit = 0;
+                    else if (parts[1] == "b" || parts[1] == "b:")
+                        unit = 1;
+                    else
+                        unit = int.Parse(parts[1]);
                     if (floppy_controller.SetUnitFilename(unit, parts[2]))
                         Log.Cnsl("OK");
                     else
