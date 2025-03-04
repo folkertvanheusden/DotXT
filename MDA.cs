@@ -25,7 +25,7 @@ class MDA : Display
 
     public MDA(List<EmulatorConsole> consoles) : base(consoles)
     {
-        Console.WriteLine("MDA instantiated");
+        Log.Cnsl("MDA instantiated");
         font_descr = fonts.get_font(FontName.VGA);
         _gf.rgb_pixels = null;
         _gf.width = 640;

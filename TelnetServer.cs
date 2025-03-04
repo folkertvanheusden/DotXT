@@ -47,7 +47,7 @@ class TelnetServer: TextConsole
                 }
                 catch(SocketException e)
                 {
-                    Console.WriteLine($"TelnetServer socket exception: {e}");
+                    Log.Cnsl($"TelnetServer socket exception: {e}");
                 }
             }
         }
@@ -58,9 +58,9 @@ class TelnetServer: TextConsole
         if (_kb == null)
             return;
         if (c >= 32)
-            Console.WriteLine($"PushChar({c} - {(char)c})");
+            Log.Cnsl($"PushChar({c} - {(char)c})");
         else
-            Console.WriteLine($"PushChar({c})");
+            Log.Cnsl($"PushChar({c})");
         if (as_is)
         {
             _kb.PushKeyboardScancode(c);
@@ -187,12 +187,12 @@ class TelnetServer: TextConsole
         TelnetServerThreadParameters parameters = (TelnetServerThreadParameters)o_parameters;
         TcpListener tcp_listener = new TcpListener(IPAddress.Parse("0.0.0.0"), parameters.port);
         tcp_listener.Start();
-        Console.WriteLine($"Telnet server started on port {parameters.port}");
+        Log.Cnsl($"Telnet server started on port {parameters.port}");
 
         for(;;)
         {
             TcpClient client = tcp_listener.AcceptTcpClient();
-            Console.WriteLine("Connected to telnet client");
+            Log.Cnsl("Connected to telnet client");
             NetworkStream stream = client.GetStream();
             SetupTelnetSession(stream);
             parameters.ts.SetStream(stream);
@@ -213,7 +213,7 @@ class TelnetServer: TextConsole
                         {
                             // no other data, just push the escape
                             parameters.ts.PushChar(buffer[0], true);
-                            Console.WriteLine("No other data");
+                            Log.Cnsl("No other data");
                             continue;
                         }
 
@@ -265,13 +265,13 @@ class TelnetServer: TextConsole
                             else
                             {
                                 // ideally send the "invalid" code
-                                Console.WriteLine($"Not an cursor movement escape code: {ansii_code}");
+                                Log.Cnsl($"Not an cursor movement escape code: {ansii_code}");
                                 continue;
                             }
 
                             if (move_n == 0 || move_n > 4)
                                 move_n = 1;
-                            Console.WriteLine($"Moving cursor {move_n} positions with code of length {code.Length}");
+                            Log.Cnsl($"Moving cursor {move_n} positions with code of length {code.Length}");
                             for(int k=0; k<move_n; k++)
                             {
                                 for(int i=0; i<code.Length; i++)
@@ -292,7 +292,7 @@ class TelnetServer: TextConsole
             }
             catch(SocketException e)
             {
-                Console.WriteLine($"TelnetServer socket exception: {e}");
+                Log.Cnsl($"TelnetServer socket exception: {e}");
             }
 
             client.Close();

@@ -10,7 +10,7 @@ internal class MIDI : Device
 
     public MIDI()
     {
-        Console.WriteLine("MIDI instantiated");
+        Log.Cnsl("MIDI instantiated");
         _midi_out = _instance.OpenOutputAsync(_instance.Outputs.Last().Id).Result;
     }
 

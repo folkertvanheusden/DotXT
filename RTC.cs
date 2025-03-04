@@ -7,7 +7,7 @@ internal class RTC : Device
 
     public RTC()
     {
-        Console.WriteLine("RTC instantiated");
+        Log.Cnsl("RTC instantiated");
     }
 
     public override int GetIRQNumber()

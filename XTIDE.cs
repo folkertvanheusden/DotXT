@@ -16,7 +16,7 @@ class XTIDE : Device
 
     public XTIDE(List<string> disk_filenames)
     {
-        Console.WriteLine("XT-IDE instantiated");
+        Log.Cnsl("XT-IDE instantiated");
         _disk_filenames = disk_filenames;
     }
 

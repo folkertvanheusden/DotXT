@@ -30,6 +30,7 @@ class Log
     public static void EndLogging()
     {
         _log_queue.CompleteAdding();
+        _thread.Join();
     }
 
     public static void SetLogLevel(LogLevel ll)
@@ -52,7 +53,7 @@ class Log
             return LogLevel.ERROR;
         if (name == "fatal")
             return LogLevel.FATAL;
-        Console.WriteLine($"Loglevel \"{name}\" not understood, using debug instead");
+        Log.Cnsl($"Loglevel \"{name}\" not understood, using debug instead");
         return LogLevel.DEBUG;
     }
 
@@ -98,7 +99,7 @@ class Log
     {
         StreamWriter _file_handle = new StreamWriter(_logfile);
 
-        while(!_log_queue.IsCompleted)
+        while(_log_queue.IsCompleted == false || _log_queue.Count > 0)
         {
             string item;
             if (_log_queue.TryTake(out item, 1500))
@@ -110,6 +111,14 @@ class Log
         _file_handle.Close();
     }
 
+    public static void Cnsl(string what)
+    {
+        Console.WriteLine(what);
+
+        if (_logfile != null)
+            _log_queue.Add(what);
+    }
+
     public static void DoLog(string what, LogLevel ll)
     {
         if ((_logfile == null && _echo == false) || ll < _ll)
@@ -119,6 +128,6 @@ class Log
         _log_queue.Add(output);
 
         if (_echo)
-            Console.WriteLine(what);
+            Log.Cnsl(what);
     }
 }

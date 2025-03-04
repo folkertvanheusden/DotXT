@@ -355,12 +355,12 @@ class VNCServer: GraphicalConsole
         VNCServerThreadParameters parameters = (VNCServerThreadParameters)o_parameters;
         TcpListener tcp_listener = new TcpListener(IPAddress.Parse("0.0.0.0"), parameters.port);
         tcp_listener.Start();
-        Console.WriteLine($"VNC server started on port {parameters.port}");
+        Log.Cnsl($"VNC server started on port {parameters.port}");
 
         for(;;)
         {
             TcpClient client = tcp_listener.AcceptTcpClient();
-            Console.WriteLine("Connected to VNC client");
+            Log.Cnsl("Connected to VNC client");
             NetworkStream stream = client.GetStream();
 
             try
@@ -369,7 +369,7 @@ class VNCServer: GraphicalConsole
                 VNCSecurityHandshake(stream);
                 VNCClientServerInit(stream, parameters.vs);
 
-                Console.WriteLine("Starting graphics transmission");
+                Log.Cnsl("Starting graphics transmission");
                 parameters.vs.Redraw();
                 ulong version = 0;
                 for(;;)
@@ -394,7 +394,7 @@ class VNCServer: GraphicalConsole
                 Log.DoLog($"VNCServer exception: {e.ToString()}", LogLevel.WARNING);
             }
 
-            Console.WriteLine("VNC session ended", LogLevel.DEBUG);
+            Log.Cnsl("VNC session ended");
 
             client.Close();
         }

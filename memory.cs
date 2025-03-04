@@ -43,7 +43,7 @@ internal class Rom
         {
             string msg = $"ROM {filename} might not be valid! (0x55aa header missing)";
             Log.DoLog(msg, LogLevel.INFO);
-            Console.WriteLine(msg);
+            Log.Cnsl(msg);
         }
     }
 

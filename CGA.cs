@@ -57,7 +57,7 @@ class CGA : Display
 
     public CGA(List<EmulatorConsole> consoles): base(consoles)
     {
-        Console.WriteLine("CGA instantiated");
+        Log.Cnsl("CGA instantiated");
         font_descr = fonts.get_font(FontName.VGA);
         _gf.rgb_pixels = null;
     }
