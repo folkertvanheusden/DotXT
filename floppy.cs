@@ -168,7 +168,10 @@ class FloppyDisk : Device
     {
         int sectors_per_track = GetSectorsPerTrack(unit);
         if (sector > sectors_per_track)
+        {
             Log.DoLog($"Floppy-ReadData: GetFromFloppyImage: reading beyond sector-count? ({sector} > {sectors_per_track})", LogLevel.DEBUG);
+            return null;
+        }
 
         byte[] b = new byte[256 * n];
         int lba = (cylinder * 2 + head) * sectors_per_track + sector - 1;
@@ -218,17 +221,28 @@ class FloppyDisk : Device
         if (_dma == false)
         {
             byte[] b = GetFromFloppyImage(unit, _cylinder[unit], head, sector, n);
-            _data = new byte[7 + b.Length];
-            Array.Copy(b, 0, _data, 0, b.Length);
+            if (b == null)  // read error
+            {
+                _data = new byte[7];
+                _data[0] = (byte)(unit | (head << 2) | 0x80);  // ST0, invalid command
+                _data[1] = 0x80;  // end of cylinder
+                _data[2] = 0;
+                _data[3] = old_data[2];  // cylinder
+                _data[4] = old_data[3];  // head
+                _data[6] = old_data[5];  // sector size
+            }
+            else
+            {
+                _data = new byte[7 + b.Length];
+                Array.Copy(b, 0, _data, 0, b.Length);
 
-            _data[b.Length + 0] = (byte)(unit | (head << 2));  // ST0
-            _data[b.Length + 1] = 0;
-            _data[b.Length + 2] = 0;
-            _data[b.Length + 3] = old_data[2];  // cylinder
-            _data[b.Length + 4] = old_data[3];  // head
-            _data[b.Length + 6] = old_data[5];  // sector size
-
-            _data_state = DataState.HaveData;
+                _data[b.Length + 0] = (byte)(unit | (head << 2));  // ST0
+                _data[b.Length + 1] = 0;
+                _data[b.Length + 2] = 0;
+                _data[b.Length + 3] = old_data[2];  // cylinder
+                _data[b.Length + 4] = old_data[3];  // head
+                _data[b.Length + 6] = old_data[5];  // sector size
+            }
         }
         else
         {
@@ -239,13 +253,22 @@ class FloppyDisk : Device
             _data[3] = old_data[2];  // cylinder
             _data[4] = old_data[3];  // head
             _data[6] = old_data[5];  // sector size
-            _data_offset = 0;
-            _data_state = DataState.HaveData;
 
             bool dma_finished = false;
             do
             {
                 byte[] b = GetFromFloppyImage(unit, _cylinder[unit], head, sector, n);
+                if (b == null)  // read error
+                {
+                    _data = new byte[7];
+                    _data[0] = (byte)(unit | (head << 2) | 0x80);  // ST0, invalid command
+                    _data[1] = 0x80;  // end of cylinder
+                    _data[2] = 0;
+                    _data[3] = old_data[2];  // cylinder
+                    _data[4] = old_data[3];  // head
+                    _data[6] = old_data[5];  // sector size
+                    break;
+                }
 
     #if DEBUG
                 for(int i=0; i<b.Length / 16; i++) {
@@ -291,6 +314,9 @@ class FloppyDisk : Device
                 _data[5] = (byte)sector;
             }
         }
+
+        _data_offset = 0;
+        _data_state = DataState.HaveData;
 
         Log.DoLog($"Floppy-ReadData {sector - old_data[4]} sector(s) read", LogLevel.DEBUG);
 
