@@ -308,10 +308,10 @@ class FloppyDisk : Device
                 if (dma_finished == false)
                     sector++;
 
-                if (MT == true && sector > sectors_per_track)
+                if (MT == true && sector > sectors_per_track && head == 0)
                 {
                     sector = 1;
-                    _data[3]++;
+                    head = 1;
                 }
             }
             while(dma_finished == false && (sector <= sectors_per_track || MT == true));
@@ -646,7 +646,7 @@ class FloppyDisk : Device
                     }
                     else
                     {
-                        Log.DoLog($"Floppy-OUT unexpected command-after-data {cmd:X2}", LogLevel.WARNING);
+                        Log.DoLog($"Floppy-OUT unexpected command-after-data {cmd:X2} ({value:X2})", LogLevel.WARNING);
                     }
 
                     _just_resetted = false;
