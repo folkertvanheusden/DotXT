@@ -129,6 +129,7 @@ class VNCServer: GraphicalConsole
                 { 0x26, new byte[] { 0x08 } },  // &  (shift)
                 { 0x5c, new byte[] { 0x2b } },  // \
                 { 0x7c, new byte[] { 0x2b } },  // |  (shift)
+                { 0x3d, new byte[] { 0x0d } },  // =
                 { 0xff54, new byte[] { 0x50 } },  // cursor down
                 { 0xff52, new byte[] { 0x48 } },  // cursor up
                 { 0xff51, new byte[] { 0x4b } },  // cursor left
