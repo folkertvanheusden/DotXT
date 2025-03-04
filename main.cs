@@ -337,6 +337,7 @@ else
                 Log.Cnsl("cbp            remove all breakpoints");
                 Log.Cnsl("stats x        \"x\" must be \"cpu-speed\" currently");
                 Log.Cnsl("setll x        set loglevel (trace, debug, ...)");
+                Log.Cnsl("trunclf        truncate logfile");
             }
             else if (parts[0] == "s" || parts[0] == "step" || parts[0] == "S")
             {
@@ -378,6 +379,10 @@ else
                 Log.Cnsl(runner_parameters.disassemble ? "disassembly on" : "disassembly off");
                 if (running)
                     Log.Cnsl("Please stop+start emulation to activate tracing");
+            }
+            else if (parts[0] == "trunclf")
+            {
+                Log.TruncateLogfile();
             }
             else if (parts[0] == "setll")
             {

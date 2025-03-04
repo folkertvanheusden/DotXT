@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 
 internal enum LogLevel { TRACE, DEBUG, INFO, WARNING, ERROR, FATAL };
@@ -97,18 +98,33 @@ class Log
 
     public static void LogWriter()
     {
-        StreamWriter _file_handle = new StreamWriter(_logfile);
+        FileStream _file_handle = new FileStream(_logfile, FileMode.Open, FileAccess.ReadWrite);
 
         while(_log_queue.IsCompleted == false || _log_queue.Count > 0)
         {
             string item;
             if (_log_queue.TryTake(out item, 1500))
-                _file_handle.WriteLine(item);
+            {
+                if (item == null)
+                    _file_handle.SetLength(0);
+                else
+                {
+                    byte[] data = new UTF8Encoding(true).GetBytes(item + Environment.NewLine);
+                    _file_handle.Write(data, 0, data.Length);
+                }
+            }
             else
+            {
                 _file_handle.Flush();
+            }
         }
 
         _file_handle.Close();
+    }
+
+    public static void TruncateLogfile()
+    {
+        _log_queue.Add(null);
     }
 
     public static void Cnsl(string what)
