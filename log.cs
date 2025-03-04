@@ -98,7 +98,7 @@ class Log
 
     public static void LogWriter()
     {
-        FileStream _file_handle = new FileStream(_logfile, FileMode.Open, FileAccess.ReadWrite);
+        FileStream _file_handle = new FileStream(_logfile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
 
         while(_log_queue.IsCompleted == false || _log_queue.Count > 0)
         {
