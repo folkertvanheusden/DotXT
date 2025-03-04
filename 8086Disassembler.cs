@@ -1132,10 +1132,14 @@ class P8086Disassembler
                     name1 = "DX:AX";
                 }
             }
-            else if (function == 6)
-                name = "DIV";
-            else if (function == 7)
-                name = "IDIV";
+            else if (function == 6 || function == 7)
+            {
+                name = function == 6 ? "DIV" : "IDIV";
+                if (word)
+                    meta = $"DX:AX ({GetDX():X04}:{GetAX():X04} / {r1:X04})";
+                else
+                    meta = $"AX ({GetAX():X04} / {r1:X04})";
+            }
             else
             {
                 meta = $"opcode {opcode:X2} o1 {o1:X2} function {function} not implemented";
