@@ -278,20 +278,21 @@ class CGA : Display
         {
             int width = _cga_mode == CGAMode.Text40 ? 40 : 80;
 
-            if (use_offset >= _display_address && use_offset < _display_address + width * 25 * 2)
+            if (use_offset >= _display_address && use_offset < Math.Min(_display_address + width * 25 * 2, 16384))
             {
-                uint y = (uint)(use_offset / (width * 2));
-                uint x = (uint)(use_offset % (width * 2)) / 2;
+                uint addr_without_base = use_offset - _display_address;
+                uint y = (uint)(addr_without_base / (width * 2));
+                uint x = (uint)(addr_without_base % (width * 2)) / 2;
 
                 uint mask = uint.MaxValue - 1;
-                uint char_base_offset = use_offset & mask;
+                uint char_base_offset = addr_without_base & mask;
 
                 byte character = _ram[char_base_offset + 0];
                 byte attributes = _ram[char_base_offset + 1];
 
                 EmulateTextDisplay(x, y, character, attributes);
 
-                if (_gf.rgb_pixels != null)
+                if (_gf.rgb_pixels != null && y + font_descr.height <= _gf.height && x + 8 <= _gf.width)
                 {
                     int char_offset = character * font_descr.height;
                     int fg = attributes & 15;
