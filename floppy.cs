@@ -214,17 +214,18 @@ class FloppyDisk : Device
         int n = _data[5];
         int eot = _data[6];
 
+        int read_count = 0;
         int sectors_per_track = GetSectorsPerTrack(unit);
 
         Log.DoLog($"Floppy-ReadData HS {head:X02} C {_data[2]} H {_data[3]} R {sector} Sz {n} EOT {eot} GPL {_data[7]} DTL {_data[8]} dma {_dma} MT {MT}", LogLevel.DEBUG);
         Log.DoLog($"Floppy-ReadData SEEK H {_head[unit]} C {_cylinder[unit]}, unit {unit}", LogLevel.DEBUG);
 
         byte [] old_data = _data;
-        if (_dma == false)
+        if (_dma == false)  // TODO untested
         {
             byte st0 = (byte)(unit | (head << 2));
             int n_to_do = eot - sector;
-            byte[] b = GetFromFloppyImage(unit, _cylinder[unit], head, sector, n);
+            byte[] b = GetFromFloppyImage(unit, _cylinder[unit], head, sector, n * n_to_do);
             if (b == null)  // read error
             {
                 _data = new byte[7];
@@ -246,8 +247,9 @@ class FloppyDisk : Device
                 _data[b.Length + 2] = 0;
                 _data[b.Length + 3] = old_data[2];  // cylinder
                 _data[b.Length + 4] = old_data[3];  // head
-                _data[b.Length + 5] = (byte)(sector + n);
+                _data[b.Length + 5] = (byte)(sector + n_to_do);
                 _data[b.Length + 6] = old_data[5];  // sector size
+                read_count = n_to_do;
             }
         }
         else
@@ -306,15 +308,19 @@ class FloppyDisk : Device
                 }
 
                 if (dma_finished == false)
-                    sector++;
-
-                if (MT == true && sector > sectors_per_track && head == 0)
                 {
-                    sector = 1;
-                    head = 1;
+                    sector++;
+                    read_count++;
+
+                    if (MT == true && sector > sectors_per_track && head == 0 && _dma_controller.IsChannelTC(2) == false)
+                    {
+                        Log.DoLog("Floppy-ReadData MT: switch to other side", LogLevel.DEBUG);
+                        sector = 1;
+                        head = 1;
+                    }
                 }
             }
-            while(dma_finished == false && (sector <= sectors_per_track || MT == true));
+            while(dma_finished == false && sector <= sectors_per_track);
 
             _data[5] = (byte)sector;
         }
