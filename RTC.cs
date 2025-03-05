@@ -63,6 +63,8 @@ internal class RTC : Device
                 rc = ToBCD(now.Year / 100);
             else if (_cmos_ram_index == 0x0b)
                 rc = 2;  // 24h mode
+            else if (_cmos_ram_index == 0x10)
+                rc = 4;  // 1.44 MB floppy drive
             else if (_cmos_ram_index == 0x0a)
             {
                 rc = _ram[_cmos_ram_index];
