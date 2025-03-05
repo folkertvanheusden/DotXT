@@ -204,12 +204,12 @@ class VNCServer: GraphicalConsole
         reply[16] = 0;  // blue shift
         reply[17] = reply[18] = reply[19] = 0;  // padding
         string name = "DotXT";
-        reply[20] = (byte)(name.Length >> 24);
-        reply[21] = (byte)(name.Length >> 16);
-        reply[22] = (byte)(name.Length >>  8);
-        reply[23] = (byte)name.Length;
-        stream.Write(reply, 0, reply.Length);
         byte[] name_bytes = System.Text.Encoding.ASCII.GetBytes(name);
+        reply[20] = (byte)(name_bytes.Length >> 24);
+        reply[21] = (byte)(name_bytes.Length >> 16);
+        reply[22] = (byte)(name_bytes.Length >>  8);
+        reply[23] = (byte)name_bytes.Length;
+        stream.Write(reply, 0, reply.Length);
         stream.Write(name_bytes, 0, name_bytes.Length);
     }
 
