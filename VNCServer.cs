@@ -8,16 +8,17 @@ internal struct VNCServerThreadParameters
 {
     public VNCServer vs { get; set; }
     public int port { get; set; }
+    public Adlib adlib { get; set; }
 };
 
-internal struct VNCSesssion
+internal struct VNCSession
 {
     public bool audio_enabled { get; set; }
     public System.Threading.Lock stream_lock { get; set; }
     public NetworkStream stream { get; set; }
     public CancellationToken ct { get; set; }
     public Thread audio_thread { get; set; }
-    public bool stop_audio_thread { get; set; }
+    public Adlib adlib { get; set; }
 };
 
 class VNCServer: GraphicalConsole
@@ -28,16 +29,19 @@ class VNCServer: GraphicalConsole
     private bool _compatible = false;
     private static int compatible_width = 640;
     private static int compatible_height = 400;
+    private Adlib _adlib = null;
 
-    public VNCServer(Keyboard kb, int port, bool compatible)
+    public VNCServer(Keyboard kb, int port, bool compatible, Adlib adlib)
     {
         _kb = kb;
         _listen_port = port;
         _compatible = compatible;
+        _adlib = adlib;
 
         VNCServerThreadParameters parameters = new();
         parameters.vs = this;
         parameters.port = port;
+        parameters.adlib = adlib;
 
         _thread = new Thread(VNCServer.VNCThread);
         _thread.Name = "vnc-server-thread";
@@ -223,7 +227,7 @@ class VNCServer: GraphicalConsole
         stream.Write(name_bytes, 0, name_bytes.Length);
     }
 
-    private static bool VNCWaitForEvent(VNCServer vnc, ref VNCSesssion session)
+    private static bool VNCWaitForEvent(VNCServer vnc, ref VNCSession session)
     {
         session.stream.ReadTimeout = 1000 / 15;  // 15 fps
 
@@ -307,7 +311,7 @@ class VNCServer: GraphicalConsole
         return true;
     }
 
-    private static void VNCSendFrame(VNCServer vs, ref VNCSesssion session)
+    private static void VNCSendFrame(VNCServer vs, ref VNCSession session)
     {
         var frame = vs.GetFrame();
 
@@ -393,20 +397,76 @@ class VNCServer: GraphicalConsole
 
     public static void VNCAudioThread(object o_parameters)
     {
-        Log.Cnsl("VNC: Starting audio transmission");
-        VNCSesssion session = (VNCSesssion)o_parameters;
+        Log.Cnsl("VNC: Starting audio transmission thread");
+        VNCSession session = (VNCSession)o_parameters;
 
-        for(;;)
+        int samples_version = 123;
+        bool first_audio = true;
+
+        try
         {
-            if (session.ct.IsCancellationRequested)
+            for(;;)
             {
-                Log.Cnsl("VNC: Audio thread stop flag set");
-                break;
+                if (session.ct.IsCancellationRequested)
+                {
+                    Log.Cnsl("VNC: Audio thread stop flag set");
+                    break;
+                }
+
+                bool audio_enabled = false;
+                lock(session.stream_lock)
+                {
+                    audio_enabled = session.audio_enabled && session.adlib != null;
+                }
+
+                if (audio_enabled)
+                {
+                    if (first_audio)
+                    {
+                        first_audio = false;
+
+                        Log.Cnsl("VNC: Starting audio transmission");
+
+                        byte[] start_audio = new byte[4];
+                        start_audio[0] = 255;  // QEMU client message
+                        start_audio[1] = 1;  // audio
+                        start_audio[2] = 0;  // operation start audio
+                        start_audio[3] = 1;
+                        lock(session.stream_lock)
+                        {
+                            session.stream.Write(start_audio, 0, start_audio.Length);
+                        }
+                    }
+
+                    var rc = session.adlib.GetSamples(samples_version);
+                    samples_version = rc.Item2;
+                    short [] samples = rc.Item1;
+
+                    lock(session.stream_lock)
+                    {
+                        int n_bytes = samples.Length * 2;
+                        byte[] play_samples = new byte[4 + n_bytes];
+                        play_samples[0] = 255;  // QEMU client message
+                        play_samples[1] = 1;  // sub-type audio
+                        play_samples[2] = 0;  // opertion sample data
+                        play_samples[3] = 2;
+                        for(int i=0; i<samples.Length; i++)
+                        {
+                            ushort s = (ushort)samples[i];
+                            play_samples[4 + i * 2 + 0] = (byte)(s >> 8);
+                            play_samples[4 + i * 2 + 1] = (byte)s;
+                        }
+                        lock(session.stream_lock)
+                        {
+                            session.stream.Write(play_samples, 0, play_samples.Length);
+                        }
+                    }
+                }
             }
-
-            Thread.Sleep(100);
-
-            // TODO
+        }
+        catch(System.IO.IOException e)
+        {
+            Log.Cnsl("VNC: Connection lost?");
         }
 
         Log.Cnsl("VNC: Stopping audio transmission");
@@ -423,9 +483,10 @@ class VNCServer: GraphicalConsole
         {
             TcpClient client = tcp_listener.AcceptTcpClient();
             Log.Cnsl("Connected to VNC client");
-            VNCSesssion session = new();
+            VNCSession session = new();
             session.stream_lock = new();
             session.stream = client.GetStream();
+            session.adlib = parameters.adlib;
 
             CancellationTokenSource cts = new();
 

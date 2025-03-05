@@ -181,6 +181,13 @@ if (mode != TMode.Blank)
     devices.Add(kb);  // still needed because of clock ticks
     devices.Add(new PPI(kb));
 
+    Adlib adlib = null;
+    if (use_adlib)
+    {
+        adlib = new Adlib();
+        devices.Add(adlib);
+    }
+
     foreach(KeyValuePair<string, List<Tuple<string, int> > > current_console in consoles)
     {
         List<EmulatorConsole> console_instances = new();
@@ -191,7 +198,7 @@ if (mode != TMode.Blank)
             else if (c.Item1 == "http")
                 console_instances.Add(new HTTPServer(kb, c.Item2));
             else if (c.Item1 == "vnc")
-                console_instances.Add(new VNCServer(kb, c.Item2, true));
+                console_instances.Add(new VNCServer(kb, c.Item2, true, adlib));
         }
 
         if (current_console.Key == key_mda)
@@ -216,9 +223,6 @@ if (mode != TMode.Blank)
 
     if (use_rtc)
         devices.Add(new RTC());
-
-    if (use_adlib)
-        devices.Add(new Adlib());
 }
 
 // Bus gets the devices for memory mapped i/o

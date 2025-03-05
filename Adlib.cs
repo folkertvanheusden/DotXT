@@ -9,6 +9,8 @@ internal class Adlib : Device
     private readonly System.Threading.Lock _samples_lock = new();
     private Thread _thread = null;
     private short [] _samples = new short[100];
+    private int _samples_version = 0;
+    private readonly object _sync_primitive = new object();
 
     public Adlib()
     {
@@ -37,7 +39,7 @@ internal class Adlib : Device
 
     public override (ushort, bool) IO_Read(ushort port)
     {
-        Log.DoLog("Adlib::IO_Read {port:X04}", LogLevel.TRACE);
+        Log.DoLog($"Adlib::IO_Read {port:X04}", LogLevel.TRACE);
 
         return (0x00, false);
     }
@@ -123,6 +125,25 @@ internal class Adlib : Device
         lock(_samples_lock)
         {
             _samples = samples;
+            _samples_version++;
+        }
+
+        lock(_sync_primitive)
+        {
+            Monitor.Pulse(_sync_primitive);
+        }
+    }
+
+    public (short [], int) GetSamples(int version)
+    {
+        lock(_sync_primitive)
+        {
+            while(version == _samples_version)
+            {
+                Monitor.Wait(_sync_primitive);
+            }
+
+            return (_samples, _samples_version);
         }
     }
 
