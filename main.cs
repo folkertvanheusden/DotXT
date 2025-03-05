@@ -30,6 +30,7 @@ bool throttle = false;
 
 bool use_midi = false;
 bool use_rtc = false;
+bool use_adlib = false;
 
 for(int i=0; i<args.Length; i++)
 {
@@ -47,7 +48,7 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("-I        disable I/O ports");
         Log.Cnsl("-S        try to run at real speed");
         Log.Cnsl("-P        skip prompt");
-        Log.Cnsl("-O        enable option. currently: midi, rtc");
+        Log.Cnsl("-O        enable option. currently: adlib, midi, rtc");
         Log.Cnsl("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
         Log.Cnsl($"-p device,type,port   port to listen on. type must be \"telnet\", \"http\" or \"vnc\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
         Log.Cnsl("-o cs,ip  start address (in hexadecimal)");
@@ -62,7 +63,9 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-O")
     {
         string what = args[++i];
-        if (what == "midi")
+        if (what == "adlib")
+            use_adlib = true;
+        else if (what == "midi")
             use_midi = true;
         else if (what == "rtc")
             use_rtc = true;
@@ -213,6 +216,9 @@ if (mode != TMode.Blank)
 
     if (use_rtc)
         devices.Add(new RTC());
+
+    if (use_adlib)
+        devices.Add(new Adlib());
 }
 
 // Bus gets the devices for memory mapped i/o
