@@ -1,7 +1,7 @@
-move registers into a state structure
-that structure must then be given to the disassembler
+* floppy: pio
 
-Console.WriteLine => also log
+* clean-up disassembler
+
 
 https://cp437.github.io/
 

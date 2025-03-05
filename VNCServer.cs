@@ -129,6 +129,7 @@ class VNCServer: GraphicalConsole
                 { 0x26, new byte[] { 0x08 } },  // &  (shift)
                 { 0x5c, new byte[] { 0x2b } },  // \
                 { 0x7c, new byte[] { 0x2b } },  // |  (shift)
+                { 0x3d, new byte[] { 0x0d } },  // =
                 { 0xff54, new byte[] { 0x50 } },  // cursor down
                 { 0xff52, new byte[] { 0x48 } },  // cursor up
                 { 0xff51, new byte[] { 0x4b } },  // cursor left
@@ -203,12 +204,12 @@ class VNCServer: GraphicalConsole
         reply[16] = 0;  // blue shift
         reply[17] = reply[18] = reply[19] = 0;  // padding
         string name = "DotXT";
-        reply[20] = (byte)(name.Length >> 24);
-        reply[21] = (byte)(name.Length >> 16);
-        reply[22] = (byte)(name.Length >>  8);
-        reply[23] = (byte)name.Length;
-        stream.Write(reply, 0, reply.Length);
         byte[] name_bytes = System.Text.Encoding.ASCII.GetBytes(name);
+        reply[20] = (byte)(name_bytes.Length >> 24);
+        reply[21] = (byte)(name_bytes.Length >> 16);
+        reply[22] = (byte)(name_bytes.Length >>  8);
+        reply[23] = (byte)name_bytes.Length;
+        stream.Write(reply, 0, reply.Length);
         stream.Write(name_bytes, 0, name_bytes.Length);
     }
 
@@ -355,12 +356,12 @@ class VNCServer: GraphicalConsole
         VNCServerThreadParameters parameters = (VNCServerThreadParameters)o_parameters;
         TcpListener tcp_listener = new TcpListener(IPAddress.Parse("0.0.0.0"), parameters.port);
         tcp_listener.Start();
-        Console.WriteLine($"VNC server started on port {parameters.port}");
+        Log.Cnsl($"VNC server started on port {parameters.port}");
 
         for(;;)
         {
             TcpClient client = tcp_listener.AcceptTcpClient();
-            Console.WriteLine("Connected to VNC client");
+            Log.Cnsl("Connected to VNC client");
             NetworkStream stream = client.GetStream();
 
             try
@@ -369,7 +370,7 @@ class VNCServer: GraphicalConsole
                 VNCSecurityHandshake(stream);
                 VNCClientServerInit(stream, parameters.vs);
 
-                Console.WriteLine("Starting graphics transmission");
+                Log.Cnsl("Starting graphics transmission");
                 parameters.vs.Redraw();
                 ulong version = 0;
                 for(;;)
@@ -394,7 +395,7 @@ class VNCServer: GraphicalConsole
                 Log.DoLog($"VNCServer exception: {e.ToString()}", LogLevel.WARNING);
             }
 
-            Console.WriteLine("VNC session ended", LogLevel.DEBUG);
+            Log.Cnsl("VNC session ended");
 
             client.Close();
         }

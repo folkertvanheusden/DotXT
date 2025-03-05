@@ -117,12 +117,12 @@ class HTTPServer: GraphicalConsole
         HTTPServerThreadParameters parameters = (HTTPServerThreadParameters)o_parameters;
         TcpListener tcp_listener = new TcpListener(IPAddress.Parse("0.0.0.0"), parameters.port);
         tcp_listener.Start();
-        Console.WriteLine($"HTTP server started on port {parameters.port}");
+        Log.Cnsl($"HTTP server started on port {parameters.port}");
 
         for(;;)
         {
             TcpClient client = tcp_listener.AcceptTcpClient();
-            Console.WriteLine("Connected to HTTP client");
+            Log.Cnsl("Connected to HTTP client");
             NetworkStream stream = client.GetStream();
 
             try
@@ -148,7 +148,7 @@ class HTTPServer: GraphicalConsole
                 {
                     if (request[0] == "GET" && request[1] == "/frame.cgi")
                     {
-                        Console.WriteLine($"Requested: {request[1]} - 200");
+                        Log.Cnsl($"Requested: {request[1]} - 200");
 
                         PushLine(stream, "HTTP/1.0 200 All good");
                         PushLine(stream, "Server: DotXT");
@@ -161,7 +161,7 @@ class HTTPServer: GraphicalConsole
                     }
                     else if (request[0] == "GET" && request[1] == "/stream.cgi")
                     {
-                        Console.WriteLine($"Requested: {request[1]} - 200");
+                        Log.Cnsl($"Requested: {request[1]} - 200");
 
                         PushLine(stream, "HTTP/1.0 200 All good");
                         PushLine(stream, "Server: DotXT");
@@ -194,7 +194,7 @@ class HTTPServer: GraphicalConsole
                     }
                     else
                     {
-                        Console.WriteLine($"Requested: {request[1]} - 404");
+                        Log.Cnsl($"Requested: {request[1]} - 404");
 
                         PushLine(stream, $"HTTP/1.0 404 {request[1]} not found");
                         PushLine(stream, "Server: DotXT");
@@ -203,16 +203,16 @@ class HTTPServer: GraphicalConsole
                 }
                 else
                 {
-                        Console.WriteLine(headers);
+                        Log.Cnsl(headers);
                 }
             }
             catch(SocketException e)
             {
-                Console.WriteLine($"HTTPServer socket exception: {e.ToString()}");
+                Log.Cnsl($"HTTPServer socket exception: {e.ToString()}");
             }
             catch(Exception e)
             {
-                Console.WriteLine($"HTTPServer exception: {e.ToString()}");
+                Log.Cnsl($"HTTPServer exception: {e.ToString()}");
             }
 
             client.Close();

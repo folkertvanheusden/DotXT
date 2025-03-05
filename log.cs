@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 
 internal enum LogLevel { TRACE, DEBUG, INFO, WARNING, ERROR, FATAL };
@@ -30,6 +31,7 @@ class Log
     public static void EndLogging()
     {
         _log_queue.CompleteAdding();
+        _thread.Join();
     }
 
     public static void SetLogLevel(LogLevel ll)
@@ -52,7 +54,7 @@ class Log
             return LogLevel.ERROR;
         if (name == "fatal")
             return LogLevel.FATAL;
-        Console.WriteLine($"Loglevel \"{name}\" not understood, using debug instead");
+        Log.Cnsl($"Loglevel \"{name}\" not understood, using debug instead");
         return LogLevel.DEBUG;
     }
 
@@ -96,18 +98,43 @@ class Log
 
     public static void LogWriter()
     {
-        StreamWriter _file_handle = new StreamWriter(_logfile);
+        FileStream _file_handle = new FileStream(_logfile, FileMode.OpenOrCreate, FileAccess.ReadWrite);
 
-        while(!_log_queue.IsCompleted)
+        while(_log_queue.IsCompleted == false || _log_queue.Count > 0)
         {
             string item;
             if (_log_queue.TryTake(out item, 1500))
-                _file_handle.WriteLine(item);
+            {
+                if (item == null)
+                    _file_handle.SetLength(0);
+                else
+                {
+                    byte[] data = new UTF8Encoding(true).GetBytes(item + Environment.NewLine);
+                    _file_handle.Write(data, 0, data.Length);
+                }
+            }
             else
+            {
                 _file_handle.Flush();
+            }
         }
 
         _file_handle.Close();
+
+        Console.WriteLine("Log writer thread stopped");
+    }
+
+    public static void TruncateLogfile()
+    {
+        _log_queue.Add(null);
+    }
+
+    public static void Cnsl(string what)
+    {
+        Console.WriteLine(what);
+
+        if (_logfile != null)
+            _log_queue.Add(what);
     }
 
     public static void DoLog(string what, LogLevel ll)
@@ -119,6 +146,6 @@ class Log
         _log_queue.Add(output);
 
         if (_echo)
-            Console.WriteLine(what);
+            Log.Cnsl(what);
     }
 }

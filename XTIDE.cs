@@ -5,7 +5,7 @@ class XTIDE : Device
     private byte _status_register = 0;
     private byte _error_register = 0;
     private int _drv = 0;
-    private byte[] _sector_buffer = null;
+    private byte[] _sector_buffer = new byte[512];
     private int _sector_buffer_offset = 0;
     private long _target_lba = 0;
     private int _target_drive = 255;
@@ -16,7 +16,7 @@ class XTIDE : Device
 
     public XTIDE(List<string> disk_filenames)
     {
-        Console.WriteLine("XT-IDE instantiated");
+        Log.Cnsl("XT-IDE instantiated");
         _disk_filenames = disk_filenames;
     }
 
@@ -290,16 +290,9 @@ class XTIDE : Device
         if (port == 0x300)  // Data register
         {
             if (_sector_buffer_offset < _sector_buffer.Length)
-            {
                 rc = _sector_buffer[_sector_buffer_offset++];
-
-                if (_sector_buffer_offset == _sector_buffer.Length)
-                    _sector_buffer = null;
-            }
             else
-            {
                 Log.DoLog($"XT-IDE IN reading from empty buffer", LogLevel.WARNING);
-            }
         }
         else if (port == 0x302)  // error register
         {
@@ -356,7 +349,6 @@ class XTIDE : Device
                 {
                     StoreSectorBuffer();
                     _target_drive = 255;
-                    _sector_buffer = null;
                 }
                 else
                 {

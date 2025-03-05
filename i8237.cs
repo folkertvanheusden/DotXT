@@ -252,6 +252,11 @@ internal class i8237
         return rc;
     }
 
+    public bool IsChannelTC(int channel)
+    {
+        return _reached_tc[channel];
+    }
+
     // used by devices (floppy etc) to send data to memory
     public bool SendToChannel(int channel, byte value)
     {

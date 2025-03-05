@@ -34,23 +34,23 @@ bool use_rtc = false;
 for(int i=0; i<args.Length; i++)
 {
     if (args[i] == "-h") {
-        Console.WriteLine("-t file   load 'file'");
-        Console.WriteLine("-T addr   sets the load-address for -t");
-        Console.WriteLine("-x type   set type for -T: binary, blank");
-        Console.WriteLine("-l file   log to file");
-        Console.WriteLine("-L        set loglevel (trace, debug, ...)");
-        Console.WriteLine("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
-        Console.WriteLine("          e.g. load the bios from f000:e000");
-        Console.WriteLine("-s size   RAM size in kilobytes, decimal");
-        Console.WriteLine("-F file   load floppy image (multiple for drive A-D)");
-        Console.WriteLine("-D file   disassemble to file");
-        Console.WriteLine("-I        disable I/O ports");
-        Console.WriteLine("-S        try to run at real speed");
-        Console.WriteLine("-P        skip prompt");
-        Console.WriteLine("-O        enable option. currently: midi, rtc");
-        Console.WriteLine("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
-        Console.WriteLine($"-p device,type,port   port to listen on. type must be \"telnet\", \"http\" or \"vnc\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
-        Console.WriteLine("-o cs,ip  start address (in hexadecimal)");
+        Log.Cnsl("-t file   load 'file'");
+        Log.Cnsl("-T addr   sets the load-address for -t");
+        Log.Cnsl("-x type   set type for -T: binary, blank");
+        Log.Cnsl("-l file   log to file");
+        Log.Cnsl("-L        set loglevel (trace, debug, ...)");
+        Log.Cnsl("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
+        Log.Cnsl("          e.g. load the bios from f000:e000");
+        Log.Cnsl("-s size   RAM size in kilobytes, decimal");
+        Log.Cnsl("-F file   load floppy image (multiple for drive A-D)");
+        Log.Cnsl("-D file   disassemble to file");
+        Log.Cnsl("-I        disable I/O ports");
+        Log.Cnsl("-S        try to run at real speed");
+        Log.Cnsl("-P        skip prompt");
+        Log.Cnsl("-O        enable option. currently: midi, rtc");
+        Log.Cnsl("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
+        Log.Cnsl($"-p device,type,port   port to listen on. type must be \"telnet\", \"http\" or \"vnc\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
+        Log.Cnsl("-o cs,ip  start address (in hexadecimal)");
         System.Environment.Exit(0);
     }
     else if (args[i] == "-t")
@@ -68,7 +68,7 @@ for(int i=0; i<args.Length; i++)
             use_rtc = true;
         else
         {
-            Console.WriteLine($"{what} is not understood");
+            Log.Cnsl($"{what} is not understood");
             System.Environment.Exit(1);
         }
     }
@@ -77,12 +77,12 @@ for(int i=0; i<args.Length; i++)
         string[] parts = args[++i].Split(',');
         if (parts[0] != key_cga && parts[0] != key_mda)
         {
-            Console.WriteLine($"{parts[0]} is not understood");
+            Log.Cnsl($"{parts[0]} is not understood");
             System.Environment.Exit(1);
         }
         if (parts[1] != "telnet" && parts[1] != "http" && parts[1] != "vnc")
         {
-            Console.WriteLine($"{parts[1]} is not understood");
+            Log.Cnsl($"{parts[1]} is not understood");
             System.Environment.Exit(1);
         }
 
@@ -105,7 +105,7 @@ for(int i=0; i<args.Length; i++)
             mode = TMode.Blank;
         else
         {
-            Console.WriteLine($"{type} is not understood");
+            Log.Cnsl($"{type} is not understood");
             System.Environment.Exit(1);
         }
     }
@@ -137,7 +137,7 @@ for(int i=0; i<args.Length; i++)
         uint ip = (uint)GetValue(aparts[1], true);
         uint addr = seg * 16 + ip;
 
-        Console.WriteLine($"Loading {file} to {addr:X06}");
+        Log.Cnsl($"Loading {file} to {addr:X06}");
 
         roms.Add(new Rom(file, addr));
     }
@@ -152,7 +152,7 @@ for(int i=0; i<args.Length; i++)
     }
     else
     {
-        Console.WriteLine($"{args[i]} is not understood");
+        Log.Cnsl($"{args[i]} is not understood");
 
         System.Environment.Exit(1);
     }
@@ -160,14 +160,14 @@ for(int i=0; i<args.Length; i++)
 
 if (test == "")
 {
-    Console.WriteLine("DotXT, (C) 2023-2025 by Folkert van Heusden");
-    Console.WriteLine("Released in the public domain");
+    Log.Cnsl("DotXT, (C) 2023-2025 by Folkert van Heusden");
+    Log.Cnsl("Released in the public domain");
 }
 
 Console.TreatControlCAsInput = true;
 
 #if DEBUG
-Console.WriteLine("Debug build");
+Log.Cnsl("Debug build");
 #endif
 
 List<Device> devices = new();
@@ -286,7 +286,7 @@ if (json_processing)
         }
         else if (line != "")
         {
-            Console.WriteLine($"\"{line}\" not understood");
+            Log.Cnsl($"\"{line}\" not understood");
         }
 
         Console.Out.Flush();
@@ -324,27 +324,28 @@ else
 
             if (parts[0] == "help")
             {
-                Console.WriteLine("quit / q       terminate application");
-                Console.WriteLine("step / s / S   invoke 1 instruction, \"S\": step over loop");
-                Console.WriteLine($"stop           stop emulation (running: {running})");
-                Console.WriteLine("start / go     start emulation");
-                Console.WriteLine("reset          reset emulator");
-                Console.WriteLine("disassemble / da  toggle disassembly while emulating");
-                Console.WriteLine("echo           toggle logging to console");
-                Console.WriteLine("lsfloppy       list configured floppies");
-                Console.WriteLine("setfloppy x y  set floppy unit x (0 based) to file y");
-                Console.WriteLine("get [reg|ram] [regname|address]  get value from a register/memory location");
-                Console.WriteLine("set [reg|ram] [regname|address] value   set registers/memory to a value");
-                Console.WriteLine("get/set        value/address can be decimal or hexadecimal (prefix with 0x)");
-                Console.WriteLine("hd x           hexdump of a few bytes starting at address x");
-                Console.WriteLine("hd cs:ip       hexdump of a few bytes starting at address cs:ip");
-                Console.WriteLine("dr             dump all registers");
-                Console.WriteLine("gbp / lbp      list breakpoints");
-                Console.WriteLine("sbp x          set breakpoint");
-                Console.WriteLine("dbp x          delete breakpoint");
-                Console.WriteLine("cbp            remove all breakpoints");
-                Console.WriteLine("stats x        \"x\" must be \"cpu-speed\" currently");
-                Console.WriteLine("setll x        set loglevel (trace, debug, ...)");
+                Log.Cnsl("quit / q       terminate application");
+                Log.Cnsl("step / s / S   invoke 1 instruction, \"S\": step over loop");
+                Log.Cnsl($"stop           stop emulation (running: {running})");
+                Log.Cnsl("start / go     start emulation");
+                Log.Cnsl("reset          reset emulator");
+                Log.Cnsl("disassemble / da  toggle disassembly while emulating");
+                Log.Cnsl("echo           toggle logging to console");
+                Log.Cnsl("lsfloppy       list configured floppies");
+                Log.Cnsl("setfloppy x y  set floppy unit x (0 based) to file y");
+                Log.Cnsl("get [reg|ram] [regname|address]  get value from a register/memory location");
+                Log.Cnsl("set [reg|ram] [regname|address] value   set registers/memory to a value");
+                Log.Cnsl("get/set        value/address can be decimal or hexadecimal (prefix with 0x)");
+                Log.Cnsl("hd x           hexdump of a few bytes starting at address x");
+                Log.Cnsl("hd cs:ip       hexdump of a few bytes starting at address cs:ip");
+                Log.Cnsl("dr             dump all registers");
+                Log.Cnsl("gbp / lbp      list breakpoints");
+                Log.Cnsl("sbp x          set breakpoint");
+                Log.Cnsl("dbp x          delete breakpoint");
+                Log.Cnsl("cbp            remove all breakpoints");
+                Log.Cnsl("stats x        \"x\" must be \"cpu-speed\" currently");
+                Log.Cnsl("setll x        set loglevel (trace, debug, ...)");
+                Log.Cnsl("trunclf        truncate logfile");
             }
             else if (parts[0] == "s" || parts[0] == "step" || parts[0] == "S")
             {
@@ -377,33 +378,40 @@ else
                 {
                     string stop_reason = p.GetStopReason();
                     if (stop_reason != "")
-                        Console.WriteLine(stop_reason);
+                        Log.Cnsl(stop_reason);
                 }
             }
             else if (parts[0] == "disassemble" || parts[0] == "da")
             {
-                runner_parameters.disassemble = !runner_parameters.disassemble;
-                Console.WriteLine(runner_parameters.disassemble ? "disassembly on" : "disassembly off");
+                if (parts.Length == 2)
+                    runner_parameters.disassemble = parts[1].ToLower() == "on";
+                else
+                    runner_parameters.disassemble = !runner_parameters.disassemble;
+                Log.Cnsl(runner_parameters.disassemble ? "disassembly on" : "disassembly off");
                 if (running)
-                    Console.WriteLine("Please stop+start emulation to activate tracing");
+                    Log.Cnsl("Please stop+start emulation to activate tracing");
+            }
+            else if (parts[0] == "trunclf")
+            {
+                Log.TruncateLogfile();
             }
             else if (parts[0] == "setll")
             {
                 if (parts.Length != 2)
-                    Console.WriteLine("Parameter missing");
+                    Log.Cnsl("Parameter missing");
                 else
                     Log.SetLogLevel(Log.StringToLogLevel(parts[1]));
             }
             else if (parts[0] == "stats")
             {
                 if (parts.Length < 2)
-                    Console.WriteLine("Parameter missing");
+                    Log.Cnsl("Parameter missing");
                 else if (parts[1] == "cpu-speed")
                 {
                     if (running)
                         MeasureSpeed(p, parts.Length == 3 && parts[2] == "-c");
                     else
-                        Console.WriteLine("Emulation not running");
+                        Log.Cnsl("Emulation not running");
                 }
                 else if (parts[1] == "i8253" || parts[1] == "timers")
                 {
@@ -413,7 +421,7 @@ else
                         {
                             var state = device.GetState();
                             foreach(var state_line in state)
-                                Console.WriteLine(state_line);
+                                Log.Cnsl(state_line);
                         }
                     }
                 }
@@ -421,18 +429,18 @@ else
             else if (parts[0] == "echo")
             {
                 echo_state = !echo_state;
-                Console.WriteLine(echo_state ? "echo on" : "echo off");
+                Log.Cnsl(echo_state ? "echo on" : "echo off");
                 Log.EchoToConsole(echo_state);
             }
             else if (parts[0] == "start" || parts[0] == "go")
             {
                 if (running)
-                    Console.WriteLine("Already running");
+                    Log.Cnsl("Already running");
                 else
                 {
                     runner_parameters.exit.set(false);
                     thread = CreateRunnerThread(runner_parameters);
-                    Console.WriteLine("OK");
+                    Log.Cnsl("OK");
                     running = true;
                 }
             }
@@ -446,7 +454,7 @@ else
                 }
                 else
                 {
-                    Console.WriteLine("Not running");
+                    Log.Cnsl("Not running");
                 }
             }
             else if (parts[0] == "reset")
@@ -467,26 +475,33 @@ else
             else if (parts[0] == "lsfloppy")
             {
                 if (floppy_controller == null)
-                    Console.WriteLine("No floppy drive configured");
+                    Log.Cnsl("No floppy drive configured");
                 else
                 {
                     for(int i=0; i<floppy_controller.GetUnitCount(); i++)
-                        Console.WriteLine($"{i}] {floppy_controller.GetUnitFilename(i)}");
+                        Log.Cnsl($"{i}] {floppy_controller.GetUnitFilename(i)}");
                 }
             }
             else if (parts[0] == "setfloppy")
             {
                 if (floppy_controller == null)
-                    Console.WriteLine("No floppy drive configured");
+                    Log.Cnsl("No floppy drive configured");
                 else if (parts.Length != 3)
-                    Console.WriteLine("Number of parameters is incorrect");
+                    Log.Cnsl("Number of parameters is incorrect");
                 else
                 {
-                    int unit = int.Parse(parts[1]);
-                    if (floppy_controller.SetUnitFilename(unit, parts[2]))
-                        Console.WriteLine("OK");
+                    string unit_str = parts[1].ToLower();
+                    int unit = -1;
+                    if (parts[1] == "a" || parts[1] == "a:")
+                        unit = 0;
+                    else if (parts[1] == "b" || parts[1] == "b:")
+                        unit = 1;
                     else
-                        Console.WriteLine("Failed: invalid unit number or file does not exist");
+                        unit = int.Parse(parts[1]);
+                    if (floppy_controller.SetUnitFilename(unit, parts[2]))
+                        Log.Cnsl("OK");
+                    else
+                        Log.Cnsl("Failed: invalid unit number or file does not exist");
                 }
             }
             else if (parts[0] == "set")
@@ -504,7 +519,7 @@ else
             else if (parts[0] == "sbp")
             {
                 if (running)
-                    Console.WriteLine("Please stop emulation first");
+                    Log.Cnsl("Please stop emulation first");
                 else
                 {
                     uint addr = (uint)GetValue(parts[1], false);
@@ -514,7 +529,7 @@ else
             else if (parts[0] == "dbp")
             {
                 if (running)
-                    Console.WriteLine("Please stop emulation first");
+                    Log.Cnsl("Please stop emulation first");
                 else
                 {
                     uint addr = (uint)GetValue(parts[1], false);
@@ -524,7 +539,7 @@ else
             else if (parts[0] == "cbp")
             {
                 if (running)
-                    Console.WriteLine("Please stop emulation first");
+                    Log.Cnsl("Please stop emulation first");
                 else
                 {
                     p.ClearBreakpoints();
@@ -535,34 +550,34 @@ else
                 uint addr = (uint)GetValue(parts[1], true);
 
                 for(int i=0; i<256; i+=16)
-                    Console.WriteLine($"{addr + i:X6} {p.HexDump((uint)(addr + i))} {p.CharDump((uint)(addr + i))}");
+                    Log.Cnsl($"{addr + i:X6} {p.HexDump((uint)(addr + i))} {p.CharDump((uint)(addr + i))}");
             }
             else if (parts[0] == "dr")
             {
-                Console.WriteLine($"AX: {p.GetAX():X04}, BX: {p.GetBX():X04}, CX: {p.GetCX():X04}, DX: {p.GetDX():X04}");
-                Console.WriteLine($"DS: {p.GetDS():X04}, ES: {p.GetES():X04}");
+                Log.Cnsl($"AX: {p.GetAX():X04}, BX: {p.GetBX():X04}, CX: {p.GetCX():X04}, DX: {p.GetDX():X04}");
+                Log.Cnsl($"DS: {p.GetDS():X04}, ES: {p.GetES():X04}");
                 ushort ss = p.GetSS();
                 ushort sp = p.GetSP();
                 uint full_stack_addr = (uint)(ss * 16 + sp);
-                Console.WriteLine($"SS: {ss:X04}, SP: {sp:X04} => ${full_stack_addr:X06}, {p.HexDump(full_stack_addr)}");
-                Console.WriteLine($"BP: {p.GetBP():X04}, SI: {p.GetSI():X04}, DI: {p.GetDI():X04}");
+                Log.Cnsl($"SS: {ss:X04}, SP: {sp:X04} => ${full_stack_addr:X06}, {p.HexDump(full_stack_addr)}");
+                Log.Cnsl($"BP: {p.GetBP():X04}, SI: {p.GetSI():X04}, DI: {p.GetDI():X04}");
                 ushort cs = p.GetCS();
                 ushort ip = p.GetIP();
-                Console.WriteLine($"CS: {cs:X04}, IP: {ip:X04} => ${cs * 16 + ip:X06}");
-                Console.WriteLine($"flags: {p.GetFlagsAsString()}");
+                Log.Cnsl($"CS: {cs:X04}, IP: {ip:X04} => ${cs * 16 + ip:X06}");
+                Log.Cnsl($"flags: {p.GetFlagsAsString()}");
             }
             else
             {
-                Console.WriteLine($"\"{line}\" is not understood");
+                Log.Cnsl($"\"{line}\" is not understood");
             }
         }
         catch(System.FormatException fe)
         {
-            Console.WriteLine($"An error occured while processing \"{line}\": make sure you prefix hexadecimal values with \"0x\" and enter decimal values where required. Complete error message: \"{fe}\".");
+            Log.Cnsl($"An error occured while processing \"{line}\": make sure you prefix hexadecimal values with \"0x\" and enter decimal values where required. Complete error message: \"{fe}\".");
         }
         catch(Exception e)
         {
-            Console.WriteLine($"The error \"{e}\" occured while processing \"{line}\".");
+            Log.Cnsl($"The error \"{e}\" occured while processing \"{line}\".");
         }
     }
 }
@@ -608,7 +623,7 @@ void Runner(object o)
 
     try
     {
-        Console.WriteLine("Emulation started");
+        Log.Cnsl("Emulation started");
 
         long prev_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
         long prev_clock = 0;
@@ -640,16 +655,16 @@ void Runner(object o)
 
         string stop_reason = p.GetStopReason();
         if (stop_reason != "")
-            Console.WriteLine(stop_reason);
+            Log.Cnsl(stop_reason);
     }
     catch(Exception e)
     {
         string msg = $"An exception occured: {e.ToString()}";
-        Console.WriteLine(msg);
+        Log.Cnsl(msg);
         Log.DoLog(msg, LogLevel.WARNING);
     }
 
-    Console.WriteLine("Emulation stopped");
+    Log.Cnsl("Emulation stopped");
 }
 
 int GetValue(string v, bool hex)
@@ -670,7 +685,7 @@ int GetValue(string v, bool hex)
 void CmdGet(string[] tokens, P8086 p, Bus b)
 {
     if (tokens.Length != 3)
-        Console.WriteLine("usage: get [reg|ram] [regname|address]");
+        Log.Cnsl("usage: get [reg|ram] [regname|address]");
     else if (tokens[1] == "reg")
     {
         try
@@ -708,15 +723,15 @@ void CmdGet(string[] tokens, P8086 p, Bus b)
                 value = p.GetFlags();
             else
             {
-                Console.WriteLine($"Register {regname} not known");
+                Log.Cnsl($"Register {regname} not known");
                 return;
             }
 
-            Console.WriteLine($">GET {regname} {value}");
+            Log.Cnsl($">GET {regname} {value}");
         }
         catch (Exception e)
         {
-            Console.WriteLine($">GET -1 -1 FAILED {e}");
+            Log.Cnsl($">GET -1 -1 FAILED {e}");
         }
     }
     else if (tokens[1] == "ram" || tokens[1] == "mem")
@@ -726,11 +741,11 @@ void CmdGet(string[] tokens, P8086 p, Bus b)
             uint addr = (uint)GetValue(tokens[2], false);
             ushort value = b.ReadByte(addr).Item1;
 
-            Console.WriteLine($">GET {addr} {value}");
+            Log.Cnsl($">GET {addr} {value}");
         }
         catch (Exception e)
         {
-            Console.WriteLine($">GET -1 -1 FAILED {e}");
+            Log.Cnsl($">GET -1 -1 FAILED {e}");
         }
     }
 }
@@ -738,7 +753,7 @@ void CmdGet(string[] tokens, P8086 p, Bus b)
 void CmdSet(string [] tokens, P8086 p, Bus b)
 {
     if (tokens.Length != 4)
-        Console.WriteLine("usage: set [reg|ram] [regname|address] value");
+        Log.Cnsl("usage: set [reg|ram] [regname|address] value");
     else if (tokens[1] == "reg")
     {
         string regname = tokens[2];
@@ -776,15 +791,15 @@ void CmdSet(string [] tokens, P8086 p, Bus b)
                 p.SetFlags(value);
             else
             {
-                Console.WriteLine($"Register {regname} not known");
+                Log.Cnsl($"Register {regname} not known");
                 return;
             }
 
-            Console.WriteLine($"<SET {regname} {value}");
+            Log.Cnsl($"<SET {regname} {value}");
         }
         catch (Exception e)
         {
-            Console.WriteLine($"<SET -1 -1 FAILED {e}");
+            Log.Cnsl($"<SET -1 -1 FAILED {e}");
         }
     }
     else if (tokens[1] == "ram" || tokens[1] == "mem")
@@ -796,20 +811,20 @@ void CmdSet(string [] tokens, P8086 p, Bus b)
 
             b.WriteByte(addr, value);
 
-            Console.WriteLine($"<SET {addr} {value}");
+            Log.Cnsl($"<SET {addr} {value}");
         }
         catch (Exception e)
         {
-            Console.WriteLine($"<SET -1 -1 FAILED {e}");
+            Log.Cnsl($"<SET -1 -1 FAILED {e}");
         }
     }
 }
 
 void GetBreakpoints(P8086 p)
 {
-    Console.WriteLine("Breakpoints:");
+    Log.Cnsl("Breakpoints:");
     foreach(uint a in p.GetBreakpoints())
-        Console.WriteLine($"\t{a:X06}");
+        Log.Cnsl($"\t{a:X06}");
 }
 
 void ClearConsoleInputBuffer()
@@ -821,14 +836,14 @@ void ClearConsoleInputBuffer()
 void MeasureSpeed(P8086 p, bool continuously)
 {
     if (continuously)
-        Console.WriteLine("Press any key to stop measuring");
+        Log.Cnsl("Press any key to stop measuring");
     do
     {
         long start_clock = p.GetClock();
         Thread.Sleep(1000);
         long end_clock = p.GetClock();
 
-        Console.WriteLine($"Estimated emulation speed: {(end_clock - start_clock) * 100 / 4772730}%");
+        Log.Cnsl($"Estimated emulation speed: {(end_clock - start_clock) * 100 / 4772730}%");
     }
     while(continuously && Console.KeyAvailable == false);
 
