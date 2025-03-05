@@ -17,6 +17,7 @@ class FloppyDisk : Device
     private int [] _head = new int[4];
     private int _cylinder_seek_result = 0;
     private readonly System.Threading.Lock _filenames_lock = new();
+    private bool _extended = false;
 
     public FloppyDisk(List<string> filenames)
     {
@@ -214,10 +215,15 @@ class FloppyDisk : Device
         int n = _data[5];
         int eot = _data[6];
 
+        bool implied_seek = (_data[1] & 0x80) != 0;
+        int cylinder = _cylinder[unit];
+        if (implied_seek)
+            cylinder = _data[2];
+
         int read_count = 0;
         int sectors_per_track = GetSectorsPerTrack(unit);
 
-        Log.DoLog($"Floppy-ReadData HS {head:X02} C {_data[2]} H {_data[3]} R {sector} Sz {n} EOT {eot} GPL {_data[7]} DTL {_data[8]} dma {_dma} MT {MT}", LogLevel.DEBUG);
+        Log.DoLog($"Floppy-ReadData HS {head:X02} C {_data[2]} H {_data[3]} R {sector} Sz {n} EOT {eot} GPL {_data[7]} DTL {_data[8]} dma {_dma} MT {MT} IS {implied_seek}", LogLevel.DEBUG);
         Log.DoLog($"Floppy-ReadData SEEK H {_head[unit]} C {_cylinder[unit]}, unit {unit}", LogLevel.DEBUG);
 
         byte [] old_data = _data;
@@ -225,7 +231,7 @@ class FloppyDisk : Device
         {
             byte st0 = (byte)(unit | (head << 2));
             int n_to_do = eot - sector;
-            byte[] b = GetFromFloppyImage(unit, _cylinder[unit], head, sector, n * n_to_do);
+            byte[] b = GetFromFloppyImage(unit, cylinder, head, sector, n * n_to_do);
             if (b == null)  // read error
             {
                 _data = new byte[7];
@@ -265,7 +271,7 @@ class FloppyDisk : Device
             bool dma_finished = false;
             do
             {
-                byte[] b = GetFromFloppyImage(unit, _cylinder[unit], head, sector, n);
+                byte[] b = GetFromFloppyImage(unit, cylinder, head, sector, n);
                 if (b == null)  // read error
                 {
                     _data = new byte[7];
@@ -298,7 +304,7 @@ class FloppyDisk : Device
                     {
                         if (sector == old_data[4])
                         {
-                            Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}. Position: cylinder {_cylinder[unit]}, head {head}, sector {sector}, unit {unit}", LogLevel.INFO);
+                            Log.DoLog($"Floppy-ReadData DMA failed at byte position {i}. Position: cylinder {cylinder}, head {head}, sector {sector}, unit {unit}", LogLevel.INFO);
                             _data[0] = 0x40;  // abnormal termination of command
                             _data[1] = 0x10;  // FDC not serviced by host
                         }
@@ -364,6 +370,11 @@ class FloppyDisk : Device
         int head = (_data[1] & 4) == 4 ? 1 : 0;
         int n = _data[5];
 
+        bool implied_seek = (_data[1] & 0x80) != 0;
+        int cylinder = _cylinder[unit];
+        if (implied_seek)
+            cylinder = _data[2];
+
         Log.DoLog($"Floppy-WriteData HS {head:X02} C {_data[2]} H {_data[3]} R {_data[4]} Sz {_data[5]} EOT {_data[6]} GPL {_data[7]} DTL {_data[8]}", LogLevel.DEBUG);
         Log.DoLog($"Floppy-WriteData SEEK H {_head[unit]} C {_cylinder[unit]}, unit {unit}", LogLevel.DEBUG);
 
@@ -391,7 +402,7 @@ class FloppyDisk : Device
                 {
                     if (sector == old_data[4])
                     {
-                        Log.DoLog($"Floppy-WriteData DMA failed at byte position {i}. Position: cylinder {_cylinder[unit]}, head {head}, sector {sector}, unit {unit}", LogLevel.DEBUG);
+                        Log.DoLog($"Floppy-WriteData DMA failed at byte position {i}. Position: cylinder {cylinder}, head {head}, sector {sector}, unit {unit}", LogLevel.DEBUG);
                         _data[0] = 0x40;  // abnormal termination of command
                         _data[1] = 0x10;  // FDC not serviced by host
                     }
@@ -403,7 +414,7 @@ class FloppyDisk : Device
 
             if (dma_finished == false)
             {
-                WriteToFloppyImage(unit, _cylinder[unit], head, sector, b);
+                WriteToFloppyImage(unit, cylinder, head, sector, b);
                 sector++;
             }
         }
@@ -533,8 +544,8 @@ class FloppyDisk : Device
                 byte cmd = (byte)(value & 31);
                 if (cmd == 0x08)
                 {
-                    Log.DoLog($"Floppy-OUT command SENSE INTERRUPT STATUS", LogLevel.DEBUG);
-                    _data = new byte[2];
+                    Log.DoLog($"Floppy-OUT command SENSE INTERRUPT STATUS, resetted: {_just_resetted}, extended: {_extended}", LogLevel.DEBUG);
+                    _data = new byte[_extended ? 3 : 2];
                     _data[0] = (byte)(_just_resetted ? 0xc0 : 0x20);  // TODO | drive_number
                     _data[1] = (byte)_cylinder_seek_result;
                     _data_offset = 0;
@@ -569,7 +580,7 @@ class FloppyDisk : Device
                 else if (cmd == 0x0f)
                 {
                     Log.DoLog($"Floppy-OUT command SEEK", LogLevel.DEBUG);
-                    _data = new byte[3];
+                    _data = new byte[_extended ? 4 : 3];
                     _data[0] = (byte)value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
@@ -597,11 +608,15 @@ class FloppyDisk : Device
                     _data[0] = 0x90;
                     _data_offset = 0;
                     _data_state = DataState.HaveData;
+                    _extended = true;
                 }
                 else
                 {
                     Log.DoLog($"Floppy-OUT command {cmd:X2} not implemented ({value:X2})", LogLevel.WARNING);
-                    _busy = false;
+                    _data = new byte[1];
+                    _data[0] = 0x80;  // invalid command
+                    _data_offset = 0;
+                    _data_state = DataState.HaveData;
                 }
 
                 if (_data_state == DataState.HaveData)
@@ -683,5 +698,15 @@ class FloppyDisk : Device
         }
 
         return want_interrupt;
+    }
+
+    public override bool Tick(int cycles, long clock)
+    {
+        if (CheckScheduledInterrupt(1000)) {
+            Log.DoLog("Fire floppy interrupt", LogLevel.TRACE);
+            _pic.RequestInterruptPIC(_irq_nr);
+        }
+
+        return false;
     }
 }
