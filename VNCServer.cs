@@ -10,6 +10,11 @@ internal struct VNCServerThreadParameters
     public int port { get; set; }
 };
 
+internal struct VNCSesssion
+{
+    public bool audio_enabled { get; set; }
+};
+
 class VNCServer: GraphicalConsole
 {
     private Thread _thread = null;
@@ -213,7 +218,7 @@ class VNCServer: GraphicalConsole
         stream.Write(name_bytes, 0, name_bytes.Length);
     }
 
-    private static void VNCWaitForEvent(NetworkStream stream, VNCServer vnc)
+    private static void VNCWaitForEvent(NetworkStream stream, VNCServer vnc, ref VNCSesssion session)
     {
         stream.ReadTimeout = 1000 / 15;  // 15 fps
 
@@ -229,7 +234,7 @@ class VNCServer: GraphicalConsole
 
         stream.ReadTimeout = 1000;  // sane(?) timeout
 
-        Log.DoLog($"Client message {type[0]} received", LogLevel.TRACE);
+        Log.DoLog($"VNC: Client message {type[0]} received", LogLevel.TRACE);
 
         if (type[0] == 0)  // SetPixelFormat
         {
@@ -240,10 +245,22 @@ class VNCServer: GraphicalConsole
         {
             byte[] temp = new byte[3];
             stream.ReadExactly(temp);
-            ushort no_encodings = (ushort)((temp[1] << 8) | temp[2]);
-            Log.DoLog($"retrieve {no_encodings} encodings", LogLevel.TRACE);
-            byte[] encodings = new byte[no_encodings * 4];
-            stream.ReadExactly(encodings);
+            int no_encodings = (ushort)((temp[1] << 8) | temp[2]);
+            Log.DoLog($"VNC: retrieve {no_encodings} encodings", LogLevel.TRACE);
+            for(int i=0; i<no_encodings; i++)
+            {
+                byte[] encoding = new byte[4];
+                stream.ReadExactly(encoding);
+                if (BitConverter.IsLittleEndian)
+                    Array.Reverse(encoding);
+                int e = BitConverter.ToInt32(encoding, 0);
+                Log.DoLog($"VNC: retrieved encoding {i}: {e}", LogLevel.TRACE);
+                if (e == -259)
+                {
+                    Log.DoLog("VNC client supports audio", LogLevel.DEBUG);
+                    session.audio_enabled = true;
+                }
+            }
         }
         else if (type[0] == 3)  // FramebufferUpdateRequest
         {
@@ -275,7 +292,7 @@ class VNCServer: GraphicalConsole
         }
         else
         {
-            Log.DoLog($"Client message {type[0]} not understood", LogLevel.WARNING);
+            Log.DoLog($"VNC: Client message {type[0]} not understood", LogLevel.WARNING);
         }
     }
 
@@ -370,7 +387,9 @@ class VNCServer: GraphicalConsole
                 VNCSecurityHandshake(stream);
                 VNCClientServerInit(stream, parameters.vs);
 
-                Log.Cnsl("Starting graphics transmission");
+                VNCSesssion session = new();
+
+                Log.Cnsl("VNC: Starting graphics transmission");
                 parameters.vs.Redraw();
                 ulong version = 0;
                 for(;;)
@@ -383,7 +402,7 @@ class VNCServer: GraphicalConsole
                         VNCSendFrame(stream, parameters.vs);
                     }
 
-                    VNCWaitForEvent(stream, parameters.vs);
+                    VNCWaitForEvent(stream, parameters.vs, ref session);
                 }
             }
             catch(SocketException e)
