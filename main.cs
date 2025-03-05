@@ -173,6 +173,8 @@ Console.TreatControlCAsInput = true;
 Log.Cnsl("Debug build");
 #endif
 
+RTSPServer audio = null;
+
 List<Device> devices = new();
 
 if (mode != TMode.Blank)
@@ -186,6 +188,7 @@ if (mode != TMode.Blank)
     {
         adlib = new Adlib();
         devices.Add(adlib);
+        audio = new RTSPServer(adlib, 5540);  // TODO port & instantiating; make optional
     }
 
     foreach(KeyValuePair<string, List<Tuple<string, int> > > current_console in consoles)
