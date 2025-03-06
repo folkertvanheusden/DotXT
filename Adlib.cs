@@ -161,7 +161,6 @@ internal class Adlib : Device
                 {
                     int channel = _address - 0xa0;
                     channels[channel].base_frequency = (channels[channel].base_frequency & 0x300) | value;
-                    channels[channel].updated = true;
                 }
                 else if (_address >= 0xb0 && _address <= 0xb8)
                 {
