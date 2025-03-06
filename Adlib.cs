@@ -15,6 +15,7 @@ internal class Adlib : Device
     private long _prev_timer_1 = 0;
     private long _prev_timer_2 = 0;
     private byte _status_byte = 0;
+    private const double volume_scaler = 9;
 
     public Adlib()
     {
@@ -88,12 +89,14 @@ internal class Adlib : Device
                     frequencies[ch_nr] = 0;
                 }
 
-                volume[ch_nr] = channel.volume;
+                volume[ch_nr] = channel.volume / volume_scaler;
             }
 
             int count = freq/interval * 10 / 9;
             short [] samples = new short[count];
             bool too_loud = false;
+            double min = 10;
+            double max = -10;
             for(int sample=0; sample<count; sample++)
             {
                 double v = 0.0;
@@ -103,17 +106,19 @@ internal class Adlib : Device
                     if (frequencies[ch_nr] <= 0.0)
                         continue;
 
-                    v += Math.Sin(phase[ch_nr]);
+                    v += Math.Sin(phase[ch_nr]) * volume[ch_nr];
                     phase[ch_nr] += phase_add[ch_nr];
                 }
 
                 if (v < -1.0)
                 {
+                    min = Math.Min(min, v);
                     v = -1.0;
                     too_loud = true;
                 }
                 else if (v > 1.0)
                 {
+                    max = Math.Max(max, v);
                     v = 1.0;
                     too_loud = true;
                 }
@@ -124,7 +129,7 @@ internal class Adlib : Device
             a.PushSamples(samples);
 
             if (too_loud)
-                Log.DoLog($"Adlib: audio is clipping (too loud)", LogLevel.DEBUG);
+                Log.DoLog($"Adlib: audio is clipping (too loud: {min}...{max})", LogLevel.DEBUG);
 
             Thread.Sleep(1000 / interval);  // depending on how time it took to calculate all of this TODO
         }
