@@ -75,8 +75,9 @@ internal class Adlib : Device
 
                 if (channel.on_)
                 {
-                    frequencies[ch_nr] = channel.base_frequency * (1 << channel.octave);
-                    Log.DoLog($"Adlib: set frequency of channel {ch_nr} to frequency {frequencies[ch_nr]} Hz (octave {channel.octave}, base freq {channel.base_frequency})", LogLevel.TRACE);
+                    frequencies[ch_nr] = channel.f_number * 49716 / (2 << (19 - channel.block));
+
+                    Log.DoLog($"Adlib: set frequency of channel {ch_nr} to frequency {frequencies[ch_nr]} Hz (block {channel.block}, f_number {channel.f_number})", LogLevel.TRACE);
                     phase_add[ch_nr] = 2.0 * Math.PI * frequencies[ch_nr] / freq;
                     phase[ch_nr] = 0.0;
                 }
@@ -92,7 +93,7 @@ internal class Adlib : Device
 
             int count = freq/interval * 10 / 9;
             short [] samples = new short[count];
-
+            bool too_loud = false;
             for(int sample=0; sample<count; sample++)
             {
                 double v = 0.0;
@@ -107,14 +108,23 @@ internal class Adlib : Device
                 }
 
                 if (v < -1.0)
+                {
                     v = -1.0;
+                    too_loud = true;
+                }
                 else if (v > 1.0)
+                {
                     v = 1.0;
+                    too_loud = true;
+                }
     
                 samples[sample] = (short)(v * 32767);
             }
 
             a.PushSamples(samples);
+
+            if (too_loud)
+                Log.DoLog($"Adlib: audio is clipping (too loud)", LogLevel.DEBUG);
 
             Thread.Sleep(1000 / interval);  // depending on how time it took to calculate all of this TODO
         }
@@ -177,13 +187,13 @@ internal class Adlib : Device
                 if (_address >= 0xa0 && _address <= 0xa8)
                 {
                     int channel = _address - 0xa0;
-                    channels[channel].base_frequency = (channels[channel].base_frequency & 0x300) | value;
+                    channels[channel].f_number = (channels[channel].f_number & 0x300) | value;
                 }
                 else if (_address >= 0xb0 && _address <= 0xb8)
                 {
                     int channel = _address - 0xb0;
-                    channels[channel].base_frequency = (channels[channel].base_frequency & 0xff) | ((value & 3) << 8);
-                    channels[channel].octave = (value >> 2) & 7;
+                    channels[channel].f_number = (channels[channel].f_number & 0xff) | ((value & 3) << 8);
+                    channels[channel].block = (value >> 2) & 7;
                     channels[channel].on_ = (value & 32) != 0;
                     channels[channel].updated = true;
                 }
@@ -236,9 +246,9 @@ internal class Adlib : Device
 
 internal struct AdlibChannel
 {
-    public int base_frequency { get; set; }
+    public int f_number { get; set; }
     public bool on_ { get; set; }
-    public int octave { get; set; }
+    public int block { get; set; }
     public bool updated { get; set; }
     public double volume { get; set; }
 };
