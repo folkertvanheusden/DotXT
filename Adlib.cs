@@ -54,6 +54,11 @@ internal class Adlib : Device
         return (0x00, false);
     }
 
+    public byte GetRegister(byte i)
+    {
+        return _registers[i];
+    }
+
     public static void Player(object o_parameters)
     {
         Log.Cnsl("Adlib Player-thread started");
@@ -66,6 +71,8 @@ internal class Adlib : Device
         double [] phase = new double[9];
         double [] volume = new double[9];
         int [] waveform = new int[9];
+
+        FilterButterworth filter = new FilterButterworth(freq / 2 * 0.90, freq, FilterButterworth.PassType.Lowpass, Math.Sqrt(2.0));
 
         for(;;)
         {
@@ -108,7 +115,7 @@ internal class Adlib : Device
                         continue;
 
                     double cur_v = Math.Sin(phase[ch_nr]) * volume[ch_nr];
-                    if ((_registers[1] & 32) != 0)
+                    if ((a.GetRegister(1) & 32) != 0)
                     {
                         if (waveform[ch_nr] == 0)
                             v += cur_v;
@@ -145,8 +152,9 @@ internal class Adlib : Device
                     v = 1.0;
                     too_loud = true;
                 }
-    
-                samples[sample] = (short)(v * 32767);
+
+                filter.Update(v);
+                samples[sample] = (short)(filter.Value * 32767);
             }
 
             a.PushSamples(samples);
