@@ -37,7 +37,7 @@ class RTSPServer: GraphicalConsole
         _thread.Start(parameters);
     }
 
-    public static byte[] CreateRTPPacket(uint ssrc, ushort seq_nr, uint t, short [] samples)
+    private static byte[] CreateRTPPacket(uint ssrc, ushort seq_nr, uint t, short [] samples)
     {
         int size = 3 * 4 + samples.Length * 2;
         byte [] rtp_packet = new byte[size];
@@ -100,10 +100,16 @@ class RTSPServer: GraphicalConsole
         Log.DoLog($"RTPStreamTo: stopped pushing audio to {remote_endpoint}", LogLevel.DEBUG);
     }
 
-    public static void PushLine(NetworkStream stream, string what)
+    private static void PushLine(NetworkStream stream, string what)
     {
         byte[] msg = System.Text.Encoding.ASCII.GetBytes(what + "\r\n");
         stream.Write(msg, 0, msg.Length);
+    }
+
+    private static void SendRTSPOKHeader(NetworkStream stream)
+    {
+        PushLine(stream, "RTSP/1.0 200 All good");
+        PushLine(stream, "Server: DotXT");
     }
 
     public static void RTSPSessionHandler(object o_parameters)
@@ -151,7 +157,7 @@ class RTSPServer: GraphicalConsole
                     {
                         Log.DoLog("RTSP OPTIONS", LogLevel.TRACE);
 
-                        PushLine(stream, "RTSP/1.0 200 All good");
+                        SendRTSPOKHeader(stream);
                         PushLine(stream, cseq);
                         PushLine(stream, "Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE");
                         PushLine(stream, "");
@@ -169,7 +175,7 @@ class RTSPServer: GraphicalConsole
                                      "s=DotXT\r\n";
                         byte[] sdp_msg = System.Text.Encoding.ASCII.GetBytes(sdp);
 
-                        PushLine(stream, "RTSP/1.0 200 All good");
+                        SendRTSPOKHeader(stream);
                         PushLine(stream, cseq);
                         PushLine(stream, $"Content-Base: {request[1]}");
                         PushLine(stream, "Content-Type: application/sdp");
@@ -179,7 +185,7 @@ class RTSPServer: GraphicalConsole
                     }
                     else if (request[0] == "SETUP")
                     {
-                        PushLine(stream, "RTSP/1.0 200 OK");
+                        SendRTSPOKHeader(stream);
                         PushLine(stream, cseq);
                         PushLine(stream, "Session: 12345678");
                         PushLine(stream, "Transport: RTP/AVP/UDP;unicast");
@@ -206,7 +212,7 @@ class RTSPServer: GraphicalConsole
                     }
                     else if (request[0] == "PLAY")
                     {
-                        PushLine(stream, "RTSP/1.0 200 OK");
+                        SendRTSPOKHeader(stream);
                         PushLine(stream, cseq);
                         PushLine(stream, "Session: 12345678");
                         PushLine(stream, "");
@@ -226,9 +232,9 @@ class RTSPServer: GraphicalConsole
                     {
                         Log.Cnsl($"Requested: {request[1]} - 404");
 
-                Console.WriteLine("---");
-                Console.WriteLine(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond / 1000);
-                Console.WriteLine(headers);
+                        Console.WriteLine("---");
+                        Console.WriteLine(DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond / 1000);
+                        Console.WriteLine(headers);
 
                         PushLine(stream, $"RTSP/1.0 404 {request[1]} not found");
                         PushLine(stream, "Server: DotXT");
