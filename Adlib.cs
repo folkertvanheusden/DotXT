@@ -68,12 +68,12 @@ internal class Adlib : Device
                     frequencies[ch_nr] = channel.base_frequency * (1 << channel.octave);
                     Log.DoLog($"Adlib: set frequency of channel {ch_nr} to frequency {frequencies[ch_nr]} Hz (octave {channel.octave}, base freq {channel.base_frequency})", LogLevel.TRACE);
                     phase_add[ch_nr] = 2.0 * Math.PI * frequencies[ch_nr] / freq;
-                    phase_add[ch_nr] = 0.0;
                     phase[ch_nr] = 0.0;
                 }
                 else
                 {
                     Log.DoLog($"Adlib: set channel {ch_nr} off", LogLevel.TRACE);
+                    phase_add[ch_nr] = 0.0;
                     frequencies[ch_nr] = 0;
                 }
             }

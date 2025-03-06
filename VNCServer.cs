@@ -400,7 +400,7 @@ class VNCServer: GraphicalConsole
         Log.Cnsl("VNC: Starting audio transmission thread");
         VNCSession session = (VNCSession)o_parameters;
 
-        int samples_version = 123;
+        int samples_version = -1;
         bool first_audio = true;
 
         try
