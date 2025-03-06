@@ -78,7 +78,7 @@ internal class Adlib : Device
                 }
             }
 
-            int count = freq/interval;
+            int count = freq/interval * 10 / 9;
             short [] samples = new short[count];
 
             for(int sample=0; sample<count; sample++)
