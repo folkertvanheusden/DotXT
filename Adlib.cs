@@ -65,6 +65,7 @@ internal class Adlib : Device
         double [] phase_add = new double[9];
         double [] phase = new double[9];
         double [] volume = new double[9];
+        int [] waveform = new int[9];
 
         for(;;)
         {
@@ -81,6 +82,8 @@ internal class Adlib : Device
                     Log.DoLog($"Adlib: set frequency of channel {ch_nr} to frequency {frequencies[ch_nr]} Hz (block {channel.block}, f_number {channel.f_number})", LogLevel.TRACE);
                     phase_add[ch_nr] = 2.0 * Math.PI * frequencies[ch_nr] / freq;
                     phase[ch_nr] = 0.0;
+                    volume[ch_nr] = channel.volume / volume_scaler;
+                    waveform[ch_nr] = channel.waveform;
                 }
                 else
                 {
@@ -88,8 +91,6 @@ internal class Adlib : Device
                     phase_add[ch_nr] = 0.0;
                     frequencies[ch_nr] = 0;
                 }
-
-                volume[ch_nr] = channel.volume / volume_scaler;
             }
 
             int count = freq/interval * 10 / 9;
@@ -106,7 +107,29 @@ internal class Adlib : Device
                     if (frequencies[ch_nr] <= 0.0)
                         continue;
 
-                    v += Math.Sin(phase[ch_nr]) * volume[ch_nr];
+                    double cur_v = Math.Sin(phase[ch_nr]) * volume[ch_nr];
+                    if ((_registers[1] & 32) != 0)
+                    {
+                        if (waveform[ch_nr] == 0)
+                            v += cur_v;
+                        else if (waveform[ch_nr] == 1)
+                        {
+                            if (cur_v >= 0)
+                                v += cur_v;
+                        }
+                        else if (waveform[ch_nr] == 2)
+                            v += Math.Abs(cur_v);
+                        else  // 3
+                        {
+                            if (Math.IEEERemainder(Math.Abs(phase[ch_nr]), phase_add[ch_nr]) <= phase_add[ch_nr] / 4)
+                                v += cur_v;
+                        }
+                    }
+                    else
+                    {
+                        v += cur_v;
+                    }
+
                     phase[ch_nr] += phase_add[ch_nr];
                 }
 
@@ -178,6 +201,8 @@ internal class Adlib : Device
     {
         Log.DoLog($"Adlib::IO_Write {port:X4} {value:X4}", LogLevel.TRACE);
 
+        byte [] map = new byte[] { 1, 2, 3, 1, 2, 3, 0, 0, 4, 5, 6, 4, 5, 6, 0, 0, 7, 8, 9, 7, 8, 9 };
+
         if (port == 0x388)
             _address = (byte)value;
         else if (port == 0x389)
@@ -204,10 +229,16 @@ internal class Adlib : Device
                 }
                 else if (_address >= 0x40 && _address <= 0x55)
                 {
-                    byte [] map = new byte[] { 1, 2, 3, 1, 2, 3, 0, 0, 4, 5, 6, 4, 5, 6, 0, 0, 7, 8, 9, 7, 8, 9 };
                     int channel = map[_address - 0x40];
                     if (channel > 0)
                         channels[channel - 1].volume = (63 - (value & 63)) / 63.0;
+                }
+                else if (_address >= 0xe0 && _address <= 0xf5)
+                {
+                    int channel = map[_address - 0xe0];
+                    if (channel > 0)
+                        channels[channel - 1].waveform = value & 3;
+                    Log.DoLog($"Set channel {channel - 1} to waveform {channels[channel - 1].waveform}", LogLevel.DEBUG);
                 }
             }
         }
@@ -256,4 +287,5 @@ internal struct AdlibChannel
     public int block { get; set; }
     public bool updated { get; set; }
     public double volume { get; set; }
+    public int waveform { get; set; }
 };
