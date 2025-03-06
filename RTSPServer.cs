@@ -55,9 +55,9 @@ class RTSPServer: GraphicalConsole
         rtp_packet[11] = (byte)(ssrc);
         for(int i=0; i<samples.Length; i++)
         {
-            ushort s = (ushort)(samples[i] + 32768);
-            rtp_packet[12 + i * 2 + 0] = (byte)(s >> 8);
+            ushort s = (ushort)samples[i];
             rtp_packet[12 + i * 2 + 1] = (byte)s;
+            rtp_packet[12 + i * 2 + 0] = (byte)(s >> 8);
         }
 
         return rtp_packet;
@@ -134,6 +134,17 @@ class RTSPServer: GraphicalConsole
 
                 string [] lines = headers.Split("\r\n");
                 string [] request = lines[0].Split(" ");
+
+                string cseq = "CSeq: 1";
+                foreach(var line in lines)
+                {
+                    if (line.Length > 6 && line.Substring(0, 5) == "CSeq:")
+                    {
+                        cseq = line;
+                        break;
+                    }
+                }
+
                 if (request.Length == 3)
                 {
                     if (request[0] == "OPTIONS")
@@ -141,7 +152,7 @@ class RTSPServer: GraphicalConsole
                         Log.DoLog("RTSP OPTIONS", LogLevel.TRACE);
 
                         PushLine(stream, "RTSP/1.0 200 All good");
-                        PushLine(stream, "CSeq: 1");
+                        PushLine(stream, cseq);
                         PushLine(stream, "Public: DESCRIBE, SETUP, TEARDOWN, PLAY, PAUSE");
                         PushLine(stream, "");
                     }
@@ -149,14 +160,17 @@ class RTSPServer: GraphicalConsole
                     {
                         Log.DoLog("RTSP DESCRIBE", LogLevel.TRACE);
 
-                        string sdp = "m=audio 11 RTP/AVP 11\r\n" +  // 11=L16, audio, 1 channel, 44100
+                        string sdp = "v=0\r\n" +
+                                     "m=audio 0 RTP/AVP 11\r\n" +  // 11=L16, audio, 1 channel, 44100
                                      "a=rtpmap:11\r\n" +
                                      "a=AvgBitRate:integer;88200\r\n" +
-                                     "a=StreamName:string;\"DotXT\"\r\n";
+                                     "a=StreamName:string;\"DotXT\"\r\n" +
+                                     "i=DotXT\r\n" +
+                                     "s=DotXT\r\n";
                         byte[] sdp_msg = System.Text.Encoding.ASCII.GetBytes(sdp);
 
                         PushLine(stream, "RTSP/1.0 200 All good");
-                        PushLine(stream, "CSeq: 2");
+                        PushLine(stream, cseq);
                         PushLine(stream, $"Content-Base: {request[1]}");
                         PushLine(stream, "Content-Type: application/sdp");
                         PushLine(stream, $"Content-Length: {sdp_msg.Length}");
@@ -166,8 +180,9 @@ class RTSPServer: GraphicalConsole
                     else if (request[0] == "SETUP")
                     {
                         PushLine(stream, "RTSP/1.0 200 OK");
-                        PushLine(stream, "CSeq: 3");
+                        PushLine(stream, cseq);
                         PushLine(stream, "Session: 12345678");
+                        PushLine(stream, "Transport: RTP/AVP/UDP;unicast");
                         PushLine(stream, "");
 
                         foreach(var line in lines)
@@ -192,7 +207,7 @@ class RTSPServer: GraphicalConsole
                     else if (request[0] == "PLAY")
                     {
                         PushLine(stream, "RTSP/1.0 200 OK");
-                        PushLine(stream, "CSeq: 4");
+                        PushLine(stream, cseq);
                         PushLine(stream, "Session: 12345678");
                         PushLine(stream, "");
 
