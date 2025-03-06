@@ -625,6 +625,7 @@ void Runner(object o)
 {
     RunnerParameters runner_parameters = (RunnerParameters)o;
     P8086 p = runner_parameters.cpu;
+    const int throttle_hz = 50;
 
     try
     {
@@ -647,12 +648,12 @@ void Runner(object o)
                 continue;
 
             long now_clock = p.GetClock();
-            if (now_clock - prev_clock >= 4770000 / 50)
+            if (now_clock - prev_clock >= 4770000 / throttle_hz)
             {
                 long now_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                 long diff_time = now_time - prev_time;
-                if (diff_time < 20)
-                    Thread.Sleep((int)(20 - diff_time));
+                if (diff_time < 1000 / throttle_hz)
+                    Thread.Sleep((int)(1000 / throttle_hz - diff_time));
                 prev_time = now_time;
                 prev_clock = now_clock;
             }
