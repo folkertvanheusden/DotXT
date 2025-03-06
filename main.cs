@@ -30,6 +30,7 @@ bool throttle = false;
 
 bool use_midi = false;
 bool use_rtc = false;
+bool use_adlib = false;
 
 for(int i=0; i<args.Length; i++)
 {
@@ -47,7 +48,7 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("-I        disable I/O ports");
         Log.Cnsl("-S        try to run at real speed");
         Log.Cnsl("-P        skip prompt");
-        Log.Cnsl("-O        enable option. currently: midi, rtc");
+        Log.Cnsl("-O        enable option. currently: adlib, midi, rtc");
         Log.Cnsl("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
         Log.Cnsl($"-p device,type,port   port to listen on. type must be \"telnet\", \"http\" or \"vnc\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
         Log.Cnsl("-o cs,ip  start address (in hexadecimal)");
@@ -62,7 +63,9 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-O")
     {
         string what = args[++i];
-        if (what == "midi")
+        if (what == "adlib")
+            use_adlib = true;
+        else if (what == "midi")
             use_midi = true;
         else if (what == "rtc")
             use_rtc = true;
@@ -170,6 +173,8 @@ Console.TreatControlCAsInput = true;
 Log.Cnsl("Debug build");
 #endif
 
+RTSPServer audio = null;
+
 List<Device> devices = new();
 
 if (mode != TMode.Blank)
@@ -177,6 +182,14 @@ if (mode != TMode.Blank)
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks
     devices.Add(new PPI(kb));
+
+    Adlib adlib = null;
+    if (use_adlib)
+    {
+        adlib = new Adlib();
+        devices.Add(adlib);
+        audio = new RTSPServer(adlib, 5540);  // TODO port & instantiating; make optional
+    }
 
     foreach(KeyValuePair<string, List<Tuple<string, int> > > current_console in consoles)
     {
@@ -188,7 +201,7 @@ if (mode != TMode.Blank)
             else if (c.Item1 == "http")
                 console_instances.Add(new HTTPServer(kb, c.Item2));
             else if (c.Item1 == "vnc")
-                console_instances.Add(new VNCServer(kb, c.Item2, true));
+                console_instances.Add(new VNCServer(kb, c.Item2, true, adlib));
         }
 
         if (current_console.Key == key_mda)
@@ -620,6 +633,7 @@ void Runner(object o)
 {
     RunnerParameters runner_parameters = (RunnerParameters)o;
     P8086 p = runner_parameters.cpu;
+    const int throttle_hz = 50;
 
     try
     {
@@ -642,12 +656,12 @@ void Runner(object o)
                 continue;
 
             long now_clock = p.GetClock();
-            if (now_clock - prev_clock >= 4770000 / 50)
+            if (now_clock - prev_clock >= 4770000 / throttle_hz)
             {
                 long now_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                 long diff_time = now_time - prev_time;
-                if (diff_time < 20)
-                    Thread.Sleep((int)(20 - diff_time));
+                if (diff_time < 1000 / throttle_hz)
+                    Thread.Sleep((int)(1000 / throttle_hz - diff_time));
                 prev_time = now_time;
                 prev_clock = now_clock;
             }

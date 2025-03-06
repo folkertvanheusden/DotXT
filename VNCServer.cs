@@ -8,6 +8,17 @@ internal struct VNCServerThreadParameters
 {
     public VNCServer vs { get; set; }
     public int port { get; set; }
+    public Adlib adlib { get; set; }
+};
+
+internal struct VNCSession
+{
+    public bool audio_enabled { get; set; }
+    public System.Threading.Lock stream_lock { get; set; }
+    public NetworkStream stream { get; set; }
+    public CancellationToken ct { get; set; }
+    public Thread audio_thread { get; set; }
+    public Adlib adlib { get; set; }
 };
 
 class VNCServer: GraphicalConsole
@@ -18,16 +29,19 @@ class VNCServer: GraphicalConsole
     private bool _compatible = false;
     private static int compatible_width = 640;
     private static int compatible_height = 400;
+    private Adlib _adlib = null;
 
-    public VNCServer(Keyboard kb, int port, bool compatible)
+    public VNCServer(Keyboard kb, int port, bool compatible, Adlib adlib)
     {
         _kb = kb;
         _listen_port = port;
         _compatible = compatible;
+        _adlib = adlib;
 
         VNCServerThreadParameters parameters = new();
         parameters.vs = this;
         parameters.port = port;
+        parameters.adlib = adlib;
 
         _thread = new Thread(VNCServer.VNCThread);
         _thread.Name = "vnc-server-thread";
@@ -213,48 +227,64 @@ class VNCServer: GraphicalConsole
         stream.Write(name_bytes, 0, name_bytes.Length);
     }
 
-    private static void VNCWaitForEvent(NetworkStream stream, VNCServer vnc)
+    private static bool VNCWaitForEvent(VNCServer vnc, ref VNCSession session)
     {
-        stream.ReadTimeout = 1000 / 15;  // 15 fps
+        session.stream.ReadTimeout = 1000 / 15;  // 15 fps
 
         byte[] type = new byte[1];
         try
         {
-            stream.ReadExactly(type);
+            session.stream.ReadExactly(type);
+        }
+        catch(EndOfStreamException se)
+        {
+            return false;
         }
         catch(System.IO.IOException e)
         {
-            return;
+            return true;
         }
 
-        stream.ReadTimeout = 1000;  // sane(?) timeout
+        session.stream.ReadTimeout = 1000;  // sane(?) timeout
 
-        Log.DoLog($"Client message {type[0]} received", LogLevel.TRACE);
+        Log.DoLog($"VNC: Client message {type[0]} received", LogLevel.TRACE);
 
         if (type[0] == 0)  // SetPixelFormat
         {
             byte[] temp = new byte[3 + 16];
-            stream.ReadExactly(temp);
+            session.stream.ReadExactly(temp);
         }
         else if (type[0] == 2)  // SetEncodings
         {
             byte[] temp = new byte[3];
-            stream.ReadExactly(temp);
-            ushort no_encodings = (ushort)((temp[1] << 8) | temp[2]);
-            Log.DoLog($"retrieve {no_encodings} encodings", LogLevel.TRACE);
-            byte[] encodings = new byte[no_encodings * 4];
-            stream.ReadExactly(encodings);
+            session.stream.ReadExactly(temp);
+            int no_encodings = (ushort)((temp[1] << 8) | temp[2]);
+            Log.DoLog($"VNC: retrieve {no_encodings} encodings", LogLevel.TRACE);
+            for(int i=0; i<no_encodings; i++)
+            {
+                byte[] encoding = new byte[4];
+                session.stream.ReadExactly(encoding);
+                if (BitConverter.IsLittleEndian)
+                    Array.Reverse(encoding);
+                int e = BitConverter.ToInt32(encoding, 0);
+                Log.DoLog($"VNC: retrieved encoding {i}: {e}", LogLevel.TRACE);
+                if (e == -259)
+                {
+                    Log.DoLog("VNC client supports audio", LogLevel.DEBUG);
+                    session.audio_enabled = true;
+                }
+            }
         }
         else if (type[0] == 3)  // FramebufferUpdateRequest
         {
             byte[] buffer = new byte[9];
-            stream.ReadExactly(buffer);
+            session.stream.ReadExactly(buffer);
             // TODO
         }
         else if (type[0] == 4)  // KeyEvent
         {
             byte[] buffer = new byte[7];
-            stream.ReadExactly(buffer);
+            session.stream.ReadExactly(buffer);
             uint vnc_scan_code = (uint)((buffer[3] << 24) | (buffer[4] << 16) | (buffer[5] << 8) | buffer[6]);
             Log.DoLog($"Key {buffer[0]} {vnc_scan_code:x04}", LogLevel.DEBUG);
             vnc.PushChar(vnc_scan_code, buffer[0] != 0);
@@ -262,24 +292,26 @@ class VNCServer: GraphicalConsole
         else if (type[0] == 5)  // PointerEvent
         {
             byte[] buffer = new byte[5];
-            stream.ReadExactly(buffer);
+            session.stream.ReadExactly(buffer);
             // TODO
         }
         else if (type[0] == 6)  // ClientCutText
         {
             byte[] buffer = new byte[7];
-            stream.ReadExactly(buffer);
+            session.stream.ReadExactly(buffer);
             uint n_to_read = (uint)((buffer[3] << 24) | (buffer[4] << 16) | (buffer[5] << 8) | buffer[6]);
             byte[] temp = new byte[n_to_read];
-            stream.ReadExactly(temp);
+            session.stream.ReadExactly(temp);
         }
         else
         {
-            Log.DoLog($"Client message {type[0]} not understood", LogLevel.WARNING);
+            Log.DoLog($"VNC: Client message {type[0]} not understood", LogLevel.WARNING);
         }
+
+        return true;
     }
 
-    private static void VNCSendFrame(NetworkStream stream, VNCServer vs)
+    private static void VNCSendFrame(VNCServer vs, ref VNCSession session)
     {
         var frame = vs.GetFrame();
 
@@ -294,7 +326,10 @@ class VNCServer: GraphicalConsole
             resize[2] = (byte)width;
             resize[3] = (byte)(height >> 8);  // height
             resize[4] = (byte)height;
-            stream.Write(resize, 0, resize.Length);
+            lock(session.stream_lock)
+            {
+                session.stream.Write(resize, 0, resize.Length);
+            }
         }
 
         byte[] update = new byte[4 + 12];
@@ -314,7 +349,10 @@ class VNCServer: GraphicalConsole
         update[13] = 0;
         update[14] = 0;
         update[15] = 0;
-        stream.Write(update, 0, update.Length);
+        lock(session.stream_lock)
+        {
+            session.stream.Write(update, 0, update.Length);
+        }
 
         if (vs._compatible)
         {
@@ -333,7 +371,10 @@ class VNCServer: GraphicalConsole
                     buffer[o_offset + 0] = frame.rgb_pixels[i_offset + 2];
                 }
             }
-            stream.Write(buffer, 0, buffer.Length);
+            lock(session.stream_lock)
+            {
+                session.stream.Write(buffer, 0, buffer.Length);
+            }
         }
         else
         {
@@ -347,8 +388,88 @@ class VNCServer: GraphicalConsole
                 buffer[o_offset + 1] = frame.rgb_pixels[i_offset + 1];
                 buffer[o_offset + 0] = frame.rgb_pixels[i_offset + 2];
             }
-            stream.Write(buffer, 0, buffer.Length);
+            lock(session.stream_lock)
+            {
+                session.stream.Write(buffer, 0, buffer.Length);
+            }
         }
+    }
+
+    public static void VNCAudioThread(object o_parameters)
+    {
+        Log.Cnsl("VNC: Starting audio transmission thread");
+        VNCSession session = (VNCSession)o_parameters;
+
+        int samples_version = -1;
+        bool first_audio = true;
+
+        try
+        {
+            for(;;)
+            {
+                if (session.ct.IsCancellationRequested)
+                {
+                    Log.Cnsl("VNC: Audio thread stop flag set");
+                    break;
+                }
+
+                bool audio_enabled = false;
+                lock(session.stream_lock)
+                {
+                    audio_enabled = session.audio_enabled && session.adlib != null;
+                }
+
+                if (audio_enabled)
+                {
+                    if (first_audio)
+                    {
+                        first_audio = false;
+
+                        Log.Cnsl("VNC: Starting audio transmission");
+
+                        byte[] start_audio = new byte[4];
+                        start_audio[0] = 255;  // QEMU client message
+                        start_audio[1] = 1;  // audio
+                        start_audio[2] = 0;  // operation start audio
+                        start_audio[3] = 1;
+                        lock(session.stream_lock)
+                        {
+                            session.stream.Write(start_audio, 0, start_audio.Length);
+                        }
+                    }
+
+                    var rc = session.adlib.GetSamples(samples_version);
+                    samples_version = rc.Item2;
+                    short [] samples = rc.Item1;
+
+                    lock(session.stream_lock)
+                    {
+                        int n_bytes = samples.Length * 2;
+                        byte[] play_samples = new byte[4 + n_bytes];
+                        play_samples[0] = 255;  // QEMU client message
+                        play_samples[1] = 1;  // sub-type audio
+                        play_samples[2] = 0;  // opertion sample data
+                        play_samples[3] = 2;
+                        for(int i=0; i<samples.Length; i++)
+                        {
+                            ushort s = (ushort)samples[i];
+                            play_samples[4 + i * 2 + 0] = (byte)(s >> 8);
+                            play_samples[4 + i * 2 + 1] = (byte)s;
+                        }
+                        lock(session.stream_lock)
+                        {
+                            session.stream.Write(play_samples, 0, play_samples.Length);
+                        }
+                    }
+                }
+            }
+        }
+        catch(System.IO.IOException e)
+        {
+            Log.Cnsl("VNC: Connection lost?");
+        }
+
+        Log.Cnsl("VNC: Stopping audio transmission");
     }
 
     public static void VNCThread(object o_parameters)
@@ -362,28 +483,43 @@ class VNCServer: GraphicalConsole
         {
             TcpClient client = tcp_listener.AcceptTcpClient();
             Log.Cnsl("Connected to VNC client");
-            NetworkStream stream = client.GetStream();
+            VNCSession session = new();
+            session.stream_lock = new();
+            session.stream = client.GetStream();
+            session.adlib = parameters.adlib;
+
+            CancellationTokenSource cts = new();
 
             try
             {
-                VNCSendVersion(stream);
-                VNCSecurityHandshake(stream);
-                VNCClientServerInit(stream, parameters.vs);
+                VNCSendVersion(session.stream);
+                VNCSecurityHandshake(session.stream);
+                VNCClientServerInit(session.stream, parameters.vs);
 
-                Log.Cnsl("Starting graphics transmission");
+                session.ct = cts.Token;
+
+                session.audio_thread = new Thread(VNCServer.VNCAudioThread);
+                session.audio_thread.Name = "vnc-audio-thread";
+                session.audio_thread.Start(session);
+
+                Log.Cnsl("VNC: Starting graphics transmission");
                 parameters.vs.Redraw();
                 ulong version = 0;
+                var prev_send = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                 for(;;)
                 {
+                    var now = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                     ulong new_version = parameters.vs.GetFrameVersion();
-                    if (new_version != version)
+                    if (new_version != version || now - prev_send >= 1000)
                     {
                         version = new_version;
+                        prev_send = now;
 
-                        VNCSendFrame(stream, parameters.vs);
+                        VNCSendFrame(parameters.vs, ref session);
                     }
 
-                    VNCWaitForEvent(stream, parameters.vs);
+                    if (VNCWaitForEvent(parameters.vs, ref session) == false)
+                        break;
                 }
             }
             catch(SocketException e)
@@ -395,9 +531,13 @@ class VNCServer: GraphicalConsole
                 Log.DoLog($"VNCServer exception: {e.ToString()}", LogLevel.WARNING);
             }
 
-            Log.Cnsl("VNC session ended");
-
             client.Close();
+
+            Log.Cnsl("VNC waiting for audio thread to stop");
+            cts.Cancel();
+            session.audio_thread.Join();
+
+            Log.Cnsl("VNC session ended");
         }
     }
 }
