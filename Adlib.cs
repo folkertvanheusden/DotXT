@@ -54,6 +54,7 @@ internal class Adlib : Device
         int [] frequencies = new int[9];
         double [] phase_add = new double[9];
         double [] phase = new double[9];
+        double [] volume = new double[9];
 
         for(;;)
         {
@@ -76,6 +77,8 @@ internal class Adlib : Device
                     phase_add[ch_nr] = 0.0;
                     frequencies[ch_nr] = 0;
                 }
+
+                volume[ch_nr] = channel.volume;
             }
 
             int count = freq/interval * 10 / 9;
@@ -170,6 +173,13 @@ internal class Adlib : Device
                     channels[channel].on_ = (value & 32) != 0;
                     channels[channel].updated = true;
                 }
+                else if (_address >= 0x40 && _address <= 0x55)
+                {
+                    byte [] map = new byte[] { 1, 2, 3, 1, 2, 3, 0, 0, 4, 5, 6, 4, 5, 6, 0, 0, 7, 8, 9, 7, 8, 9 };
+                    int channel = map[_address - 0x40];
+                    if (channel > 0)
+                        channels[channel - 1].volume = (63 - (value & 63)) / 63.0;
+                }
             }
         }
 
@@ -202,4 +212,5 @@ internal struct AdlibChannel
     public bool on_ { get; set; }
     public int octave { get; set; }
     public bool updated { get; set; }
+    public double volume { get; set; }
 };
