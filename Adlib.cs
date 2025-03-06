@@ -9,8 +9,12 @@ internal class Adlib : Device
     private readonly System.Threading.Lock _samples_lock = new();
     private Thread _thread = null;
     private short [] _samples = new short[100];
+    private byte [] _registers = new byte[256];
     private int _samples_version = 0;
     private readonly object _sync_primitive = new object();
+    private long _prev_timer_1 = 0;
+    private long _prev_timer_2 = 0;
+    private byte _status_byte = 0;
 
     public Adlib()
     {
@@ -40,6 +44,11 @@ internal class Adlib : Device
     public override (ushort, bool) IO_Read(ushort port)
     {
         Log.DoLog($"Adlib::IO_Read {port:X04}", LogLevel.TRACE);
+
+        if (port == 0x0388)
+        {
+            return (_status_byte, false);
+        }
 
         return (0x00, false);
     }
@@ -158,6 +167,11 @@ internal class Adlib : Device
             _address = (byte)value;
         else if (port == 0x389)
         {
+            _registers[_address] = (byte)value;
+
+            if (_address == 4)
+                _status_byte = 0;
+
             lock(_channel_lock)
             {
                 if (_address >= 0xa0 && _address <= 0xa8)
@@ -202,6 +216,20 @@ internal class Adlib : Device
 
     public override bool Tick(int ticks, long clock)
     {
+        const long timer_1_interval = 4770000 / 80;
+        if (clock - _prev_timer_1 >= timer_1_interval && (_registers[4] & 1) != 0 && (_registers[4] & 64) == 0 && (_registers[4] & 128) == 0)
+        {
+            _prev_timer_1 += timer_1_interval;
+            _status_byte |= 128 + 64;
+        }
+
+        const long timer_2_interval = 4770000 / 320;
+        if (clock - _prev_timer_2 >= timer_2_interval && (_registers[4] & 2) != 0 && (_registers[4] & 32) == 0 && (_registers[4] & 128) == 0)
+        {
+            _prev_timer_2 += timer_2_interval;
+            _status_byte |= 128 + 32;
+        }
+
         return false;
     }
 }
