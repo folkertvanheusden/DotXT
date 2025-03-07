@@ -1,3 +1,5 @@
+// TIMER
+
 internal struct Timer
 {
     public ushort counter_cur { get; set; }
@@ -260,7 +262,7 @@ internal class i8253 : Device
         }
 
         if (interrupt)
-            _pic.RequestInterruptPIC(_irq_nr); // Timers are on IRQ0
+            _pic.RequestInterruptPIC(_irq_nr);  // Timers are on IRQ0
 
         return interrupt;
     }

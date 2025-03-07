@@ -37,6 +37,7 @@ class pic8259
         }
 
         // can/should not happen
+        Log.DoLog($"i8259 this should not happen", LogLevel.ERROR);
         return 255;
     }
 
@@ -50,7 +51,7 @@ class pic8259
         byte mask = (byte)(1 << interrupt_nr);
         _irr |= mask;
 
-        Log.DoLog($"i8259 interrupt {interrupt_nr} requested (irr: {_irr:X2}, imr: {_imr:X2})", LogLevel.TRACE);
+        Log.DoLog($"i8259 interrupt {interrupt_nr} requested (irr: {_irr:X2}, isr: {_isr:X2}, imr: {_imr:X2})", LogLevel.TRACE);
     }
 
     public void SetIRQBeingServiced(int interrupt_nr)
