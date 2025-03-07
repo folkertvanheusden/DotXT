@@ -323,29 +323,21 @@ internal class Adlib : Device
 
     public override bool Tick(int ticks, long clock)
     {
-        const long timer_1_interval = 4770000 / 80;
+        for(int ear=0; ear<2; ear++)
+        {
+            const long timer_1_interval = 4770000 / 80;
+            if (clock - _prev_timer_1[ear] >= timer_1_interval && (_registers[ear, 4] & 1) != 0 && (_registers[ear, 4] & 64) == 0 && (_registers[ear, 4] & 128) == 0)
+            {
+                _prev_timer_1[ear] += timer_1_interval;
+                _status_byte[ear] |= 128 + 64;
+            }
 
-        if (clock - _prev_timer_1[0] >= timer_1_interval && (_registers[0, 4] & 1) != 0 && (_registers[0, 4] & 64) == 0 && (_registers[0, 4] & 128) == 0)
-        {
-            _prev_timer_1[0] += timer_1_interval;
-            _status_byte[0] |= 128 + 64;
-        }
-        if (clock - _prev_timer_1[1] >= timer_1_interval && (_registers[1, 4] & 1) != 0 && (_registers[1, 4] & 64) == 0 && (_registers[1, 4] & 128) == 0)
-        {
-            _prev_timer_1[1] += timer_1_interval;
-            _status_byte[1] |= 128 + 64;
-        }
-
-        const long timer_2_interval = 4770000 / 320;
-        if (clock - _prev_timer_2[0] >= timer_2_interval && (_registers[0, 4] & 2) != 0 && (_registers[0, 4] & 32) == 0 && (_registers[0, 4] & 128) == 0)
-        {
-            _prev_timer_2[0] += timer_2_interval;
-            _status_byte[0] |= 128 + 32;
-        }
-        if (clock - _prev_timer_2[1] >= timer_2_interval && (_registers[1, 4] & 2) != 0 && (_registers[1, 4] & 32) == 0 && (_registers[1, 4] & 128) == 0)
-        {
-            _prev_timer_2[1] += timer_2_interval;
-            _status_byte[1] |= 128 + 32;
+            const long timer_2_interval = 4770000 / 320;
+            if (clock - _prev_timer_2[ear] >= timer_2_interval && (_registers[ear, 4] & 2) != 0 && (_registers[ear, 4] & 32) == 0 && (_registers[ear, 4] & 128) == 0)
+            {
+                _prev_timer_2[ear] += timer_2_interval;
+                _status_byte[ear] |= 128 + 32;
+            }
         }
 
         return false;
