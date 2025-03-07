@@ -936,9 +936,6 @@ internal class P8086
             interrupt_nr += _io.GetPIC().GetInterruptOffset();
         }
         else
-        {
-            Log.DoLog($"Invoke interrupt {interrupt_nr}", LogLevel.DEBUG);
-        }
 
         push(_state.flags);
         push(_state.cs);
@@ -959,6 +956,8 @@ internal class P8086
 
         _state.ip = ReadMemWord(0, addr);
         _state.cs = ReadMemWord(0, (ushort)(addr + 2));
+
+        Log.DoLog($"New address: {_state.cs}:{_state.ip}", LogLevel.DEBUG);
     }
 
     public string HexDump(uint addr)
