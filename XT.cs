@@ -955,8 +955,6 @@ internal class P8086
 
         _state.ip = ReadMemWord(0, addr);
         _state.cs = ReadMemWord(0, (ushort)(addr + 2));
-
-        Log.DoLog($"New address: {_state.cs:X04}:{_state.ip:X04}", LogLevel.DEBUG);
     }
 
     public string HexDump(uint addr)
