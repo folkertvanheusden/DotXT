@@ -935,7 +935,6 @@ internal class P8086
             _io.GetPIC().SetIRQBeingServiced(interrupt_nr);
             interrupt_nr += _io.GetPIC().GetInterruptOffset();
         }
-        else
 
         push(_state.flags);
         push(_state.cs);
