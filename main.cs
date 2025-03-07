@@ -478,7 +478,8 @@ else
                     thread.Join();
                 }
 
-                b.ClearMemory();
+                if (parts.Length == 2 && parts[1] == "cold")
+                    b.ClearMemory();
                 p.Reset();
 
                 runner_parameters.exit.set(false);

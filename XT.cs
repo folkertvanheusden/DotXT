@@ -165,6 +165,8 @@ internal class P8086
         _state.cs = 0xf000;
         _state.ip = 0xfff0;
         _state.in_hlt = false;
+        _state.segment_override_set = false;
+        _state.rep = false;
     }
 
     public long GetClock()

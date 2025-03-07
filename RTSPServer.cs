@@ -42,7 +42,7 @@ class RTSPServer: GraphicalConsole
         int size = 3 * 4 + samples.Length * 2;
         byte [] rtp_packet = new byte[size];
         rtp_packet[0] |= 128;  // v2
-        rtp_packet[1] = 11;  // L16
+        rtp_packet[1] = 10;  // L16
         rtp_packet[2] = (byte)(seq_nr >> 8);
         rtp_packet[3] = (byte)(seq_nr);
         rtp_packet[4] = (byte)(t >> 24);
@@ -81,7 +81,7 @@ class RTSPServer: GraphicalConsole
                 short [] samples = rc.Item1;
 
                 byte [] packet = CreateRTPPacket(ssrc, seq_nr++, t, samples);
-                t += (uint)samples.Length;
+                t += (uint)(samples.Length / 2);  // divided by 2 because of stereo
 
                 s.SendTo(packet, remote_endpoint);
             }
@@ -167,9 +167,9 @@ class RTSPServer: GraphicalConsole
                         Log.DoLog("RTSP DESCRIBE", LogLevel.TRACE);
 
                         string sdp = "v=0\r\n" +
-                                     "m=audio 0 RTP/AVP 11\r\n" +  // 11=L16, audio, 1 channel, 44100
-                                     "a=rtpmap:11\r\n" +
-                                     "a=AvgBitRate:integer;88200\r\n" +
+                                     "m=audio 0 RTP/AVP 10\r\n" +  // 10=L16, audio, 2 channels, 44100
+                                     "a=rtpmap:10\r\n" +
+                                     "a=AvgBitRate:integer;1411200\r\n" +
                                      "a=StreamName:string;\"DotXT\"\r\n" +
                                      "i=DotXT\r\n" +
                                      "s=DotXT\r\n";
