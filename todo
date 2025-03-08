@@ -11,6 +11,8 @@
 
 * acid88 (reenigne)
 
+* fs1
+
 * run Tick from timer:
   "i have a 14.318MHz timer ticking and every 3 cycles it does cpu.cycle(), and every 12 cycles it does a pit.cycle()" (granite)
 
@@ -19,9 +21,6 @@
 
 
 https://cp437.github.io/
-
-byte 6 (EOT) zegt hoeveel sectors te lezen, dat samen met het aantal bytes dat de dma verwacht kan meerdere sectoren laden
-
 
 /home/folkert/t/8088/v2/D8.json  ESC FPU
 /home/folkert/t/8088/v2/D9.json  ESC

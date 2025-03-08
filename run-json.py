@@ -48,7 +48,7 @@ def val_to_flags(v, mask):
     o = f'{v} (hex: {v:04x}, {flag_str(v)}, masked: {flag_str(v & mask)})'
     return o
 
-process = Popen(['dotnet', 'run', '-c', 'Release', '--', '-d', '-P', '-l', sys.argv[3], '-L', 'trace', '-x', 'blank', '-I'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
+process = Popen(['dotnet', 'run', '-c', 'Release', '--', '-m', 'json', '-l', sys.argv[3], '-L', 'trace', '-M', 'no-io'], stdin=PIPE, stdout=PIPE, stderr=PIPE, bufsize=0)
 process.stdin.write('echo\r\n'.encode('ascii'))  # disable echo
 
 def log(x):

@@ -2,13 +2,6 @@ namespace DotXT;
 
 // TODO this needs a rewrite/clean-up
 
-internal enum TMode
-{
-    NotSet,
-    Binary,
-    Blank
-}
-
 internal enum RepMode
 {
     NotSet,
@@ -81,46 +74,12 @@ internal class P8086
         return _state;
     }
 
-    public P8086(ref Bus b, string test, TMode t_mode, uint load_test_at, ref List<Device> devices, bool run_IO)
+    public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
         _devices = devices;
         _io = new IO(b, ref devices, !run_IO);
         _terminate_on_off_the_rails = run_IO;
-
-        if (test != "" && t_mode == TMode.Binary)
-        {
-            _state.cs = 0;
-            _state.ip = 0x0800;
-
-            uint addr = load_test_at == 0xffffffff ? 0 : load_test_at;
-
-            Log.DoLog($"Load {test} at {addr:X6}", LogLevel.INFO);
-
-            using(Stream source = File.Open(test, FileMode.Open))
-            {
-                byte[] buffer = new byte[512];
-
-                for(;;)
-                {
-                    int n_read = source.Read(buffer, 0, 512);
-
-                    if (n_read == 0)
-                        break;
-
-                    for(int i=0; i<n_read; i++)
-                    {
-                        _b.WriteByte(addr, buffer[i]);
-                        addr++;
-                    }
-                }
-            }
-        }
-        else if (t_mode != TMode.Blank)
-        {
-            _state.cs = 0xf000;
-            _state.ip = 0xfff0;
-        }
 
         // bit 1 of the flags register is always 1
         // https://www.righto.com/2023/02/silicon-reverse-engineering-intel-8086.html
@@ -179,7 +138,7 @@ internal class P8086
         return $"{seg:X04}:{a:X04}";
     }
 
-    public void set_ip(ushort cs, ushort ip)
+    public void SetIP(ushort cs, ushort ip)
     {
         Log.DoLog($"Set CS/IP to {cs:X4}:{ip:X4}", LogLevel.DEBUG);
 
