@@ -1583,7 +1583,7 @@ class P8086Disassembler
             }
             else
             {
-                meta = "opcode {opcode:X2} function {function} not implemented";
+                meta = $"opcode {opcode:X2} function {function} not implemented";
             }
         }
         else
