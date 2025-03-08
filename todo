@@ -10,7 +10,9 @@
 	1624214178 0070:4017 | WARNING | Terminating because of 5x 0x00 opcode (004717)
 
 * acid88 (reenigne)
-  3x HLT then hang
+
+* run Tick from timer:
+  "i have a 14.318MHz timer ticking and every 3 cycles it does cpu.cycle(), and every 12 cycles it does a pit.cycle()" (granite)
 
 
 * clean-up disassembler
