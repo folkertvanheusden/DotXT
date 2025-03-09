@@ -1,3 +1,11 @@
+internal enum AVI_CODEC { RAW, MRLE };
+
+internal struct AviThreadParameters
+{
+    public AVI avi { get; set; }
+    public CancellationToken ct { get; set; }
+};
+
 class AVI
 {
     private Thread _thread = null;
@@ -5,12 +13,15 @@ class AVI
     private int _width = 0;
     private int _height = 0;
     private Display _d = null;
+    private AVI_CODEC _codec;
+    private CancellationTokenSource _cts;
 
-    public AVI(string filename, int fps, Display d)
+    public AVI(string filename, int fps, Display d, AVI_CODEC codec)
     {
         _d = d;
         _width = d.GetWidth();
         _height = d.GetHeight();
+        _codec = codec;
 
         _stream = new FileStream(filename, FileMode.Create, FileAccess.Write);
 
@@ -18,33 +29,37 @@ class AVI
 
         byte[] main_avi_header = GenMainAVIHeader(fps, _width, _height);
 
-        byte[] stream_header = GenStreamHeader(fps);
-        byte[] stream_format = GenStreamFormat(_width, _height);
+        byte[] stream_header = GenStreamHeader(fps, _codec);
+        byte[] stream_format = GenStreamFormat(_width, _height, _codec);
         byte[] stream_list = GenList(new char[] { 's', 't', 'r', 'l' }, stream_header.Concat(stream_format).ToArray());
 
         Write(GenList(new char[] { 'h', 'd', 'r', 'l' }, main_avi_header.Concat(stream_list).ToArray()));
 
+        _cts = new();
+        AviThreadParameters thread_parameters = new();
+        thread_parameters.avi = this;
+        thread_parameters.ct = _cts.Token;
         _thread = new Thread(AVI.AVIStreamer);
         _thread.Name = "avi-streamer-thread";
-        _thread.Start(this);
+        _thread.Start(thread_parameters);
     }
 
     public void Close()
     {
-        _stream.Close();
-
+        _cts.Cancel();
         _thread.Join();
+        _stream.Close();
     }
 
     public static void AVIStreamer(object o)
     {
-        AVI avi = (AVI)o;
+        AviThreadParameters thread_parameters = (AviThreadParameters)o;
 
-        for(;;)
+        while(thread_parameters.ct.IsCancellationRequested == false)
         {
             long start_ts = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 
-            avi.PushFrame();
+            thread_parameters.avi.PushFrame();
 
             long end_ts = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
             Thread.Sleep((int)(1000 / 15 - (end_ts - start_ts)));  // 15 is hardcoded fps TODO
@@ -59,50 +74,76 @@ class AVI
     public void PushFrame()
     {
         byte[] frame = EncodeFrame(_d.GetFrame());
-        byte[] content_list = GenList(new char[] { 'm', 'o', 'v', 'i' }, frame);
-        Write(content_list);
+        if (frame != null)
+        {
+            byte[] content_list = GenList(new char[] { 'm', 'o', 'v', 'i' }, frame);
+            Write(content_list);
+        }
     }
 
     private byte[] EncodeFrame(GraphicalFrame g)
     {
-        List<byte> @out = new();
+        if (_codec == AVI_CODEC.MRLE)
+        {
+            List<byte> @out = new();
 
-        for(int y=g.height - 1; y >= 0; y--) {
-            int in_o = y * g.width * 3;
-            int run_count = 0;
-            int prev_pv = 0x10000;
-            for(int x=0; x<g.width; x++) {
-                int in_o2 = in_o + x * 3;
-                int pv = ((g.rgb_pixels[in_o2 + 0] << 8) & 0x1f000) | (g.rgb_pixels[in_o2 + 2] >> 3) | ((g.rgb_pixels[in_o2 + 2] << 5) & 0x7e0);
+            for(int y=g.height - 1; y >= 0; y--) {
+                int in_o = y * g.width * 3;
+                int run_count = 0;
+                int prev_pv = 0x10000;
+                for(int x=0; x<g.width; x++) {
+                    int in_o2 = in_o + x * 3;
+                    int pv = ((g.rgb_pixels[in_o2 + 0] << 8) & 0x1f000) | (g.rgb_pixels[in_o2 + 2] >> 3) | ((g.rgb_pixels[in_o2 + 2] << 5) & 0x7e0);
 
-                if (x == 0)
-                {
-                    prev_pv = pv;
-                    run_count = 1;
+                    if (x == 0)
+                    {
+                        prev_pv = pv;
+                        run_count = 1;
+                    }
+                    else if (prev_pv != pv || run_count == 255)
+                    {
+                        @out.Add((byte)run_count);
+                        @out.Add((byte)(prev_pv >> 8));
+                        @out.Add((byte)prev_pv);
+
+                        prev_pv = pv;
+                        run_count = 1;
+                    }
+                    else
+                    {
+                        run_count++;
+                    }
                 }
-                else if (prev_pv != pv || run_count == 255)
+                if (run_count > 0)
                 {
                     @out.Add((byte)run_count);
                     @out.Add((byte)(prev_pv >> 8));
                     @out.Add((byte)prev_pv);
-
-                    prev_pv = pv;
-                    run_count = 1;
-                }
-                else
-                {
-                    run_count++;
                 }
             }
-            if (run_count > 0)
+
+            return GenChunk(new char[] { '0', '0', 'd', 'c' }, @out.ToArray());
+        }
+        else
+        {
+            if (g.width == _width && g.height == _height)
             {
-                @out.Add((byte)run_count);
-                @out.Add((byte)(prev_pv >> 8));
-                @out.Add((byte)prev_pv);
+                byte[] temp = new byte[_width * _height * 3];
+                int offset = 0;
+                for(int y=g.height - 1; y >= 0; y--) {
+                    int in_o = y * g.width * 3;
+                    for(int x=0; x<g.width; x++) {
+                        int in_o2 = in_o + x * 3;
+                        temp[offset++] = g.rgb_pixels[in_o2 + 2];
+                        temp[offset++] = g.rgb_pixels[in_o2 + 1];
+                        temp[offset++] = g.rgb_pixels[in_o2 + 0];
+                    }
+                }
+                return GenChunk(new char[] { '0', '0', 'd', 'b' }, temp);
             }
         }
 
-        return GenChunk(new char[] { '0', '0', 'd', 'b' }, @out.ToArray());
+        return null;
     }
 
     private void PutWORD(ref byte[] to, int offset, uint what)
@@ -179,17 +220,27 @@ class AVI
         return GenChunk(new char[] { 'a', 'v', 'i', 'h' }, @out);
     }
 
-    private byte[] GenStreamHeader(int fps)
+    private byte[] GenStreamHeader(int fps, AVI_CODEC codec)
     {
         byte[] @out = new byte[12 * 4 + 4 * 2];
         @out[0] = (byte)'v';  // type
         @out[1] = (byte)'i';
         @out[2] = (byte)'d';
         @out[3] = (byte)'s';
-        @out[4] = (byte)'M';  // codec (16 bits MRLE)
-        @out[5] = (byte)'R';
-        @out[6] = (byte)'L';
-        @out[7] = (byte)'E';
+        if (codec == AVI_CODEC.MRLE)
+        {
+            @out[4] = (byte)'M';  // codec (16 bits MRLE)
+            @out[5] = (byte)'R';
+            @out[6] = (byte)'L';
+            @out[7] = (byte)'E';
+        }
+        else
+        {
+            @out[4] = (byte)'R';  // codec (24b RGB)
+            @out[5] = (byte)'G';
+            @out[6] = (byte)'B';
+            @out[7] = (byte)' ';
+        }
         PutDWORD(ref @out, 8, 0);  // flags
         PutWORD(ref @out, 12, 0);  // prio
         PutWORD(ref @out, 14, 0);  // language
@@ -205,18 +256,26 @@ class AVI
         return GenChunk(new char[] { 's', 't', 'r', 'h' }, @out);
     }
 
-    private byte[] GenStreamFormat(int width, int height)
+    private byte[] GenStreamFormat(int width, int height, AVI_CODEC codec)
     {
         byte[] @out = new byte[44];
         PutDWORD(ref @out, 0, 44);  // structure size
         PutDWORD(ref @out, 4, (uint)width);
         PutDWORD(ref @out, 8, (uint)height);
         PutDWORD(ref @out, 12, 1);  // planes
-        PutDWORD(ref @out, 14, 16);  // bits per pixel
-        @out[16] = (byte)'M';  // codec (16 bits MRLE)
-        @out[17] = (byte)'R';
-        @out[18] = (byte)'L';
-        @out[19] = (byte)'E';
+        if (codec == AVI_CODEC.MRLE)
+        {
+            PutDWORD(ref @out, 14, 16);  // bits per pixel
+            @out[16] = (byte)'M';  // codec (16 bits MRLE)
+            @out[17] = (byte)'R';
+            @out[18] = (byte)'L';
+            @out[19] = (byte)'E';
+        }
+        else
+        {
+            PutDWORD(ref @out, 14, 24);  // bits per pixel
+            PutDWORD(ref @out, 16, 0);  // BI_RGB == 0x0000
+        }
         PutDWORD(ref @out, 20, 0);  // size of image
         PutDWORD(ref @out, 24, 1);  // pixels per meter, x
         PutDWORD(ref @out, 28, 1);  // pixels per meter, y

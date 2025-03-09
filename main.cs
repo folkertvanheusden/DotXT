@@ -252,7 +252,7 @@ if (mode != TMode.Empty)
         devices.Add(new XTServer(bin_file, bin_file_addr, display, xts_trace_file));
 
     if (avi_file != null)
-        avi = new AVI(avi_file, 15, display);
+        avi = new AVI(avi_file, 15, display, AVI_CODEC.RAW);
 }
 
 // Bus gets the devices for memory mapped i/o

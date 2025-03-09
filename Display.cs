@@ -25,7 +25,7 @@ abstract class Display : Device
 
     public virtual int GetHeight()
     {
-        return 400;
+        return 350;
     }
 
     public override int GetIRQNumber()
@@ -46,8 +46,8 @@ abstract class Display : Device
         gf.height = _gf.height;
         int n_bytes = _gf.width * _gf.height * 3;
         gf.rgb_pixels = new byte[n_bytes];
-        for(int i=0; i<n_bytes; i++)
-            gf.rgb_pixels[i] = _gf.rgb_pixels[i];
+        if (_gf.rgb_pixels != null)
+            Array.Copy(_gf.rgb_pixels, 0, gf.rgb_pixels, 0, n_bytes);
         return gf;
     }
 
