@@ -75,7 +75,7 @@ internal class XTServer : Device
 
         if (port == 0xf001)
         {
-            if (value == 0x01)  //  screenshot
+            if (value == 0x6001)  //  screenshot
             {
                 if (_d != null)
                 {
