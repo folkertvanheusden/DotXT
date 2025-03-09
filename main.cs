@@ -30,6 +30,8 @@ bool use_midi = false;
 bool use_rtc = false;
 bool use_adlib = false;
 
+string avi_file = null;
+
 for(int i=0; i<args.Length; i++)
 {
     if (args[i] == "-h") {
@@ -49,9 +51,12 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("-S        try to run at real speed");
         Log.Cnsl("-O        enable option. currently: adlib, midi, rtc");
         Log.Cnsl("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
-        Log.Cnsl($"-p device,type,port   port to listen on. type must be \"telnet\", \"http\" or \"vnc\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
+        Log.Cnsl($"-p device,type,port   display output. type must be \"telnet\", \"http\" or \"vnc\". device can be \"{key_cga}\" or \"{key_mda}\".");
+        Log.Cnsl("-P avi    avi file to render display to");
         System.Environment.Exit(0);
     }
+    else if (args[i] == "-P")
+        avi_file = args[++i];
     else if (args[i] == "-M")
     {
         string[] parts = args[++i].Split(',');
@@ -187,6 +192,7 @@ Log.Cnsl("Debug build");
 #endif
 
 RTSPServer audio = null;
+AVI avi = null;
 
 List<Device> devices = new();
 
@@ -244,6 +250,9 @@ if (mode != TMode.Empty)
 
     if (bin_file != "" || display != null)
         devices.Add(new XTServer(bin_file, bin_file_addr, display, xts_trace_file));
+
+    if (avi_file != null)
+        avi = new AVI(avi_file, 15, display);
 }
 
 // Bus gets the devices for memory mapped i/o
@@ -609,6 +618,11 @@ else
 Log.EmitDisassembly();
 
 Log.EndLogging();
+
+if (avi != null)
+{
+    avi.Close();
+}
 
 if (mode == TMode.Tests)
     System.Environment.Exit(p.GetSI() == 0xa5ee ? 123 : 0);

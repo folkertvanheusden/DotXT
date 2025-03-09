@@ -18,6 +18,16 @@ abstract class Display : Device
         TerminalClear();
     }
 
+    public virtual int GetWidth()
+    {
+        return 640;
+    }
+
+    public virtual int GetHeight()
+    {
+        return 400;
+    }
+
     public override int GetIRQNumber()
     {
         return -1;

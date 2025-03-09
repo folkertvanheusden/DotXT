@@ -1,47 +1,108 @@
 class AVI
 {
-    FileStream stream = null;
+    private Thread _thread = null;
+    private FileStream _stream = null;
+    private int _width = 0;
+    private int _height = 0;
+    private Display _d = null;
 
-    public AVI(string filename, int fps, int width, int height)
+    public AVI(string filename, int fps, Display d)
     {
-        stream = new FileStream(filename, FileMode.Create, FileAccess.Write);
+        _d = d;
+        _width = d.GetWidth();
+        _height = d.GetHeight();
+
+        _stream = new FileStream(filename, FileMode.Create, FileAccess.Write);
 
         Write(RIFFHeader());
 
-        byte[] main_avi_header = GenMainAVIHeader(fps, width, height);
+        byte[] main_avi_header = GenMainAVIHeader(fps, _width, _height);
 
         byte[] stream_header = GenStreamHeader(fps);
-        byte[] stream_format = GenStreamFormat(width, height);
+        byte[] stream_format = GenStreamFormat(_width, _height);
         byte[] stream_list = GenList(new char[] { 's', 't', 'r', 'l' }, stream_header.Concat(stream_format).ToArray());
 
         Write(GenList(new char[] { 'h', 'd', 'r', 'l' }, main_avi_header.Concat(stream_list).ToArray()));
 
-        for(int i=0; i<100; i++)
-        {
-            byte[] frame = GenerateFakeFrame(width, height, i);
-            byte[] content_list = GenList(new char[] { 'm', 'o', 'v', 'i' }, frame);
-            Write(content_list);
-        }
+        _thread = new Thread(AVI.AVIStreamer);
+        _thread.Name = "avi-streamer-thread";
+        _thread.Start(this);
     }
 
     public void Close()
     {
-        stream.Close();
+        _stream.Close();
+
+        _thread.Join();
+    }
+
+    public static void AVIStreamer(object o)
+    {
+        AVI avi = (AVI)o;
+
+        for(;;)
+        {
+            long start_ts = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+
+            avi.PushFrame();
+
+            long end_ts = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+            Thread.Sleep((int)(1000 / 15 - (end_ts - start_ts)));  // 15 is hardcoded fps TODO
+        }
     }
 
     private void Write(byte [] what)
     {
-        stream.Write(what, 0, what.Length);
+        _stream.Write(what, 0, what.Length);
     }
 
-    private byte[] GenerateFakeFrame(int width, int height, int offset)
+    public void PushFrame()
     {
-        int n = width * height * 3;
-        byte[] @out = new byte[n];
-        for(int i=0; i<n; i++)
-            @out[i] = (byte)(i + offset);
+        byte[] frame = EncodeFrame(_d.GetFrame());
+        byte[] content_list = GenList(new char[] { 'm', 'o', 'v', 'i' }, frame);
+        Write(content_list);
+    }
 
-        return GenChunk(new char[] { '0', '0', 'd', 'b' }, @out);
+    private byte[] EncodeFrame(GraphicalFrame g)
+    {
+        List<byte> @out = new();
+
+        for(int y=g.height - 1; y >= 0; y--) {
+            int in_o = y * g.width * 3;
+            int run_count = 0;
+            int prev_pv = 0x10000;
+            for(int x=0; x<g.width; x++) {
+                int in_o2 = in_o + x * 3;
+                int pv = ((g.rgb_pixels[in_o2 + 0] << 8) & 0x1f000) | (g.rgb_pixels[in_o2 + 2] >> 3) | ((g.rgb_pixels[in_o2 + 2] << 5) & 0x7e0);
+
+                if (x == 0)
+                {
+                    prev_pv = pv;
+                    run_count = 1;
+                }
+                else if (prev_pv != pv || run_count == 255)
+                {
+                    @out.Add((byte)run_count);
+                    @out.Add((byte)(prev_pv >> 8));
+                    @out.Add((byte)prev_pv);
+
+                    prev_pv = pv;
+                    run_count = 1;
+                }
+                else
+                {
+                    run_count++;
+                }
+            }
+            if (run_count > 0)
+            {
+                @out.Add((byte)run_count);
+                @out.Add((byte)(prev_pv >> 8));
+                @out.Add((byte)prev_pv);
+            }
+        }
+
+        return GenChunk(new char[] { '0', '0', 'd', 'b' }, @out.ToArray());
     }
 
     private void PutWORD(ref byte[] to, int offset, uint what)
@@ -125,10 +186,10 @@ class AVI
         @out[1] = (byte)'i';
         @out[2] = (byte)'d';
         @out[3] = (byte)'s';
-        @out[4] = (byte)'R';  // codec (24b RGB)
-        @out[5] = (byte)'G';
-        @out[6] = (byte)'B';
-        @out[7] = (byte)' ';
+        @out[4] = (byte)'M';  // codec (16 bits MRLE)
+        @out[5] = (byte)'R';
+        @out[6] = (byte)'L';
+        @out[7] = (byte)'E';
         PutDWORD(ref @out, 8, 0);  // flags
         PutWORD(ref @out, 12, 0);  // prio
         PutWORD(ref @out, 14, 0);  // language
@@ -151,8 +212,11 @@ class AVI
         PutDWORD(ref @out, 4, (uint)width);
         PutDWORD(ref @out, 8, (uint)height);
         PutDWORD(ref @out, 12, 1);  // planes
-        PutDWORD(ref @out, 14, 24);  // bits per pixel
-        PutDWORD(ref @out, 16, 0);  // BI_RGB == 0x0000, 
+        PutDWORD(ref @out, 14, 16);  // bits per pixel
+        @out[16] = (byte)'M';  // codec (16 bits MRLE)
+        @out[17] = (byte)'R';
+        @out[18] = (byte)'L';
+        @out[19] = (byte)'E';
         PutDWORD(ref @out, 20, 0);  // size of image
         PutDWORD(ref @out, 24, 1);  // pixels per meter, x
         PutDWORD(ref @out, 28, 1);  // pixels per meter, y
