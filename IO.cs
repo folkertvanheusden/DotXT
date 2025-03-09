@@ -26,6 +26,8 @@ class IO
                 ((FloppyDisk)device).SetDma(_i8237);
 
             device.SetPic(_pic);
+
+            device.SetBus(b);
         }
 
         _devices = devices;

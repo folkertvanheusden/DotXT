@@ -232,6 +232,9 @@ if (mode != TMode.Empty)
 
     if (use_rtc)
         devices.Add(new RTC());
+
+    if (bin_file != "")
+        devices.Add(new XTServer(bin_file, bin_file_addr));
 }
 
 // Bus gets the devices for memory mapped i/o
@@ -244,9 +247,6 @@ if (mode == TMode.Normal || mode == TMode.XTServer)
 
 if (mode == TMode.XTServer)
     AddXTServerBootROM(b);
-
-if (bin_file != "")
-    LoadBin(b, bin_file, bin_file_addr);
 
 if (mode == TMode.JSON)
 {
@@ -867,42 +867,33 @@ void MeasureSpeed(P8086 p, bool continuously)
         ClearConsoleInputBuffer();
 }
 
-void LoadBin(Bus b, string file, uint addr)
-{
-    Log.DoLog($"Load {file} at {addr:X6}", LogLevel.INFO);
-
-    using(Stream source = File.Open(file, FileMode.Open))
-    {
-        byte[] buffer = new byte[512];
-
-        for(;;)
-        {
-            int n_read = source.Read(buffer, 0, 512);
-            if (n_read == 0)
-                break;
-
-            for(int i=0; i<n_read; i++)
-                b.WriteByte(addr++, buffer[i]);
-        }
-    }
-}
-
 void AddXTServerBootROM(Bus b)
 {
-    uint addr = 0xd000 * 16 + 0x0000;
-    b.WriteByte(addr + 0, 0x55);  // signature
-    b.WriteByte(addr + 1, 0xaa);
-    b.WriteByte(addr + 2, 1);  // size of this ROM is 512 bytes
-    b.WriteByte(addr + 3, 0xea);  // JMP FAR absolute
-    b.WriteByte(addr + 4, 0x00);  // ...:0000
-    b.WriteByte(addr + 5, 0x00);
-    b.WriteByte(addr + 6, 0x00);  // 1000:...
-    b.WriteByte(addr + 7, 0x10);
+    uint start_addr = 0xd000 * 16 + 0x0000;
+    uint addr = start_addr;
+    b.WriteByte(addr++, 0x55);  // signature
+    b.WriteByte(addr++, 0xaa);
+    b.WriteByte(addr++, 1);  // size of this ROM is 512 bytes
+
+    b.WriteByte(addr++, 0xba);  // mov dx,#$f001
+    b.WriteByte(addr++, 0x01);
+    b.WriteByte(addr++, 0xf0);
+
+    b.WriteByte(addr++, 0xb0);  // mov al,#$01
+    b.WriteByte(addr++, 0x01);
+
+    b.WriteByte(addr++, 0xee);  // out dx,al   -> this triggers a program load
+
+    b.WriteByte(addr++, 0xea);  // JMP FAR absolute
+    b.WriteByte(addr++, 0x00);  // ...:0000
+    b.WriteByte(addr++, 0x00);
+    b.WriteByte(addr++, 0x00);  // 1000:...
+    b.WriteByte(addr++, 0x10);
 
     byte checksum = 0;
     for(int i=0; i<512; i++)
-        checksum += b.ReadByte((uint)(addr + i)).Item1;
-    b.WriteByte(addr + 8, (byte)(~checksum));
+        checksum += b.ReadByte((uint)(start_addr + i)).Item1;
+    b.WriteByte(start_addr + 511, (byte)(~checksum));
 }
 
 class ThreadSafe_Bool
