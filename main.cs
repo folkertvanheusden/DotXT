@@ -197,6 +197,7 @@ if (mode != TMode.Empty)
         audio = new RTSPServer(adlib, 5540);  // TODO port & instantiating; make optional
     }
 
+    Display display = null;
     foreach(KeyValuePair<string, List<Tuple<string, int> > > current_console in consoles)
     {
         List<EmulatorConsole> console_instances = new();
@@ -211,9 +212,10 @@ if (mode != TMode.Empty)
         }
 
         if (current_console.Key == key_mda)
-            devices.Add(new MDA(console_instances));
+            display = new MDA(console_instances);
         else if (current_console.Key == key_cga)
-            devices.Add(new CGA(console_instances));
+            display = new CGA(console_instances);
+        devices.Add(display);
     }
 
     devices.Add(new i8253());
@@ -233,8 +235,8 @@ if (mode != TMode.Empty)
     if (use_rtc)
         devices.Add(new RTC());
 
-    if (bin_file != "")
-        devices.Add(new XTServer(bin_file, bin_file_addr));
+    if (bin_file != "" || display != null)
+        devices.Add(new XTServer(bin_file, bin_file_addr, display));
 }
 
 // Bus gets the devices for memory mapped i/o
@@ -871,24 +873,17 @@ void AddXTServerBootROM(Bus b)
 {
     uint start_addr = 0xd000 * 16 + 0x0000;
     uint addr = start_addr;
-    b.WriteByte(addr++, 0x55);  // signature
-    b.WriteByte(addr++, 0xaa);
-    b.WriteByte(addr++, 1);  // size of this ROM is 512 bytes
 
-    b.WriteByte(addr++, 0xba);  // mov dx,#$f001
-    b.WriteByte(addr++, 0x01);
-    b.WriteByte(addr++, 0xf0);
+    byte [] option_rom = new byte[] {
+        0x55, 0xaa, 0x01, 0xba, 0x01, 0xf0, 0xb0, 0xff, 0xee, 0xbe, 0x80, 0x01,
+        0xc7, 0x04, 0x1e, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xea, 0x00, 0x00,
+        0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0xa3, 0x1a, 0x00, 0x89, 0x16, 0x1c,
+        0x00, 0xba, 0x01, 0xf0, 0xb0, 0x01, 0xee, 0x8b, 0x16, 0x1c, 0x00, 0xa1,
+        0x1a, 0x00, 0xcf
+    };
 
-    b.WriteByte(addr++, 0xb0);  // mov al,#$01
-    b.WriteByte(addr++, 0x01);
-
-    b.WriteByte(addr++, 0xee);  // out dx,al   -> this triggers a program load
-
-    b.WriteByte(addr++, 0xea);  // JMP FAR absolute
-    b.WriteByte(addr++, 0x00);  // ...:0000
-    b.WriteByte(addr++, 0x00);
-    b.WriteByte(addr++, 0x00);  // 1000:...
-    b.WriteByte(addr++, 0x10);
+    for(int i=0; i<option_rom.Length; i++)
+        b.WriteByte(addr++, option_rom[i]);
 
     byte checksum = 0;
     for(int i=0; i<512; i++)
