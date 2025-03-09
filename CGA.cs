@@ -259,18 +259,33 @@ class CGA : Display
         }
         else if (_cga_mode == CGAMode.G640)
         {
-            if (use_offset >= _display_address && use_offset < _display_address + 1600)
+            if (use_offset >= _display_address && use_offset < _display_address + 16000)
             {
-                uint addr_without_base = use_offset - _display_address;
-                int x = (int)(addr_without_base % 80) * 8;
-                int y = (int)addr_without_base / 80;
+                int x = 0;
+                int y = 0;
 
-                byte b = _ram[use_offset];
-                for(int x_i = 0; x_i < 8; x_i++)
+                if (use_offset - _display_address >= 8192)
                 {
-                    int offset = (y * 640 + x + 7 - x_i) * 3;
-                    _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = (byte)((b & 128) != 0 ? 255 : 0);
-                    b <<= 1;
+                    uint addr_without_base = use_offset - 8192 - _display_address;
+                    y = (int)addr_without_base / 80 * 2 + 1;
+                    x = (int)(addr_without_base % 80) * 8;
+                }
+                else
+                {
+                    uint addr_without_base = use_offset - _display_address;
+                    y = (int)addr_without_base / 80 * 2;
+                    x = (int)(addr_without_base % 80) * 8;
+                }
+
+                if (y < 200)
+                {
+                    byte b = _ram[use_offset];
+                    for(int x_i = 0; x_i < 8; x_i++)
+                    {
+                        int offset = (y * 640 + x + 7 - x_i) * 3;
+                        _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = (byte)((b & 1) != 0 ? 255 : 0);
+                        b >>= 1;
+                    }
                 }
             }
         }
