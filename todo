@@ -18,6 +18,7 @@
 
 
 * clean-up disassembler
+* wrong disassembly: MOV word [SI],$D000 | C7 44 02 00 D0 | disp 0002
 
 
 https://cp437.github.io/
