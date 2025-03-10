@@ -209,7 +209,7 @@ internal class Adlib : Device
     {
         lock(_sync_primitive)
         {
-            while(version == _samples_version)
+            while(version <= _samples_version)
             {
                 Monitor.Wait(_sync_primitive);
             }
