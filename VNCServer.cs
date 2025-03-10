@@ -357,11 +357,13 @@ class VNCServer: GraphicalConsole
         if (vs._compatible)
         {
             byte[] buffer = new byte[width * height * 4];
-            for(int y=0; y<Math.Min(height, frame.height); y++)
+            int use_width = Math.Min(width, frame.width);
+            int use_height = Math.Min(height, frame.height);
+            for(int y=0; y<use_height; y++)
             {
                 int in_offset = y * frame.width * 3;
                 int out_offset = y * width * 4;
-                for(int x=0; x<Math.Min(width, frame.width); x++)
+                for(int x=0; x<use_width; x++)
                 {
                     int i_offset = in_offset + x * 3;
                     int o_offset = out_offset + x * 4;
@@ -507,7 +509,6 @@ class VNCServer: GraphicalConsole
                 session.audio_thread.Start(session);
 
                 Log.Cnsl("VNC: Starting graphics transmission");
-                parameters.vs.Redraw();
                 ulong version = 0;
                 var prev_send = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                 for(;;)
