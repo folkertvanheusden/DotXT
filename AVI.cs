@@ -1,4 +1,4 @@
-internal enum AVI_CODEC { RAW, MRLE };
+internal enum AVI_CODEC { RAW, MRLE, JPEG };
 
 internal struct AviThreadParameters
 {
@@ -83,6 +83,9 @@ class AVI
 
     private byte[] EncodeFrame(GraphicalFrame g)
     {
+        if (g.width != _width || g.height != _height)
+            return null;
+
         if (_codec == AVI_CODEC.MRLE)
         {
             List<byte> @out = new();
@@ -124,23 +127,32 @@ class AVI
 
             return GenChunk(new char[] { '0', '0', 'd', 'c' }, @out.ToArray());
         }
+        else if (_codec == AVI_CODEC.JPEG)
+        {
+            BitmapSource image = BitmapSource.Create(_width, _height, 96, 96, PixelFormats.Rgb24, null, g.rgb_pixels, _width);
+            JpegBitmapEncoder encoder = new JpegBitmapEncoder();
+            encoder.FlipHorizontal = true;
+            encoder.FlipVertical = false;
+            encoder.QualityLevel = 75;
+            encoder.Frames.Add(BitmapFrame.Create(image));
+            MemoryStream stream = new MemoryStream();
+            encoder.Save(stream);
+            return GenChunk(new char[] { '0', '0', 'd', 'c' }, stream.ToArray());
+        }
         else
         {
-            if (g.width == _width && g.height == _height)
-            {
-                byte[] temp = new byte[_width * _height * 3];
-                int offset = 0;
-                for(int y=g.height - 1; y >= 0; y--) {
-                    int in_o = y * g.width * 3;
-                    for(int x=0; x<g.width; x++) {
-                        int in_o2 = in_o + x * 3;
-                        temp[offset++] = g.rgb_pixels[in_o2 + 2];
-                        temp[offset++] = g.rgb_pixels[in_o2 + 1];
-                        temp[offset++] = g.rgb_pixels[in_o2 + 0];
-                    }
+            byte[] temp = new byte[_width * _height * 3];
+            int offset = 0;
+            for(int y=g.height - 1; y >= 0; y--) {
+                int in_o = y * g.width * 3;
+                for(int x=0; x<g.width; x++) {
+                    int in_o2 = in_o + x * 3;
+                    temp[offset++] = g.rgb_pixels[in_o2 + 2];
+                    temp[offset++] = g.rgb_pixels[in_o2 + 1];
+                    temp[offset++] = g.rgb_pixels[in_o2 + 0];
                 }
-                return GenChunk(new char[] { '0', '0', 'd', 'b' }, temp);
             }
+            return GenChunk(new char[] { '0', '0', 'd', 'b' }, temp);
         }
 
         return null;
@@ -234,6 +246,13 @@ class AVI
             @out[6] = (byte)'L';
             @out[7] = (byte)'E';
         }
+        else if (codec == AVI_CODEC.JPEG)
+        {
+            @out[4] = (byte)'J';  // codec (16 bits MRLE)
+            @out[5] = (byte)'P';
+            @out[6] = (byte)'E';
+            @out[7] = (byte)'G';
+        }
         else
         {
             @out[4] = (byte)'R';  // codec (24b RGB)
@@ -270,6 +289,14 @@ class AVI
             @out[17] = (byte)'R';
             @out[18] = (byte)'L';
             @out[19] = (byte)'E';
+        }
+        else if (codec == AVI_CODEC.JPEG)
+        {
+            PutDWORD(ref @out, 14, 24);  // bits per pixel
+            @out[16] = (byte)'J';  // codec (16 bits MRLE)
+            @out[17] = (byte)'P';
+            @out[18] = (byte)'E';
+            @out[19] = (byte)'G';
         }
         else
         {
