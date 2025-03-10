@@ -18,15 +18,17 @@ class AVI
     private int _width = 0;
     private int _height = 0;
     private Display _d = null;
+    private int _quality = 50;
     private AVI_CODEC _codec;
     private CancellationTokenSource _cts;
 
-    public AVI(string filename, int fps, Display d, AVI_CODEC codec)
+    public AVI(string filename, int fps, Display d, AVI_CODEC codec, int quality)
     {
         _d = d;
         _width = d.GetWidth();
         _height = d.GetHeight();
         _codec = codec;
+        _quality = quality;
 
         _stream = new FileStream(filename, FileMode.Create, FileAccess.Write);
 
@@ -88,20 +90,35 @@ class AVI
 
     private byte[] EncodeFrame(GraphicalFrame g)
     {
-        if (g.width != _width || g.height != _height)
+        if (g.width == 0 || g.height == 0)
             return null;
+
+        byte[] pixels = null;
+        if (g.width == _width && g.height == _height)
+            pixels = g.rgb_pixels;
+        else
+        {
+            pixels = new byte[_width * _height * 3];
+
+            for(int y=0; y<Math.Min(_height, g.height); y++)
+            {
+                int in_o = y * g.width * 3;
+                int out_o = y * _width * 3;
+                Array.Copy(g.rgb_pixels, in_o, pixels, out_o, Math.Min(_width, g.width) * 3);
+            }
+        }
 
         if (_codec == AVI_CODEC.MRLE)
         {
             List<byte> @out = new();
 
-            for(int y=g.height - 1; y >= 0; y--) {
-                int in_o = y * g.width * 3;
+            for(int y=_height - 1; y >= 0; y--) {
+                int in_o = y * _width * 3;
                 int run_count = 0;
                 int prev_pv = 0x10000;
-                for(int x=0; x<g.width; x++) {
+                for(int x=0; x<_width; x++) {
                     int in_o2 = in_o + x * 3;
-                    int pv = ((g.rgb_pixels[in_o2 + 0] << 8) & 0x1f000) | (g.rgb_pixels[in_o2 + 2] >> 3) | ((g.rgb_pixels[in_o2 + 2] << 5) & 0x7e0);
+                    int pv = ((pixels[in_o2 + 0] << 8) & 0x1f000) | (pixels[in_o2 + 2] >> 3) | ((pixels[in_o2 + 2] << 5) & 0x7e0);
 
                     if (x == 0)
                     {
@@ -139,13 +156,13 @@ class AVI
             byte[] row = new byte[_width * 3];
             for (int i = 0; i < _height; i++)
             {
-                Array.Copy(g.rgb_pixels, i * _width * 3, row, 0, _width * 3);
+                Array.Copy(pixels, i * _width * 3, row, 0, _width * 3);
                 JpegRgbToYCbCrConverter.Shared.ConvertRgb24ToYCbCr8(row, ycbcr.AsSpan(3 * _width * i, 3 * _width), _width);
             }
 
             var encoder = new JpegEncoder();
-            encoder.SetQuantizationTable(JpegStandardQuantizationTable.ScaleByQuality(JpegStandardQuantizationTable.GetLuminanceTable(JpegElementPrecision.Precision8Bit, 0), 95));
-            encoder.SetQuantizationTable(JpegStandardQuantizationTable.ScaleByQuality(JpegStandardQuantizationTable.GetChrominanceTable(JpegElementPrecision.Precision8Bit, 1), 95));
+            encoder.SetQuantizationTable(JpegStandardQuantizationTable.ScaleByQuality(JpegStandardQuantizationTable.GetLuminanceTable(JpegElementPrecision.Precision8Bit, 0), _quality));
+            encoder.SetQuantizationTable(JpegStandardQuantizationTable.ScaleByQuality(JpegStandardQuantizationTable.GetChrominanceTable(JpegElementPrecision.Precision8Bit, 1), _quality));
             encoder.SetHuffmanTable(true, 0, JpegStandardHuffmanEncodingTable.GetLuminanceDCTable());
             encoder.SetHuffmanTable(false, 0, JpegStandardHuffmanEncodingTable.GetLuminanceACTable());
             encoder.SetHuffmanTable(true, 1, JpegStandardHuffmanEncodingTable.GetChrominanceDCTable());
@@ -164,13 +181,13 @@ class AVI
         {
             byte[] temp = new byte[_width * _height * 3];
             int offset = 0;
-            for(int y=g.height - 1; y >= 0; y--) {
-                int in_o = y * g.width * 3;
-                for(int x=0; x<g.width; x++) {
+            for(int y=_height - 1; y >= 0; y--) {
+                int in_o = y * _width * 3;
+                for(int x=0; x<_width; x++) {
                     int in_o2 = in_o + x * 3;
-                    temp[offset++] = g.rgb_pixels[in_o2 + 2];
-                    temp[offset++] = g.rgb_pixels[in_o2 + 1];
-                    temp[offset++] = g.rgb_pixels[in_o2 + 0];
+                    temp[offset++] = pixels[in_o2 + 2];
+                    temp[offset++] = pixels[in_o2 + 1];
+                    temp[offset++] = pixels[in_o2 + 0];
                 }
             }
             return GenChunk(new char[] { '0', '0', 'd', 'b' }, temp);
