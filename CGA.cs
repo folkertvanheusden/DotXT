@@ -118,7 +118,7 @@ class CGA : Display
                     if ((value & 16) == 16)  // graphics 640x200
                     {
                         _gf.width = 640;
-                        _gf.height = 200;
+                        _gf.height = 400;  // pixeldoubler, else 200
                         _cga_mode = CGAMode.G640;
                     }
                     else
@@ -282,8 +282,11 @@ class CGA : Display
                     byte b = _ram[use_offset];
                     for(int x_i = 0; x_i < 8; x_i++)
                     {
-                        int offset = (y * 640 + x + 7 - x_i) * 3;
-                        _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 2] = (byte)((b & 1) != 0 ? 255 : 0);
+                        byte value = (byte)((b & 1) != 0 ? 255 : 0);
+                        int offset1 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
+                        _gf.rgb_pixels[offset1 + 0] = _gf.rgb_pixels[offset1 + 1] = _gf.rgb_pixels[offset1 + 2] = value;
+                        int offset2 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
+                        _gf.rgb_pixels[offset2 + 0] = _gf.rgb_pixels[offset2 + 1] = _gf.rgb_pixels[offset2 + 2] = value;
                         b >>= 1;
                     }
                 }
