@@ -2206,8 +2206,7 @@ internal class P8086
             (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
             ushort r2 = GetRegister(reg1, word);
 
-            cycle_count += get_cycles;
-            cycle_count += 3;
+            cycle_count += get_cycles + 3;
 
             ushort result = 0;
 
@@ -2238,7 +2237,6 @@ internal class P8086
             else
             {
                 int put_cycles = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, result);
-
                 cycle_count += put_cycles;
             }
         }
@@ -2626,6 +2624,7 @@ internal class P8086
             {
                 // to 'rm' from 'REG'
                 (ushort v, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mode, word);
+                cycle_count += get_cycles;
 
                 if (sreg)
                     PutSRegister(reg, v);
@@ -2642,7 +2641,7 @@ internal class P8086
                     v = GetRegister(reg, word);
 
                 int put_cycles = PutRegisterMem(rm, mode, word, v);
-                cycle_count += 1;
+                cycle_count += put_cycles;
             }
         }
         else if (opcode == 0x8d)
@@ -2778,7 +2777,6 @@ internal class P8086
 
             // get address to write to ('seg, addr')
             (ushort dummy, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(mreg, mod, word);
-
             cycle_count += get_cycles;
 
             if (word)
@@ -2823,11 +2821,9 @@ internal class P8086
             int reg1 = o1 & 7;
 
             (ushort v1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
-
             cycle_count += get_cycles;
 
             int count = 1;
-
             if ((opcode & 2) == 2)
                 count = _state.cl;
 
@@ -3034,7 +3030,6 @@ internal class P8086
             }
 
             int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, v1);
-
             cycle_count += put_cycles;
         }
         else if (opcode == 0xd4)
@@ -3463,7 +3458,6 @@ internal class P8086
                 v &= 0xff;
 
             int put_cycles = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, v);
-
             cycle_count += put_cycles;
         }
         else
