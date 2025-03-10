@@ -158,7 +158,6 @@ class TelnetServer: TextConsole
         lock(_stream_lock)
         {
             _ns = ns;
-            _d.Redraw();
         }
     }
 
