@@ -1088,7 +1088,7 @@ internal class P8086
                     cycle_count += 60;
                     _state.clock += cycle_count;
 
-                    return true;
+                    return cycle_count;
                 }
             }
         }
@@ -1138,7 +1138,7 @@ internal class P8086
             {
                 _state.rep = true;
                 _state.rep_mode = RepMode.NotSet;
-                cycle_count += 3;
+                cycle_count += 9;
 
                 _state.rep_do_nothing = GetCX() == 0;
             }
