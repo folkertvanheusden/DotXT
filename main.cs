@@ -1,19 +1,15 @@
 using DotXT;
 
-string test = "";
-List<string> floppies = new();
+string bin_file = "";
+uint bin_file_addr = 0;
+string xts_trace_file = "";
 
-TMode mode = TMode.NotSet;
+TMode mode = TMode.Normal;
 
-ushort initial_cs = 0;
-ushort initial_ip = 0;
-bool set_initial_ip = false;
+ushort initial_cs = 0xf000;
+ushort initial_ip = 0xfff0;
 
 bool run_IO = true;
-uint load_test_at = 0xffffffff;
-
-bool json_processing = false;
-bool prompt = true;
 
 uint ram_size = 1024;
 
@@ -24,6 +20,8 @@ string key_cga = "cga";
 
 List<string> ide = new();
 Dictionary<string, List<Tuple<string, int> > > consoles = new();
+
+List<string> floppies = new();
 FloppyDisk floppy_controller = null;
 
 bool throttle = false;
@@ -32,12 +30,18 @@ bool use_midi = false;
 bool use_rtc = false;
 bool use_adlib = false;
 
+string avi_file = null;
+int avi_quality = 95;
+
 for(int i=0; i<args.Length; i++)
 {
     if (args[i] == "-h") {
-        Log.Cnsl("-t file   load 'file'");
-        Log.Cnsl("-T addr   sets the load-address for -t");
-        Log.Cnsl("-x type   set type for -T: binary, blank");
+        Log.Cnsl("-m mode   \"normal\" (=default), \"json\", \"xtserver\" or \"empty\"");
+        Log.Cnsl("-M mode-parameters");
+        Log.Cnsl("          load-bin,<file>,<segment:offset>");
+        Log.Cnsl("          set-start-addr,<segment:offset>");
+        Log.Cnsl("          no-io");
+        Log.Cnsl("          xts-trace,<file>");
         Log.Cnsl("-l file   log to file");
         Log.Cnsl("-L        set loglevel (trace, debug, ...)");
         Log.Cnsl("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
@@ -45,21 +49,68 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("-s size   RAM size in kilobytes, decimal");
         Log.Cnsl("-F file   load floppy image (multiple for drive A-D)");
         Log.Cnsl("-D file   disassemble to file");
-        Log.Cnsl("-I        disable I/O ports");
         Log.Cnsl("-S        try to run at real speed");
-        Log.Cnsl("-P        skip prompt");
         Log.Cnsl("-O        enable option. currently: adlib, midi, rtc");
         Log.Cnsl("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
-        Log.Cnsl($"-p device,type,port   port to listen on. type must be \"telnet\", \"http\" or \"vnc\" for now. device can be \"{key_cga}\" or \"{key_mda}\".");
-        Log.Cnsl("-o cs,ip  start address (in hexadecimal)");
+        Log.Cnsl($"-p device,type,port   display output. type must be \"telnet\", \"http\" or \"vnc\". device can be \"{key_cga}\" or \"{key_mda}\".");
+        Log.Cnsl("-P avi,quality    avi file to render display to, quality is 0...100");
         System.Environment.Exit(0);
     }
-    else if (args[i] == "-t")
-        test = args[++i];
+    else if (args[i] == "-P")
+    {
+        string[] parts = args[++i].Split(',');
+        avi_file = parts[0];
+        avi_quality = Convert.ToInt32(parts[1], 10);
+    }
+    else if (args[i] == "-M")
+    {
+        string[] parts = args[++i].Split(',');
+
+        if (parts[0] == "load-bin")
+        {
+            bin_file = parts[1];
+            bin_file_addr = (uint)GetValue(parts[2], true);
+            Log.Cnsl($"Load {bin_file} at {bin_file_addr:X06}");
+        }
+        else if (parts[0] == "set-start-addr")
+        {
+            string[] aparts = parts[1].Split(":");
+            initial_cs = (ushort)GetValue(aparts[0], true);
+            initial_ip = (ushort)GetValue(aparts[1], true);
+            Log.Cnsl($"Start runnng at {initial_cs:X04}:{initial_ip:X04}");
+        }
+        else if (parts[0] == "no-io")
+        {
+            Log.Cnsl("IO disabled");
+            run_IO = false;
+        }
+        else if (parts[0] == "xts-trace")
+        {
+            xts_trace_file = parts[1];
+            Log.Cnsl($"XT-Server emulation output will go to {xts_trace_file}");
+        }
+    }
+    else if (args[i] == "-m") {
+        string type = args[++i];
+
+        if (type == "normal")
+            mode = TMode.Normal;
+        else if (type == "empty")
+            mode = TMode.Empty;
+        else if (type == "json")
+            mode = TMode.JSON;
+        else if (type == "tests")
+            mode = TMode.Tests;
+        else if (type == "xtserver")
+            mode = TMode.XTServer;
+        else
+        {
+            Log.Cnsl($"{type} is not understood");
+            System.Environment.Exit(1);
+        }
+    }
     else if (args[i] == "-S")
         throttle = true;
-    else if (args[i] == "-T")
-        load_test_at = (uint)GetValue(args[++i], true);
     else if (args[i] == "-O")
     {
         string what = args[++i];
@@ -99,19 +150,6 @@ for(int i=0; i<args.Length; i++)
             consoles.Add(parts[0], console_devices);
         }
     }
-    else if (args[i] == "-x") {
-        string type = args[++i];
-
-        if (type == "binary")
-            mode = TMode.Binary;
-        else if (type == "blank")
-            mode = TMode.Blank;
-        else
-        {
-            Log.Cnsl($"{type} is not understood");
-            System.Environment.Exit(1);
-        }
-    }
     else if (args[i] == "-X")
         ide.Add(args[++i]);
     else if (args[i] == "-l")
@@ -120,14 +158,8 @@ for(int i=0; i<args.Length; i++)
         Log.SetLogLevel(Log.StringToLogLevel(args[++i]));
     else if (args[i] == "-D")
         Log.SetDisassemblyFile(args[++i]);
-    else if (args[i] == "-I")
-        run_IO = false;
     else if (args[i] == "-F")
         floppies.Add(args[++i]);
-    else if (args[i] == "-d")
-        json_processing = true;
-    else if (args[i] == "-P")
-        prompt = false;
     else if (args[i] == "-s")
         ram_size = (uint)GetValue(args[++i], false);
     else if (args[i] == "-R")
@@ -144,15 +176,6 @@ for(int i=0; i<args.Length; i++)
 
         roms.Add(new Rom(file, addr));
     }
-    else if (args[i] == "-o")
-    {
-        string[] parts = args[++i].Split(',');
-
-        initial_cs = (ushort)GetValue(parts[0], true);
-        initial_ip = (ushort)GetValue(parts[1], true);
-
-        set_initial_ip = true;
-    }
     else
     {
         Log.Cnsl($"{args[i]} is not understood");
@@ -161,7 +184,7 @@ for(int i=0; i<args.Length; i++)
     }
 }
 
-if (test == "")
+if (mode == TMode.Normal)
 {
     Log.Cnsl("DotXT, (C) 2023-2025 by Folkert van Heusden");
     Log.Cnsl("Released in the public domain");
@@ -174,10 +197,11 @@ Log.Cnsl("Debug build");
 #endif
 
 RTSPServer audio = null;
+AVI avi = null;
 
 List<Device> devices = new();
 
-if (mode != TMode.Blank)
+if (mode != TMode.Empty)
 {
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks
@@ -191,6 +215,7 @@ if (mode != TMode.Blank)
         audio = new RTSPServer(adlib, 5540);  // TODO port & instantiating; make optional
     }
 
+    Display display = null;
     foreach(KeyValuePair<string, List<Tuple<string, int> > > current_console in consoles)
     {
         List<EmulatorConsole> console_instances = new();
@@ -205,9 +230,10 @@ if (mode != TMode.Blank)
         }
 
         if (current_console.Key == key_mda)
-            devices.Add(new MDA(console_instances));
+            display = new MDA(console_instances);
         else if (current_console.Key == key_cga)
-            devices.Add(new CGA(console_instances));
+            display = new CGA(console_instances);
+        devices.Add(display);
     }
 
     devices.Add(new i8253());
@@ -226,25 +252,31 @@ if (mode != TMode.Blank)
 
     if (use_rtc)
         devices.Add(new RTC());
+
+    if (bin_file != "" || display != null)
+        devices.Add(new XTServer(bin_file, bin_file_addr, display, xts_trace_file));
+
+    if (avi_file != null)
+        avi = new AVI(avi_file, 15, display, AVI_CODEC.JPEG, avi_quality);
 }
 
 // Bus gets the devices for memory mapped i/o
 Bus b = new Bus(ram_size * 1024, ref devices, ref roms);
 var d = new P8086Disassembler(b);
-var p = new P8086(ref b, test, mode, load_test_at, ref devices, run_IO);
+var p = new P8086(ref b, ref devices, run_IO);
 
-if (set_initial_ip)
-    p.set_ip(initial_cs, initial_ip);
+if (mode == TMode.Normal || mode == TMode.XTServer)
+    p.SetIP(initial_cs, initial_ip);
 
-if (json_processing)
+if (mode == TMode.XTServer)
+    AddXTServerBootROM(b);
+
+if (mode == TMode.JSON)
 {
     int cycle_count = 0;
 
     for(;;)
     {
-        if (prompt)
-            Console.Write("==>");
-
         string line = Console.ReadLine();
         Log.DoLog($"CMDLINE: {line}", LogLevel.DEBUG);
 
@@ -600,7 +632,12 @@ Log.EmitDisassembly();
 
 Log.EndLogging();
 
-if (test != "" && mode == TMode.Binary)
+if (avi != null)
+{
+    avi.Close();
+}
+
+if (mode == TMode.Tests)
     System.Environment.Exit(p.GetSI() == 0xa5ee ? 123 : 0);
 
 System.Environment.Exit(0);
@@ -866,6 +903,37 @@ void MeasureSpeed(P8086 p, bool continuously)
         ClearConsoleInputBuffer();
 }
 
+void AddXTServerBootROM(Bus b)
+{
+    uint start_addr = 0xd000 * 16 + 0x0000;
+    uint addr = start_addr;
+
+    byte [] option_rom = new byte[] {
+        0x55, 0xaa, 0x01, 0xba, 0x01, 0xf0, 0xb0, 0xff, 0xee, 0x31, 0xc0, 0x8e,
+        0xd8, 0xbe, 0x80, 0x01, 0xb9, 0x0b, 0x00, 0xc7, 0x04, 0x5a, 0x00, 0xc7,
+        0x44, 0x02, 0x00, 0xd0, 0x83, 0xc6, 0x04, 0xe0, 0xf2, 0xbe, 0x80, 0x01,
+        0xc7, 0x04, 0x5b, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xbe, 0x8c, 0x01,
+        0xc7, 0x04, 0x71, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xbe, 0x90, 0x01,
+        0xc7, 0x04, 0x7e, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xbe, 0x94, 0x01,
+        0xc7, 0x04, 0x91, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xea, 0x00, 0x00,
+        0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0xcf, 0xa3, 0x56, 0x00, 0x89, 0x16,
+        0x58, 0x00, 0xba, 0x01, 0xf0, 0xb8, 0x01, 0x60, 0xef, 0x8b, 0x16, 0x58,
+        0x00, 0xa1, 0x56, 0x00, 0xcf, 0x89, 0x16, 0x58, 0x00, 0xba, 0x63, 0xf0,
+        0xef, 0x8b, 0x16, 0x58, 0x00, 0xcf, 0x89, 0x16, 0x58, 0x00, 0xba, 0x64,
+        0xf0, 0x8a, 0x04, 0x46, 0xee, 0x49, 0xe0, 0xf9, 0x8b, 0x16, 0x58, 0x00,
+        0xcf, 0x89, 0x16, 0x58, 0x00, 0xba, 0x65, 0xf0, 0xee, 0x8b, 0x16, 0x58,
+        0x00, 0xcf
+    };
+
+    for(int i=0; i<option_rom.Length; i++)
+        b.WriteByte(addr++, option_rom[i]);
+
+    byte checksum = 0;
+    for(int i=0; i<512; i++)
+        checksum += b.ReadByte((uint)(start_addr + i)).Item1;
+    b.WriteByte(start_addr + 511, (byte)(~checksum));
+}
+
 class ThreadSafe_Bool
 {
     private readonly System.Threading.Lock _lock = new();
@@ -898,3 +966,12 @@ struct RunnerParameters
     public ThreadSafe_Bool exit;
     public bool disassemble;
 };
+
+internal enum TMode
+{
+    Normal,
+    JSON,
+    XTServer,
+    Tests,
+    Empty
+}

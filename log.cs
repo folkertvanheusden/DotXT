@@ -31,7 +31,9 @@ class Log
     public static void EndLogging()
     {
         _log_queue.CompleteAdding();
-        _thread.Join();
+
+        if (_thread != null)
+            _thread.Join();
     }
 
     public static void SetLogLevel(LogLevel ll)

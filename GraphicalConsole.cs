@@ -29,4 +29,9 @@ abstract class GraphicalConsole: EmulatorConsole
     {
         return _d.GetFrame();
     }
+
+    public byte [] GetBmp()
+    {
+        return _d.GraphicalFrameToBmp(GetFrame());
+    }
 };

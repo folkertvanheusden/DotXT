@@ -68,8 +68,8 @@ internal class Adlib : Device
     {
         Log.Cnsl("Adlib Player-thread started");
 
-        int freq = 44100;
-        int interval = 100;
+        const int freq = 44100;
+        const int interval = 100;
         Adlib a = (Adlib)o_parameters;
         int [,] frequencies = new int[2,9];
         double [,] phase_add = new double[2,9];
@@ -77,12 +77,12 @@ internal class Adlib : Device
         double [,] volume = new double[2,9];
         int [,] waveform = new int[2,9];
 
-        FilterButterworth filter = new FilterButterworth(freq / 2 * 0.90, freq, FilterButterworth.PassType.Lowpass, Math.Sqrt(2.0));
+        const int count = freq/interval * 10 / 9;  // 11.1% more samples because of jitter
+        short [] samples = new short[count * 2];
 
         for(;;)
         {
             long start_ts = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-
             for(int ear=0; ear<2; ear++)
             {
                 for(int ch_nr=0; ch_nr<9; ch_nr++)
@@ -110,8 +110,7 @@ internal class Adlib : Device
                 }
             }
 
-            int count = freq/interval * 10 / 9;  // 11.1% more samples because of jitter
-            short [] samples = new short[count * 2];
+            bool [] waveforms_enabled = new bool[] { (a.GetRegister(0, 1) & 32) != 0, (a.GetRegister(1, 1) & 32) != 0 };
             bool too_loud = false;
             double min = 10;
             double max = -10;
@@ -127,7 +126,7 @@ internal class Adlib : Device
                             continue;
 
                         double cur_v = Math.Sin(phase[ear,ch_nr]) * volume[ear,ch_nr];
-                        if ((a.GetRegister(ear, 1) & 32) != 0)
+                        if (waveforms_enabled[ear])
                         {
                             if (waveform[ear,ch_nr] == 0)
                                 v += cur_v;
@@ -165,15 +164,14 @@ internal class Adlib : Device
                         too_loud = true;
                     }
 
-                    filter.Update(v);
-                    samples[buffer_offset++] = (short)(filter.Value * 32767);
+                    samples[buffer_offset++] = (short)(v * 32767);
                 }
             }
 
-            a.PushSamples(samples);
-
             if (too_loud)
                 Log.DoLog($"Adlib: audio is clipping (too loud: {min}...{max})", LogLevel.DEBUG);
+
+            a.PushSamples(samples);
 
             long end_ts = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 
@@ -211,7 +209,7 @@ internal class Adlib : Device
     {
         lock(_sync_primitive)
         {
-            while(version == _samples_version)
+            while(version <= _samples_version)
             {
                 Monitor.Wait(_sync_primitive);
             }
@@ -323,29 +321,21 @@ internal class Adlib : Device
 
     public override bool Tick(int ticks, long clock)
     {
-        const long timer_1_interval = 4770000 / 80;
+        for(int ear=0; ear<2; ear++)
+        {
+            const long timer_1_interval = 4770000 / 80;
+            if (clock - _prev_timer_1[ear] >= timer_1_interval && (_registers[ear, 4] & 1) != 0 && (_registers[ear, 4] & 64) == 0 && (_registers[ear, 4] & 128) == 0)
+            {
+                _prev_timer_1[ear] += timer_1_interval;
+                _status_byte[ear] |= 128 + 64;
+            }
 
-        if (clock - _prev_timer_1[0] >= timer_1_interval && (_registers[0, 4] & 1) != 0 && (_registers[0, 4] & 64) == 0 && (_registers[0, 4] & 128) == 0)
-        {
-            _prev_timer_1[0] += timer_1_interval;
-            _status_byte[0] |= 128 + 64;
-        }
-        if (clock - _prev_timer_1[1] >= timer_1_interval && (_registers[1, 4] & 1) != 0 && (_registers[1, 4] & 64) == 0 && (_registers[1, 4] & 128) == 0)
-        {
-            _prev_timer_1[1] += timer_1_interval;
-            _status_byte[1] |= 128 + 64;
-        }
-
-        const long timer_2_interval = 4770000 / 320;
-        if (clock - _prev_timer_2[0] >= timer_2_interval && (_registers[0, 4] & 2) != 0 && (_registers[0, 4] & 32) == 0 && (_registers[0, 4] & 128) == 0)
-        {
-            _prev_timer_2[0] += timer_2_interval;
-            _status_byte[0] |= 128 + 32;
-        }
-        if (clock - _prev_timer_2[1] >= timer_2_interval && (_registers[1, 4] & 2) != 0 && (_registers[1, 4] & 32) == 0 && (_registers[1, 4] & 128) == 0)
-        {
-            _prev_timer_2[1] += timer_2_interval;
-            _status_byte[1] |= 128 + 32;
+            const long timer_2_interval = 4770000 / 320;
+            if (clock - _prev_timer_2[ear] >= timer_2_interval && (_registers[ear, 4] & 2) != 0 && (_registers[ear, 4] & 32) == 0 && (_registers[ear, 4] & 128) == 0)
+            {
+                _prev_timer_2[ear] += timer_2_interval;
+                _status_byte[ear] |= 128 + 32;
+            }
         }
 
         return false;

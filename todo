@@ -1,12 +1,28 @@
-* floppy: pio
+* IBM diagnostics
+  setfloppy a /home/folkert/t/dos/6139804.IMG
+	1624214064 0000:7CD9 | TRACE | -I--z-p- AX:0000 BX:0009 CX:0002 DX:0000 SP:7C00 BP:0096 SI:7DF6 DI:002B flags:F246 ES:0070 CS:0000 SS:0000 DS:0000 IP:7CDE | JMP 0070:0000 | EA 00 00 70 00 |
+	1624214079 0070:0000 | TRACE | -I--z-p- AX:0000 BX:0009 CX:0002 DX:0000 SP:7C00 BP:0096 SI:7DF6 DI:002B flags:F246 ES:0070 CS:0070 SS:0000 DS:0000 IP:0003 | JMP 3 | E9 0C 40 | 400C
+	1624214094 0070:400F | TRACE | -I--z-p- AX:0000 BX:0009 CX:0002 DX:0000 SP:7C00 BP:0096 SI:7DF6 DI:002B flags:F246 ES:0070 CS:0070 SS:0000 DS:0000 IP:4011 | ADD [BX+SI],AL | 00 00 |
+	1624214115 0070:4011 | TRACE | -I-s--p- AX:0000 BX:0009 CX:0002 DX:0000 SP:7C00 BP:0096 SI:7DF6 DI:002B flags:F286 ES:0070 CS:0070 SS:0000 DS:0000 IP:4013 | ADD [BX+SI],AL | 00 00 |
+	1624214136 0070:4013 | TRACE | -I-s--p- AX:0000 BX:0009 CX:0002 DX:0000 SP:7C00 BP:0096 SI:7DF6 DI:002B flags:F286 ES:0070 CS:0070 SS:0000 DS:0000 IP:4015 | ADD [BX+SI],AL | 00 00 |
+	1624214157 0070:4015 | TRACE | -I-s--p- AX:0000 BX:0009 CX:0002 DX:0000 SP:7C00 BP:0096 SI:7DF6 DI:002B flags:F286 ES:0070 CS:0070 SS:0000 DS:0000 IP:4017 | ADD [BX+SI],AL | 00 00 |
+	1624214178 0070:4017 | TRACE | -I-s--p- AX:0000 BX:0009 CX:0002 DX:0000 SP:7C00 BP:0096 SI:7DF6 DI:002B flags:F286 ES:0070 CS:0070 SS:0000 DS:0000 IP:4019 | ADD [BX+SI],AL | 00 00 |
+	1624214178 0070:4017 | WARNING | Terminating because of 5x 0x00 opcode (004717)
+
+* acid88 (reenigne)
+
+* fs1
+
+* run Tick from timer:
+  "i have a 14.318MHz timer ticking and every 3 cycles it does cpu.cycle(), and every 12 cycles it does a pit.cycle()" (granite)
+
+* floppy niet herkent
 
 * clean-up disassembler
+* wrong disassembly: MOV word [SI],$D000 | C7 44 02 00 D0 | disp 0002
 
 
 https://cp437.github.io/
-
-byte 6 (EOT) zegt hoeveel sectors te lezen, dat samen met het aantal bytes dat de dma verwacht kan meerdere sectoren laden
-
 
 /home/folkert/t/8088/v2/D8.json  ESC FPU
 /home/folkert/t/8088/v2/D9.json  ESC

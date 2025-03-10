@@ -36,6 +36,7 @@ The example above runs DotXT with:
 
 
 If you would like MIDI-support, add "`-O midi`" to the command line.
+Adlib support uses "`-O alib`". Listen to it via RTSP (e.g. on linux: `gst-launch-1.0 rtspsrc location=rtsp://localhost:5540 \! decodebin \! audioconvert \! audioresample \! autoaudiosink`).
 Run `dotxt -h` to get a list fo commandline parameters.
 In the console ("`==>`" on your screen), you can enter e.g. "help" to get a list of commands. For example for changing the floppy drive image for an other.
 

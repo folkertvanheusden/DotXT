@@ -1548,6 +1548,8 @@ class P8086Disassembler
 
             (ushort v, string name, bool a_valid, ushort seg, ushort addr, meta) = GetRegisterMem(reg, mod, word, ref instr_len, ref bytes);
 
+            meta += $"function {function} ";
+
             if (function == 0)
                 instr = $"INC {name}";
             else if (function == 1)
@@ -1555,18 +1557,18 @@ class P8086Disassembler
             else if (function == 2)
             {
                 instr = $"CALL {name}";
-                meta = $"${v:X4} -> {SegmentAddr(_state.cs, _state.ip)}";
+                meta += $"${v:X4} -> {SegmentAddr(_state.cs, _state.ip)}";
             }
             else if (function == 3)
             {
                 ushort temp_cs = ReadMemWord(seg, (ushort)(addr + 2));
                 instr = $"CALL {name}";
-                meta = "${v:X4} -> {SegmentAddr(temp_cs, v)})";
+                meta += $"{v:X4} -> {SegmentAddr(temp_cs, v)})";
             }
             else if (function == 4)
             {
                 instr = $"JMP {name}";
-                meta = $"{_state.cs * 16 + v:X6}";
+                meta += $"{_state.cs * 16 + v:X6}";
             }
             else if (function == 5)
             {
@@ -1581,7 +1583,7 @@ class P8086Disassembler
             }
             else
             {
-                meta = "opcode {opcode:X2} function {function} not implemented";
+                meta = $"opcode {opcode:X2} function {function} not implemented";
             }
         }
         else

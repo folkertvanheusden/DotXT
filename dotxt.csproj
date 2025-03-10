@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="JpegLibrary" Version="0.4.32" />
     <PackageReference Include="managed-midi" Version="1.10.1" />
   </ItemGroup>
 

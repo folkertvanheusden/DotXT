@@ -1,6 +1,9 @@
+using DotXT;
+
 abstract class Device
 {
     protected pic8259 _pic = null;
+    protected Bus _b = null;
     private List<int> next_interrupt = new();
     protected long _clock = 0;
 
@@ -56,5 +59,10 @@ abstract class Device
     public virtual void SetPic(pic8259 pic_instance)
     {
         _pic = pic_instance;
+    }
+
+    public virtual void SetBus(Bus bus_instance)
+    {
+        _b = bus_instance;
     }
 }

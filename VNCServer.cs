@@ -462,6 +462,10 @@ class VNCServer: GraphicalConsole
                         }
                     }
                 }
+                else
+                {
+                    Thread.Sleep(100);
+                }
             }
         }
         catch(System.IO.IOException e)

@@ -329,12 +329,12 @@ class FloppyDisk : Device
             while(dma_finished == false && sector <= sectors_per_track);
 
             _data[5] = (byte)(old_data[4] + read_count);
+
+            Log.DoLog($"Floppy-ReadData {sector - old_data[4]} sector(s) read, DMA-TC: {_dma_controller.IsChannelTC(2)}", LogLevel.DEBUG);
         }
 
         _data_offset = 0;
         _data_state = DataState.HaveData;
-
-        Log.DoLog($"Floppy-ReadData {sector - old_data[4]} sector(s) read", LogLevel.DEBUG);
 
         return true;
     }
@@ -702,7 +702,8 @@ class FloppyDisk : Device
 
     public override bool Tick(int cycles, long clock)
     {
-        if (CheckScheduledInterrupt(1000)) {
+        if (CheckScheduledInterrupt(4770)) {  // after 10 ms
+        //if (CheckScheduledInterrupt(1000)) {
             Log.DoLog("Fire floppy interrupt", LogLevel.TRACE);
             _pic.RequestInterruptPIC(_irq_nr);
         }

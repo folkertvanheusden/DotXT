@@ -37,6 +37,7 @@ class pic8259
         }
 
         // can/should not happen
+        Log.DoLog($"i8259 this should not happen", LogLevel.ERROR);
         return 255;
     }
 
@@ -50,23 +51,33 @@ class pic8259
         byte mask = (byte)(1 << interrupt_nr);
         _irr |= mask;
 
-        Log.DoLog($"i8259 interrupt {interrupt_nr} requested (irr: {_irr:X2}, imr: {_imr:X2})", LogLevel.TRACE);
+        Log.DoLog($"i8259 interrupt {interrupt_nr} requested (irr: {_irr:X2}, isr: {_isr:X2}, imr: {_imr:X2})", LogLevel.TRACE);
     }
 
     public void SetIRQBeingServiced(int interrupt_nr)
     {
-        if (_int_in_service != -1)
-            Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service", LogLevel.DEBUG);
+        if (_auto_eoi == false)
+        {
+            if (_int_in_service != -1)
+                Log.DoLog($"i8259: interrupt {_int_in_service} was not acked before {interrupt_nr} went in service", LogLevel.DEBUG);
 
-        _int_in_service = interrupt_nr;
-        byte mask = (byte)(1 << interrupt_nr);
-        if ((_irr & mask) == 0)
-            Log.DoLog($"i8259: interrupt {interrupt_nr} was not requested", LogLevel.DEBUG);
-        if ((_isr & mask) == mask)
-            Log.DoLog($"i8259: interrupt {interrupt_nr} was already in service", LogLevel.DEBUG);
-        if ((_imr & mask) == mask)
-            Log.DoLog($"i8259: interrupt {interrupt_nr} was masked off", LogLevel.DEBUG);
-        _isr |= mask;
+            _int_in_service = interrupt_nr;
+            byte mask = (byte)(1 << interrupt_nr);
+            if ((_irr & mask) == 0)
+                Log.DoLog($"i8259: interrupt {interrupt_nr} was not requested", LogLevel.DEBUG);
+            if ((_isr & mask) == mask)
+                Log.DoLog($"i8259: interrupt {interrupt_nr} was already in service", LogLevel.DEBUG);
+            if ((_imr & mask) == mask)
+                Log.DoLog($"i8259: interrupt {interrupt_nr} was masked off", LogLevel.DEBUG);
+            _isr |= mask;
+        }
+        else
+        {
+            byte mask = (byte)~(1 << interrupt_nr);
+            _irr &= mask;
+            _isr &= mask;
+            _int_in_service = -1;
+        }
     }
 
     public (byte, bool) In(ushort addr)
