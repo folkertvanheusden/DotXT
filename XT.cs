@@ -1258,7 +1258,7 @@ internal class P8086
             // PUSH ES
             push(_state.es);
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode == 0x07)
         {
@@ -1266,14 +1266,14 @@ internal class P8086
             _state.es = pop();
             _state.inhibit_interrupts = true;
 
-            cycle_count += 8;
+            cycle_count += 12;
         }
         else if (opcode == 0x0e)
         {
             // PUSH CS
             push(_state.cs);
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode == 0x0f)
         {
@@ -1281,14 +1281,14 @@ internal class P8086
             _state.cs = pop();
             _state.inhibit_interrupts = true;
 
-            cycle_count += 8;
+            cycle_count += 12;
         }
         else if (opcode == 0x16)
         {
             // PUSH SS
             push(_state.ss);
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode == 0x17)
         {
@@ -1296,7 +1296,7 @@ internal class P8086
             _state.ss = pop();
             _state.inhibit_interrupts = true;
 
-            cycle_count += 11;  // 15
+            cycle_count += 12;
         }
         else if (opcode == 0x1c)
         {
@@ -1644,28 +1644,28 @@ internal class P8086
             // PUSH AX
             push(GetAX());
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode == 0x51)
         {
             // PUSH CX
             push(GetCX());
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode == 0x52)
         {
             // PUSH DX
             push(GetDX());
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode == 0x53)
         {
             // PUSH BX
             push(GetBX());
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode == 0x54)
         {
@@ -1675,28 +1675,28 @@ internal class P8086
             _state.sp -= 2;
             WriteMemWord(_state.ss, _state.sp, _state.sp);
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode == 0x55)
         {
             // PUSH BP
             push(_state.bp);
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode == 0x56)
         {
             // PUSH SI
             push(_state.si);
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode == 0x57)
         {
             // PUSH DI
             push(_state.di);
 
-            cycle_count += 11;  // 15
+            cycle_count += 15;
         }
         else if (opcode is (0x80 or 0x81 or 0x82 or 0x83))
         {
@@ -1946,7 +1946,7 @@ internal class P8086
             // PUSHF
             push(_state.flags);
 
-            cycle_count += 10;  // 14
+            cycle_count += 14;
         }
         else if (opcode == 0x9d)
         {
@@ -1958,7 +1958,7 @@ internal class P8086
             if (GetFlagT() && before == false)
                 back_from_trace = true;
 
-            cycle_count += 8;  // 12
+            cycle_count += 12;
 
             FixFlags();
         }
@@ -2020,7 +2020,7 @@ internal class P8086
 
             PutRegister(reg, true, val);
 
-            cycle_count += 7 + get_cycles;
+            cycle_count += 24 + get_cycles;
         }
         else if (opcode == 0xcc || opcode == 0xcd || opcode == 0xce)
         {
@@ -2807,11 +2807,11 @@ internal class P8086
             if (opcode == 0xca || opcode == 0xc8)
             {
                 _state.sp += nToRelease;
-                cycle_count += 16;
+                cycle_count += opcode == 0xca ? 33 : 24;
             }
             else
             {
-                cycle_count += 26;
+                cycle_count += opcode == 0xcb ? 34 : 20;
             }
         }
         else if ((opcode & 0xfc) == 0xd0)
@@ -3247,7 +3247,7 @@ internal class P8086
             (ushort val, bool i) = _io.In(@from);
             _state.al = (byte)val;
 
-            cycle_count += 10;  // or 14
+            cycle_count += 14;
         }
         else if (opcode == 0xe5)
         {
@@ -3257,7 +3257,7 @@ internal class P8086
             (ushort val, bool i) = _io.In(@from);
             SetAX(val);
 
-            cycle_count += 10;  // or 14
+            cycle_count += 14;
         }
         else if (opcode == 0xe6)
         {
@@ -3296,7 +3296,7 @@ internal class P8086
             // OUT
             _io.Out(GetDX(), _state.al);
 
-            cycle_count += 8;  // or 12
+            cycle_count += 12;
         }
         else if (opcode == 0xef)
         {
