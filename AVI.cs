@@ -1,3 +1,8 @@
+using JpegLibrary;
+using JpegLibrary.ColorConverters;
+using JpegLibrary.Utils;
+using System.Buffers;
+
 internal enum AVI_CODEC { RAW, MRLE, JPEG };
 
 internal struct AviThreadParameters
@@ -129,15 +134,31 @@ class AVI
         }
         else if (_codec == AVI_CODEC.JPEG)
         {
-            BitmapSource image = BitmapSource.Create(_width, _height, 96, 96, PixelFormats.Rgb24, null, g.rgb_pixels, _width);
-            JpegBitmapEncoder encoder = new JpegBitmapEncoder();
-            encoder.FlipHorizontal = true;
-            encoder.FlipVertical = false;
-            encoder.QualityLevel = 75;
-            encoder.Frames.Add(BitmapFrame.Create(image));
-            MemoryStream stream = new MemoryStream();
-            encoder.Save(stream);
-            return GenChunk(new char[] { '0', '0', 'd', 'c' }, stream.ToArray());
+            // Convert RGB to YCbCr
+            byte[] ycbcr = new byte[_width * _height * 3];
+            byte[] row = new byte[_width * 3];
+            for (int i = 0; i < _height; i++)
+            {
+                Array.Copy(g.rgb_pixels, i * _width * 3, row, 0, _width * 3);
+                JpegRgbToYCbCrConverter.Shared.ConvertRgb24ToYCbCr8(row, ycbcr.AsSpan(3 * _width * i, 3 * _width), _width);
+            }
+
+            var encoder = new JpegEncoder();
+            encoder.SetQuantizationTable(JpegStandardQuantizationTable.ScaleByQuality(JpegStandardQuantizationTable.GetLuminanceTable(JpegElementPrecision.Precision8Bit, 0), 95));
+            encoder.SetQuantizationTable(JpegStandardQuantizationTable.ScaleByQuality(JpegStandardQuantizationTable.GetChrominanceTable(JpegElementPrecision.Precision8Bit, 1), 95));
+            encoder.SetHuffmanTable(true, 0, JpegStandardHuffmanEncodingTable.GetLuminanceDCTable());
+            encoder.SetHuffmanTable(false, 0, JpegStandardHuffmanEncodingTable.GetLuminanceACTable());
+            encoder.SetHuffmanTable(true, 1, JpegStandardHuffmanEncodingTable.GetChrominanceDCTable());
+            encoder.SetHuffmanTable(false, 1, JpegStandardHuffmanEncodingTable.GetChrominanceACTable());
+            encoder.AddComponent(1, 0, 0, 0, 2, 2); // Y component
+            encoder.AddComponent(2, 1, 1, 1, 1, 1); // Cb component
+            encoder.AddComponent(3, 1, 1, 1, 1, 1); // Cr component
+            encoder.SetInputReader(new JpegBufferInputReader(_width, _height, 3, ycbcr));
+            var writer = new ArrayBufferWriter<byte>();
+            encoder.SetOutput(writer);
+            encoder.Encode();
+
+            return GenChunk(new char[] { '0', '0', 'd', 'c' }, writer.WrittenSpan.ToArray());
         }
         else
         {
