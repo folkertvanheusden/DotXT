@@ -218,9 +218,11 @@ class CGA : Display
 
     public void DrawOnConsole(uint use_offset)
     {
-        try
+        int offset = 0;
+
+        if (_cga_mode == CGAMode.G320)
         {
-            if (_cga_mode == CGAMode.G320)
+            if (use_offset >= _display_address)
             {
                 int x = 0;
                 int y = 0;
@@ -247,7 +249,7 @@ class CGA : Display
                     {
                         int color_index = (b >> (x_i * 2)) & 3;
                         int x_offset = (x + 3 - x_i) * 3 * 2;
-                        int offset = y_offset + x_offset;
+                        offset = y_offset + x_offset;
 
                         byte [] color = GetPixelColor(color_index);
                         _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
@@ -260,99 +262,91 @@ class CGA : Display
                     }
                 }
             }
-            else if (_cga_mode == CGAMode.G640)
+        }
+        else if (_cga_mode == CGAMode.G640)
+        {
+            if (use_offset >= _display_address && use_offset < _display_address + 16000)
             {
-                if (use_offset >= _display_address && use_offset < _display_address + 16000)
+                int x = 0;
+                int y = 0;
+
+                if (use_offset - _display_address >= 8192)
                 {
-                    int x = 0;
-                    int y = 0;
+                    uint addr_without_base = use_offset - 8192 - _display_address;
+                    y = (int)addr_without_base / 80 * 2 + 1;
+                    x = (int)(addr_without_base % 80) * 8;
+                }
+                else
+                {
+                    uint addr_without_base = use_offset - _display_address;
+                    y = (int)addr_without_base / 80 * 2;
+                    x = (int)(addr_without_base % 80) * 8;
+                }
 
-                    if (use_offset - _display_address >= 8192)
+                if (y < 200 && x < 640)
+                {
+                    byte b = _ram[use_offset];
+                    for(int x_i = 0; x_i < 8; x_i++)
                     {
-                        uint addr_without_base = use_offset - 8192 - _display_address;
-                        y = (int)addr_without_base / 80 * 2 + 1;
-                        x = (int)(addr_without_base % 80) * 8;
-                    }
-                    else
-                    {
-                        uint addr_without_base = use_offset - _display_address;
-                        y = (int)addr_without_base / 80 * 2;
-                        x = (int)(addr_without_base % 80) * 8;
-                    }
-
-                    if (y < 200 && x < 640)
-                    {
-                        byte b = _ram[use_offset];
-                        for(int x_i = 0; x_i < 8; x_i++)
-                        {
-                            byte value = (byte)((b & 1) != 0 ? 255 : 0);
-                            int offset1 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
-                            _gf.rgb_pixels[offset1 + 0] = _gf.rgb_pixels[offset1 + 1] = _gf.rgb_pixels[offset1 + 2] = value;
-                            int offset2 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
-                            _gf.rgb_pixels[offset2 + 0] = _gf.rgb_pixels[offset2 + 1] = _gf.rgb_pixels[offset2 + 2] = value;
-                            b >>= 1;
-                        }
+                        byte value = (byte)((b & 1) != 0 ? 255 : 0);
+                        int offset1 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
+                        _gf.rgb_pixels[offset1 + 0] = _gf.rgb_pixels[offset1 + 1] = _gf.rgb_pixels[offset1 + 2] = value;
+                        int offset2 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
+                        _gf.rgb_pixels[offset2 + 0] = _gf.rgb_pixels[offset2 + 1] = _gf.rgb_pixels[offset2 + 2] = value;
+                        b >>= 1;
                     }
                 }
             }
-            else  // text
+        }
+        else  // text
+        {
+            int width = _cga_mode == CGAMode.Text40 ? 40 : 80;
+
+            if (use_offset >= _display_address && use_offset < Math.Min(_display_address + width * 25 * 2, 16384))
             {
-                int width = _cga_mode == CGAMode.Text40 ? 40 : 80;
+                uint addr_without_base = use_offset - _display_address;
+                uint y = (uint)(addr_without_base / (width * 2));
+                uint x = (uint)(addr_without_base % (width * 2)) / 2;
 
-                if (use_offset >= _display_address && use_offset < Math.Min(_display_address + width * 25 * 2, 16384))
+                uint mask = uint.MaxValue - 1;
+                uint char_base_offset = addr_without_base & mask;
+
+                byte character = _ram[char_base_offset + 0];
+                byte attributes = _ram[char_base_offset + 1];
+
+                EmulateTextDisplay(x, y, character, attributes);
+
+                if (_gf.rgb_pixels != null && y + font_descr.height <= _gf.height && x + 8 <= _gf.width)
                 {
-                    uint addr_without_base = use_offset - _display_address;
-                    uint y = (uint)(addr_without_base / (width * 2));
-                    uint x = (uint)(addr_without_base % (width * 2)) / 2;
-
-                    uint mask = uint.MaxValue - 1;
-                    uint char_base_offset = addr_without_base & mask;
-
-                    byte character = _ram[char_base_offset + 0];
-                    byte attributes = _ram[char_base_offset + 1];
-
-                    EmulateTextDisplay(x, y, character, attributes);
-
-                    if (_gf.rgb_pixels != null && y + font_descr.height <= _gf.height && x + 8 <= _gf.width)
+                    int char_offset = character * font_descr.height;
+                    int fg = attributes & 15;
+                    int bg = (attributes >> 4) & 7;
+                    for(int yo=0; yo<font_descr.height; yo++)
                     {
-                        int char_offset = character * font_descr.height;
-                        int fg = attributes & 15;
-                        int bg = (attributes >> 4) & 7;
-                        for(int yo=0; yo<font_descr.height; yo++)
+                        int y_pixel_offset = ((int)y * font_descr.height + yo) * _gf.width * 3;
+                        byte line = font_descr.pixels[char_offset + yo];
+                        byte bit_mask = 128;
+                        for(int xo=0; xo<8; xo++)
                         {
-                            int y_pixel_offset = ((int)y * font_descr.height + yo) * _gf.width * 3;
-                            byte line = font_descr.pixels[char_offset + yo];
-                            byte bit_mask = 128;
-                            for(int xo=0; xo<8; xo++)
+                            int x_pixel_offset = y_pixel_offset + ((int)x * 8 + xo) * 3;
+                            bool is_fg = (line & bit_mask) != 0;
+                            bit_mask >>= 1;
+                            if (is_fg)
                             {
-                                int x_pixel_offset = y_pixel_offset + ((int)x * 8 + xo) * 3;
-                                bool is_fg = (line & bit_mask) != 0;
-                                bit_mask >>= 1;
-                                if (is_fg)
-                                {
-                                    _gf.rgb_pixels[x_pixel_offset + 0] = palette[fg][0];
-                                    _gf.rgb_pixels[x_pixel_offset + 1] = palette[fg][1];
-                                    _gf.rgb_pixels[x_pixel_offset + 2] = palette[fg][2];
-                                }
-                                else
-                                {
-                                    _gf.rgb_pixels[x_pixel_offset + 0] = palette[bg][0];
-                                    _gf.rgb_pixels[x_pixel_offset + 1] = palette[bg][1];
-                                    _gf.rgb_pixels[x_pixel_offset + 2] = palette[bg][2];
-                                }
+                                _gf.rgb_pixels[x_pixel_offset + 0] = palette[fg][0];
+                                _gf.rgb_pixels[x_pixel_offset + 1] = palette[fg][1];
+                                _gf.rgb_pixels[x_pixel_offset + 2] = palette[fg][2];
+                            }
+                            else
+                            {
+                                _gf.rgb_pixels[x_pixel_offset + 0] = palette[bg][0];
+                                _gf.rgb_pixels[x_pixel_offset + 1] = palette[bg][1];
+                                _gf.rgb_pixels[x_pixel_offset + 2] = palette[bg][2];
                             }
                         }
                     }
                 }
             }
-        }
-        // it is not understood why this exception occasionally occurs
-        // checking the offset against overflows did not show any problems
-        // hence this workaround
-        // TODO
-        catch(System.IndexOutOfRangeException e)
-        {
-            Log.DoLog($"System.IndexOutOfRangeException {e}", LogLevel.TRACE);
         }
     }
 
