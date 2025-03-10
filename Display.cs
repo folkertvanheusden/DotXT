@@ -25,7 +25,7 @@ abstract class Display : Device
 
     public virtual int GetHeight()
     {
-        return 350;
+        return 400;
     }
 
     public override int GetIRQNumber()
