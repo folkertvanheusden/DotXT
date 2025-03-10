@@ -69,7 +69,9 @@ class AVI
             thread_parameters.avi.PushFrame();
 
             long end_ts = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-            Thread.Sleep((int)(1000 / 15 - (end_ts - start_ts)));  // 15 is hardcoded fps TODO
+            int sleep_n = (int)(1000 / 15 - (end_ts - start_ts));  // 15 is hardcoded fps TODO
+            if (sleep_n > 0)
+                Thread.Sleep(sleep_n);
         }
     }
 
