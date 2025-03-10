@@ -36,7 +36,7 @@ class AVI
 
         byte[] main_avi_header = GenMainAVIHeader(fps, _width, _height);
 
-        byte[] stream_header = GenStreamHeader(fps, _codec);
+        byte[] stream_header = GenStreamHeader(fps, _width, _height, _codec);
         byte[] stream_format = GenStreamFormat(_width, _height, _codec);
         byte[] stream_list = GenList(new char[] { 's', 't', 'r', 'l' }, stream_header.Concat(stream_format).ToArray());
 
@@ -264,13 +264,13 @@ class AVI
         PutDWORD(ref @out, 16, 0);  // total number of frames
         PutDWORD(ref @out, 20, 0);  // initial frames
         PutDWORD(ref @out, 24, 1);  // number of streams
-        PutDWORD(ref @out, 28, 0);  // suggested buffer size
+        PutDWORD(ref @out, 28, (uint)(width * height * 3));  // suggested buffer size
         PutDWORD(ref @out, 32, (uint)width);
         PutDWORD(ref @out, 36, (uint)height);
         return GenChunk(new char[] { 'a', 'v', 'i', 'h' }, @out);
     }
 
-    private byte[] GenStreamHeader(int fps, AVI_CODEC codec)
+    private byte[] GenStreamHeader(int fps, int width, int height, AVI_CODEC codec)
     {
         byte[] @out = new byte[12 * 4 + 4 * 2];
         @out[0] = (byte)'v';  // type
@@ -306,7 +306,7 @@ class AVI
         PutDWORD(ref @out, 24, (uint)fps);  // rate
         PutDWORD(ref @out, 28, 0);  // start
         PutDWORD(ref @out, 32, 0);  // length
-        PutDWORD(ref @out, 36, 0);  // suggested buffer size
+        PutDWORD(ref @out, 36, (uint)(width * height * 3));  // suggested buffer size
         PutDWORD(ref @out, 40, 0);  // quality
         PutDWORD(ref @out, 44, 4);  // sample size
         // RECT rcFrame
