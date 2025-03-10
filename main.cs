@@ -31,6 +31,7 @@ bool use_rtc = false;
 bool use_adlib = false;
 
 string avi_file = null;
+int avi_quality = 95;
 
 for(int i=0; i<args.Length; i++)
 {
@@ -52,11 +53,15 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("-O        enable option. currently: adlib, midi, rtc");
         Log.Cnsl("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
         Log.Cnsl($"-p device,type,port   display output. type must be \"telnet\", \"http\" or \"vnc\". device can be \"{key_cga}\" or \"{key_mda}\".");
-        Log.Cnsl("-P avi    avi file to render display to");
+        Log.Cnsl("-P avi,quality    avi file to render display to, quality is 0...100");
         System.Environment.Exit(0);
     }
     else if (args[i] == "-P")
-        avi_file = args[++i];
+    {
+        string[] parts = args[++i].Split(',');
+        avi_file = parts[0];
+        avi_quality = Convert.ToInt32(parts[1], 10);
+    }
     else if (args[i] == "-M")
     {
         string[] parts = args[++i].Split(',');
@@ -252,7 +257,7 @@ if (mode != TMode.Empty)
         devices.Add(new XTServer(bin_file, bin_file_addr, display, xts_trace_file));
 
     if (avi_file != null)
-        avi = new AVI(avi_file, 15, display, AVI_CODEC.JPEG);
+        avi = new AVI(avi_file, 15, display, AVI_CODEC.JPEG, avi_quality);
 }
 
 // Bus gets the devices for memory mapped i/o
