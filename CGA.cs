@@ -78,11 +78,6 @@ class CGA : Display
         return "CGA";
     }
 
-    public override int GetHeight()
-    {
-        return 512;
-    }
-
     public override List<string> GetState()
     {
         List<string> @out = new();

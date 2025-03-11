@@ -457,7 +457,7 @@ else
                 Log.Cnsl("sbp x          set breakpoint");
                 Log.Cnsl("dbp x          delete breakpoint");
                 Log.Cnsl("cbp            remove all breakpoints");
-                Log.Cnsl("stats x        \"cpu-speed\", \"timers\", \"pic\"");
+                Log.Cnsl("stats x        \"cpu-speed\", \"timers\", \"cga\" or \"pic\"");
                 Log.Cnsl("setll x        set loglevel (trace, debug, ...)");
                 Log.Cnsl("trunclf        truncate logfile");
             }
@@ -532,32 +532,40 @@ else
             {
                 if (parts.Length < 2)
                     Log.Cnsl("Parameter missing");
-                else if (parts[1] == "cpu-speed")
-                {
-                    if (running)
-                        MeasureSpeed(p, parts.Length == 3 && parts[2] == "-c");
-                    else
-                        Log.Cnsl("Emulation not running");
-                }
-                else if (parts[1] == "i8253" || parts[1] == "timers")
-                {
-                    foreach(var device in devices)
-                    {
-                        if (device is i8253)
-                            DumpState(device);
-                    }
-                }
-                else if (parts[1] == "i8259" || parts[1] == "pic")
-                {
-                    foreach(var device in devices)
-                    {
-                        if (device is i8259)
-                            DumpState(device);
-                    }
-                }
                 else
                 {
-                    Log.Cnsl($"{parts[1]} is not understood");
+                    string type = parts[1].ToLower();
+                    if (type == "cpu-speed")
+                    {
+                        if (running)
+                            MeasureSpeed(p, parts.Length == 3 && parts[2] == "-c");
+                        else
+                            Log.Cnsl("Emulation not running");
+                    }
+                    else if (type == "i8253" || type == "timers")
+                    {
+                        foreach(var device in devices)
+                        {
+                            if (device is i8253)
+                                DumpState(device);
+                        }
+                    }
+                    else if (type == "i8259" || type == "pic")
+                    {
+                        foreach(var device in devices)
+                        {
+                            if (device is i8259)
+                                DumpState(device);
+                        }
+                    }
+                    else if (type == "cga")
+                    {
+                        foreach(var device in devices)
+                        {
+                            if (device is CGA)
+                                DumpState(device);
+                        }
+                    }
                 }
             }
             else if (parts[0] == "echo")
