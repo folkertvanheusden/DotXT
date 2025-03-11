@@ -380,6 +380,7 @@ else
                 Log.Cnsl("setfloppy x y  set floppy unit x (0 based) to file y");
                 Log.Cnsl("get [reg|ram] [regname|address]  get value from a register/memory location");
                 Log.Cnsl("set [reg|ram] [regname|address] value   set registers/memory to a value");
+                Log.Cnsl("dump addr,size file  dump memory pointer to by addr (xxxx:yyyy) to file");
                 Log.Cnsl("get/set        value/address can be decimal or hexadecimal (prefix with 0x)");
                 Log.Cnsl("hd x           hexdump of a few bytes starting at address x");
                 Log.Cnsl("hd cs:ip       hexdump of a few bytes starting at address cs:ip");
@@ -436,6 +437,14 @@ else
                 if (running)
                     Log.Cnsl("Please stop+start emulation to activate tracing");
             }
+            else if (parts[0] == "dump")
+            {
+                string[] aparts = parts[1].Split(",");
+                uint addr = (uint)GetValue(aparts[0], true);
+                int size = GetValue(aparts[1], false);
+
+                dump(b, addr, size, parts[2]);
+            }
             else if (parts[0] == "trunclf")
             {
                 Log.TruncateLogfile();
@@ -469,6 +478,10 @@ else
                                 Log.Cnsl(state_line);
                         }
                     }
+                }
+                else
+                {
+                    Log.Cnsl($"{parts[1]} is not understood");
                 }
             }
             else if (parts[0] == "echo")
@@ -932,6 +945,21 @@ void AddXTServerBootROM(Bus b)
     for(int i=0; i<512; i++)
         checksum += b.ReadByte((uint)(start_addr + i)).Item1;
     b.WriteByte(start_addr + 511, (byte)(~checksum));
+}
+
+void dump(Bus b, uint addr, int size, string filename)
+{
+    using (FileStream fs = File.Open(filename, FileMode.Create, FileAccess.Write, FileShare.None))
+    {
+        byte [] buffer = new byte[1];
+        for(uint i=addr; i<(uint)(addr + size); i++)
+        {
+            buffer[0] = b.ReadByte(i).Item1;
+            fs.Write(buffer);
+        }
+    }
+
+    Log.Cnsl($"Wrote {size} bytes to {filename}");
 }
 
 class ThreadSafe_Bool
