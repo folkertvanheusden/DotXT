@@ -105,9 +105,12 @@ class CGA : Display
         else if (port == 0x3d5 || port == 0x3d7 || port == 0x3d1 || port == 0x3d3)
         {
             _m6845.Write(_m6845_reg, (byte)value);
-            _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
-            Log.DoLog($"Set base address to {_display_address:X04}", LogLevel.DEBUG);
-            Redraw();
+            if (_m6845_reg == 12 || _m6845_reg == 13)
+            {
+                _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
+                Log.DoLog($"Set base address to {_display_address:X04}", LogLevel.DEBUG);
+                Redraw();
+            }
         }
         else if (port == 0x3d8)
         {
