@@ -247,7 +247,7 @@ class VNCServer: GraphicalConsole
 
         session.stream.ReadTimeout = 1000;  // sane(?) timeout
 
-        Log.DoLog($"VNC: Client message {type[0]} received", LogLevel.TRACE);
+        // Log.DoLog($"VNC: Client message {type[0]} received", LogLevel.TRACE);
 
         if (type[0] == 0)  // SetPixelFormat
         {
