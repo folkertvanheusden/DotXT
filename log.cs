@@ -144,8 +144,15 @@ class Log
         if ((_logfile == null && _echo == false) || ll < _ll)
             return;
 
-        string output = $"{_clock} {_cs:X4}:{_ip:X4} | {ll} | " + what;
-        _log_queue.Add(output);
+        try
+        {
+            string output = $"{_clock} {_cs:X4}:{_ip:X4} | {ll} | " + what;
+            _log_queue.Add(output);
+        }
+        catch(System.InvalidOperationException e)
+        {
+            // in case the queue was closed in an other thread
+        }
 
         if (_echo)
             Log.Cnsl(what);
