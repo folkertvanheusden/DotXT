@@ -29,6 +29,7 @@ bool throttle = false;
 bool use_midi = false;
 bool use_rtc = false;
 bool use_adlib = false;
+bool use_lotechems = false;
 
 string avi_file = null;
 int avi_quality = 95;
@@ -50,7 +51,7 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("-F file   load floppy image (multiple for drive A-D)");
         Log.Cnsl("-D file   disassemble to file");
         Log.Cnsl("-S        try to run at real speed");
-        Log.Cnsl("-O        enable option. currently: adlib, midi, rtc");
+        Log.Cnsl("-O        enable option. currently: adlib, midi, rtc, lotechems");
         Log.Cnsl("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
         Log.Cnsl($"-p device,type,port   display output. type must be \"telnet\", \"http\" or \"vnc\". device can be \"{key_cga}\" or \"{key_mda}\".");
         Log.Cnsl("-P avi,quality    avi file to render display to, quality is 0...100");
@@ -127,6 +128,8 @@ for(int i=0; i<args.Length; i++)
             use_midi = true;
         else if (what == "rtc")
             use_rtc = true;
+        else if (what == "lotechems")
+            use_lotechems = true;
         else
         {
             Log.Cnsl($"{what} is not understood");
@@ -265,6 +268,9 @@ if (mode != TMode.Empty)
 
     if (avi_file != null)
         avi = new AVI(avi_file, 15, display, AVI_CODEC.JPEG, avi_quality);
+
+    if (use_lotechems)
+        devices.Add(new LotechEMS());
 }
 
 // Bus gets the devices for memory mapped i/o
