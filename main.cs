@@ -36,7 +36,7 @@ int avi_quality = 95;
 for(int i=0; i<args.Length; i++)
 {
     if (args[i] == "-h") {
-        Log.Cnsl("-m mode   \"normal\" (=default), \"json\", \"xtserver\" or \"empty\"");
+        Log.Cnsl("-m mode   \"normal\" (=default), \"json\", \"xtserver\", \"cc\" (count cycles) or \"empty\"");
         Log.Cnsl("-M mode-parameters");
         Log.Cnsl("          load-bin,<file>,<segment:offset>");
         Log.Cnsl("          set-start-addr,<segment:offset>");
@@ -77,7 +77,7 @@ for(int i=0; i<args.Length; i++)
             string[] aparts = parts[1].Split(":");
             initial_cs = (ushort)GetValue(aparts[0], true);
             initial_ip = (ushort)GetValue(aparts[1], true);
-            Log.Cnsl($"Start runnng at {initial_cs:X04}:{initial_ip:X04}");
+            Log.Cnsl($"Start running at {initial_cs:X04}:{initial_ip:X04}");
         }
         else if (parts[0] == "no-io")
         {
@@ -88,6 +88,11 @@ for(int i=0; i<args.Length; i++)
         {
             xts_trace_file = parts[1];
             Log.Cnsl($"XT-Server emulation output will go to {xts_trace_file}");
+        }
+        else
+        {
+            Log.Cnsl($"{parts[0]} is not understood");
+            System.Environment.Exit(1);
         }
     }
     else if (args[i] == "-m") {
@@ -101,6 +106,8 @@ for(int i=0; i<args.Length; i++)
             mode = TMode.JSON;
         else if (type == "tests")
             mode = TMode.Tests;
+        else if (type == "cc")
+            mode = TMode.CC;
         else if (type == "xtserver")
             mode = TMode.XTServer;
         else
@@ -190,7 +197,7 @@ if (mode == TMode.Normal)
     Log.Cnsl("Released in the public domain");
 }
 
-Console.TreatControlCAsInput = true;
+//Console.TreatControlCAsInput = true;
 
 #if DEBUG
 Log.Cnsl("Debug build");
@@ -253,7 +260,7 @@ if (mode != TMode.Empty)
     if (use_rtc)
         devices.Add(new RTC());
 
-    if (bin_file != "" || display != null)
+    if ((bin_file != "" || display != null) && mode == TMode.XTServer)
         devices.Add(new XTServer(bin_file, bin_file_addr, display, xts_trace_file));
 
     if (avi_file != null)
@@ -265,11 +272,14 @@ Bus b = new Bus(ram_size * 1024, ref devices, ref roms);
 var d = new P8086Disassembler(b);
 var p = new P8086(ref b, ref devices, run_IO);
 
-if (mode == TMode.Normal || mode == TMode.XTServer)
+if (mode == TMode.Normal || mode == TMode.XTServer || mode == TMode.CC)
     p.SetIP(initial_cs, initial_ip);
 
 if (mode == TMode.XTServer)
     AddXTServerBootROM(b);
+
+if (mode == TMode.CC && bin_file != "")
+    Tools.LoadBin(b, bin_file, bin_file_addr);
 
 if (mode == TMode.JSON)
 {
@@ -335,6 +345,25 @@ if (mode == TMode.JSON)
         }
 
         Console.Out.Flush();
+    }
+}
+else if (mode == TMode.CC)
+{
+    for(;;)
+    {
+        int opcode = p.ReadMemByte(p.GetCS(), p.GetIP());
+        int rc = p.Tick();
+        if (rc == -1)
+        {
+            Log.Cnsl("Failed running program");
+            break;
+        }
+
+        if (opcode == 0xf4)
+        {
+            Log.Cnsl($"Running program (including HLT) took {p.GetClock()} cycles");
+            break;
+        }
     }
 }
 else
@@ -1000,6 +1029,7 @@ internal enum TMode
     Normal,
     JSON,
     XTServer,
+    CC,
     Tests,
     Empty
 }

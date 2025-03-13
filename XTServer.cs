@@ -37,33 +37,6 @@ internal class XTServer : Device
         mappings[0xf065] = this;
     }
 
-    private void LoadBin(Bus b, string file, uint addr)
-    {
-        Log.DoLog($"Load {file} at {addr:X6}", LogLevel.INFO);
-
-        try
-        {
-            using(Stream source = File.Open(file, FileMode.Open))
-            {
-                byte[] buffer = new byte[512];
-
-                for(;;)
-                {
-                    int n_read = source.Read(buffer, 0, 512);
-                    if (n_read == 0)
-                        break;
-
-                    for(int i=0; i<n_read; i++)
-                        b.WriteByte(addr++, buffer[i]);
-                }
-            }
-        }
-        catch(Exception e)
-        {
-            Log.DoLog($"Failed to load {file}: {e}", LogLevel.ERROR);
-        }
-    }
-
     public override (ushort, bool) IO_Read(ushort port)
     {
         return (0xaa, false);
@@ -97,7 +70,7 @@ internal class XTServer : Device
             }
             else if (value == 0xff)  //  load test code
             {
-                LoadBin(_b, _bin_file, _bin_file_load_address);
+                Tools.LoadBin(_b, _bin_file, _bin_file_load_address);
             }
         }
         else if (port == 0xf063)
