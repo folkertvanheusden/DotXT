@@ -38,7 +38,7 @@ abstract class Display : Device
         return _gf_version;
     }
 
-    public GraphicalFrame GetFrame()
+    public virtual GraphicalFrame GetFrame()
     {
         // TODO locking
         GraphicalFrame gf = new();
@@ -151,8 +151,6 @@ abstract class Display : Device
     }
 
     public abstract override String GetName();
-
-    public abstract void Redraw();
 
     public abstract override void RegisterDevice(Dictionary <ushort, Device> mappings);
 

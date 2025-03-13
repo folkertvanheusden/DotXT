@@ -58,8 +58,13 @@ class CGA : Display
     public CGA(List<EmulatorConsole> consoles): base(consoles)
     {
         Log.Cnsl("CGA instantiated");
-        font_descr = fonts.get_font(FontName.VGA);
-        _gf.rgb_pixels = null;
+        font_descr = fonts.get_font(FontName.CGA);
+
+        _m6845.Write(9, 8);
+
+        _gf.width = 640;
+        _gf.height = 400;
+        _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
     }
 
     public override String GetName()
@@ -109,7 +114,6 @@ class CGA : Display
             {
                 _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
                 Log.DoLog($"Set base address to {_display_address:X04}", LogLevel.DEBUG);
-                Redraw();
             }
         }
         else if (port == 0x3d8)
@@ -119,36 +123,23 @@ class CGA : Display
                 if ((value & 2) == 2)  // graphics 320x200
                 {
                     if ((value & 16) == 16)  // graphics 640x200
-                    {
-                        _gf.width = 640;
-                        _gf.height = 400;  // pixeldoubler, else 200
                         _cga_mode = CGAMode.G640;
-                    }
                     else
-                    {
-                        _gf.width = 640;  // pixeldoubler, else 320
-                        _gf.height = 400;  // pixeldoubler, else 200
                         _cga_mode = CGAMode.G320;
-                    }
                 }
                 else
                 {
                     if ((value & 1) == 1)
-                    {
                         _cga_mode = CGAMode.Text80;
-                        _gf.width = 640;
-                    }
                     else
-                    {
                         _cga_mode = CGAMode.Text40;
-                        _gf.width = 320;
-                    }
-                    _gf.height = font_descr.height * 25;
                 }
-                _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
                 _graphics_mode = (byte)value;
                 Log.DoLog($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
-                Redraw();
+                Console.WriteLine($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
+
+                var span = new Span<byte>(_gf.rgb_pixels);
+                span.Fill(0x00);
             }
         }
         else if (port == 0x3d9)
@@ -160,6 +151,8 @@ class CGA : Display
         {
             Log.DoLog($"CGA output to this ({port:X04}) port not implemented", LogLevel.DEBUG);
         }
+
+        _gf_version++;
 
         return false;
     }
@@ -191,7 +184,6 @@ class CGA : Display
     {
         uint use_offset = (offset - 0xb8000) & 0x3fff;
         _ram[use_offset] = value;
-        DrawOnConsole(use_offset);
         _gf_version++;
     }
 
@@ -219,174 +211,93 @@ class CGA : Display
         return rgb;
     }
 
-    public void DrawOnConsole(uint use_offset)
+    private void RenderTextFrameGraphical()  // TODO: text render for telnet
     {
-        int offset = 0;
+        if (_gf.rgb_pixels == null)
+            return;
 
-        if (_cga_mode == CGAMode.G320)
+        int width = _cga_mode == CGAMode.Text40 ? 40 : 80;
+
+        uint mem_pointer = _display_address;
+        int y = 0;
+        int reg_9 = _m6845.Read(9);
+        int n_lines_from_char = Math.Min(font_descr.height, reg_9);
+
+        while(y < 200 && mem_pointer < 16384)
         {
-            if (use_offset >= _display_address)
+            uint x = (uint)(mem_pointer % (width * 2)) / 2;
+
+            uint char_base_offset = mem_pointer & 16382;
+            byte character = _ram[char_base_offset + 0];
+            byte attributes = _ram[char_base_offset + 1];
+            mem_pointer += 2;
+
+            int char_offset = character * font_descr.height;
+            int fg = attributes & 15;
+            int bg = (attributes >> 4) & 7;
+            int render_n = Math.Min(200 - y, n_lines_from_char);
+            for(int yo=0; yo<render_n; yo++)
             {
-                int x = 0;
-                int y = 0;
-
-                if (use_offset - _display_address >= 8192)
+                int y_pixel_offset = (y + yo) * _gf.width * 3 * 2;
+                byte line = font_descr.pixels[char_offset + yo];
+                byte bit_mask = 128;
+                for(int xo=0; xo<8; xo++, bit_mask >>= 1)
                 {
-                    uint addr_without_base = use_offset - 8192 - _display_address;
-                    y = (int)addr_without_base / 80 * 2 + 1;
-                    x = (int)(addr_without_base % 80) * 4;
-                }
-                else
-                {
-                    uint addr_without_base = use_offset - _display_address;
-                    y = (int)addr_without_base / 80 * 2;
-                    x = (int)(addr_without_base % 80) * 4;
-                }
-
-                if (y < 200 && x < 320)
-                {
-                    byte b = _ram[use_offset];
-
-                    int y_offset = y * 320 * 3 * 4;
-                    for(int x_i = 0; x_i < 4; x_i++)
+                    int x_pixel_offset = ((int)x * 8 + xo) * 3;
+                    int pixel_offset = x_pixel_offset + y_pixel_offset;
+                    bool is_fg = (line & bit_mask) != 0;
+                    if (is_fg)
                     {
-                        int color_index = (b >> (x_i * 2)) & 3;
-                        int x_offset = (x + 3 - x_i) * 3 * 2;
-                        offset = y_offset + x_offset;
-
-                        byte [] color = GetPixelColor(color_index);
-                        _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
-                        _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = color[1];
-                        _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = color[2];
-                        offset += 320 * 3 * 2;
-                        _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
-                        _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = color[1];
-                        _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = color[2];
+                        _gf.rgb_pixels[pixel_offset + 0] = palette[fg][0];
+                        _gf.rgb_pixels[pixel_offset + 1] = palette[fg][1];
+                        _gf.rgb_pixels[pixel_offset + 2] = palette[fg][2];
+                        pixel_offset += _gf.width * 3;
+                        _gf.rgb_pixels[pixel_offset + 0] = palette[fg][0];
+                        _gf.rgb_pixels[pixel_offset + 1] = palette[fg][1];
+                        _gf.rgb_pixels[pixel_offset + 2] = palette[fg][2];
+                    }
+                    else
+                    {
+                        _gf.rgb_pixels[pixel_offset + 0] = palette[bg][0];
+                        _gf.rgb_pixels[pixel_offset + 1] = palette[bg][1];
+                        _gf.rgb_pixels[pixel_offset + 2] = palette[bg][2];
+                        pixel_offset += _gf.width * 3;
+                        _gf.rgb_pixels[pixel_offset + 0] = palette[bg][0];
+                        _gf.rgb_pixels[pixel_offset + 1] = palette[bg][1];
+                        _gf.rgb_pixels[pixel_offset + 2] = palette[bg][2];
                     }
                 }
             }
-        }
-        else if (_cga_mode == CGAMode.G640)
-        {
-            if (use_offset >= _display_address && use_offset < _display_address + 16000)
-            {
-                int x = 0;
-                int y = 0;
 
-                if (use_offset - _display_address >= 8192)
-                {
-                    uint addr_without_base = use_offset - 8192 - _display_address;
-                    y = (int)addr_without_base / 80 * 2 + 1;
-                    x = (int)(addr_without_base % 80) * 8;
-                }
-                else
-                {
-                    uint addr_without_base = use_offset - _display_address;
-                    y = (int)addr_without_base / 80 * 2;
-                    x = (int)(addr_without_base % 80) * 8;
-                }
-
-                if (y < 200 && x < 640)
-                {
-                    byte b = _ram[use_offset];
-                    for(int x_i = 0; x_i < 8; x_i++)
-                    {
-                        byte value = (byte)((b & 1) != 0 ? 255 : 0);
-                        int offset1 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
-                        _gf.rgb_pixels[offset1 + 0] = _gf.rgb_pixels[offset1 + 1] = _gf.rgb_pixels[offset1 + 2] = value;
-                        int offset2 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
-                        _gf.rgb_pixels[offset2 + 0] = _gf.rgb_pixels[offset2 + 1] = _gf.rgb_pixels[offset2 + 2] = value;
-                        b >>= 1;
-                    }
-                }
-            }
-        }
-        else  // text
-        {
-            int width = _cga_mode == CGAMode.Text40 ? 40 : 80;
-
-            if (use_offset >= _display_address && use_offset < Math.Min(_display_address + width * 25 * 2, 16384))
-            {
-                uint addr_without_base = use_offset - _display_address;
-                uint y = (uint)(addr_without_base / (width * 2));
-                uint x = (uint)(addr_without_base % (width * 2)) / 2;
-
-                uint mask = uint.MaxValue - 1;
-                uint char_base_offset = addr_without_base & mask;
-
-                byte character = _ram[char_base_offset + 0];
-                byte attributes = _ram[char_base_offset + 1];
-
-                EmulateTextDisplay(x, y, character, attributes);
-
-                if (_gf.rgb_pixels != null && y + font_descr.height <= _gf.height && x + 8 <= _gf.width)
-                {
-                    int char_offset = character * font_descr.height;
-                    int fg = attributes & 15;
-                    int bg = (attributes >> 4) & 7;
-                    for(int yo=0; yo<font_descr.height; yo++)
-                    {
-                        int y_pixel_offset = ((int)y * font_descr.height + yo) * _gf.width * 3;
-                        byte line = font_descr.pixels[char_offset + yo];
-                        byte bit_mask = 128;
-                        for(int xo=0; xo<8; xo++)
-                        {
-                            int x_pixel_offset = y_pixel_offset + ((int)x * 8 + xo) * 3;
-                            bool is_fg = (line & bit_mask) != 0;
-                            bit_mask >>= 1;
-                            if (is_fg)
-                            {
-                                _gf.rgb_pixels[x_pixel_offset + 0] = palette[fg][0];
-                                _gf.rgb_pixels[x_pixel_offset + 1] = palette[fg][1];
-                                _gf.rgb_pixels[x_pixel_offset + 2] = palette[fg][2];
-                            }
-                            else
-                            {
-                                _gf.rgb_pixels[x_pixel_offset + 0] = palette[bg][0];
-                                _gf.rgb_pixels[x_pixel_offset + 1] = palette[bg][1];
-                                _gf.rgb_pixels[x_pixel_offset + 2] = palette[bg][2];
-                            }
-                        }
-                    }
-                }
-            }
+            if (x == width - 1)
+                y += reg_9;
         }
     }
 
-    public override void Redraw()
+    private void Redraw()
     {
-        int interval = 0;
-        int byte_count = 0;
-        if (_cga_mode == CGAMode.Text40)
-        {
-            byte_count = 40 * 25 * 2;
-            interval = 2;
-        }
-        else if (_cga_mode == CGAMode.Text80)
-        {
-            byte_count = 80 * 25 * 2;
-            interval = 2;
-        }
+        if (_cga_mode == CGAMode.Text40 || _cga_mode == CGAMode.Text80)
+            RenderTextFrameGraphical();
         else if (_cga_mode == CGAMode.G320)
         {
-            byte_count = 80 * 25 * 2;
-            interval = 1;
+            // TODO
         }
         else if (_cga_mode == CGAMode.G640)
         {
-            byte_count = 80 * 25 * 2;
-            interval = 1;
+            // TODO
         }
         else
         {
-            Log.DoLog($"Unexpected mode {_cga_mode}", LogLevel.DEBUG);
+            Log.DoLog($"Unexpected mode {_cga_mode}", LogLevel.WARNING);
             return;
         }
-        for(int i=(int)_display_address; i<_display_address + byte_count; i += interval)
-        {
-            DrawOnConsole((uint)i);
-        }
-        _gf_version++;
+    }
+
+    public override GraphicalFrame GetFrame()
+    {
+        Redraw();
+
+        return base.GetFrame();
     }
 
     public override byte ReadByte(uint offset)

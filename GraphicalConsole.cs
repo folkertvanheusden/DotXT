@@ -15,11 +15,6 @@ abstract class GraphicalConsole: EmulatorConsole
     {
     }
 
-    public void Redraw()
-    {
-        _d.Redraw();
-    }
-
     public ulong GetFrameVersion()
     {
         return _d.GetFrameVersion();

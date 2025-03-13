@@ -128,7 +128,7 @@ class MDA : Display
         }
     }
 
-    public override void Redraw()
+    public void Redraw()
     {
         for(uint i=0; i<80 * 25 * 2; i += 2)
         {
