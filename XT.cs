@@ -10,49 +10,6 @@ internal enum RepMode
     REP
 }
 
-struct State8086
-{
-    public byte ah { get; set; }
-    public byte al { get; set; }
-    public byte bh { get; set; }
-    public byte bl { get; set; }
-    public byte ch { get; set; }
-    public byte cl { get; set; }
-    public byte dh { get; set; }
-    public byte dl { get; set; }
-
-    public ushort si { get; set; }
-    public ushort di { get; set; }
-    public ushort bp { get; set; }
-    public ushort sp { get; set; }
-
-    public ushort ip { get; set; }
-
-    public ushort cs { get; set; }
-    public ushort ds { get; set; }
-    public ushort es { get; set; }
-    public ushort ss { get; set; }
-
-    // replace by an Optional-type when available
-    public ushort segment_override { get; set; }
-    public bool segment_override_set { get; set; }
-
-    public ushort flags { get; set; }
-
-    public bool in_hlt { get; set; }
-    public bool inhibit_interrupts { get; set; }  // for 1 instruction after loading segment registers
-
-    public bool rep { get; set; }
-    public bool rep_do_nothing { get; set; }
-    public RepMode rep_mode { get; set; }
-    public ushort rep_addr { get; set; }
-    public byte rep_opcode { get; set; }
-
-    public long clock { get; set; }
-
-    public int crash_counter { get; set; }
-};
-
 internal class P8086
 {
     private bool _terminate_on_off_the_rails = false;
@@ -128,29 +85,9 @@ internal class P8086
         _state.rep = false;
     }
 
-    public long GetClock()
-    {
-        return _state.clock;
-    }
-
     public string SegmentAddr(ushort seg, ushort a)
     {
         return $"{seg:X04}:{a:X04}";
-    }
-
-    public void SetIP(ushort cs, ushort ip)
-    {
-        Log.DoLog($"Set CS/IP to {cs:X4}:{ip:X4}", LogLevel.DEBUG);
-
-        _state.cs = cs;
-        _state.ip = ip;
-    }
-
-    private void FixFlags()
-    {
-        _state.flags &= 0b1111111111010101;
-        _state.flags |= 2;  // bit 1 is always set
-        _state.flags |= 0xf000;  // upper 4 bits are always 1
     }
 
     private byte GetPcByte()
@@ -163,157 +100,6 @@ internal class P8086
         ushort v = GetPcByte();
         v |= (ushort)(GetPcByte() << 8);
         return v;
-    }
-
-    public ushort GetAX()
-    {
-        return (ushort)((_state.ah << 8) | _state.al);
-    }
-
-    public void SetAX(ushort v)
-    {
-        _state.ah = (byte)(v >> 8);
-        _state.al = (byte)v;
-    }
-
-    public ushort GetBX()
-    {
-        return (ushort)((_state.bh << 8) | _state.bl);
-    }
-
-    public void SetBX(ushort v)
-    {
-        _state.bh = (byte)(v >> 8);
-        _state.bl = (byte)v;
-    }
-
-    public ushort GetCX()
-    {
-        return (ushort)((_state.ch << 8) | _state.cl);
-    }
-
-    public void SetCX(ushort v)
-    {
-        _state.ch = (byte)(v >> 8);
-        _state.cl = (byte)v;
-    }
-
-    public ushort GetDX()
-    {
-        return (ushort)((_state.dh << 8) | _state.dl);
-    }
-
-    public void SetDX(ushort v)
-    {
-        _state.dh = (byte)(v >> 8);
-        _state.dl = (byte)v;
-    }
-
-    public void SetSS(ushort v)
-    {
-        _state.ss = v;
-    }
-
-    public void SetCS(ushort v)
-    {
-        _state.cs = v;
-    }
-
-    public void SetDS(ushort v)
-    {
-        _state.ds = v;
-    }
-
-    public void SetES(ushort v)
-    {
-        _state.es = v;
-    }
-
-    public void SetSP(ushort v)
-    {
-        _state.sp = v;
-    }
-
-    public void SetBP(ushort v)
-    {
-        _state.bp = v;
-    }
-
-    public void SetSI(ushort v)
-    {
-        _state.si = v;
-    }
-
-    public void SetDI(ushort v)
-    {
-        _state.di = v;
-    }
-
-    public void SetIP(ushort v)
-    {
-        _state.ip = v;
-    }
-
-    public void SetFlags(ushort v)
-    {
-        _state.flags = v;
-    }
-
-    public ushort GetSS()
-    {
-        return _state.ss;
-    }
-
-    public ushort GetCS()
-    {
-        return _state.cs;
-    }
-
-    public ushort GetDS()
-    {
-        return _state.ds;
-    }
-
-    public ushort GetES()
-    {
-        return _state.es;
-    }
-
-    public ushort GetSP()
-    {
-        return _state.sp;
-    }
-
-    public ushort GetBP()
-    {
-        return _state.bp;
-    }
-
-    public ushort GetSI()
-    {
-        return _state.si;
-    }
-
-    public ushort GetDI()
-    {
-        return _state.di;
-    }
-
-    public ushort GetIP()
-    {
-        return _state.ip;
-    }
-
-    public ushort GetFlags()
-    {
-        return _state.flags;
-    }
-
-    public void SetZSPFlags(byte v)
-    {
-        SetFlagZ(v == 0);
-        SetFlagS((v & 0x80) == 0x80);
-        SetFlagP(v);
     }
 
     private void WriteMemByte(ushort segment, ushort offset, byte v)
@@ -346,13 +132,13 @@ internal class P8086
         if (w)
         {
             if (reg == 0)
-                return GetAX();
+                return _state.GetAX();
             if (reg == 1)
-                return GetCX();
+                return _state.GetCX();
             if (reg == 2)
-                return GetDX();
+                return _state.GetDX();
             if (reg == 3)
-                return GetBX();
+                return _state.GetBX();
             if (reg == 4)
                 return _state.sp;
             if (reg == 5)
@@ -413,12 +199,12 @@ internal class P8086
 
         if (reg == 0)
         {
-            a = (ushort)(GetBX() + _state.si);
+            a = (ushort)(_state.GetBX() + _state.si);
             cycles = 7;
         }
         else if (reg == 1)
         {
-            a = (ushort)(GetBX() + _state.di);
+            a = (ushort)(_state.GetBX() + _state.di);
             cycles = 8;
         }
         else if (reg == 2)
@@ -448,7 +234,7 @@ internal class P8086
         }
         else if (reg == 7)
         {
-            a = GetBX();
+            a = _state.GetBX();
             cycles = 5;
         }
         else
@@ -542,28 +328,28 @@ internal class P8086
         if (reg == 0)
         {
             if (w)
-                SetAX(val);
+                _state.SetAX(val);
             else
                 _state.al = (byte)val;
         }
         else if (reg == 1)
         {
             if (w)
-                SetCX(val);
+                _state.SetCX(val);
             else
                 _state.cl = (byte)val;
         }
         else if (reg == 2)
         {
             if (w)
-                SetDX(val);
+                _state.SetDX(val);
             else
                 _state.dl = (byte)val;
         }
         else if (reg == 3)
         {
             if (w)
-                SetBX(val);
+                _state.SetBX(val);
             else
                 _state.bl = (byte)val;
         }
@@ -686,140 +472,18 @@ internal class P8086
         return PutRegisterMem(reg, mod, word, v);
     }
 
-    private void ClearFlagBit(int bit)
-    {
-        _state.flags &= (ushort)(ushort.MaxValue ^ (1 << bit));
-    }
-
-    private void SetFlagBit(int bit)
-    {
-        _state.flags |= (ushort)(1 << bit);
-    }
-
-    private void SetFlag(int bit, bool state)
-    {
-        if (state)
-            SetFlagBit(bit);
-        else
-            ClearFlagBit(bit);
-    }
-
-    private bool GetFlag(int bit)
-    {
-        return (_state.flags & (1 << bit)) != 0;
-    }
-
-    private void SetFlagC(bool state)
-    {
-        SetFlag(0, state);
-    }
-
-    private bool GetFlagC()
-    {
-        return GetFlag(0);
-    }
-
-    private void SetFlagP(byte v)
-    {
-        int count = 0;
-
-        while (v != 0)
-        {
-            count++;
-
-            v &= (byte)(v - 1);
-        }
-
-        SetFlag(2, (count & 1) == 0);
-    }
-
-    private bool GetFlagP()
-    {
-        return GetFlag(2);
-    }
-
-    private void SetFlagA(bool state)
-    {
-        SetFlag(4, state);
-    }
-
-    private bool GetFlagA()
-    {
-        return GetFlag(4);
-    }
-
-    private void SetFlagZ(bool state)
-    {
-        SetFlag(6, state);
-    }
-
-    private bool GetFlagZ()
-    {
-        return GetFlag(6);
-    }
-
-    private void SetFlagS(bool state)
-    {
-        SetFlag(7, state);
-    }
-
-    private bool GetFlagS()
-    {
-        return GetFlag(7);
-    }
-
-    private void SetFlagT(bool state)
-    {
-        SetFlag(8, state);
-    }
-
-    private bool GetFlagT()
-    {
-        return GetFlag(8);
-    }
-
-    private void SetFlagI(bool state)
-    {
-        SetFlag(9, state);
-    }
-
-    private bool GetFlagI()
-    {
-        return GetFlag(9);
-    }
-
-    private void SetFlagD(bool state)
-    {
-        SetFlag(10, state);
-    }
-
-    private bool GetFlagD()
-    {
-        return GetFlag(10);
-    }
-
-    private void SetFlagO(bool state)
-    {
-        SetFlag(11, state);
-    }
-
-    private bool GetFlagO()
-    {
-        return GetFlag(11);
-    }
-
     public string GetFlagsAsString()
     {
         string @out = String.Empty;
 
-        @out += GetFlagO() ? "o" : "-";
-        @out += GetFlagI() ? "I" : "-";
-        @out += GetFlagT() ? "T" : "-";
-        @out += GetFlagS() ? "s" : "-";
-        @out += GetFlagZ() ? "z" : "-";
-        @out += GetFlagA() ? "a" : "-";
-        @out += GetFlagP() ? "p" : "-";
-        @out += GetFlagC() ? "c" : "-";
+        @out += _state.GetFlagO() ? "o" : "-";
+        @out += _state.GetFlagI() ? "I" : "-";
+        @out += _state.GetFlagT() ? "T" : "-";
+        @out += _state.GetFlagS() ? "s" : "-";
+        @out += _state.GetFlagZ() ? "z" : "-";
+        @out += _state.GetFlagA() ? "a" : "-";
+        @out += _state.GetFlagP() ? "p" : "-";
+        @out += _state.GetFlagC() ? "c" : "-";
 
         return @out;
     }
@@ -837,32 +501,32 @@ internal class P8086
         bool before_sign = (r1 & mask) == mask;
         bool value_sign = (r2 & mask) == mask;
         bool after_sign = (u_result & mask) == mask;
-        SetFlagO(after_sign != before_sign && ((before_sign != value_sign && issub) || (before_sign == value_sign && issub == false)));
+        _state.SetFlagO(after_sign != before_sign && ((before_sign != value_sign && issub) || (before_sign == value_sign && issub == false)));
 
-        SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
+        _state.SetFlagC(word ? u_result >= 0x10000 : u_result >= 0x100);
 
-        SetFlagS((in_reg_result & mask) != 0);
+        _state.SetFlagS((in_reg_result & mask) != 0);
 
-        SetFlagZ(in_reg_result == 0);
+        _state.SetFlagZ(in_reg_result == 0);
 
         if (issub)
-            SetFlagA((((r1 & 0x0f) - (r2 & 0x0f) - (flag_c ? 1 : 0)) & 0x10) > 0);
+            _state.SetFlagA((((r1 & 0x0f) - (r2 & 0x0f) - (flag_c ? 1 : 0)) & 0x10) > 0);
         else
-            SetFlagA((((r1 & 0x0f) + (r2 & 0x0f) + (flag_c ? 1 : 0)) & 0x10) > 0);
+            _state.SetFlagA((((r1 & 0x0f) + (r2 & 0x0f) + (flag_c ? 1 : 0)) & 0x10) > 0);
 
-        SetFlagP((byte)result);
+        _state.SetFlagP((byte)result);
     }
 
     private void SetLogicFuncFlags(bool word, ushort result)
     {
-        SetFlagO(false);
-        SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
-        SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
-        SetFlagP((byte)result);
+        _state.SetFlagO(false);
+        _state.SetFlagS((word ? result & 0x8000 : result & 0x80) != 0);
+        _state.SetFlagZ(word ? result == 0 : (result & 0xff) == 0);
+        _state.SetFlagP((byte)result);
 
-        SetFlagA(false);  // undefined
+        _state.SetFlagA(false);  // undefined
 
-        SetFlagC(false);
+        _state.SetFlagC(false);
     }
 
     public void push(ushort v)
@@ -907,8 +571,8 @@ internal class P8086
             push(instr_start);
         }
 
-        SetFlagI(false);
-        SetFlagT(false);
+        _state.SetFlagI(false);
+        _state.SetFlagT(false);
 
         ushort addr = (ushort)(interrupt_nr * 4);
 
@@ -975,7 +639,7 @@ internal class P8086
 
         if (_state.rep)
         {
-            ushort cx = GetCX();
+            ushort cx = _state.GetCX();
 
             if (_state.rep_do_nothing)
             {
@@ -985,7 +649,7 @@ internal class P8086
             else
             {
                 cx--;
-                SetCX(cx);
+                _state.SetCX(cx);
 
                 if (cx == 0)
                 {
@@ -1021,7 +685,7 @@ internal class P8086
             if (_state.rep_mode == RepMode.REPE_Z)
             {
                 // REPE/REPZ
-                if (GetFlagZ() != true)
+                if (_state.GetFlagZ() != true)
                 {
                     _state.rep = false;
                 }
@@ -1029,7 +693,7 @@ internal class P8086
             else if (_state.rep_mode == RepMode.REPNZ)
             {
                 // REPNZ
-                if (GetFlagZ() != false)
+                if (_state.GetFlagZ() != false)
                 {
                     _state.rep = false;
                 }
@@ -1068,7 +732,7 @@ internal class P8086
         Log.SetMeta(_state.clock, _state.cs, _state.ip);
 
         // check for interrupt
-        if (GetFlagI() == true && _state.inhibit_interrupts == false)
+        if (_state.GetFlagI() == true && _state.inhibit_interrupts == false)
         {
             int irq = _io.GetPIC().GetPendingInterrupt();
             if (irq != 255)
@@ -1140,7 +804,7 @@ internal class P8086
                 _state.rep_mode = RepMode.NotSet;
                 cycle_count += 9;
 
-                _state.rep_do_nothing = GetCX() == 0;
+                _state.rep_do_nothing = _state.GetCX() == 0;
             }
             else
             {
@@ -1208,7 +872,7 @@ internal class P8086
             // ADD AL,xx
             byte v = GetPcByte();
 
-            bool flag_c = GetFlagC();
+            bool flag_c = _state.GetFlagC();
             bool use_flag_c = false;
 
             int result = _state.al + v;
@@ -1232,10 +896,10 @@ internal class P8086
             // ADD AX,xxxx
             ushort v = GetPcWord();
 
-            bool flag_c = GetFlagC();
+            bool flag_c = _state.GetFlagC();
             bool use_flag_c = false;
 
-            ushort before = GetAX();
+            ushort before = _state.GetAX();
 
             int result = before + v;
 
@@ -1249,7 +913,7 @@ internal class P8086
 
             SetAddSubFlags(true, before, v, result, false, use_flag_c ? flag_c : false);
 
-            SetAX((ushort)result);
+            _state.SetAX((ushort)result);
 
             cycle_count += 3;
         }
@@ -1303,7 +967,7 @@ internal class P8086
             // SBB AL,ib
             byte v = GetPcByte();
 
-            bool flag_c = GetFlagC();
+            bool flag_c = _state.GetFlagC();
 
             int result = _state.al - v;
 
@@ -1321,9 +985,9 @@ internal class P8086
             // SBB AX,iw
             ushort v = GetPcWord();
 
-            ushort AX = GetAX();
+            ushort AX = _state.GetAX();
 
-            bool flag_c = GetFlagC();
+            bool flag_c = _state.GetFlagC();
 
             int result = AX - v;
 
@@ -1332,7 +996,7 @@ internal class P8086
 
             SetAddSubFlags(true, AX, v, result, true, flag_c);
 
-            SetAX((ushort)result);
+            _state.SetAX((ushort)result);
 
             cycle_count += 3;
         }
@@ -1356,24 +1020,24 @@ internal class P8086
             // DAA
             // https://www.felixcloutier.com/x86/daa
             byte old_al = _state.al;
-            bool old_af = GetFlagA();
-            bool old_cf = GetFlagC();
+            bool old_af = _state.GetFlagA();
+            bool old_cf = _state.GetFlagC();
 
-            SetFlagC(false);
+            _state.SetFlagC(false);
 
-            if (((_state.al & 0x0f) > 9) || GetFlagA() == true)
+            if (((_state.al & 0x0f) > 9) || _state.GetFlagA() == true)
             {
                 bool add_carry = _state.al + 6 > 255;
 
                 _state.al += 6;
 
-                SetFlagC(old_cf || add_carry);
+                _state.SetFlagC(old_cf || add_carry);
 
-                SetFlagA(true);
+                _state.SetFlagA(true);
             }
             else
             {
-                SetFlagA(false);
+                _state.SetFlagA(false);
             }
 
             byte upper_nibble_check = (byte)(old_af ? 0x9f : 0x99);
@@ -1381,14 +1045,14 @@ internal class P8086
             if (old_al > upper_nibble_check || old_cf)
             {
                 _state.al += 0x60;
-                SetFlagC(true);
+                _state.SetFlagC(true);
             }
             else
             {
-                SetFlagC(false);
+                _state.SetFlagC(false);
             }
 
-            SetZSPFlags(_state.al);
+            _state.SetZSPFlags(_state.al);
 
             cycle_count += 4;
         }
@@ -1409,20 +1073,20 @@ internal class P8086
         {
             // DAS
             byte old_al = _state.al;
-            bool old_af = GetFlagA();
-            bool old_cf = GetFlagC();
+            bool old_af = _state.GetFlagA();
+            bool old_cf = _state.GetFlagC();
 
-            SetFlagC(false);
+            _state.SetFlagC(false);
 
-            if ((_state.al & 0x0f) > 9 || GetFlagA() == true)
+            if ((_state.al & 0x0f) > 9 || _state.GetFlagA() == true)
             {
                 _state.al -= 6;
 
-                SetFlagA(true);
+                _state.SetFlagA(true);
             }
             else
             {
-                SetFlagA(false);
+                _state.SetFlagA(false);
             }
 
             byte upper_nibble_check = (byte)(old_af ? 0x9f : 0x99);
@@ -1430,28 +1094,28 @@ internal class P8086
             if (old_al > upper_nibble_check || old_cf)
             {
                 _state.al -= 0x60;
-                SetFlagC(true);
+                _state.SetFlagC(true);
             }
 
-            SetZSPFlags(_state.al);
+            _state.SetZSPFlags(_state.al);
 
             cycle_count += 4;
         }
         else if (opcode == 0x37)
         {
-            if ((_state.al & 0x0f) > 9 || GetFlagA())
+            if ((_state.al & 0x0f) > 9 || _state.GetFlagA())
             {
                 _state.ah += 1;
 
                 _state.al += 6;
 
-                SetFlagA(true);
-                SetFlagC(true);
+                _state.SetFlagA(true);
+                _state.SetFlagC(true);
             }
             else
             {
-                SetFlagA(false);
-                SetFlagC(false);
+                _state.SetFlagA(false);
+                _state.SetFlagC(false);
             }
 
             _state.al &= 0x0f;
@@ -1460,18 +1124,18 @@ internal class P8086
         }
         else if (opcode == 0x3f)
         {
-            if ((_state.al & 0x0f) > 9 || GetFlagA())
+            if ((_state.al & 0x0f) > 9 || _state.GetFlagA())
             {
                 _state.al -= 6;
                 _state.ah -= 1;
 
-                SetFlagA(true);
-                SetFlagC(true);
+                _state.SetFlagA(true);
+                _state.SetFlagC(true);
             }
             else
             {
-                SetFlagA(false);
-                SetFlagC(false);
+                _state.SetFlagA(false);
+                _state.SetFlagC(false);
             }
 
             _state.al &= 0x0f;
@@ -1483,41 +1147,41 @@ internal class P8086
             // SUB AX,iw
             ushort v = GetPcWord();
 
-            ushort before = GetAX();
+            ushort before = _state.GetAX();
 
             int result = before - v;
 
             SetAddSubFlags(true, before, v, result, true, false);
 
-            SetAX((ushort)result);
+            _state.SetAX((ushort)result);
 
             cycle_count += 3;
         }
         else if (opcode == 0x58)
         {
             // POP AX
-            SetAX(pop());
+            _state.SetAX(pop());
 
             cycle_count += 8;
         }
         else if (opcode == 0x59)
         {
             // POP CX
-            SetCX(pop());
+            _state.SetCX(pop());
 
             cycle_count += 8;
         }
         else if (opcode == 0x5a)
         {
             // POP DX
-            SetDX(pop());
+            _state.SetDX(pop());
 
             cycle_count += 8;
         }
         else if (opcode == 0x5b)
         {
             // POP BX
-            SetBX(pop());
+            _state.SetBX(pop());
 
             cycle_count += 8;
         }
@@ -1558,8 +1222,8 @@ internal class P8086
                 byte v = ReadMemByte(segment, _state.si);
                 WriteMemByte(_state.es, _state.di, v);
 
-                _state.si += (ushort)(GetFlagD() ? -1 : 1);
-                _state.di += (ushort)(GetFlagD() ? -1 : 1);
+                _state.si += (ushort)(_state.GetFlagD() ? -1 : 1);
+                _state.di += (ushort)(_state.GetFlagD() ? -1 : 1);
 
                 cycle_count += 18;
             }
@@ -1571,8 +1235,8 @@ internal class P8086
                 // MOVSW
                 WriteMemWord(_state.es, _state.di, ReadMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, _state.si));
 
-                _state.si += (ushort)(GetFlagD() ? -2 : 2);
-                _state.di += (ushort)(GetFlagD() ? -2 : 2);
+                _state.si += (ushort)(_state.GetFlagD() ? -2 : 2);
+                _state.di += (ushort)(_state.GetFlagD() ? -2 : 2);
 
                 cycle_count += 26;
             }
@@ -1587,8 +1251,8 @@ internal class P8086
 
                 int result = v1 - v2;
 
-                _state.si += (ushort)(GetFlagD() ? -1 : 1);
-                _state.di += (ushort)(GetFlagD() ? -1 : 1);
+                _state.si += (ushort)(_state.GetFlagD() ? -1 : 1);
+                _state.di += (ushort)(_state.GetFlagD() ? -1 : 1);
 
                 SetAddSubFlags(false, v1, v2, result, true, false);
 
@@ -1605,8 +1269,8 @@ internal class P8086
 
                 int result = v1 - v2;
 
-                _state.si += (ushort)(GetFlagD() ? -2 : 2);
-                _state.di += (ushort)(GetFlagD() ? -2 : 2);
+                _state.si += (ushort)(_state.GetFlagD() ? -2 : 2);
+                _state.di += (ushort)(_state.GetFlagD() ? -2 : 2);
 
                 SetAddSubFlags(true, v1, v2, result, true, false);
 
@@ -1620,7 +1284,7 @@ internal class P8086
 
             ushort addr = (ushort)(_state.ip + offset);
 
-            if (GetCX() == 0)
+            if (_state.GetCX() == 0)
             {
                 _state.ip = addr;
                 cycle_count += 18;
@@ -1642,28 +1306,28 @@ internal class P8086
         else if (opcode == 0x50)
         {
             // PUSH AX
-            push(GetAX());
+            push(_state.GetAX());
 
             cycle_count += 15;
         }
         else if (opcode == 0x51)
         {
             // PUSH CX
-            push(GetCX());
+            push(_state.GetCX());
 
             cycle_count += 15;
         }
         else if (opcode == 0x52)
         {
             // PUSH DX
-            push(GetDX());
+            push(_state.GetDX());
 
             cycle_count += 15;
         }
         else if (opcode == 0x53)
         {
             // PUSH BX
-            push(GetBX());
+            push(_state.GetBX());
 
             cycle_count += 15;
         }
@@ -1774,12 +1438,12 @@ internal class P8086
             }
             else if (function == 2)
             {
-                result = r1 + r2 + (GetFlagC() ? 1 : 0);
+                result = r1 + r2 + (_state.GetFlagC() ? 1 : 0);
                 use_flag_c = true;
             }
             else if (function == 3)
             {
-                result = r1 - r2 - (GetFlagC() ? 1 : 0);
+                result = r1 - r2 - (_state.GetFlagC() ? 1 : 0);
                 is_sub = true;
                 use_flag_c = true;
             }
@@ -1787,7 +1451,7 @@ internal class P8086
             {
                 result = r1 & r2;
                 is_logic = true;
-                SetFlagC(false);
+                _state.SetFlagC(false);
             }
             else if (function == 5)
             {
@@ -1813,7 +1477,7 @@ internal class P8086
             if (is_logic)
                 SetLogicFuncFlags(word, (ushort)result);
             else
-                SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? GetFlagC() : false);
+                SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? _state.GetFlagC() : false);
 
             if (apply)
             {
@@ -1848,7 +1512,7 @@ internal class P8086
                 SetLogicFuncFlags(false, result);
             }
 
-            SetFlagC(false);
+            _state.SetFlagC(false);
 
             cycle_count += 3 + cycles;
         }
@@ -1898,8 +1562,8 @@ internal class P8086
 
             ushort v = GetRegister(reg_nr, true);
 
-            ushort old_ax = GetAX();
-            SetAX(v);
+            ushort old_ax = _state.GetAX();
+            _state.SetAX(v);
 
             PutRegister(reg_nr, true, old_ax);
 
@@ -1913,7 +1577,7 @@ internal class P8086
             if ((_state.al & 128) == 128)
                 new_value |= 0xff00;
 
-            SetAX(new_value);
+            _state.SetAX(new_value);
 
             cycle_count += 2;
         }
@@ -1921,9 +1585,9 @@ internal class P8086
         {
             // CWD
             if ((_state.ah & 128) == 128)
-                SetDX(0xffff);
+                _state.SetDX(0xffff);
             else
-                SetDX(0);
+                _state.SetDX(0);
 
             cycle_count += 5;
         }
@@ -1950,17 +1614,17 @@ internal class P8086
         }
         else if (opcode == 0x9d)
         {
-            bool before = GetFlagT();
+            bool before = _state.GetFlagT();
 
             // POPF
             _state.flags = pop();
 
-            if (GetFlagT() && before == false)
+            if (_state.GetFlagT() && before == false)
                 back_from_trace = true;
 
             cycle_count += 12;
 
-            FixFlags();
+            _state.FixFlags();
         }
         else if (opcode == 0xac)
         {
@@ -1969,7 +1633,7 @@ internal class P8086
                 // LODSB
                 _state.al = ReadMemByte(_state.segment_override_set ? _state.segment_override : _state.ds, _state.si);
 
-                _state.si += (ushort)(GetFlagD() ? -1 : 1);
+                _state.si += (ushort)(_state.GetFlagD() ? -1 : 1);
 
                 cycle_count += 5;
             }
@@ -1979,9 +1643,9 @@ internal class P8086
             if (PrefixMustRun())
             {
                 // LODSW
-                SetAX(ReadMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, _state.si));
+                _state.SetAX(ReadMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, _state.si));
 
-                _state.si += (ushort)(GetFlagD() ? -2 : 2);
+                _state.si += (ushort)(_state.GetFlagD() ? -2 : 2);
 
                 cycle_count += 5;
             }
@@ -2025,7 +1689,7 @@ internal class P8086
         else if (opcode == 0xcc || opcode == 0xcd || opcode == 0xce)
         {
             // INT 0x..
-            if (opcode != 0xce || GetFlagO())
+            if (opcode != 0xce || _state.GetFlagO())
             {
                 byte @int = 0;
 
@@ -2050,7 +1714,7 @@ internal class P8086
                     push(_state.ip);
                 }
 
-                SetFlagI(false);
+                _state.SetFlagI(false);
 
                 _state.ip = ReadMemWord(0, addr);
                 _state.cs = ReadMemWord(0, (ushort)(addr + 2));
@@ -2061,14 +1725,14 @@ internal class P8086
         else if (opcode == 0xcf)
         {
             // IRET
-            bool before = GetFlagT();
+            bool before = _state.GetFlagT();
 
             _state.ip = pop();
             _state.cs = pop();
             _state.flags = pop();
-            FixFlags();
+            _state.FixFlags();
 
-            if (GetFlagT() && before == false)
+            if (_state.GetFlagT() && before == false)
                 back_from_trace = true;
 
             cycle_count += 32;  // 44
@@ -2103,7 +1767,7 @@ internal class P8086
             {
                 use_flag_c = true;
 
-                result = r1 + r2 + (GetFlagC() ? 1 : 0);
+                result = r1 + r2 + (_state.GetFlagC() ? 1 : 0);
 
                 cycle_count += 4;
             }
@@ -2127,16 +1791,16 @@ internal class P8086
                 {
                     use_flag_c = true;
 
-                    result -= (GetFlagC() ? 1 : 0);
+                    result -= (_state.GetFlagC() ? 1 : 0);
                 }
 
                 cycle_count += 4;
             }
 
             if (direction)
-                SetAddSubFlags(word, r2, r1, result, is_sub, use_flag_c ? GetFlagC() : false);
+                SetAddSubFlags(word, r2, r1, result, is_sub, use_flag_c ? _state.GetFlagC() : false);
             else
-                SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? GetFlagC() : false);
+                SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? _state.GetFlagC() : false);
 
             // 0x38...0x3b are CMP
             if (apply)
@@ -2174,7 +1838,7 @@ internal class P8086
 
             if (opcode == 0x3d)
             {
-                r1 = GetAX();
+                r1 = _state.GetAX();
                 r2 = GetPcWord();
 
                 result = r1 - r2;
@@ -2263,7 +1927,7 @@ internal class P8086
                 if (word)
                     _state.ah &= bHigh;
 
-                SetFlagC(false);
+                _state.SetFlagC(false);
             }
             else if (function == 3)
             {
@@ -2277,9 +1941,9 @@ internal class P8086
                 Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
             }
 
-            SetLogicFuncFlags(word, word ? GetAX() : _state.al);
+            SetLogicFuncFlags(word, word ? _state.GetAX() : _state.al);
 
-            SetFlagP(_state.al);
+            _state.SetFlagP(_state.al);
 
             cycle_count += 4;
         }
@@ -2325,14 +1989,14 @@ internal class P8086
                     ushort result = (ushort)(r1 & r2);
                     SetLogicFuncFlags(true, result);
 
-                    SetFlagC(false);
+                    _state.SetFlagC(false);
                 }
                 else {
                     byte r2 = GetPcByte();
                     ushort result = (ushort)(r1 & r2);
                     SetLogicFuncFlags(word, result);
 
-                    SetFlagC(false);
+                    _state.SetFlagC(false);
                 }
             }
             else if (function == 2)
@@ -2347,7 +2011,7 @@ internal class P8086
                 int result = (ushort)-r1;
 
                 SetAddSubFlags(word, 0, r1, -r1, true, false);
-                SetFlagC(r1 != 0);
+                _state.SetFlagC(r1 != 0);
 
                 int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)result);
                 cycle_count += put_cycles;
@@ -2359,18 +2023,18 @@ internal class P8086
 
                 // MUL
                 if (word) {
-                    ushort ax = GetAX();
+                    ushort ax = _state.GetAX();
                     int resulti = ax * r1;
 
                     uint dx_ax = (uint)resulti;
                     if (negate)
                         dx_ax = (uint)-dx_ax;
-                    SetAX((ushort)dx_ax);
-                    SetDX((ushort)(dx_ax >> 16));
+                    _state.SetAX((ushort)dx_ax);
+                    _state.SetDX((ushort)(dx_ax >> 16));
 
-                    bool flag = GetDX() != 0;
-                    SetFlagC(flag);
-                    SetFlagO(flag);
+                    bool flag = _state.GetDX() != 0;
+                    _state.SetFlagC(flag);
+                    _state.SetFlagO(flag);
 
                     cycle_count += 118;
                 }
@@ -2378,11 +2042,11 @@ internal class P8086
                     int result = _state.al * r1;
                     if (negate)
                         result = -result;
-                    SetAX((ushort)result);
+                    _state.SetAX((ushort)result);
 
                     bool flag = _state.ah != 0;
-                    SetFlagC(flag);
-                    SetFlagO(flag);
+                    _state.SetFlagC(flag);
+                    _state.SetFlagO(flag);
 
                     cycle_count += 70;
                 }
@@ -2394,18 +2058,18 @@ internal class P8086
 
                 // IMUL
                 if (word) {
-                    short ax = (short)GetAX();
+                    short ax = (short)_state.GetAX();
                     int resulti = ax * (short)r1;
 
                     uint dx_ax = (uint)resulti;
                     if (negate)
                         dx_ax = (uint)-dx_ax;
-                    SetAX((ushort)dx_ax);
-                    SetDX((ushort)(dx_ax >> 16));
+                    _state.SetAX((ushort)dx_ax);
+                    _state.SetDX((ushort)(dx_ax >> 16));
 
-                    bool flag = (int)(short)GetAX() != resulti;
-                    SetFlagC(flag);
-                    SetFlagO(flag);
+                    bool flag = (int)(short)_state.GetAX() != resulti;
+                    _state.SetFlagC(flag);
+                    _state.SetFlagO(flag);
 
                     cycle_count += 128;
                 }
@@ -2413,44 +2077,44 @@ internal class P8086
                     int result = (sbyte)_state.al * (short)(sbyte)r1;
                     if (negate)
                         result = -result;
-                    SetAX((ushort)result);
+                    _state.SetAX((ushort)result);
 
-                    SetFlagS((_state.ah & 128) == 128);
+                    _state.SetFlagS((_state.ah & 128) == 128);
                     bool flag = (short)(sbyte)_state.al != (short)result;
-                    SetFlagC(flag);
-                    SetFlagO(flag);
+                    _state.SetFlagC(flag);
+                    _state.SetFlagO(flag);
 
                     cycle_count += 80;
                 }
             }
             else if (function == 6)
             {
-                SetFlagC(false);
-                SetFlagO(false);
+                _state.SetFlagC(false);
+                _state.SetFlagO(false);
 
                 // DIV
                 if (word) {
-                    uint dx_ax = (uint)((GetDX() << 16) | GetAX());
+                    uint dx_ax = (uint)((_state.GetDX() << 16) | _state.GetAX());
 
                     if (r1 == 0 || dx_ax / r1 >= 0x10000)
                     {
-                        SetZSPFlags(_state.ah);
-                        SetFlagA(false);
+                        _state.SetZSPFlags(_state.ah);
+                        _state.SetFlagA(false);
                         InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
                     {
-                        SetAX((ushort)(dx_ax / r1));
-                        SetDX((ushort)(dx_ax % r1));
+                        _state.SetAX((ushort)(dx_ax / r1));
+                        _state.SetDX((ushort)(dx_ax % r1));
                     }
                 }
                 else {
-                    ushort ax = GetAX();
+                    ushort ax = _state.GetAX();
 
                     if (r1 == 0 || ax / r1 >= 0x100)
                     {
-                        SetZSPFlags(_state.ah);
-                        SetFlagA(false);
+                        _state.SetZSPFlags(_state.ah);
+                        _state.SetFlagA(false);
                         InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
@@ -2465,37 +2129,37 @@ internal class P8086
                 bool negate = _state.rep_mode == RepMode.REP && _state.rep;
                 _state.rep = false;
 
-                SetFlagC(false);
-                SetFlagO(false);
+                _state.SetFlagC(false);
+                _state.SetFlagO(false);
 
                 // IDIV
                 if (word) {
-                    int dx_ax = (GetDX() << 16) | GetAX();
+                    int dx_ax = (_state.GetDX() << 16) | _state.GetAX();
                     int r1s = (int)(short)r1;
 
                     if (r1s == 0 || dx_ax / r1s > 0x7fffffff || dx_ax / r1s < -0x80000000)
                     {
-                        SetZSPFlags(_state.ah);
-                        SetFlagA(false);
+                        _state.SetZSPFlags(_state.ah);
+                        _state.SetFlagA(false);
                         InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
                     {
                         if (negate)
-                            SetAX((ushort)-(dx_ax / r1s));
+                            _state.SetAX((ushort)-(dx_ax / r1s));
                         else
-                            SetAX((ushort)(dx_ax / r1s));
-                        SetDX((ushort)(dx_ax % r1s));
+                            _state.SetAX((ushort)(dx_ax / r1s));
+                        _state.SetDX((ushort)(dx_ax % r1s));
                     }
                 }
                 else {
-                    short ax = (short)GetAX();
+                    short ax = (short)_state.GetAX();
                     short r1s = (short)(sbyte)r1;
 
                     if (r1s == 0 || ax / r1s > 0x7fff || ax / r1s < -0x8000)
                     {
-                        SetZSPFlags(_state.ah);
-                        SetFlagA(false);
+                        _state.SetZSPFlags(_state.ah);
+                        _state.SetFlagA(false);
                         InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
                     }
                     else
@@ -2518,7 +2182,7 @@ internal class P8086
         else if (opcode == 0xfa)
         {
             // CLI
-            SetFlagI(false); // IF
+            _state.SetFlagI(false); // IF
 
             cycle_count += 2;
         }
@@ -2552,7 +2216,7 @@ internal class P8086
             // MOV AX,[...]
             ushort a = GetPcWord();
 
-            SetAX(ReadMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, a));
+            _state.SetAX(ReadMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, a));
 
             cycle_count += 12;
         }
@@ -2570,7 +2234,7 @@ internal class P8086
             // MOV [...],AX
             ushort a = GetPcWord();
 
-            WriteMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, a, GetAX());
+            WriteMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, a, _state.GetAX());
 
             cycle_count += 13;
         }
@@ -2580,7 +2244,7 @@ internal class P8086
             byte v = GetPcByte();
             byte result = (byte)(_state.al & v);
             SetLogicFuncFlags(false, result);
-            SetFlagC(false);
+            _state.SetFlagC(false);
 
             cycle_count += 5;
         }
@@ -2588,9 +2252,9 @@ internal class P8086
         {
             // TEST AX,..
             ushort v = GetPcWord();
-            ushort result = (ushort)(GetAX() & v);
+            ushort result = (ushort)(_state.GetAX() & v);
             SetLogicFuncFlags(true, result);
-            SetFlagC(false);
+            _state.SetFlagC(false);
 
             cycle_count += 5;
         }
@@ -2665,7 +2329,7 @@ internal class P8086
 
             _state.flags = (ushort)(keep | add);
 
-            FixFlags();
+            _state.FixFlags();
 
             cycle_count += 4;
         }
@@ -2692,18 +2356,18 @@ internal class P8086
 
             if (isDec)
             {
-                SetFlagO(v == 0x7fff);
-                SetFlagA((v & 15) == 15);
+                _state.SetFlagO(v == 0x7fff);
+                _state.SetFlagA((v & 15) == 15);
             }
             else
             {
-                SetFlagO(v == 0x8000);
-                SetFlagA((v & 15) == 0);
+                _state.SetFlagO(v == 0x8000);
+                _state.SetFlagA((v & 15) == 0);
             }
 
-            SetFlagS((v & 0x8000) == 0x8000);
-            SetFlagZ(v == 0);
-            SetFlagP((byte)v);
+            _state.SetFlagS((v & 0x8000) == 0x8000);
+            _state.SetFlagZ(v == 0);
+            _state.SetFlagP((byte)v);
 
             PutRegister(reg, true, v);
 
@@ -2716,7 +2380,7 @@ internal class P8086
                 // STOSB
                 WriteMemByte(_state.es, _state.di, _state.al);
 
-                _state.di += (ushort)(GetFlagD() ? -1 : 1);
+                _state.di += (ushort)(_state.GetFlagD() ? -1 : 1);
 
                 cycle_count += 11;
             }
@@ -2726,9 +2390,9 @@ internal class P8086
             if (PrefixMustRun())
             {
                 // STOSW
-                WriteMemWord(_state.es, _state.di, GetAX());
+                WriteMemWord(_state.es, _state.di, _state.GetAX());
 
-                _state.di += (ushort)(GetFlagD() ? -2 : 2);
+                _state.di += (ushort)(_state.GetFlagD() ? -2 : 2);
 
                 cycle_count += 11;
             }
@@ -2742,7 +2406,7 @@ internal class P8086
                 int result = _state.al - v;
                 SetAddSubFlags(false, _state.al, v, result, true, false);
 
-                _state.di += (ushort)(GetFlagD() ? -1 : 1);
+                _state.di += (ushort)(_state.GetFlagD() ? -1 : 1);
 
                 cycle_count += 15;
             }
@@ -2752,12 +2416,12 @@ internal class P8086
             if (PrefixMustRun())
             {
                 // SCASW
-                ushort ax = GetAX();
+                ushort ax = _state.GetAX();
                 ushort v = ReadMemWord(_state.es, _state.di);
                 int result = ax - v;
                 SetAddSubFlags(true, ax, v, result, true, false);
 
-                _state.di += (ushort)(GetFlagD() ? -2 : 2);
+                _state.di += (ushort)(_state.GetFlagD() ? -2 : 2);
 
                 cycle_count += 15;
             }
@@ -2845,7 +2509,7 @@ internal class P8086
                 {
                     bool b7 = (v1 & check_bit) == check_bit;
 
-                    SetFlagC(b7);
+                    _state.SetFlagC(b7);
 
                     v1 <<= 1;
 
@@ -2854,7 +2518,7 @@ internal class P8086
                 }
 
                 if (count_1_of)
-                    SetFlagO(GetFlagC() ^ ((v1 & check_bit) == check_bit));
+                    _state.SetFlagO(_state.GetFlagC() ^ ((v1 & check_bit) == check_bit));
 
                 cycle_count += 2;
             }
@@ -2865,7 +2529,7 @@ internal class P8086
                 {
                     bool b0 = (v1 & 1) == 1;
 
-                    SetFlagC(b0);
+                    _state.SetFlagC(b0);
 
                     v1 >>= 1;
 
@@ -2874,7 +2538,7 @@ internal class P8086
                 }
 
                 if (count_1_of)
-                    SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
+                    _state.SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
 
                 cycle_count += 2;
             }
@@ -2886,16 +2550,16 @@ internal class P8086
                     bool new_carry = (v1 & check_bit) == check_bit;
                     v1 <<= 1;
 
-                    bool oldCarry = GetFlagC();
+                    bool oldCarry = _state.GetFlagC();
 
                     if (oldCarry)
                         v1 |= 1;
 
-                    SetFlagC(new_carry);
+                    _state.SetFlagC(new_carry);
                 }
 
                 if (count_1_of)
-                    SetFlagO(GetFlagC() ^ ((v1 & check_bit) == check_bit));
+                    _state.SetFlagO(_state.GetFlagC() ^ ((v1 & check_bit) == check_bit));
 
                 cycle_count += 2;
             }
@@ -2907,16 +2571,16 @@ internal class P8086
                     bool new_carry = (v1 & 1) == 1;
                     v1 >>= 1;
 
-                    bool oldCarry = GetFlagC();
+                    bool oldCarry = _state.GetFlagC();
 
                     if (oldCarry)
                         v1 |= (ushort)(word ? 0x8000 : 0x80);
 
-                    SetFlagC(new_carry);
+                    _state.SetFlagC(new_carry);
                 }
 
                 if (count_1_of)
-                    SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
+                    _state.SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
 
                 cycle_count += 2;
             }
@@ -2929,13 +2593,13 @@ internal class P8086
                 {
                     bool new_carry = (v1 & check_bit) == check_bit;
                     v1 <<= 1;
-                    SetFlagC(new_carry);
+                    _state.SetFlagC(new_carry);
                 }
 
                 set_flags = count != 0;
                 if (set_flags)
                 {
-                    SetFlagO(((v1 & check_bit) == check_bit) ^ GetFlagC());
+                    _state.SetFlagO(((v1 & check_bit) == check_bit) ^ _state.GetFlagC());
                 }
 
                 cycle_count += count * 4;
@@ -2949,15 +2613,15 @@ internal class P8086
                 {
                     bool new_carry = (v1 & 1) == 1;
                     v1 >>= 1;
-                    SetFlagC(new_carry);
+                    _state.SetFlagC(new_carry);
                 }
 
                 set_flags = count != 0;
 
                 if (count == 1)
-                    SetFlagO((org_v1 & check_bit) != 0);
+                    _state.SetFlagO((org_v1 & check_bit) != 0);
                 else
-                    SetFlagO(false);
+                    _state.SetFlagO(false);
 
                 cycle_count += count * 4;
             }
@@ -2968,12 +2632,12 @@ internal class P8086
                     // SETMOC
                     if (_state.cl != 0)
                     {
-                        SetFlagC(false);
-                        SetFlagA(false);
-                        SetFlagZ(false);
-                        SetFlagO(false);
-                        SetFlagP(0xff);
-                        SetFlagS(true);
+                        _state.SetFlagC(false);
+                        _state.SetFlagA(false);
+                        _state.SetFlagZ(false);
+                        _state.SetFlagO(false);
+                        _state.SetFlagP(0xff);
+                        _state.SetFlagS(true);
 
                         v1 = (ushort)(word ? 0xffff : 0xff);
 
@@ -2983,12 +2647,12 @@ internal class P8086
                 else
                 {
                     // SETMO
-                    SetFlagC(false);
-                    SetFlagA(false);
-                    SetFlagZ(false);
-                    SetFlagO(false);
-                    SetFlagP(0xff);
-                    SetFlagS(true);
+                    _state.SetFlagC(false);
+                    _state.SetFlagA(false);
+                    _state.SetFlagZ(false);
+                    _state.SetFlagO(false);
+                    _state.SetFlagP(0xff);
+                    _state.SetFlagS(true);
 
                     v1 = (ushort)(word ? 0xffff : 0xff);
 
@@ -3005,12 +2669,12 @@ internal class P8086
                     bool new_carry = (v1 & 0x01) == 0x01;
                     v1 >>= 1;
                     v1 |= mask;
-                    SetFlagC(new_carry);
+                    _state.SetFlagC(new_carry);
                 }
 
                 set_flags = count != 0;
                 if (set_flags)
-                    SetFlagO(false);
+                    _state.SetFlagO(false);
 
                 cycle_count += 2;
             }
@@ -3024,9 +2688,9 @@ internal class P8086
 
             if (set_flags)
             {
-                SetFlagS((word ? v1 & 0x8000 : v1 & 0x80) != 0);
-                SetFlagZ(v1 == 0);
-                SetFlagP((byte)v1);
+                _state.SetFlagS((word ? v1 & 0x8000 : v1 & 0x80) != 0);
+                _state.SetFlagZ(v1 == 0);
+                _state.SetFlagP((byte)v1);
             }
 
             int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, v1);
@@ -3042,15 +2706,15 @@ internal class P8086
                 _state.ah = (byte)(_state.al / b2);
                 _state.al %= b2;
 
-                SetZSPFlags(_state.al);
+                _state.SetZSPFlags(_state.al);
             }
             else
             {
-                SetZSPFlags(0);
+                _state.SetZSPFlags(0);
 
-                SetFlagO(false);
-                SetFlagA(false);
-                SetFlagC(false);
+                _state.SetFlagO(false);
+                _state.SetFlagA(false);
+                _state.SetFlagC(false);
 
                 InvokeInterrupt(_state.ip, 0x00, false);
             }
@@ -3065,14 +2729,14 @@ internal class P8086
             _state.al = (byte)(_state.al + _state.ah * b2);
             _state.ah = 0;
 
-            SetZSPFlags(_state.al);
+            _state.SetZSPFlags(_state.al);
 
             cycle_count += 60;
         }
         else if (opcode == 0xd6)
         {
             // SALC
-            if (GetFlagC())
+            if (_state.GetFlagC())
                 _state.al = 0xff;
             else
                 _state.al = 0x00;
@@ -3104,67 +2768,67 @@ internal class P8086
 
             if (opcode == 0x70 || opcode == 0x60)
             {
-                state = GetFlagO();
+                state = _state.GetFlagO();
             }
             else if (opcode == 0x71 || opcode == 0x61)
             {
-                state = GetFlagO() == false;
+                state = _state.GetFlagO() == false;
             }
             else if (opcode == 0x72 || opcode == 0x62)
             {
-                state = GetFlagC();
+                state = _state.GetFlagC();
             }
             else if (opcode == 0x73 || opcode == 0x63)
             {
-                state = GetFlagC() == false;
+                state = _state.GetFlagC() == false;
             }
             else if (opcode == 0x74 || opcode == 0x64)
             {
-                state = GetFlagZ();
+                state = _state.GetFlagZ();
             }
             else if (opcode == 0x75 || opcode == 0x65)
             {
-                state = GetFlagZ() == false;
+                state = _state.GetFlagZ() == false;
             }
             else if (opcode == 0x76 || opcode == 0x66)
             {
-                state = GetFlagC() || GetFlagZ();
+                state = _state.GetFlagC() || _state.GetFlagZ();
             }
             else if (opcode == 0x77 || opcode == 0x67)
             {
-                state = GetFlagC() == false && GetFlagZ() == false;
+                state = _state.GetFlagC() == false && _state.GetFlagZ() == false;
             }
             else if (opcode == 0x78 || opcode == 0x68)
             {
-                state = GetFlagS();
+                state = _state.GetFlagS();
             }
             else if (opcode == 0x79 || opcode == 0x69)
             {
-                state = GetFlagS() == false;
+                state = _state.GetFlagS() == false;
             }
             else if (opcode == 0x7a || opcode == 0x6a)
             {
-                state = GetFlagP();
+                state = _state.GetFlagP();
             }
             else if (opcode == 0x7b || opcode == 0x6b)
             {
-                state = GetFlagP() == false;
+                state = _state.GetFlagP() == false;
             }
             else if (opcode == 0x7c || opcode == 0x6c)
             {
-                state = GetFlagS() != GetFlagO();
+                state = _state.GetFlagS() != _state.GetFlagO();
             }
             else if (opcode == 0x7d || opcode == 0x6d)
             {
-                state = GetFlagS() == GetFlagO();
+                state = _state.GetFlagS() == _state.GetFlagO();
             }
             else if (opcode == 0x7e || opcode == 0x6e)
             {
-                state = GetFlagZ() == true || GetFlagS() != GetFlagO();
+                state = _state.GetFlagZ() == true || _state.GetFlagS() != _state.GetFlagO();
             }
             else if (opcode == 0x7f || opcode == 0x6f)
             {
-                state = GetFlagZ() == false && GetFlagS() == GetFlagO();
+                state = _state.GetFlagZ() == false && _state.GetFlagS() == _state.GetFlagO();
             }
             else
             {
@@ -3188,7 +2852,7 @@ internal class P8086
             // XLATB
             byte old_al = _state.al;
 
-            _state.al = ReadMemByte(_state.segment_override_set ? _state.segment_override : _state.ds, (ushort)(GetBX() + _state.al));
+            _state.al = ReadMemByte(_state.segment_override_set ? _state.segment_override : _state.ds, (ushort)(_state.GetBX() + _state.al));
 
             cycle_count += 11;
         }
@@ -3197,9 +2861,9 @@ internal class P8086
             // LOOP
             byte to = GetPcByte();
 
-            ushort cx = GetCX();
+            ushort cx = _state.GetCX();
             cx--;
-            SetCX(cx);
+            _state.SetCX(cx);
 
             ushort newAddresses = (ushort)(_state.ip + (sbyte)to);
 
@@ -3215,7 +2879,7 @@ internal class P8086
             }
             else if (opcode == 0xe1)
             {
-                if (cx > 0 && GetFlagZ() == true)
+                if (cx > 0 && _state.GetFlagZ() == true)
                 {
                     _state.ip = newAddresses;
                     cycle_count += 4;
@@ -3223,7 +2887,7 @@ internal class P8086
             }
             else if (opcode == 0xe0)
             {
-                if (cx > 0 && GetFlagZ() == false)
+                if (cx > 0 && _state.GetFlagZ() == false)
                 {
                     _state.ip = newAddresses;
                     cycle_count += 4;
@@ -3250,7 +2914,7 @@ internal class P8086
             byte @from = GetPcByte();
 
             (ushort val, bool i) = _io.In(@from);
-            SetAX(val);
+            _state.SetAX(val);
 
             cycle_count += 14;
         }
@@ -3266,14 +2930,14 @@ internal class P8086
         {
             // OUT
             byte to = GetPcByte();
-            _io.Out(@to, GetAX());
+            _io.Out(@to, _state.GetAX());
 
             cycle_count += 10;  // max 14
         }
         else if (opcode == 0xec)
         {
             // IN AL,DX
-            (ushort val, bool i) = _io.In(GetDX());
+            (ushort val, bool i) = _io.In(_state.GetDX());
             _state.al = (byte)val;
 
             cycle_count += 12;
@@ -3281,22 +2945,22 @@ internal class P8086
         else if (opcode == 0xed)
         {
             // IN AX,DX
-            (ushort val, bool i) = _io.In(GetDX());
-            SetAX(val);
+            (ushort val, bool i) = _io.In(_state.GetDX());
+            _state.SetAX(val);
 
             cycle_count += 12;
         }
         else if (opcode == 0xee)
         {
             // OUT
-            _io.Out(GetDX(), _state.al);
+            _io.Out(_state.GetDX(), _state.al);
 
             cycle_count += 12;
         }
         else if (opcode == 0xef)
         {
             // OUT
-            _io.Out(GetDX(), GetAX());
+            _io.Out(_state.GetDX(), _state.GetAX());
 
             cycle_count += 12;
         }
@@ -3316,28 +2980,28 @@ internal class P8086
         else if (opcode == 0xf5)
         {
             // CMC
-            SetFlagC(! GetFlagC());
+            _state.SetFlagC(! _state.GetFlagC());
 
             cycle_count += 2;
         }
         else if (opcode == 0xf8)
         {
             // CLC
-            SetFlagC(false);
+            _state.SetFlagC(false);
 
             cycle_count += 2;
         }
         else if (opcode == 0xf9)
         {
             // STC
-            SetFlagC(true);
+            _state.SetFlagC(true);
 
             cycle_count += 2;
         }
         else if (opcode == 0xfb)
         {
             // STI
-            SetFlagI(true); // IF
+            _state.SetFlagI(true); // IF
             _state.inhibit_interrupts = true;
 
             cycle_count += 2;
@@ -3345,14 +3009,14 @@ internal class P8086
         else if (opcode == 0xfc)
         {
             // CLD
-            SetFlagD(false);
+            _state.SetFlagD(false);
 
             cycle_count += 2;
         }
         else if (opcode == 0xfd)
         {
             // STD
-            SetFlagD(true);
+            _state.SetFlagD(true);
 
             cycle_count += 2;
         }
@@ -3377,12 +3041,12 @@ internal class P8086
 
                 cycle_count += 3;
 
-                SetFlagO(word ? v == 0x8000 : v == 0x80);
-                SetFlagA((v & 15) == 0);
+                _state.SetFlagO(word ? v == 0x8000 : v == 0x80);
+                _state.SetFlagA((v & 15) == 0);
 
-                SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
-                SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
-                SetFlagP((byte)v);
+                _state.SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
+                _state.SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
+                _state.SetFlagP((byte)v);
             }
             else if (function == 1)
             {
@@ -3391,12 +3055,12 @@ internal class P8086
 
                 cycle_count += 3;
 
-                SetFlagO(word ? v == 0x7fff : v == 0x7f);
-                SetFlagA((v & 15) == 15);
+                _state.SetFlagO(word ? v == 0x7fff : v == 0x7f);
+                _state.SetFlagA((v & 15) == 15);
 
-                SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
-                SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
-                SetFlagP((byte)v);
+                _state.SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
+                _state.SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
+                _state.SetFlagP((byte)v);
             }
             else if (function == 2)
             {
@@ -3478,7 +3142,7 @@ internal class P8086
         // tick I/O
         _io.Tick(cycle_count, _state.clock);
 
-        if (GetFlagT() && back_from_trace == false && _state.inhibit_interrupts == false)
+        if (_state.GetFlagT() && back_from_trace == false && _state.inhibit_interrupts == false)
             InvokeInterrupt(_state.ip, 1, false);
 
         return cycle_count;

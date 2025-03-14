@@ -279,7 +279,7 @@ var d = new P8086Disassembler(b);
 var p = new P8086(ref b, ref devices, run_IO);
 
 if (mode == TMode.Normal || mode == TMode.XTServer || mode == TMode.CC)
-    p.SetIP(initial_cs, initial_ip);
+    p.GetState().SetIP(initial_cs, initial_ip);
 
 if (mode == TMode.XTServer)
     AddXTServerBootROM(b);
@@ -357,7 +357,7 @@ else if (mode == TMode.CC)
 {
     for(;;)
     {
-        int opcode = p.ReadMemByte(p.GetCS(), p.GetIP());
+        int opcode = p.ReadMemByte(p.GetState().GetCS(), p.GetState().GetIP());
         int rc = p.Tick();
         if (rc == -1)
         {
@@ -367,7 +367,7 @@ else if (mode == TMode.CC)
 
         if (opcode == 0xf4)
         {
-            Log.Cnsl($"Running program (including HLT) took {p.GetClock()} cycles");
+            Log.Cnsl($"Running program (including HLT) took {p.GetState().GetClock()} cycles");
             break;
         }
     }
@@ -648,15 +648,15 @@ else
             }
             else if (parts[0] == "dr")
             {
-                Log.Cnsl($"AX: {p.GetAX():X04}, BX: {p.GetBX():X04}, CX: {p.GetCX():X04}, DX: {p.GetDX():X04}");
-                Log.Cnsl($"DS: {p.GetDS():X04}, ES: {p.GetES():X04}");
-                ushort ss = p.GetSS();
-                ushort sp = p.GetSP();
+                Log.Cnsl($"AX: {p.GetState().GetAX():X04}, BX: {p.GetState().GetBX():X04}, CX: {p.GetState().GetCX():X04}, DX: {p.GetState().GetDX():X04}");
+                Log.Cnsl($"DS: {p.GetState().GetDS():X04}, ES: {p.GetState().GetES():X04}");
+                ushort ss = p.GetState().GetSS();
+                ushort sp = p.GetState().GetSP();
                 uint full_stack_addr = (uint)(ss * 16 + sp);
                 Log.Cnsl($"SS: {ss:X04}, SP: {sp:X04} => ${full_stack_addr:X06}, {p.HexDump(full_stack_addr)}");
-                Log.Cnsl($"BP: {p.GetBP():X04}, SI: {p.GetSI():X04}, DI: {p.GetDI():X04}");
-                ushort cs = p.GetCS();
-                ushort ip = p.GetIP();
+                Log.Cnsl($"BP: {p.GetState().GetBP():X04}, SI: {p.GetState().GetSI():X04}, DI: {p.GetState().GetDI():X04}");
+                ushort cs = p.GetState().GetCS();
+                ushort ip = p.GetState().GetIP();
                 Log.Cnsl($"CS: {cs:X04}, IP: {ip:X04} => ${cs * 16 + ip:X06}");
                 Log.Cnsl($"flags: {p.GetFlagsAsString()}");
             }
@@ -686,7 +686,7 @@ if (avi != null)
 }
 
 if (mode == TMode.Tests)
-    System.Environment.Exit(p.GetSI() == 0xa5ee ? 123 : 0);
+    System.Environment.Exit(p.GetState().GetSI() == 0xa5ee ? 123 : 0);
 
 System.Environment.Exit(0);
 
@@ -741,7 +741,7 @@ void Runner(object o)
             if (!throttle)
                 continue;
 
-            long now_clock = p.GetClock();
+            long now_clock = p.GetState().GetClock();
             if (now_clock - prev_clock >= 4770000 / throttle_hz)
             {
                 long now_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
@@ -794,33 +794,33 @@ void CmdGet(string[] tokens, P8086 p, Bus b)
             ushort value   = 0;
 
             if (regname == "ax")
-                value = p.GetAX();
+                value = p.GetState().GetAX();
             else if (regname == "bx")
-                value = p.GetBX();
+                value = p.GetState().GetBX();
             else if (regname == "cx")
-                value = p.GetCX();
+                value = p.GetState().GetCX();
             else if (regname == "dx")
-                value = p.GetDX();
+                value = p.GetState().GetDX();
             else if (regname == "ss")
-                value = p.GetSS();
+                value = p.GetState().GetSS();
             else if (regname == "cs")
-                value = p.GetCS();
+                value = p.GetState().GetCS();
             else if (regname == "ds")
-                value = p.GetDS();
+                value = p.GetState().GetDS();
             else if (regname == "es")
-                value = p.GetES();
+                value = p.GetState().GetES();
             else if (regname == "sp")
-                value = p.GetSP();
+                value = p.GetState().GetSP();
             else if (regname == "bp")
-                value = p.GetBP();
+                value = p.GetState().GetBP();
             else if (regname == "si")
-                value = p.GetSI();
+                value = p.GetState().GetSI();
             else if (regname == "di")
-                value = p.GetDI();
+                value = p.GetState().GetDI();
             else if (regname == "ip")
-                value = p.GetIP();
+                value = p.GetState().GetIP();
             else if (regname == "flags")
-                value = p.GetFlags();
+                value = p.GetState().GetFlags();
             else
             {
                 Log.Cnsl($"Register {regname} not known");
@@ -862,33 +862,33 @@ void CmdSet(string [] tokens, P8086 p, Bus b)
         try
         {
             if (regname == "ax")
-                p.SetAX(value);
+                p.GetState().SetAX(value);
             else if (regname == "bx")
-                p.SetBX(value);
+                p.GetState().SetBX(value);
             else if (regname == "cx")
-                p.SetCX(value);
+                p.GetState().SetCX(value);
             else if (regname == "dx")
-                p.SetDX(value);
+                p.GetState().SetDX(value);
             else if (regname == "ss")
-                p.SetSS(value);
+                p.GetState().SetSS(value);
             else if (regname == "cs")
-                p.SetCS(value);
+                p.GetState().SetCS(value);
             else if (regname == "ds")
-                p.SetDS(value);
+                p.GetState().SetDS(value);
             else if (regname == "es")
-                p.SetES(value);
+                p.GetState().SetES(value);
             else if (regname == "sp")
-                p.SetSP(value);
+                p.GetState().SetSP(value);
             else if (regname == "bp")
-                p.SetBP(value);
+                p.GetState().SetBP(value);
             else if (regname == "si")
-                p.SetSI(value);
+                p.GetState().SetSI(value);
             else if (regname == "di")
-                p.SetDI(value);
+                p.GetState().SetDI(value);
             else if (regname == "ip")
-                p.SetIP(value);
+                p.GetState().SetIP(value);
             else if (regname == "flags")
-                p.SetFlags(value);
+                p.GetState().SetFlags(value);
             else
             {
                 Log.Cnsl($"Register {regname} not known");
@@ -939,9 +939,9 @@ void MeasureSpeed(P8086 p, bool continuously)
         Log.Cnsl("Press any key to stop measuring");
     do
     {
-        long start_clock = p.GetClock();
+        long start_clock = p.GetState().GetClock();
         Thread.Sleep(1000);
-        long end_clock = p.GetClock();
+        long end_clock = p.GetState().GetClock();
 
         Log.Cnsl($"Estimated emulation speed: {(end_clock - start_clock) * 100 / 4772730}%");
     }
