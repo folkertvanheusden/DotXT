@@ -233,6 +233,403 @@ internal class P8086
 	    return 3 + cycles;
     }
 
+	private int Op_ADD_SUB_ADC_SBC(byte opcode)
+	{
+		int cycle_count = 0;
+
+		bool word = (opcode & 1) == 1;
+		bool direction = (opcode & 2) == 2;
+		byte o1 = GetPcByte();
+
+		int mod = o1 >> 6;
+		int reg1 = (o1 >> 3) & 7;
+		int reg2 = o1 & 7;
+
+		(ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
+		ushort r2 = GetRegister(reg1, word);
+
+		cycle_count += get_cycles;
+
+		int result = 0;
+		bool is_sub = false;
+		bool apply = true;
+		bool use_flag_c = false;
+
+		if (opcode <= 0x03)
+		{
+			result = r1 + r2;
+
+			cycle_count += 4;
+		}
+		else if (opcode >= 0x10 && opcode <= 0x13)
+		{
+			use_flag_c = true;
+
+			result = r1 + r2 + (_state.GetFlagC() ? 1 : 0);
+
+			cycle_count += 4;
+		}
+		else
+		{
+			if (direction)
+				result = r2 - r1;
+			else
+				result = r1 - r2;
+
+			is_sub = true;
+
+			if (opcode >= 0x38 && opcode <= 0x3b)
+			{
+				apply = false;
+			}
+			else if (opcode >= 0x28 && opcode <= 0x2b)
+			{
+			}
+			else  // 0x18...0x1b
+			{
+				use_flag_c = true;
+
+				result -= (_state.GetFlagC() ? 1 : 0);
+			}
+
+			cycle_count += 4;
+		}
+
+		if (direction)
+			SetAddSubFlags(word, r2, r1, result, is_sub, use_flag_c ? _state.GetFlagC() : false);
+		else
+			SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? _state.GetFlagC() : false);
+
+		// 0x38...0x3b are CMP
+		if (apply)
+		{
+			if (direction)
+			{
+				PutRegister(reg1, word, (ushort)result);
+			}
+			else
+			{
+				bool override_to_ss = a_valid && word && _state.segment_override_set == false &&
+					(
+					 ((reg2 == 2 || reg2 == 3) && mod == 0)
+					);
+
+				if (override_to_ss)
+					seg = _state.ss;
+
+				int put_cycles = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result);
+				cycle_count += put_cycles;
+			}
+		}
+
+		return cycle_count;
+	}
+
+	private int Op_TEST(byte opcode)  // 0x84, 0x85
+        {
+            // TEST ...,...
+            bool word = (opcode & 1) == 1;
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, bool a_valid, ushort seg, ushort addr, int cycles) = GetRegisterMem(reg2, mod, word);
+            ushort r2 = GetRegister(reg1, word);
+
+            if (word)
+            {
+                ushort result = (ushort)(r1 & r2);
+                SetLogicFuncFlags(true, result);
+            }
+            else
+            {
+                byte result = (byte)(r1 & r2);
+                SetLogicFuncFlags(false, result);
+            }
+
+            _state.SetFlagC(false);
+
+            return 3 + cycles;
+        }
+
+	private int Op_XCHG(byte opcode)
+        {
+            // XCHG
+            bool word = (opcode & 1) == 1;
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
+            ushort r2 = GetRegister(reg1, word);
+
+            int put_cycles = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, r2);
+
+            PutRegister(reg1, word, r1);
+
+            return 3 + get_cycles + put_cycles;
+        }
+
+	private int Op_XCHG_AX(byte opcode)  // 91...97
+        {
+            // XCHG AX,...
+            int reg_nr = opcode - 0x90;
+            ushort v = GetRegister(reg_nr, true);
+
+            ushort old_ax = _state.GetAX();
+            _state.SetAX(v);
+
+            PutRegister(reg_nr, true, old_ax);
+
+            return 3;
+        }
+
+    private int Op_fe_ff(byte opcode)
+        {
+		int cycle_count = 0;
+	
+            // DEC and others
+            bool word = (opcode & 1) == 1;
+            byte o1 = GetPcByte();
+            int mod = o1 >> 6;
+            int reg = o1 & 7;
+            int function = (o1 >> 3) & 7;
+
+            // Log.DoLog($"mod {mod} reg {reg} word {word} function {function}", true);
+
+            (ushort v, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg, mod, word);
+            cycle_count += get_cycles;
+
+            if (function == 0)
+            {
+                // INC
+                v++;
+
+                cycle_count += 3;
+
+                _state.SetFlagO(word ? v == 0x8000 : v == 0x80);
+                _state.SetFlagA((v & 15) == 0);
+
+                _state.SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
+                _state.SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
+                _state.SetFlagP((byte)v);
+            }
+            else if (function == 1)
+            {
+                // DEC
+                v--;
+
+                cycle_count += 3;
+
+                _state.SetFlagO(word ? v == 0x7fff : v == 0x7f);
+                _state.SetFlagA((v & 15) == 15);
+
+                _state.SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
+                _state.SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
+                _state.SetFlagP((byte)v);
+            }
+            else if (function == 2)
+            {
+                // CALL
+                push(_state.ip);
+
+                _state.rep = false;
+                _state.ip = v;
+
+                cycle_count += 16;
+            }
+            else if (function == 3)
+            {
+                // CALL FAR
+                push(_state.cs);
+                push(_state.ip);
+
+                _state.ip = v;
+                _state.cs = ReadMemWord(seg, (ushort)(addr + 2));
+
+                cycle_count += 37;
+            }
+            else if (function == 4)
+            {
+                // JMP NEAR
+                _state.ip = v;
+
+                cycle_count += 18;
+            }
+            else if (function == 5)
+            {
+                // JMP
+                _state.cs = ReadMemWord(seg, (ushort)(addr + 2));
+                _state.ip = ReadMemWord(seg, addr);
+
+                cycle_count += 15;
+            }
+            else if (function == 6)
+            {
+                // PUSH rmw
+                if (reg == 4 && mod == 3 && word == true)  // PUSH SP
+                {
+                    v -= 2;
+                    WriteMemWord(_state.ss, v, v);
+                }
+                else
+                {
+                    push(v);
+                }
+
+                cycle_count += 16;
+            }
+            else
+            {
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
+            }
+
+            if (!word)
+                v &= 0xff;
+
+            int put_cycles = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, v);
+
+            return cycle_count + put_cycles;
+        }
+
+    private int Op_LOOP(byte opcode)  // e0/e1/e2
+        {
+            // LOOP
+		int cycle_count = 0;
+
+            byte to = GetPcByte();
+
+            ushort cx = _state.GetCX();
+            cx--;
+            _state.SetCX(cx);
+
+            ushort newAddresses = (ushort)(_state.ip + (sbyte)to);
+
+            cycle_count += 4;
+
+            if (opcode == 0xe2)
+            {
+                if (cx > 0)
+                {
+                    _state.ip = newAddresses;
+                    cycle_count += 4;
+                }
+            }
+            else if (opcode == 0xe1)
+            {
+                if (cx > 0 && _state.GetFlagZ() == true)
+                {
+                    _state.ip = newAddresses;
+                    cycle_count += 4;
+                }
+            }
+            else if (opcode == 0xe0)
+            {
+                if (cx > 0 && _state.GetFlagZ() == false)
+                {
+                    _state.ip = newAddresses;
+                    cycle_count += 4;
+                }
+            }
+            else
+            {
+                Log.DoLog($"opcode {opcode:X2} not implemented", LogLevel.WARNING);
+            }
+
+	    return cycle_count;
+        }
+
+    private int Op_Jxx(byte opcode)
+        {
+            // J..., 0x70/0x60
+            byte to = GetPcByte();
+
+            bool state = false;
+
+            if (opcode == 0x70 || opcode == 0x60)
+            {
+                state = _state.GetFlagO();
+            }
+            else if (opcode == 0x71 || opcode == 0x61)
+            {
+                state = _state.GetFlagO() == false;
+            }
+            else if (opcode == 0x72 || opcode == 0x62)
+            {
+                state = _state.GetFlagC();
+            }
+            else if (opcode == 0x73 || opcode == 0x63)
+            {
+                state = _state.GetFlagC() == false;
+            }
+            else if (opcode == 0x74 || opcode == 0x64)
+            {
+                state = _state.GetFlagZ();
+            }
+            else if (opcode == 0x75 || opcode == 0x65)
+            {
+                state = _state.GetFlagZ() == false;
+            }
+            else if (opcode == 0x76 || opcode == 0x66)
+            {
+                state = _state.GetFlagC() || _state.GetFlagZ();
+            }
+            else if (opcode == 0x77 || opcode == 0x67)
+            {
+                state = _state.GetFlagC() == false && _state.GetFlagZ() == false;
+            }
+            else if (opcode == 0x78 || opcode == 0x68)
+            {
+                state = _state.GetFlagS();
+            }
+            else if (opcode == 0x79 || opcode == 0x69)
+            {
+                state = _state.GetFlagS() == false;
+            }
+            else if (opcode == 0x7a || opcode == 0x6a)
+            {
+                state = _state.GetFlagP();
+            }
+            else if (opcode == 0x7b || opcode == 0x6b)
+            {
+                state = _state.GetFlagP() == false;
+            }
+            else if (opcode == 0x7c || opcode == 0x6c)
+            {
+                state = _state.GetFlagS() != _state.GetFlagO();
+            }
+            else if (opcode == 0x7d || opcode == 0x6d)
+            {
+                state = _state.GetFlagS() == _state.GetFlagO();
+            }
+            else if (opcode == 0x7e || opcode == 0x6e)
+            {
+                state = _state.GetFlagZ() == true || _state.GetFlagS() != _state.GetFlagO();
+            }
+            else if (opcode == 0x7f || opcode == 0x6f)
+            {
+                state = _state.GetFlagZ() == false && _state.GetFlagS() == _state.GetFlagO();
+            }
+            else
+            {
+                Log.DoLog($"opcode {opcode:x2} not implemented", LogLevel.WARNING);
+            }
+
+            ushort newAddress = (ushort)(_state.ip + (sbyte)to);
+
+            if (state)
+            {
+                _state.ip = newAddress;
+                return 16;
+            }
+
+            return 4;
+        }
+
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -240,17 +637,50 @@ internal class P8086
         _io = new IO(b, ref devices, !run_IO);
         _terminate_on_off_the_rails = run_IO;
 
+	_ops[0x00] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x01] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x02] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x03] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x04] = this.Op_ADD_AL_xx;
      	_ops[0x05] = this.Op_ADD_AX_xxxx;
+	_ops[0x10] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x11] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x12] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x13] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x14] = this.Op_ADD_AL_xx;
      	_ops[0x15] = this.Op_ADD_AX_xxxx;
+	_ops[0x18] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x19] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x1a] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x1b] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x28] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x29] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x2a] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x2b] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x38] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x39] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x3a] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x3b] = this.Op_ADD_SUB_ADC_SBC;
     	_ops[0x80] = this.Op_CMP_OR_XOR_etc;
     	_ops[0x81] = this.Op_CMP_OR_XOR_etc;
     	_ops[0x82] = this.Op_CMP_OR_XOR_etc;
     	_ops[0x83] = this.Op_CMP_OR_XOR_etc;
+	_ops[0x84] = this.Op_TEST;
+	_ops[0x85] = this.Op_TEST;
+	_ops[0x86] = this.Op_XCHG;
+	_ops[0x87] = this.Op_XCHG;
 	_ops[0x90] = this.Op_NOP;
-	for(int i=0xb0; i<0xc0; i++)
+	for(int i=0x91; i<=0x97; i++)
+		_ops[i] = this.Op_XCHG_AX;
+	for(int i=0xb0; i<=0xbf; i++)
 		_ops[i] = this.Op_MOV_reg_ib;
+    	_ops[0xe0] = this.Op_LOOP;
+    	_ops[0xe1] = this.Op_LOOP;
+    	_ops[0xe2] = this.Op_LOOP;
+	_ops[0xfe] = this.Op_fe_ff;
+	_ops[0xff] = this.Op_fe_ff;
+	for(int i=0x60; i<=0x7f; i++)
+		_ops[i] = this.Op_Jxx;
 
         // bit 1 of the flags register is always 1
         // https://www.righto.com/2023/02/silicon-reverse-engineering-intel-8086.html
@@ -1530,53 +1960,6 @@ internal class P8086
 
             cycle_count += 15;
         }
-        else if (opcode == 0x84 || opcode == 0x85)
-        {
-            // TEST ...,...
-            bool word = (opcode & 1) == 1;
-            byte o1 = GetPcByte();
-
-            int mod = o1 >> 6;
-            int reg1 = (o1 >> 3) & 7;
-            int reg2 = o1 & 7;
-
-            (ushort r1, bool a_valid, ushort seg, ushort addr, int cycles) = GetRegisterMem(reg2, mod, word);
-            ushort r2 = GetRegister(reg1, word);
-
-            if (word)
-            {
-                ushort result = (ushort)(r1 & r2);
-                SetLogicFuncFlags(true, result);
-            }
-            else
-            {
-                byte result = (byte)(r1 & r2);
-                SetLogicFuncFlags(false, result);
-            }
-
-            _state.SetFlagC(false);
-
-            cycle_count += 3 + cycles;
-        }
-        else if (opcode == 0x86 || opcode == 0x87)
-        {
-            // XCHG
-            bool word = (opcode & 1) == 1;
-            byte o1 = GetPcByte();
-
-            int mod = o1 >> 6;
-            int reg1 = (o1 >> 3) & 7;
-            int reg2 = o1 & 7;
-
-            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
-            ushort r2 = GetRegister(reg1, word);
-
-            int put_cycles = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, r2);
-
-            PutRegister(reg1, word, r1);
-
-            cycle_count += 3 + get_cycles + put_cycles;
-        }
         else if (opcode == 0x8f)
         {
             // POP rmw
@@ -1594,20 +1977,6 @@ internal class P8086
         else if (opcode == 0x90)
         {
             // NOP
-
-            cycle_count += 3;
-        }
-        else if (opcode >= 0x91 && opcode <= 0x97)
-        {
-            // XCHG AX,...
-            int reg_nr = opcode - 0x90;
-
-            ushort v = GetRegister(reg_nr, true);
-
-            ushort old_ax = _state.GetAX();
-            _state.SetAX(v);
-
-            PutRegister(reg_nr, true, old_ax);
 
             cycle_count += 3;
         }
@@ -1778,93 +2147,6 @@ internal class P8086
                 back_from_trace = true;
 
             cycle_count += 32;  // 44
-        }
-        else if ((opcode >= 0x00 && opcode <= 0x03) || (opcode >= 0x10 && opcode <= 0x13) || (opcode >= 0x28 && opcode <= 0x2b) || (opcode >= 0x18 && opcode <= 0x1b) || (opcode >= 0x38 && opcode <= 0x3b))
-        {
-            bool word = (opcode & 1) == 1;
-            bool direction = (opcode & 2) == 2;
-            byte o1 = GetPcByte();
-
-            int mod = o1 >> 6;
-            int reg1 = (o1 >> 3) & 7;
-            int reg2 = o1 & 7;
-
-            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
-            ushort r2 = GetRegister(reg1, word);
-
-            cycle_count += get_cycles;
-
-            int result = 0;
-            bool is_sub = false;
-            bool apply = true;
-            bool use_flag_c = false;
-
-            if (opcode <= 0x03)
-            {
-                result = r1 + r2;
-
-                cycle_count += 4;
-            }
-            else if (opcode >= 0x10 && opcode <= 0x13)
-            {
-                use_flag_c = true;
-
-                result = r1 + r2 + (_state.GetFlagC() ? 1 : 0);
-
-                cycle_count += 4;
-            }
-            else
-            {
-                if (direction)
-                    result = r2 - r1;
-                else
-                    result = r1 - r2;
-
-                is_sub = true;
-
-                if (opcode >= 0x38 && opcode <= 0x3b)
-                {
-                    apply = false;
-                }
-                else if (opcode >= 0x28 && opcode <= 0x2b)
-                {
-                }
-                else  // 0x18...0x1b
-                {
-                    use_flag_c = true;
-
-                    result -= (_state.GetFlagC() ? 1 : 0);
-                }
-
-                cycle_count += 4;
-            }
-
-            if (direction)
-                SetAddSubFlags(word, r2, r1, result, is_sub, use_flag_c ? _state.GetFlagC() : false);
-            else
-                SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? _state.GetFlagC() : false);
-
-            // 0x38...0x3b are CMP
-            if (apply)
-            {
-                if (direction)
-                {
-                    PutRegister(reg1, word, (ushort)result);
-                }
-                else
-                {
-                    bool override_to_ss = a_valid && word && _state.segment_override_set == false &&
-                        (
-                         ((reg2 == 2 || reg2 == 3) && mod == 0)
-                        );
-
-                    if (override_to_ss)
-                        seg = _state.ss;
-
-                    int put_cycles = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, (ushort)result);
-                    cycle_count += put_cycles;
-                }
-            }
         }
         else if (opcode == 0x3c || opcode == 0x3d)
         {
@@ -2785,94 +3067,6 @@ internal class P8086
 
             cycle_count += 2;  // TODO
         }
-        else if ((opcode & 0xf0) == 0x70 || (opcode & 0xf0) == 0x60)
-        {
-            // J..., 0x70/0x60
-            byte to = GetPcByte();
-
-            bool state = false;
-
-            if (opcode == 0x70 || opcode == 0x60)
-            {
-                state = _state.GetFlagO();
-            }
-            else if (opcode == 0x71 || opcode == 0x61)
-            {
-                state = _state.GetFlagO() == false;
-            }
-            else if (opcode == 0x72 || opcode == 0x62)
-            {
-                state = _state.GetFlagC();
-            }
-            else if (opcode == 0x73 || opcode == 0x63)
-            {
-                state = _state.GetFlagC() == false;
-            }
-            else if (opcode == 0x74 || opcode == 0x64)
-            {
-                state = _state.GetFlagZ();
-            }
-            else if (opcode == 0x75 || opcode == 0x65)
-            {
-                state = _state.GetFlagZ() == false;
-            }
-            else if (opcode == 0x76 || opcode == 0x66)
-            {
-                state = _state.GetFlagC() || _state.GetFlagZ();
-            }
-            else if (opcode == 0x77 || opcode == 0x67)
-            {
-                state = _state.GetFlagC() == false && _state.GetFlagZ() == false;
-            }
-            else if (opcode == 0x78 || opcode == 0x68)
-            {
-                state = _state.GetFlagS();
-            }
-            else if (opcode == 0x79 || opcode == 0x69)
-            {
-                state = _state.GetFlagS() == false;
-            }
-            else if (opcode == 0x7a || opcode == 0x6a)
-            {
-                state = _state.GetFlagP();
-            }
-            else if (opcode == 0x7b || opcode == 0x6b)
-            {
-                state = _state.GetFlagP() == false;
-            }
-            else if (opcode == 0x7c || opcode == 0x6c)
-            {
-                state = _state.GetFlagS() != _state.GetFlagO();
-            }
-            else if (opcode == 0x7d || opcode == 0x6d)
-            {
-                state = _state.GetFlagS() == _state.GetFlagO();
-            }
-            else if (opcode == 0x7e || opcode == 0x6e)
-            {
-                state = _state.GetFlagZ() == true || _state.GetFlagS() != _state.GetFlagO();
-            }
-            else if (opcode == 0x7f || opcode == 0x6f)
-            {
-                state = _state.GetFlagZ() == false && _state.GetFlagS() == _state.GetFlagO();
-            }
-            else
-            {
-                Log.DoLog($"opcode {opcode:x2} not implemented", LogLevel.WARNING);
-            }
-
-            ushort newAddress = (ushort)(_state.ip + (sbyte)to);
-
-            if (state)
-            {
-                _state.ip = newAddress;
-                cycle_count += 16;
-            }
-            else
-            {
-                cycle_count += 4;
-            }
-        }
         else if (opcode == 0xd7)
         {
             // XLATB
@@ -2881,48 +3075,6 @@ internal class P8086
             _state.al = ReadMemByte(_state.segment_override_set ? _state.segment_override : _state.ds, (ushort)(_state.GetBX() + _state.al));
 
             cycle_count += 11;
-        }
-        else if (opcode == 0xe0 || opcode == 0xe1 || opcode == 0xe2)
-        {
-            // LOOP
-            byte to = GetPcByte();
-
-            ushort cx = _state.GetCX();
-            cx--;
-            _state.SetCX(cx);
-
-            ushort newAddresses = (ushort)(_state.ip + (sbyte)to);
-
-            cycle_count += 4;
-
-            if (opcode == 0xe2)
-            {
-                if (cx > 0)
-                {
-                    _state.ip = newAddresses;
-                    cycle_count += 4;
-                }
-            }
-            else if (opcode == 0xe1)
-            {
-                if (cx > 0 && _state.GetFlagZ() == true)
-                {
-                    _state.ip = newAddresses;
-                    cycle_count += 4;
-                }
-            }
-            else if (opcode == 0xe0)
-            {
-                if (cx > 0 && _state.GetFlagZ() == false)
-                {
-                    _state.ip = newAddresses;
-                    cycle_count += 4;
-                }
-            }
-            else
-            {
-                Log.DoLog($"opcode {opcode:X2} not implemented", LogLevel.WARNING);
-            }
         }
         else if (opcode == 0xe4)
         {
@@ -3045,110 +3197,6 @@ internal class P8086
             _state.SetFlagD(true);
 
             cycle_count += 2;
-        }
-        else if (opcode == 0xfe || opcode == 0xff)
-        {
-            // DEC and others
-            bool word = (opcode & 1) == 1;
-            byte o1 = GetPcByte();
-            int mod = o1 >> 6;
-            int reg = o1 & 7;
-            int function = (o1 >> 3) & 7;
-
-            // Log.DoLog($"mod {mod} reg {reg} word {word} function {function}", true);
-
-            (ushort v, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg, mod, word);
-            cycle_count += get_cycles;
-
-            if (function == 0)
-            {
-                // INC
-                v++;
-
-                cycle_count += 3;
-
-                _state.SetFlagO(word ? v == 0x8000 : v == 0x80);
-                _state.SetFlagA((v & 15) == 0);
-
-                _state.SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
-                _state.SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
-                _state.SetFlagP((byte)v);
-            }
-            else if (function == 1)
-            {
-                // DEC
-                v--;
-
-                cycle_count += 3;
-
-                _state.SetFlagO(word ? v == 0x7fff : v == 0x7f);
-                _state.SetFlagA((v & 15) == 15);
-
-                _state.SetFlagS(word ? (v & 0x8000) == 0x8000 : (v & 0x80) == 0x80);
-                _state.SetFlagZ(word ? v == 0 : (v & 0xff) == 0);
-                _state.SetFlagP((byte)v);
-            }
-            else if (function == 2)
-            {
-                // CALL
-                push(_state.ip);
-
-                _state.rep = false;
-                _state.ip = v;
-
-                cycle_count += 16;
-            }
-            else if (function == 3)
-            {
-                // CALL FAR
-                push(_state.cs);
-                push(_state.ip);
-
-                _state.ip = v;
-                _state.cs = ReadMemWord(seg, (ushort)(addr + 2));
-
-                cycle_count += 37;
-            }
-            else if (function == 4)
-            {
-                // JMP NEAR
-                _state.ip = v;
-
-                cycle_count += 18;
-            }
-            else if (function == 5)
-            {
-                // JMP
-                _state.cs = ReadMemWord(seg, (ushort)(addr + 2));
-                _state.ip = ReadMemWord(seg, addr);
-
-                cycle_count += 15;
-            }
-            else if (function == 6)
-            {
-                // PUSH rmw
-                if (reg == 4 && mod == 3 && word == true)  // PUSH SP
-                {
-                    v -= 2;
-                    WriteMemWord(_state.ss, v, v);
-                }
-                else
-                {
-                    push(v);
-                }
-
-                cycle_count += 16;
-            }
-            else
-            {
-                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
-            }
-
-            if (!word)
-                v &= 0xff;
-
-            int put_cycles = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, v);
-            cycle_count += put_cycles;
         }
         else
         {
