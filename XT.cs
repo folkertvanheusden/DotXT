@@ -2027,6 +2027,66 @@ internal class P8086
         return 8;
     }
 
+    private int Op_JMP_np(byte opcode)  // 0xe9
+    {
+        // JMP np
+        short offset = (short)GetPcWord();
+        _state.ip = (ushort)(_state.ip + offset);
+        return 15;
+    }
+
+    private int Op_CALL_far(byte opcode)  // 0x9a
+    {
+        // CALL far ptr
+        ushort temp_ip = GetPcWord();
+        ushort temp_cs = GetPcWord();
+
+        push(_state.cs);
+        push(_state.ip);
+
+        _state.ip = temp_ip;
+        _state.cs = temp_cs;
+
+        return 37;
+    }
+
+    private int Op_CALL(byte opcode)  // 0xe8
+    {
+        // CALL
+        short a = (short)GetPcWord();
+        push(_state.ip);
+        _state.ip = (ushort)(a + _state.ip);
+
+        return 16;
+    }
+
+    private int Op_JMP_far(byte opcode)  // 0xea
+    {
+        // JMP far ptr
+        ushort temp_ip = GetPcWord();
+        ushort temp_cs = GetPcWord();
+
+        _state.ip = temp_ip;
+        _state.cs = temp_cs;
+
+        return 15;
+    }
+
+    private int Op_JMP(byte opcode)  // 0xeb
+    {
+        // JMP
+        byte to = GetPcByte();
+        _state.ip = (ushort)(_state.ip + (sbyte)to);
+        return 15;
+    }
+
+    private int Op_HLT(byte opcode)  // 0xf4
+    {
+        // HLT
+        _state.in_hlt = true;
+        return 2;
+    }
+
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -2130,6 +2190,7 @@ internal class P8086
         _ops[0x90] = this.Op_NOP;
         for(int i=0x91; i<=0x97; i++)
             _ops[i] = this.Op_XCHG_AX;
+        _ops[0x9a] = this.Op_CALL_far;
         _ops[0x9c] = this.Op_PUSHF;
         // _ops[0x9d] = this.Op_POPF;  special case
         _ops[0xa0] = this.Op_MOV_AL_mem;
@@ -2176,10 +2237,15 @@ internal class P8086
         _ops[0xe5] = this.Op_IN_AX_ib;
         _ops[0xe6] = this.Op_OUT_AL;
         _ops[0xe7] = this.Op_OUT_AX;
+        _ops[0xe8] = this.Op_CALL;
+        _ops[0xe9] = this.Op_JMP_np;
+        _ops[0xea] = this.Op_JMP_far;
+        _ops[0xeb] = this.Op_JMP;
         _ops[0xec] = this.Op_IN_AL_DX;
         _ops[0xed] = this.Op_IN_AX_DX;
         _ops[0xee] = this.Op_OUT_DX_AL;
         _ops[0xef] = this.Op_OUT_DX_AX;
+        _ops[0xf4] = this.Op_HLT;
         _ops[0xf6] = this.Op_TEST_others;
         _ops[0xf7] = this.Op_TEST_others;
         _ops[0xfe] = this.Op_fe_ff;
@@ -2986,15 +3052,6 @@ internal class P8086
 
             cycle_count += 12;
         }
-        else if (opcode == 0xe9)
-        {
-            // JMP np
-            short offset = (short)GetPcWord();
-
-            _state.ip = (ushort)(_state.ip + offset);
-
-            cycle_count += 15;
-        }
         else if (opcode == 0x98)
         {
             // CBW
@@ -3016,20 +3073,6 @@ internal class P8086
                 _state.SetDX(0);
 
             cycle_count += 5;
-        }
-        else if (opcode == 0x9a)
-        {
-            // CALL far ptr
-            ushort temp_ip = GetPcWord();
-            ushort temp_cs = GetPcWord();
-
-            push(_state.cs);
-            push(_state.ip);
-
-            _state.ip = temp_ip;
-            _state.cs = temp_cs;
-
-            cycle_count += 37;
         }
         else if (opcode == 0xac)
         {
@@ -3069,26 +3112,6 @@ internal class P8086
                 back_from_trace = true;
 
             cycle_count += 32;  // 44
-        }
-        else if (opcode == 0xe8)
-        {
-            // CALL
-            short a = (short)GetPcWord();
-            push(_state.ip);
-            _state.ip = (ushort)(a + _state.ip);
-
-            cycle_count += 16;
-        }
-        else if (opcode == 0xea)
-        {
-            // JMP far ptr
-            ushort temp_ip = GetPcWord();
-            ushort temp_cs = GetPcWord();
-
-            _state.ip = temp_ip;
-            _state.cs = temp_cs;
-
-            cycle_count += 15;
         }
         else if (opcode == 0xfa)
         {
@@ -3209,19 +3232,6 @@ internal class P8086
         {
             // FWAIT
             cycle_count += 2;  // TODO
-        }
-        else if (opcode == 0xeb)
-        {
-            // JMP
-            byte to = GetPcByte();
-            _state.ip = (ushort)(_state.ip + (sbyte)to);
-            cycle_count += 15;
-        }
-        else if (opcode == 0xf4)
-        {
-            // HLT
-            _state.in_hlt = true;
-            cycle_count += 2;
         }
         else if (opcode == 0xf5)
         {
