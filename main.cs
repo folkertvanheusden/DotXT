@@ -294,8 +294,6 @@ if (mode == TMode.JSON)
     for(;;)
     {
         string line = Console.ReadLine();
-        Log.DoLog($"CMDLINE: {line}", LogLevel.DEBUG);
-
         string[] parts = line.Split(' ');
 
         if (line == "s")
