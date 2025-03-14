@@ -1858,6 +1858,62 @@ internal class P8086
         return 8;
     }
 
+    private int Op_SBB_AL_ib(byte opcode)  // 0x1c
+    {
+        // SBB AL,ib
+        byte v = GetPcByte();
+        bool flag_c = _state.GetFlagC();
+        int result = _state.al - v;
+        if (flag_c)
+            result--;
+
+        SetAddSubFlags(false, _state.al, v, result, true, flag_c);
+        _state.al = (byte)result;
+
+        return 3;
+    }
+
+    private int Op_SBB_AX_iw(byte opcode)  // 0x1d
+    {
+        // SBB AX,iw
+        ushort v = GetPcWord();
+        ushort AX = _state.GetAX();
+        bool flag_c = _state.GetFlagC();
+        int result = AX - v;
+        if (flag_c)
+            result--;
+
+        SetAddSubFlags(true, AX, v, result, true, flag_c);
+        _state.SetAX((ushort)result);
+
+        return 3;
+    }
+
+    private int Op_SUB_AL_ib(byte opcode)  // 0x2c
+    {
+        // SUB AL,ib
+        byte v = GetPcByte();
+        int result = _state.al - v;
+
+        SetAddSubFlags(false, _state.al, v, result, true, false);
+        _state.al = (byte)result;
+
+        return 3;
+    }
+
+    private int Op_SUB_AX_iw(byte opcode)  // 0x2d
+    {
+        // SUB AX,iw
+        ushort v = GetPcWord();
+        ushort before = _state.GetAX();
+        int result = before - v;
+
+        SetAddSubFlags(true, before, v, result, true, false);
+        _state.SetAX((ushort)result);
+
+        return 3;
+    }
+
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -1893,6 +1949,8 @@ internal class P8086
         _ops[0x19] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x1a] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x1b] = this.Op_ADD_SUB_ADC_SBC;
+        _ops[0x1c] = this.Op_SBB_AL_ib;
+        _ops[0x1d] = this.Op_SBB_AX_iw;
         _ops[0x1e] = this.Op_PUSH_DS;
         _ops[0x1f] = this.Op_POP_DS;
         _ops[0x20] = this.Op_logic_functions;
@@ -1905,6 +1963,8 @@ internal class P8086
         _ops[0x29] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x2a] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x2b] = this.Op_ADD_SUB_ADC_SBC;
+        _ops[0x2c] = this.Op_SUB_AL_ib;
+        _ops[0x2d] = this.Op_SUB_AX_iw;
         _ops[0x30] = this.Op_logic_functions;
         _ops[0x31] = this.Op_logic_functions;
         _ops[0x32] = this.Op_logic_functions;
@@ -2809,44 +2869,6 @@ internal class P8086
 
             cycle_count += 12;
         }
-        else if (opcode == 0x1c)
-        {
-            // SBB AL,ib
-            byte v = GetPcByte();
-
-            bool flag_c = _state.GetFlagC();
-
-            int result = _state.al - v;
-
-            if (flag_c)
-                result--;
-
-            SetAddSubFlags(false, _state.al, v, result, true, flag_c);
-
-            _state.al = (byte)result;
-
-            cycle_count += 3;
-        }
-        else if (opcode == 0x1d)
-        {
-            // SBB AX,iw
-            ushort v = GetPcWord();
-
-            ushort AX = _state.GetAX();
-
-            bool flag_c = _state.GetFlagC();
-
-            int result = AX - v;
-
-            if (flag_c)
-                result--;
-
-            SetAddSubFlags(true, AX, v, result, true, flag_c);
-
-            _state.SetAX((ushort)result);
-
-            cycle_count += 3;
-        }
         else if (opcode == 0x27)
         {
             // DAA
@@ -2887,19 +2909,6 @@ internal class P8086
             _state.SetZSPFlags(_state.al);
 
             cycle_count += 4;
-        }
-        else if (opcode == 0x2c)
-        {
-            // SUB AL,ib
-            byte v = GetPcByte();
-
-            int result = _state.al - v;
-
-            SetAddSubFlags(false, _state.al, v, result, true, false);
-
-            _state.al = (byte)result;
-
-            cycle_count += 3;
         }
         else if (opcode == 0x2f)
         {
@@ -2973,21 +2982,6 @@ internal class P8086
             _state.al &= 0x0f;
 
             cycle_count += 8;
-        }
-        else if (opcode == 0x2d)
-        {
-            // SUB AX,iw
-            ushort v = GetPcWord();
-
-            ushort before = _state.GetAX();
-
-            int result = before - v;
-
-            SetAddSubFlags(true, before, v, result, true, false);
-
-            _state.SetAX((ushort)result);
-
-            cycle_count += 3;
         }
         else if (opcode == 0xe9)
         {
