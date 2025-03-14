@@ -26,9 +26,9 @@ internal class P8086
 
     private State8086 _state = new();
 
-    public State8086 GetState()
+    public ref State8086 GetState()
     {
-        return _state;
+        return ref _state;
     }
 
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
