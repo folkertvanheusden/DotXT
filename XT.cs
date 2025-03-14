@@ -2618,9 +2618,6 @@ internal class P8086
             _state.crash_counter = 0;
         }
 
-        if (_ops[opcode] == null)
-            Log.DoLog($"GREP {opcode:X02}", LogLevel.INFO);
-
         if (_ops[opcode] != null)
         {
             cycle_count += _ops[opcode](opcode);
