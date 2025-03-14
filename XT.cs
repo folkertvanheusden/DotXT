@@ -1914,6 +1914,119 @@ internal class P8086
         return 3;
     }
 
+    private int Op_DAA(byte opcode)  // 0x27
+    {
+        // DAA
+        // https://www.felixcloutier.com/x86/daa
+        byte old_al = _state.al;
+        bool old_af = _state.GetFlagA();
+        bool old_cf = _state.GetFlagC();
+
+        _state.SetFlagC(false);
+
+        if (((_state.al & 0x0f) > 9) || _state.GetFlagA() == true)
+        {
+            bool add_carry = _state.al + 6 > 255;
+
+            _state.al += 6;
+            _state.SetFlagC(old_cf || add_carry);
+            _state.SetFlagA(true);
+        }
+        else
+        {
+            _state.SetFlagA(false);
+        }
+
+        byte upper_nibble_check = (byte)(old_af ? 0x9f : 0x99);
+
+        if (old_al > upper_nibble_check || old_cf)
+        {
+            _state.al += 0x60;
+            _state.SetFlagC(true);
+        }
+        else
+        {
+            _state.SetFlagC(false);
+        }
+
+        _state.SetZSPFlags(_state.al);
+
+        return 4;
+    }
+
+    private int Op_DAS(byte opcode)  // 0x2f
+    {
+        byte old_al = _state.al;
+        bool old_af = _state.GetFlagA();
+        bool old_cf = _state.GetFlagC();
+
+        _state.SetFlagC(false);
+
+        if ((_state.al & 0x0f) > 9 || _state.GetFlagA() == true)
+        {
+            _state.al -= 6;
+            _state.SetFlagA(true);
+        }
+        else
+        {
+            _state.SetFlagA(false);
+        }
+
+        byte upper_nibble_check = (byte)(old_af ? 0x9f : 0x99);
+
+        if (old_al > upper_nibble_check || old_cf)
+        {
+            _state.al -= 0x60;
+            _state.SetFlagC(true);
+        }
+
+        _state.SetZSPFlags(_state.al);
+
+        return 4;
+    }
+
+    private int Op_AAA(byte opcode)  // 0x37
+    {
+        if ((_state.al & 0x0f) > 9 || _state.GetFlagA())
+        {
+            _state.ah += 1;
+            _state.al += 6;
+
+            _state.SetFlagA(true);
+            _state.SetFlagC(true);
+        }
+        else
+        {
+            _state.SetFlagA(false);
+            _state.SetFlagC(false);
+        }
+
+        _state.al &= 0x0f;
+
+        return 8;
+    }
+
+    private int Op_AAS(byte opcode)  // 0x3f
+    {
+        if ((_state.al & 0x0f) > 9 || _state.GetFlagA())
+        {
+            _state.al -= 6;
+            _state.ah -= 1;
+
+            _state.SetFlagA(true);
+            _state.SetFlagC(true);
+        }
+        else
+        {
+            _state.SetFlagA(false);
+            _state.SetFlagC(false);
+        }
+
+        _state.al &= 0x0f;
+
+        return 8;
+    }
+
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -1959,24 +2072,28 @@ internal class P8086
         _ops[0x23] = this.Op_logic_functions;
         _ops[0x24] = this.Op_OR_AND_XOR;
         _ops[0x25] = this.Op_OR_AND_XOR;
+        _ops[0x27] = this.Op_DAA;
         _ops[0x28] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x29] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x2a] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x2b] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x2c] = this.Op_SUB_AL_ib;
         _ops[0x2d] = this.Op_SUB_AX_iw;
+        _ops[0x2f] = this.Op_DAS;
         _ops[0x30] = this.Op_logic_functions;
         _ops[0x31] = this.Op_logic_functions;
         _ops[0x32] = this.Op_logic_functions;
         _ops[0x33] = this.Op_logic_functions;
         _ops[0x34] = this.Op_OR_AND_XOR;
         _ops[0x35] = this.Op_OR_AND_XOR;
+        _ops[0x37] = this.Op_AAA;
         _ops[0x38] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x39] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x3a] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x3b] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x3c] = this.Op_CMP;
         _ops[0x3d] = this.Op_CMP;
+        _ops[0x3f] = this.Op_AAS;
         for(int i=0x40; i<=0x4f; i++)
             _ops[i] = this.Op_INC_DEC;
         _ops[0x50] = this.Op_PUSH_AX;
@@ -2869,120 +2986,6 @@ internal class P8086
 
             cycle_count += 12;
         }
-        else if (opcode == 0x27)
-        {
-            // DAA
-            // https://www.felixcloutier.com/x86/daa
-            byte old_al = _state.al;
-            bool old_af = _state.GetFlagA();
-            bool old_cf = _state.GetFlagC();
-
-            _state.SetFlagC(false);
-
-            if (((_state.al & 0x0f) > 9) || _state.GetFlagA() == true)
-            {
-                bool add_carry = _state.al + 6 > 255;
-
-                _state.al += 6;
-
-                _state.SetFlagC(old_cf || add_carry);
-
-                _state.SetFlagA(true);
-            }
-            else
-            {
-                _state.SetFlagA(false);
-            }
-
-            byte upper_nibble_check = (byte)(old_af ? 0x9f : 0x99);
-
-            if (old_al > upper_nibble_check || old_cf)
-            {
-                _state.al += 0x60;
-                _state.SetFlagC(true);
-            }
-            else
-            {
-                _state.SetFlagC(false);
-            }
-
-            _state.SetZSPFlags(_state.al);
-
-            cycle_count += 4;
-        }
-        else if (opcode == 0x2f)
-        {
-            // DAS
-            byte old_al = _state.al;
-            bool old_af = _state.GetFlagA();
-            bool old_cf = _state.GetFlagC();
-
-            _state.SetFlagC(false);
-
-            if ((_state.al & 0x0f) > 9 || _state.GetFlagA() == true)
-            {
-                _state.al -= 6;
-
-                _state.SetFlagA(true);
-            }
-            else
-            {
-                _state.SetFlagA(false);
-            }
-
-            byte upper_nibble_check = (byte)(old_af ? 0x9f : 0x99);
-
-            if (old_al > upper_nibble_check || old_cf)
-            {
-                _state.al -= 0x60;
-                _state.SetFlagC(true);
-            }
-
-            _state.SetZSPFlags(_state.al);
-
-            cycle_count += 4;
-        }
-        else if (opcode == 0x37)
-        {
-            if ((_state.al & 0x0f) > 9 || _state.GetFlagA())
-            {
-                _state.ah += 1;
-
-                _state.al += 6;
-
-                _state.SetFlagA(true);
-                _state.SetFlagC(true);
-            }
-            else
-            {
-                _state.SetFlagA(false);
-                _state.SetFlagC(false);
-            }
-
-            _state.al &= 0x0f;
-
-            cycle_count += 8;
-        }
-        else if (opcode == 0x3f)
-        {
-            if ((_state.al & 0x0f) > 9 || _state.GetFlagA())
-            {
-                _state.al -= 6;
-                _state.ah -= 1;
-
-                _state.SetFlagA(true);
-                _state.SetFlagC(true);
-            }
-            else
-            {
-                _state.SetFlagA(false);
-                _state.SetFlagC(false);
-            }
-
-            _state.al &= 0x0f;
-
-            cycle_count += 8;
-        }
         else if (opcode == 0xe9)
         {
             // JMP np
@@ -2991,12 +2994,6 @@ internal class P8086
             _state.ip = (ushort)(_state.ip + offset);
 
             cycle_count += 15;
-        }
-        else if (opcode == 0x90)
-        {
-            // NOP
-
-            cycle_count += 3;
         }
         else if (opcode == 0x98)
         {
