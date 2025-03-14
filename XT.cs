@@ -1665,6 +1665,199 @@ internal class P8086
         return 13;
     }
 
+    private int Op_PUSH_ES(byte opcode)  // 0x06
+    {
+        // PUSH ES
+        push(_state.es);
+        return 15;
+    }
+
+    private int Op_POP_ES(byte opcode)  // 0x07
+    {
+        // POP ES
+        _state.es = pop();
+        _state.inhibit_interrupts = true;
+        return 12;
+    }
+
+    private int Op_PUSH_CS(byte opcode)  // 0x0e
+    {
+        // PUSH CS
+        push(_state.cs);
+        return 15;
+    }
+
+    private int Op_POP_CS(byte opcode)  // 0x0f
+    {
+        // POP CS
+        _state.cs = pop();
+        _state.inhibit_interrupts = true;
+        return 12;
+    }
+
+    private int Op_PUSH_SS(byte opcode)  // 0x16
+    {
+        // PUSH SS
+        push(_state.ss);
+        return 15;
+    }
+
+    private int Op_POP_SS(byte opcode)  // 0x17
+    {
+        // POP SS
+        _state.ss = pop();
+        _state.inhibit_interrupts = true;
+        return 12;
+    }
+
+    private int Op_PUSH_DS(byte opcode)  // 0x1e
+    {
+        // PUSH DS
+        push(_state.ds);
+        return 11;  // 15
+    }
+
+    private int Op_POP_DS(byte opcode)  // 0x1f
+    {
+        // POP DS
+        _state.ds = pop();
+        _state.inhibit_interrupts = true;
+        return 8;
+    }
+
+    private int Op_PUSH_AX(byte opcode)  // 0x50
+    {
+        // PUSH AX
+        push(_state.GetAX());
+        return 15;
+    }
+
+    private int Op_PUSH_CX(byte opcode)  // 0x51
+    {
+        // PUSH CX
+        push(_state.GetCX());
+        return 15;
+    }
+
+    private int Op_PUSH_DX(byte opcode)  // 0x52
+    {
+        // PUSH DX
+        push(_state.GetDX());
+        return 15;
+    }
+
+    private int Op_PUSH_BX(byte opcode)  // 0x53
+    {
+        // PUSH BX
+        push(_state.GetBX());
+        return 15;
+    }
+
+    private int Op_PUSH_SP(byte opcode)  // 0x54
+    {
+        // PUSH SP
+        // special case, see:
+        // https://c9x.me/x86/html/file_module_x86_id_269.html
+        _state.sp -= 2;
+        WriteMemWord(_state.ss, _state.sp, _state.sp);
+        return 15;
+    }
+
+    private int Op_PUSH_BP(byte opcode)  // 0x55
+    {
+        // PUSH BP
+        push(_state.bp);
+        return 15;
+    }
+
+    private int Op_PUSH_SI(byte opcode)  // 0x56
+    {
+        // PUSH SI
+        push(_state.si);
+        return 15;
+    }
+
+    private int Op_PUSH_DI(byte opcode)  // 0x57
+    {
+        // PUSH DI
+        push(_state.di);
+        return 15;
+    }
+
+    private int Op_POP_rmw(byte opcode)  // 0x8f
+    {
+        // POP rmw
+        byte o1 = GetPcByte();
+        int mod = o1 >> 6;
+        int reg2 = o1 & 7;
+
+        int put_cycles = PutRegisterMem(reg2, mod, true, pop());
+        return put_cycles + 17;
+    }
+
+    private int Op_PUSHF(byte opcode)  // 0x9c
+    {
+        // PUSHF
+        push(_state.flags);
+        return 14;
+    }
+
+    private int Op_POP_AX(byte opcode)  // 0x58
+    {
+        // POP AX
+        _state.SetAX(pop());
+        return 8;
+    }
+
+    private int Op_POP_CX(byte opcode)  // 0x59
+    {
+        // POP CX
+        _state.SetCX(pop());
+        return 8;
+    }
+
+    private int Op_POP_DX(byte opcode)  // 0x5a
+    {
+        // POP DX
+        _state.SetDX(pop());
+        return 8;
+    }
+
+    private int Op_POP_BX(byte opcode)  // 0x5b
+    {
+        // POP BX
+        _state.SetBX(pop());
+        return 8;
+    }
+
+    private int Op_POP_SP(byte opcode)  // 0x5c
+    {
+        // POP SP
+        _state.sp = pop();
+        return 8;
+    }
+
+    private int Op_POP_BP(byte opcode)  // 0x5d
+    {
+        // POP BP
+        _state.bp = pop();
+        return 8;
+    }
+
+    private int Op_POP_SI(byte opcode)  // 0x5e
+    {
+        // POP SI
+        _state.si = pop();
+        return 8;
+    }
+
+    private int Op_POP_DI(byte opcode)  // 0x5f
+    {
+        // POP DI
+        _state.di = pop();
+        return 8;
+    }
+
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -1678,11 +1871,15 @@ internal class P8086
         _ops[0x03] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x04] = this.Op_ADD_AL_xx;
         _ops[0x05] = this.Op_ADD_AX_xxxx;
+        _ops[0x06] = this.Op_PUSH_ES;
+        _ops[0x07] = this.Op_POP_ES;
         _ops[0x08] = this.Op_logic_functions;
         _ops[0x09] = this.Op_logic_functions;
         _ops[0x0a] = this.Op_logic_functions;
         _ops[0x0b] = this.Op_logic_functions;
         _ops[0x0c] = this.Op_OR_AND_XOR;
+        _ops[0x0e] = this.Op_PUSH_CS;
+        _ops[0x0f] = this.Op_POP_CS;
         _ops[0x0d] = this.Op_OR_AND_XOR;
         _ops[0x10] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x11] = this.Op_ADD_SUB_ADC_SBC;
@@ -1690,10 +1887,14 @@ internal class P8086
         _ops[0x13] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x14] = this.Op_ADD_AL_xx;
         _ops[0x15] = this.Op_ADD_AX_xxxx;
+        _ops[0x16] = this.Op_PUSH_SS;
+        _ops[0x17] = this.Op_POP_SS;
         _ops[0x18] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x19] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x1a] = this.Op_ADD_SUB_ADC_SBC;
         _ops[0x1b] = this.Op_ADD_SUB_ADC_SBC;
+        _ops[0x1e] = this.Op_PUSH_DS;
+        _ops[0x1f] = this.Op_POP_DS;
         _ops[0x20] = this.Op_logic_functions;
         _ops[0x21] = this.Op_logic_functions;
         _ops[0x22] = this.Op_logic_functions;
@@ -1718,6 +1919,22 @@ internal class P8086
         _ops[0x3d] = this.Op_CMP;
         for(int i=0x40; i<=0x4f; i++)
             _ops[i] = this.Op_INC_DEC;
+        _ops[0x50] = this.Op_PUSH_AX;
+        _ops[0x51] = this.Op_PUSH_CX;
+        _ops[0x52] = this.Op_PUSH_DX;
+        _ops[0x53] = this.Op_PUSH_BX;
+        _ops[0x54] = this.Op_PUSH_SP;
+        _ops[0x55] = this.Op_PUSH_BP;
+        _ops[0x56] = this.Op_PUSH_SI;
+        _ops[0x57] = this.Op_PUSH_DI;
+        _ops[0x58] = this.Op_POP_AX;
+        _ops[0x59] = this.Op_POP_CX;
+        _ops[0x5a] = this.Op_POP_DX;
+        _ops[0x5b] = this.Op_POP_BX;
+        _ops[0x5c] = this.Op_POP_SP;
+        _ops[0x5d] = this.Op_POP_BP;
+        _ops[0x5e] = this.Op_POP_SI;
+        _ops[0x5f] = this.Op_POP_DI;
         _ops[0x80] = this.Op_CMP_OR_XOR_etc;
         _ops[0x81] = this.Op_CMP_OR_XOR_etc;
         _ops[0x82] = this.Op_CMP_OR_XOR_etc;
@@ -1732,9 +1949,12 @@ internal class P8086
         _ops[0x8b] = this.Op_MOV2;
         _ops[0x8c] = this.Op_MOV2;
         _ops[0x8e] = this.Op_MOV2;
+        _ops[0x8f] = this.Op_POP_rmw;
         _ops[0x90] = this.Op_NOP;
         for(int i=0x91; i<=0x97; i++)
             _ops[i] = this.Op_XCHG_AX;
+        _ops[0x9c] = this.Op_PUSHF;
+        // _ops[0x9d] = this.Op_POPF;  special case
         _ops[0xa0] = this.Op_MOV_AL_mem;
         _ops[0xa1] = this.Op_MOV_AX_mem;
         _ops[0xa2] = this.Op_MOV_mem_AL;
@@ -2573,53 +2793,19 @@ internal class P8086
             _state.crash_counter = 0;
         }
 
+        // main instruction handling
         if (_ops[opcode] != null)
         {
             cycle_count += _ops[opcode](opcode);
         }
-        // main instruction handling
-        else if (opcode == 0x06)
+        // special cases
+        else if (opcode == 0x9d)
         {
-            // PUSH ES
-            push(_state.es);
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x07)
-        {
-            // POP ES
-            _state.es = pop();
-            _state.inhibit_interrupts = true;
-
-            cycle_count += 12;
-        }
-        else if (opcode == 0x0e)
-        {
-            // PUSH CS
-            push(_state.cs);
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x0f)
-        {
-            // POP CS
-            _state.cs = pop();
-            _state.inhibit_interrupts = true;
-
-            cycle_count += 12;
-        }
-        else if (opcode == 0x16)
-        {
-            // PUSH SS
-            push(_state.ss);
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x17)
-        {
-            // POP SS
-            _state.ss = pop();
-            _state.inhibit_interrupts = true;
+            bool before = _state.GetFlagT();
+            _state.flags = pop();
+            if (_state.GetFlagT() && before == false)
+                back_from_trace = true;
+            _state.FixFlags();
 
             cycle_count += 12;
         }
@@ -2660,21 +2846,6 @@ internal class P8086
             _state.SetAX((ushort)result);
 
             cycle_count += 3;
-        }
-        else if (opcode == 0x1e)
-        {
-            // PUSH DS
-            push(_state.ds);
-
-            cycle_count += 11;  // 15
-        }
-        else if (opcode == 0x1f)
-        {
-            // POP DS
-            _state.ds = pop();
-            _state.inhibit_interrupts = true;
-
-            cycle_count += 8;
         }
         else if (opcode == 0x27)
         {
@@ -2818,62 +2989,6 @@ internal class P8086
 
             cycle_count += 3;
         }
-        else if (opcode == 0x58)
-        {
-            // POP AX
-            _state.SetAX(pop());
-
-            cycle_count += 8;
-        }
-        else if (opcode == 0x59)
-        {
-            // POP CX
-            _state.SetCX(pop());
-
-            cycle_count += 8;
-        }
-        else if (opcode == 0x5a)
-        {
-            // POP DX
-            _state.SetDX(pop());
-
-            cycle_count += 8;
-        }
-        else if (opcode == 0x5b)
-        {
-            // POP BX
-            _state.SetBX(pop());
-
-            cycle_count += 8;
-        }
-        else if (opcode == 0x5c)
-        {
-            // POP SP
-            _state.sp = pop();
-
-            cycle_count += 8;
-        }
-        else if (opcode == 0x5d)
-        {
-            // POP BP
-            _state.bp = pop();
-
-            cycle_count += 8;
-        }
-        else if (opcode == 0x5e)
-        {
-            // POP SI
-            _state.si = pop();
-
-            cycle_count += 8;
-        }
-        else if (opcode == 0x5f)
-        {
-            // POP DI
-            _state.di = pop();
-
-            cycle_count += 8;
-        }
         else if (opcode == 0xe9)
         {
             // JMP np
@@ -2882,79 +2997,6 @@ internal class P8086
             _state.ip = (ushort)(_state.ip + offset);
 
             cycle_count += 15;
-        }
-        else if (opcode == 0x50)
-        {
-            // PUSH AX
-            push(_state.GetAX());
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x51)
-        {
-            // PUSH CX
-            push(_state.GetCX());
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x52)
-        {
-            // PUSH DX
-            push(_state.GetDX());
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x53)
-        {
-            // PUSH BX
-            push(_state.GetBX());
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x54)
-        {
-            // PUSH SP
-            // special case, see:
-            // https://c9x.me/x86/html/file_module_x86_id_269.html
-            _state.sp -= 2;
-            WriteMemWord(_state.ss, _state.sp, _state.sp);
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x55)
-        {
-            // PUSH BP
-            push(_state.bp);
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x56)
-        {
-            // PUSH SI
-            push(_state.si);
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x57)
-        {
-            // PUSH DI
-            push(_state.di);
-
-            cycle_count += 15;
-        }
-        else if (opcode == 0x8f)
-        {
-            // POP rmw
-            byte o1 = GetPcByte();
-
-            int mod = o1 >> 6;
-            int reg2 = o1 & 7;
-
-            int put_cycles = PutRegisterMem(reg2, mod, true, pop());
-
-            cycle_count += put_cycles;
-
-            cycle_count += 17;
         }
         else if (opcode == 0x90)
         {
@@ -2997,27 +3039,6 @@ internal class P8086
             _state.cs = temp_cs;
 
             cycle_count += 37;
-        }
-        else if (opcode == 0x9c)
-        {
-            // PUSHF
-            push(_state.flags);
-
-            cycle_count += 14;
-        }
-        else if (opcode == 0x9d)
-        {
-            bool before = _state.GetFlagT();
-
-            // POPF
-            _state.flags = pop();
-
-            if (_state.GetFlagT() && before == false)
-                back_from_trace = true;
-
-            cycle_count += 12;
-
-            _state.FixFlags();
         }
         else if (opcode == 0xac)
         {
