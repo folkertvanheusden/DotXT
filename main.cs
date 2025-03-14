@@ -70,14 +70,14 @@ for(int i=0; i<args.Length; i++)
         if (parts[0] == "load-bin")
         {
             bin_file = parts[1];
-            bin_file_addr = (uint)GetValue(parts[2], true);
+            bin_file_addr = (uint)Tools.GetValue(parts[2], true);
             Log.Cnsl($"Load {bin_file} at {bin_file_addr:X06}");
         }
         else if (parts[0] == "set-start-addr")
         {
             string[] aparts = parts[1].Split(":");
-            initial_cs = (ushort)GetValue(aparts[0], true);
-            initial_ip = (ushort)GetValue(aparts[1], true);
+            initial_cs = (ushort)Tools.GetValue(aparts[0], true);
+            initial_ip = (ushort)Tools.GetValue(aparts[1], true);
             Log.Cnsl($"Start running at {initial_cs:X04}:{initial_ip:X04}");
         }
         else if (parts[0] == "no-io")
@@ -171,15 +171,15 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-F")
         floppies.Add(args[++i]);
     else if (args[i] == "-s")
-        ram_size = (uint)GetValue(args[++i], false);
+        ram_size = (uint)Tools.GetValue(args[++i], false);
     else if (args[i] == "-R")
     {
         string[] parts = args[++i].Split(',');
         string file = parts[0];
 
         string[] aparts = parts[1].Split(':');
-        uint seg = (uint)GetValue(aparts[0], true);
-        uint ip = (uint)GetValue(aparts[1], true);
+        uint seg = (uint)Tools.GetValue(aparts[0], true);
+        uint ip = (uint)Tools.GetValue(aparts[1], true);
         uint addr = seg * 16 + ip;
 
         Log.Cnsl($"Loading {file} to {addr:X06}");
@@ -282,7 +282,7 @@ if (mode == TMode.Normal || mode == TMode.XTServer || mode == TMode.CC)
     p.SetIP(initial_cs, initial_ip);
 
 if (mode == TMode.XTServer)
-    AddXTServerBootROM(b);
+    XTServer.AddXTServerBootROM(b);
 
 if (mode == TMode.CC && bin_file != "")
     Tools.LoadBin(b, bin_file, bin_file_addr);
@@ -475,8 +475,8 @@ else
             else if (parts[0] == "dump")
             {
                 string[] aparts = parts[1].Split(",");
-                uint addr = (uint)GetValue(aparts[0], true);
-                int size = GetValue(aparts[1], false);
+                uint addr = (uint)Tools.GetValue(aparts[0], true);
+                int size = Tools.GetValue(aparts[1], false);
 
                 dump(b, addr, size, parts[2]);
             }
@@ -616,7 +616,7 @@ else
                     Log.Cnsl("Please stop emulation first");
                 else
                 {
-                    uint addr = (uint)GetValue(parts[1], false);
+                    uint addr = (uint)Tools.GetValue(parts[1], false);
                     p.AddBreakpoint(addr);
                 }
             }
@@ -626,7 +626,7 @@ else
                     Log.Cnsl("Please stop emulation first");
                 else
                 {
-                    uint addr = (uint)GetValue(parts[1], false);
+                    uint addr = (uint)Tools.GetValue(parts[1], false);
                     p.DelBreakpoint(addr);
                 }
             }
@@ -641,7 +641,7 @@ else
             }
             else if (parts[0] == "hd")
             {
-                uint addr = (uint)GetValue(parts[1], true);
+                uint addr = (uint)Tools.GetValue(parts[1], true);
 
                 for(int i=0; i<256; i+=16)
                     Log.Cnsl($"{addr + i:X6} {p.HexDump((uint)(addr + i))} {p.CharDump((uint)(addr + i))}");
@@ -767,21 +767,6 @@ void Runner(object o)
     Log.Cnsl("Emulation stopped");
 }
 
-int GetValue(string v, bool hex)
-{
-    string[] aparts = v.Split(":");
-    if (aparts.Length == 2)
-        return Convert.ToInt32(aparts[0], 16) * 16 + Convert.ToInt32(aparts[1], 16);
-
-    if (v.Length > 2 && v[0] == '0' && v[1] == 'x')
-        return Convert.ToInt32(v.Substring(2), 16);
-
-    if (hex)
-        return Convert.ToInt32(v, 16);
-
-    return Convert.ToInt32(v, 10);
-}
-
 void CmdGet(string[] tokens, P8086 p, Bus b)
 {
     if (tokens.Length != 3)
@@ -838,7 +823,7 @@ void CmdGet(string[] tokens, P8086 p, Bus b)
     {
         try
         {
-            uint addr = (uint)GetValue(tokens[2], false);
+            uint addr = (uint)Tools.GetValue(tokens[2], false);
             ushort value = b.ReadByte(addr).Item1;
 
             Log.Cnsl($">GET {addr} {value}");
@@ -857,7 +842,7 @@ void CmdSet(string [] tokens, P8086 p, Bus b)
     else if (tokens[1] == "reg")
     {
         string regname = tokens[2];
-        ushort value = (ushort)GetValue(tokens[3], false);
+        ushort value = (ushort)Tools.GetValue(tokens[3], false);
 
         try
         {
@@ -906,8 +891,8 @@ void CmdSet(string [] tokens, P8086 p, Bus b)
     {
         try
         {
-            uint addr = (uint)GetValue(tokens[2], false);
-            byte value = (byte)GetValue(tokens[3], false);
+            uint addr = (uint)Tools.GetValue(tokens[2], false);
+            byte value = (byte)Tools.GetValue(tokens[3], false);
 
             b.WriteByte(addr, value);
 
@@ -949,37 +934,6 @@ void MeasureSpeed(P8086 p, bool continuously)
 
     if (continuously)
         ClearConsoleInputBuffer();
-}
-
-void AddXTServerBootROM(Bus b)
-{
-    uint start_addr = 0xd000 * 16 + 0x0000;
-    uint addr = start_addr;
-
-    byte [] option_rom = new byte[] {
-        0x55, 0xaa, 0x01, 0xba, 0x01, 0xf0, 0xb0, 0xff, 0xee, 0x31, 0xc0, 0x8e,
-        0xd8, 0xbe, 0x80, 0x01, 0xb9, 0x0b, 0x00, 0xc7, 0x04, 0x5a, 0x00, 0xc7,
-        0x44, 0x02, 0x00, 0xd0, 0x83, 0xc6, 0x04, 0xe0, 0xf2, 0xbe, 0x80, 0x01,
-        0xc7, 0x04, 0x5b, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xbe, 0x8c, 0x01,
-        0xc7, 0x04, 0x71, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xbe, 0x90, 0x01,
-        0xc7, 0x04, 0x7e, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xbe, 0x94, 0x01,
-        0xc7, 0x04, 0x91, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xea, 0x00, 0x00,
-        0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0xcf, 0xa3, 0x56, 0x00, 0x89, 0x16,
-        0x58, 0x00, 0xba, 0x01, 0xf0, 0xb8, 0x01, 0x60, 0xef, 0x8b, 0x16, 0x58,
-        0x00, 0xa1, 0x56, 0x00, 0xcf, 0x89, 0x16, 0x58, 0x00, 0xba, 0x63, 0xf0,
-        0xef, 0x8b, 0x16, 0x58, 0x00, 0xcf, 0x89, 0x16, 0x58, 0x00, 0xba, 0x64,
-        0xf0, 0x8a, 0x04, 0x46, 0xee, 0x49, 0xe0, 0xf9, 0x8b, 0x16, 0x58, 0x00,
-        0xcf, 0x89, 0x16, 0x58, 0x00, 0xba, 0x65, 0xf0, 0xee, 0x8b, 0x16, 0x58,
-        0x00, 0xcf
-    };
-
-    for(int i=0; i<option_rom.Length; i++)
-        b.WriteByte(addr++, option_rom[i]);
-
-    byte checksum = 0;
-    for(int i=0; i<512; i++)
-        checksum += b.ReadByte((uint)(start_addr + i)).Item1;
-    b.WriteByte(start_addr + 511, (byte)(~checksum));
 }
 
 void dump(Bus b, uint addr, int size, string filename)

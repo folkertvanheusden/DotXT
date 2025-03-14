@@ -29,4 +29,19 @@ class Tools
             Log.DoLog($"Failed to load {file}: {e}", LogLevel.ERROR);
         }
     }
+
+    public static int GetValue(string v, bool hex)
+    {
+        string[] aparts = v.Split(":");
+        if (aparts.Length == 2)
+            return Convert.ToInt32(aparts[0], 16) * 16 + Convert.ToInt32(aparts[1], 16);
+
+        if (v.Length > 2 && v[0] == '0' && v[1] == 'x')
+            return Convert.ToInt32(v.Substring(2), 16);
+
+        if (hex)
+            return Convert.ToInt32(v, 16);
+
+        return Convert.ToInt32(v, 10);
+    }
 }
