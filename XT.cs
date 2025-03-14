@@ -630,6 +630,320 @@ internal class P8086
             return 4;
         }
 
+    private int Op_shift(byte opcode)
+        {
+		int cycle_count = 0;
+            bool word = (opcode & 1) == 1;
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg1 = o1 & 7;
+
+            (ushort v1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
+            cycle_count += get_cycles;
+
+            int count = 1;
+            if ((opcode & 2) == 2)
+                count = _state.cl;
+
+            bool count_1_of = opcode is (0xd0 or 0xd1 or 0xd2 or 0xd3);
+
+            bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
+
+            bool set_flags = false;
+
+            int mode = (o1 >> 3) & 7;
+
+            ushort check_bit = (ushort)(word ? 32768 : 128);
+            ushort check_bit2 = (ushort)(word ? 16384 : 64);
+
+            if (mode == 0)
+            {
+                // ROL
+                for (int i = 0; i < count; i++)
+                {
+                    bool b7 = (v1 & check_bit) == check_bit;
+
+                    _state.SetFlagC(b7);
+
+                    v1 <<= 1;
+
+                    if (b7)
+                        v1 |= 1;
+                }
+
+                if (count_1_of)
+                    _state.SetFlagO(_state.GetFlagC() ^ ((v1 & check_bit) == check_bit));
+
+                cycle_count += 2;
+            }
+            else if (mode == 1)
+            {
+                // ROR
+                for (int i = 0; i < count; i++)
+                {
+                    bool b0 = (v1 & 1) == 1;
+
+                    _state.SetFlagC(b0);
+
+                    v1 >>= 1;
+
+                    if (b0)
+                        v1 |= check_bit;
+                }
+
+                if (count_1_of)
+                    _state.SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
+
+                cycle_count += 2;
+            }
+            else if (mode == 2)
+            {
+                // RCL
+                for (int i = 0; i < count; i++)
+                {
+                    bool new_carry = (v1 & check_bit) == check_bit;
+                    v1 <<= 1;
+
+                    bool oldCarry = _state.GetFlagC();
+
+                    if (oldCarry)
+                        v1 |= 1;
+
+                    _state.SetFlagC(new_carry);
+                }
+
+                if (count_1_of)
+                    _state.SetFlagO(_state.GetFlagC() ^ ((v1 & check_bit) == check_bit));
+
+                cycle_count += 2;
+            }
+            else if (mode == 3)
+            {
+                // RCR
+                for (int i = 0; i < count; i++)
+                {
+                    bool new_carry = (v1 & 1) == 1;
+                    v1 >>= 1;
+
+                    bool oldCarry = _state.GetFlagC();
+
+                    if (oldCarry)
+                        v1 |= (ushort)(word ? 0x8000 : 0x80);
+
+                    _state.SetFlagC(new_carry);
+                }
+
+                if (count_1_of)
+                    _state.SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
+
+                cycle_count += 2;
+            }
+            else if (mode == 4)
+            {
+                ushort prev_v1 = v1;
+
+                // SAL/SHL
+                for (int i = 0; i < count; i++)
+                {
+                    bool new_carry = (v1 & check_bit) == check_bit;
+                    v1 <<= 1;
+                    _state.SetFlagC(new_carry);
+                }
+
+                set_flags = count != 0;
+                if (set_flags)
+                {
+                    _state.SetFlagO(((v1 & check_bit) == check_bit) ^ _state.GetFlagC());
+                }
+
+                cycle_count += count * 4;
+            }
+            else if (mode == 5)
+            {
+                ushort org_v1 = v1;
+
+                // SHR
+                for (int i = 0; i < count; i++)
+                {
+                    bool new_carry = (v1 & 1) == 1;
+                    v1 >>= 1;
+                    _state.SetFlagC(new_carry);
+                }
+
+                set_flags = count != 0;
+
+                if (count == 1)
+                    _state.SetFlagO((org_v1 & check_bit) != 0);
+                else
+                    _state.SetFlagO(false);
+
+                cycle_count += count * 4;
+            }
+            else if (mode == 6)
+            {
+                if (opcode >= 0xd2)
+                {
+                    // SETMOC
+                    if (_state.cl != 0)
+                    {
+                        _state.SetFlagC(false);
+                        _state.SetFlagA(false);
+                        _state.SetFlagZ(false);
+                        _state.SetFlagO(false);
+                        _state.SetFlagP(0xff);
+                        _state.SetFlagS(true);
+
+                        v1 = (ushort)(word ? 0xffff : 0xff);
+
+                        cycle_count += word ? 5 : 4;
+                    }
+                }
+                else
+                {
+                    // SETMO
+                    _state.SetFlagC(false);
+                    _state.SetFlagA(false);
+                    _state.SetFlagZ(false);
+                    _state.SetFlagO(false);
+                    _state.SetFlagP(0xff);
+                    _state.SetFlagS(true);
+
+                    v1 = (ushort)(word ? 0xffff : 0xff);
+
+                    cycle_count += word ? 3 : 2;
+                }
+            }
+            else if (mode == 7)
+            {
+                // SAR
+                ushort mask = (ushort)((v1 & check_bit) != 0 ? check_bit : 0);
+
+                for (int i = 0; i < count; i++)
+                {
+                    bool new_carry = (v1 & 0x01) == 0x01;
+                    v1 >>= 1;
+                    v1 |= mask;
+                    _state.SetFlagC(new_carry);
+                }
+
+                set_flags = count != 0;
+                if (set_flags)
+                    _state.SetFlagO(false);
+
+                cycle_count += 2;
+            }
+            else
+            {
+                Log.DoLog($"RCR/SHR/{opcode:X2} mode {mode} not implemented", LogLevel.WARNING);
+            }
+
+            if (!word)
+                v1 &= 0xff;
+
+            if (set_flags)
+            {
+                _state.SetFlagS((word ? v1 & 0x8000 : v1 & 0x80) != 0);
+                _state.SetFlagZ(v1 == 0);
+                _state.SetFlagP((byte)v1);
+            }
+
+            int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, v1);
+            return cycle_count + put_cycles;
+        }
+
+    private int Op_FPU(byte opcode)
+        {
+            // FPU
+            byte o1 = GetPcByte();
+            int mod = o1 >> 6;
+            int reg1 = o1 & 7;
+            (ushort v1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, false);
+            return get_cycles + 2;
+        }
+
+    private int Op_REFT(byte opcode)
+        {
+            // RETF n / RETF
+            ushort nToRelease = (opcode == 0xca || opcode == 0xc8) ? GetPcWord() : (ushort)0;
+
+            _state.ip = pop();
+            _state.cs = pop();
+
+            if (opcode == 0xca || opcode == 0xc8)
+            {
+                _state.sp += nToRelease;
+                return opcode == 0xca ? 33 : 24;
+            }
+
+                return opcode == 0xcb ? 34 : 20;
+        }
+
+    private int Op_MOV(byte opcode)
+        {
+            // MOV
+            bool word = (opcode & 1) == 1;
+
+            byte o1 = GetPcByte();
+            int mod = o1 >> 6;
+            int mreg = o1 & 7;
+
+            int cycle_count = 2;  // base (correct?)
+
+            // get address to write to ('seg, addr')
+            (ushort dummy, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(mreg, mod, word);
+            cycle_count += get_cycles;
+
+            if (word)
+            {
+                // the value follows
+                ushort v = GetPcWord();
+                int put_cycles = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
+                cycle_count += put_cycles;
+            }
+            else
+            {
+                // the value follows
+                byte v = GetPcByte();
+                int put_cycles = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
+                cycle_count += put_cycles;
+            }
+
+	    return cycle_count;
+        }
+
+    private int Op_INC_DEC(byte opcode)
+        {
+            // INC/DECw
+            int reg = (opcode - 0x40) & 7;
+            ushort v = GetRegister(reg, true);
+            bool isDec = opcode >= 0x48;
+
+            if (isDec)
+                v--;
+            else
+                v++;
+
+            if (isDec)
+            {
+                _state.SetFlagO(v == 0x7fff);
+                _state.SetFlagA((v & 15) == 15);
+            }
+            else
+            {
+                _state.SetFlagO(v == 0x8000);
+                _state.SetFlagA((v & 15) == 0);
+            }
+
+            _state.SetFlagS((v & 0x8000) == 0x8000);
+            _state.SetFlagZ(v == 0);
+            _state.SetFlagP((byte)v);
+
+            PutRegister(reg, true, v);
+
+            return 3;
+        }
+
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -661,6 +975,8 @@ internal class P8086
 	_ops[0x39] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x3a] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x3b] = this.Op_ADD_SUB_ADC_SBC;
+	for(int i=0x40; i<=0x4f; i++)
+		_ops[i] = this.Op_INC_DEC;
     	_ops[0x80] = this.Op_CMP_OR_XOR_etc;
     	_ops[0x81] = this.Op_CMP_OR_XOR_etc;
     	_ops[0x82] = this.Op_CMP_OR_XOR_etc;
@@ -674,6 +990,18 @@ internal class P8086
 		_ops[i] = this.Op_XCHG_AX;
 	for(int i=0xb0; i<=0xbf; i++)
 		_ops[i] = this.Op_MOV_reg_ib;
+    	_ops[0xc6] = this.Op_MOV;
+    	_ops[0xc7] = this.Op_MOV;
+    	_ops[0xc8] = this.Op_REFT;
+    	_ops[0xc9] = this.Op_REFT;
+    	_ops[0xca] = this.Op_REFT;
+    	_ops[0xcb] = this.Op_REFT;
+	_ops[0xd0] = this.Op_shift;
+	_ops[0xd1] = this.Op_shift;
+	_ops[0xd2] = this.Op_shift;
+	_ops[0xd3] = this.Op_shift;
+	for(int i=0xd8; i<=0xdf; i++)
+		_ops[i] = this.Op_FPU;
     	_ops[0xe0] = this.Op_LOOP;
     	_ops[0xe1] = this.Op_LOOP;
     	_ops[0xe2] = this.Op_LOOP;
@@ -2648,39 +2976,6 @@ internal class P8086
 
             cycle_count += 2;
         }
-        else if (opcode is >= 0x40 and <= 0x4f)
-        {
-            // INC/DECw
-            int reg = (opcode - 0x40) & 7;
-
-            ushort v = GetRegister(reg, true);
-
-            bool isDec = opcode >= 0x48;
-
-            if (isDec)
-                v--;
-            else
-                v++;
-
-            if (isDec)
-            {
-                _state.SetFlagO(v == 0x7fff);
-                _state.SetFlagA((v & 15) == 15);
-            }
-            else
-            {
-                _state.SetFlagO(v == 0x8000);
-                _state.SetFlagA((v & 15) == 0);
-            }
-
-            _state.SetFlagS((v & 0x8000) == 0x8000);
-            _state.SetFlagZ(v == 0);
-            _state.SetFlagP((byte)v);
-
-            PutRegister(reg, true, v);
-
-            cycle_count += 3;
-        }
         else if (opcode == 0xaa)
         {
             if (PrefixMustRun())
@@ -2734,276 +3029,6 @@ internal class P8086
                 cycle_count += 15;
             }
         }
-        else if (opcode == 0xc6 || opcode == 0xc7)
-        {
-            // MOV
-            bool word = (opcode & 1) == 1;
-
-            byte o1 = GetPcByte();
-
-            int mod = o1 >> 6;
-
-            int mreg = o1 & 7;
-
-            cycle_count += 2;  // base (correct?)
-
-            // get address to write to ('seg, addr')
-            (ushort dummy, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(mreg, mod, word);
-            cycle_count += get_cycles;
-
-            if (word)
-            {
-                // the value follows
-                ushort v = GetPcWord();
-                int put_cycles = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
-                cycle_count += put_cycles;
-            }
-            else
-            {
-                // the value follows
-                byte v = GetPcByte();
-                int put_cycles = UpdateRegisterMem(mreg, mod, a_valid, seg, addr, word, v);
-                cycle_count += put_cycles;
-            }
-        }
-        else if (opcode >= 0xc8 && opcode <= 0xcb)
-        {
-            // RETF n / RETF
-            ushort nToRelease = (opcode == 0xca || opcode == 0xc8) ? GetPcWord() : (ushort)0;
-
-            _state.ip = pop();
-            _state.cs = pop();
-
-            if (opcode == 0xca || opcode == 0xc8)
-            {
-                _state.sp += nToRelease;
-                cycle_count += opcode == 0xca ? 33 : 24;
-            }
-            else
-            {
-                cycle_count += opcode == 0xcb ? 34 : 20;
-            }
-        }
-        else if ((opcode & 0xfc) == 0xd0)
-        {
-            bool word = (opcode & 1) == 1;
-            byte o1 = GetPcByte();
-
-            int mod = o1 >> 6;
-            int reg1 = o1 & 7;
-
-            (ushort v1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
-            cycle_count += get_cycles;
-
-            int count = 1;
-            if ((opcode & 2) == 2)
-                count = _state.cl;
-
-            bool count_1_of = opcode is (0xd0 or 0xd1 or 0xd2 or 0xd3);
-
-            bool oldSign = (word ? v1 & 0x8000 : v1 & 0x80) != 0;
-
-            bool set_flags = false;
-
-            int mode = (o1 >> 3) & 7;
-
-            ushort check_bit = (ushort)(word ? 32768 : 128);
-            ushort check_bit2 = (ushort)(word ? 16384 : 64);
-
-            if (mode == 0)
-            {
-                // ROL
-                for (int i = 0; i < count; i++)
-                {
-                    bool b7 = (v1 & check_bit) == check_bit;
-
-                    _state.SetFlagC(b7);
-
-                    v1 <<= 1;
-
-                    if (b7)
-                        v1 |= 1;
-                }
-
-                if (count_1_of)
-                    _state.SetFlagO(_state.GetFlagC() ^ ((v1 & check_bit) == check_bit));
-
-                cycle_count += 2;
-            }
-            else if (mode == 1)
-            {
-                // ROR
-                for (int i = 0; i < count; i++)
-                {
-                    bool b0 = (v1 & 1) == 1;
-
-                    _state.SetFlagC(b0);
-
-                    v1 >>= 1;
-
-                    if (b0)
-                        v1 |= check_bit;
-                }
-
-                if (count_1_of)
-                    _state.SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
-
-                cycle_count += 2;
-            }
-            else if (mode == 2)
-            {
-                // RCL
-                for (int i = 0; i < count; i++)
-                {
-                    bool new_carry = (v1 & check_bit) == check_bit;
-                    v1 <<= 1;
-
-                    bool oldCarry = _state.GetFlagC();
-
-                    if (oldCarry)
-                        v1 |= 1;
-
-                    _state.SetFlagC(new_carry);
-                }
-
-                if (count_1_of)
-                    _state.SetFlagO(_state.GetFlagC() ^ ((v1 & check_bit) == check_bit));
-
-                cycle_count += 2;
-            }
-            else if (mode == 3)
-            {
-                // RCR
-                for (int i = 0; i < count; i++)
-                {
-                    bool new_carry = (v1 & 1) == 1;
-                    v1 >>= 1;
-
-                    bool oldCarry = _state.GetFlagC();
-
-                    if (oldCarry)
-                        v1 |= (ushort)(word ? 0x8000 : 0x80);
-
-                    _state.SetFlagC(new_carry);
-                }
-
-                if (count_1_of)
-                    _state.SetFlagO(((v1 & check_bit) == check_bit) ^ ((v1 & check_bit2) == check_bit2));
-
-                cycle_count += 2;
-            }
-            else if (mode == 4)
-            {
-                ushort prev_v1 = v1;
-
-                // SAL/SHL
-                for (int i = 0; i < count; i++)
-                {
-                    bool new_carry = (v1 & check_bit) == check_bit;
-                    v1 <<= 1;
-                    _state.SetFlagC(new_carry);
-                }
-
-                set_flags = count != 0;
-                if (set_flags)
-                {
-                    _state.SetFlagO(((v1 & check_bit) == check_bit) ^ _state.GetFlagC());
-                }
-
-                cycle_count += count * 4;
-            }
-            else if (mode == 5)
-            {
-                ushort org_v1 = v1;
-
-                // SHR
-                for (int i = 0; i < count; i++)
-                {
-                    bool new_carry = (v1 & 1) == 1;
-                    v1 >>= 1;
-                    _state.SetFlagC(new_carry);
-                }
-
-                set_flags = count != 0;
-
-                if (count == 1)
-                    _state.SetFlagO((org_v1 & check_bit) != 0);
-                else
-                    _state.SetFlagO(false);
-
-                cycle_count += count * 4;
-            }
-            else if (mode == 6)
-            {
-                if (opcode >= 0xd2)
-                {
-                    // SETMOC
-                    if (_state.cl != 0)
-                    {
-                        _state.SetFlagC(false);
-                        _state.SetFlagA(false);
-                        _state.SetFlagZ(false);
-                        _state.SetFlagO(false);
-                        _state.SetFlagP(0xff);
-                        _state.SetFlagS(true);
-
-                        v1 = (ushort)(word ? 0xffff : 0xff);
-
-                        cycle_count += word ? 5 : 4;
-                    }
-                }
-                else
-                {
-                    // SETMO
-                    _state.SetFlagC(false);
-                    _state.SetFlagA(false);
-                    _state.SetFlagZ(false);
-                    _state.SetFlagO(false);
-                    _state.SetFlagP(0xff);
-                    _state.SetFlagS(true);
-
-                    v1 = (ushort)(word ? 0xffff : 0xff);
-
-                    cycle_count += word ? 3 : 2;
-                }
-            }
-            else if (mode == 7)
-            {
-                // SAR
-                ushort mask = (ushort)((v1 & check_bit) != 0 ? check_bit : 0);
-
-                for (int i = 0; i < count; i++)
-                {
-                    bool new_carry = (v1 & 0x01) == 0x01;
-                    v1 >>= 1;
-                    v1 |= mask;
-                    _state.SetFlagC(new_carry);
-                }
-
-                set_flags = count != 0;
-                if (set_flags)
-                    _state.SetFlagO(false);
-
-                cycle_count += 2;
-            }
-            else
-            {
-                Log.DoLog($"RCR/SHR/{opcode:X2} mode {mode} not implemented", LogLevel.WARNING);
-            }
-
-            if (!word)
-                v1 &= 0xff;
-
-            if (set_flags)
-            {
-                _state.SetFlagS((word ? v1 & 0x8000 : v1 & 0x80) != 0);
-                _state.SetFlagZ(v1 == 0);
-                _state.SetFlagP((byte)v1);
-            }
-
-            int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, v1);
-            cycle_count += put_cycles;
-        }
         else if (opcode == 0xd4)
         {
             // AAM
@@ -3054,17 +3079,6 @@ internal class P8086
         else if (opcode == 0x9b)
         {
             // FWAIT
-            cycle_count += 2;  // TODO
-        }
-        else if (opcode >= 0xd8 && opcode <= 0xdf)
-        {
-            // FPU
-            byte o1 = GetPcByte();
-            int mod = o1 >> 6;
-            int reg1 = o1 & 7;
-            (ushort v1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, false);
-            cycle_count += get_cycles;
-
             cycle_count += 2;  // TODO
         }
         else if (opcode == 0xd7)
