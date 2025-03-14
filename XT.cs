@@ -24,11 +24,213 @@ internal class P8086
     private bool _ignore_breakpoints = false;
     private string _stop_reason = "";
 
+    private CPUInstructionDelegate[] _ops = new CPUInstructionDelegate[256];
+
     private State8086 _state = new();
 
     public State8086 GetState()
     {
         return _state;
+    }
+
+    public delegate int CPUInstructionDelegate(byte opcode);
+
+    private int Op_NOP(byte opcode)  // 0x90
+    {
+	    return 4;
+    }
+
+    private int Op_ADD_AL_xx(byte opcode)  // 0x04, 0x14
+    {
+	    // ADD AL,xx
+	    byte v = GetPcByte();
+
+	    bool flag_c = _state.GetFlagC();
+	    bool use_flag_c = false;
+
+	    int result = _state.al + v;
+
+	    if (opcode == 0x14)
+	    {
+		    if (flag_c)
+			    result++;
+
+		    use_flag_c = true;
+	    }
+
+	    SetAddSubFlags(false, _state.al, v, result, false, use_flag_c ? flag_c : false);
+
+	    _state.al = (byte)result;
+
+	    return 3;
+    }
+
+    private int Op_ADD_AX_xxxx(byte opcode)  // 0x05, 0x15
+    {
+	    // ADD AX,xxxx
+	    ushort v = GetPcWord();
+
+	    bool flag_c = _state.GetFlagC();
+	    bool use_flag_c = false;
+	    ushort before = _state.GetAX();
+
+	    int result = before + v;
+
+	    if (opcode == 0x15)
+	    {
+		    if (flag_c)
+			    result++;
+
+		    use_flag_c = true;
+	    }
+
+	    SetAddSubFlags(true, before, v, result, false, use_flag_c ? flag_c : false);
+
+	    _state.SetAX((ushort)result);
+
+	    return 3;
+    }
+
+    private int Op_MOV_reg_ib(byte opcode)  // 0xb.
+    {
+	    // MOV reg,ib
+	    int reg = opcode & 0x07;
+	    bool word = (opcode & 0x08) == 0x08;
+
+	    ushort v = GetPcByte();
+	    if (word)
+		    v |= (ushort)(GetPcByte() << 8);
+
+	    PutRegister(reg, word, v);
+
+	    return 2;
+    }
+
+    private int Op_CMP_OR_XOR_etc(byte opcode)  // 0x80-0x83
+    {
+	    // CMP and others
+	    byte o1 = GetPcByte();
+
+	    int mod = o1 >> 6;
+	    int reg = o1 & 7;
+
+	    int function = (o1 >> 3) & 7;
+
+	    ushort r1 = 0;
+	    bool a_valid = false;
+	    ushort seg = 0;
+	    ushort addr = 0;
+
+	    ushort r2 = 0;
+
+	    bool word = false;
+
+	    bool is_logic = false;
+	    bool is_sub = false;
+
+	    int result = 0;
+
+	    int cycles = 0;
+
+	    if (opcode == 0x80)
+	    {
+		    (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, false);
+
+		    r2 = GetPcByte();
+	    }
+	    else if (opcode == 0x81)
+	    {
+		    (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, true);
+
+		    r2 = GetPcWord();
+
+		    word = true;
+	    }
+	    else if (opcode == 0x82)
+	    {
+		    (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, false);
+
+		    r2 = GetPcByte();
+	    }
+	    else if (opcode == 0x83)
+	    {
+		    (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, true);
+
+		    r2 = GetPcByte();
+
+		    if ((r2 & 128) == 128)
+			    r2 |= 0xff00;
+
+		    word = true;
+	    }
+	    else
+	    {
+		    Log.DoLog($"opcode {opcode:X2} not implemented", LogLevel.WARNING);
+	    }
+
+	    bool apply = true;
+	    bool use_flag_c = false;
+
+	    if (function == 0)
+	    {
+		    result = r1 + r2;
+	    }
+	    else if (function == 1)
+	    {
+		    result = r1 | r2;
+		    is_logic = true;
+	    }
+	    else if (function == 2)
+	    {
+		    result = r1 + r2 + (_state.GetFlagC() ? 1 : 0);
+		    use_flag_c = true;
+	    }
+	    else if (function == 3)
+	    {
+		    result = r1 - r2 - (_state.GetFlagC() ? 1 : 0);
+		    is_sub = true;
+		    use_flag_c = true;
+	    }
+	    else if (function == 4)
+	    {
+		    result = r1 & r2;
+		    is_logic = true;
+		    _state.SetFlagC(false);
+	    }
+	    else if (function == 5)
+	    {
+		    result = r1 - r2;
+		    is_sub = true;
+	    }
+	    else if (function == 6)
+	    {
+		    result = r1 ^ r2;
+		    is_logic = true;
+	    }
+	    else if (function == 7)
+	    {
+		    result = r1 - r2;
+		    is_sub = true;
+		    apply = false;
+	    }
+	    else
+	    {
+		    Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
+	    }
+
+	    if (is_logic)
+		    SetLogicFuncFlags(word, (ushort)result);
+	    else
+		    SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? _state.GetFlagC() : false);
+
+	    if (apply)
+	    {
+		    int put_cycles = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, (ushort)result);
+
+		    cycles += put_cycles;
+	    }
+
+	    return 3 + cycles;
     }
 
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
@@ -37,6 +239,18 @@ internal class P8086
         _devices = devices;
         _io = new IO(b, ref devices, !run_IO);
         _terminate_on_off_the_rails = run_IO;
+
+	_ops[0x04] = this.Op_ADD_AL_xx;
+     	_ops[0x05] = this.Op_ADD_AX_xxxx;
+	_ops[0x14] = this.Op_ADD_AL_xx;
+     	_ops[0x15] = this.Op_ADD_AX_xxxx;
+    	_ops[0x80] = this.Op_CMP_OR_XOR_etc;
+    	_ops[0x81] = this.Op_CMP_OR_XOR_etc;
+    	_ops[0x82] = this.Op_CMP_OR_XOR_etc;
+    	_ops[0x83] = this.Op_CMP_OR_XOR_etc;
+	_ops[0x90] = this.Op_NOP;
+	for(int i=0xb0; i<0xc0; i++)
+		_ops[i] = this.Op_MOV_reg_ib;
 
         // bit 1 of the flags register is always 1
         // https://www.righto.com/2023/02/silicon-reverse-engineering-intel-8086.html
@@ -866,57 +1080,11 @@ internal class P8086
             _state.crash_counter = 0;
         }
 
+	if (_ops[opcode] != null)
+	{
+		cycle_count += _ops[opcode](opcode);
+	}
         // main instruction handling
-        if (opcode == 0x04 || opcode == 0x14)
-        {
-            // ADD AL,xx
-            byte v = GetPcByte();
-
-            bool flag_c = _state.GetFlagC();
-            bool use_flag_c = false;
-
-            int result = _state.al + v;
-
-            if (opcode == 0x14)
-            {
-                if (flag_c)
-                    result++;
-
-                use_flag_c = true;
-            }
-
-            cycle_count += 3;
-
-            SetAddSubFlags(false, _state.al, v, result, false, use_flag_c ? flag_c : false);
-
-            _state.al = (byte)result;
-        }
-        else if (opcode == 0x05 || opcode == 0x15)
-        {
-            // ADD AX,xxxx
-            ushort v = GetPcWord();
-
-            bool flag_c = _state.GetFlagC();
-            bool use_flag_c = false;
-
-            ushort before = _state.GetAX();
-
-            int result = before + v;
-
-            if (opcode == 0x15)
-            {
-                if (flag_c)
-                    result++;
-
-                use_flag_c = true;
-            }
-
-            SetAddSubFlags(true, before, v, result, false, use_flag_c ? flag_c : false);
-
-            _state.SetAX((ushort)result);
-
-            cycle_count += 3;
-        }
         else if (opcode == 0x06)
         {
             // PUSH ES
@@ -1361,132 +1529,6 @@ internal class P8086
             push(_state.di);
 
             cycle_count += 15;
-        }
-        else if (opcode is (0x80 or 0x81 or 0x82 or 0x83))
-        {
-            // CMP and others
-            byte o1 = GetPcByte();
-
-            int mod = o1 >> 6;
-            int reg = o1 & 7;
-
-            int function = (o1 >> 3) & 7;
-
-            ushort r1 = 0;
-            bool a_valid = false;
-            ushort seg = 0;
-            ushort addr = 0;
-
-            ushort r2 = 0;
-
-            bool word = false;
-
-            bool is_logic = false;
-            bool is_sub = false;
-
-            int result = 0;
-
-            int cycles = 0;
-
-            if (opcode == 0x80)
-            {
-                (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, false);
-
-                r2 = GetPcByte();
-            }
-            else if (opcode == 0x81)
-            {
-                (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, true);
-
-                r2 = GetPcWord();
-
-                word = true;
-            }
-            else if (opcode == 0x82)
-            {
-                (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, false);
-
-                r2 = GetPcByte();
-            }
-            else if (opcode == 0x83)
-            {
-                (r1, a_valid, seg, addr, cycles) = GetRegisterMem(reg, mod, true);
-
-                r2 = GetPcByte();
-
-                if ((r2 & 128) == 128)
-                    r2 |= 0xff00;
-
-                word = true;
-            }
-            else
-            {
-                Log.DoLog($"opcode {opcode:X2} not implemented", LogLevel.WARNING);
-            }
-
-            bool apply = true;
-            bool use_flag_c = false;
-
-            if (function == 0)
-            {
-                result = r1 + r2;
-            }
-            else if (function == 1)
-            {
-                result = r1 | r2;
-                is_logic = true;
-            }
-            else if (function == 2)
-            {
-                result = r1 + r2 + (_state.GetFlagC() ? 1 : 0);
-                use_flag_c = true;
-            }
-            else if (function == 3)
-            {
-                result = r1 - r2 - (_state.GetFlagC() ? 1 : 0);
-                is_sub = true;
-                use_flag_c = true;
-            }
-            else if (function == 4)
-            {
-                result = r1 & r2;
-                is_logic = true;
-                _state.SetFlagC(false);
-            }
-            else if (function == 5)
-            {
-                result = r1 - r2;
-                is_sub = true;
-            }
-            else if (function == 6)
-            {
-                result = r1 ^ r2;
-                is_logic = true;
-            }
-            else if (function == 7)
-            {
-                result = r1 - r2;
-                is_sub = true;
-                apply = false;
-            }
-            else
-            {
-                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
-            }
-
-            if (is_logic)
-                SetLogicFuncFlags(word, (ushort)result);
-            else
-                SetAddSubFlags(word, r1, r2, result, is_sub, use_flag_c ? _state.GetFlagC() : false);
-
-            if (apply)
-            {
-                int put_cycles = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, (ushort)result);
-
-                cycles += put_cycles;
-            }
-
-            cycle_count += 3 + cycles;
         }
         else if (opcode == 0x84 || opcode == 0x85)
         {
@@ -2183,22 +2225,6 @@ internal class P8086
         {
             // CLI
             _state.SetFlagI(false); // IF
-
-            cycle_count += 2;
-        }
-        else if ((opcode & 0xf0) == 0xb0)
-        {
-            // MOV reg,ib
-            int reg = opcode & 0x07;
-
-            bool word = (opcode & 0x08) == 0x08;
-
-            ushort v = GetPcByte();
-
-            if (word)
-                v |= (ushort)(GetPcByte() << 8);
-
-            PutRegister(reg, word, v);
 
             cycle_count += 2;
         }
