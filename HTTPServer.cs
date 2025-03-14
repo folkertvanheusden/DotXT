@@ -95,10 +95,10 @@ class HTTPServer: GraphicalConsole
                         PushLine(stream, "Content-Type: multipart/x-mixed-replace; boundary=--myboundary");
                         PushLine(stream, "");
 
-                        ulong version = 0;
+                        int version = 0;
                         for(;;)
                         {
-                            ulong new_version = parameters.hs.GetFrameVersion();
+                            int new_version = parameters.hs.GetFrameVersion();
                             if (new_version != version)
                             {
                                 version = new_version;

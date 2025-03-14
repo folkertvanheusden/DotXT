@@ -6,7 +6,7 @@ abstract class Display : Device
     private long _last_hsync = 0;
     private List<EmulatorConsole> _consoles = null;
     protected GraphicalFrame _gf = new();
-    protected ulong _gf_version = 1;
+    protected int _gf_version = 1;
 
     public Display(List<EmulatorConsole> consoles)
     {
@@ -33,7 +33,7 @@ abstract class Display : Device
         return -1;
     }
 
-    public ulong GetFrameVersion()
+    public int GetFrameVersion()
     {
         return _gf_version;
     }
@@ -45,9 +45,10 @@ abstract class Display : Device
         gf.width = _gf.width;
         gf.height = _gf.height;
         int n_bytes = _gf.width * _gf.height * 3;
-        gf.rgb_pixels = new byte[n_bytes];
         if (_gf.rgb_pixels != null)
-            Array.Copy(_gf.rgb_pixels, 0, gf.rgb_pixels, 0, n_bytes);
+            gf.rgb_pixels = (byte [])_gf.rgb_pixels.Clone();
+        else
+            gf.rgb_pixels = new byte[n_bytes];
         return gf;
     }
 

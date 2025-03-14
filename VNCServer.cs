@@ -509,12 +509,12 @@ class VNCServer: GraphicalConsole
                 session.audio_thread.Start(session);
 
                 Log.Cnsl("VNC: Starting graphics transmission");
-                ulong version = 0;
+                int version = 0;
                 var prev_send = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                 for(;;)
                 {
                     var now = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
-                    ulong new_version = parameters.vs.GetFrameVersion();
+                    int new_version = parameters.vs.GetFrameVersion();
                     if (new_version != version || now - prev_send >= 1000)
                     {
                         version = new_version;

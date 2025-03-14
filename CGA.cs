@@ -36,6 +36,7 @@ class CGA : Display
     private byte _graphics_mode = 255;
     private CGAMode _cga_mode = CGAMode.Text80;
     private byte _color_configuration = 32;
+    private int _render_version = 1;
     private List<byte []> palette = new() {
             new byte[] {   0,   0,   0 },
             new byte[] {   0,   0, 127 },
@@ -225,7 +226,7 @@ class CGA : Display
 
         while(y < 200 && mem_pointer < 16384)
         {
-            uint x = (uint)(mem_pointer % (width * 2)) / 2;
+            int x = (int)(mem_pointer % (width * 2)) / 2;
 
             uint char_base_offset = mem_pointer & 16382;
             byte character = _ram[char_base_offset + 0];
@@ -241,9 +242,8 @@ class CGA : Display
                 int y_pixel_offset = (y + yo) * _gf.width * 3 * 2;
                 byte line = font_descr.pixels[char_offset + yo];
                 byte bit_mask = 128;
-                for(int xo=0; xo<8; xo++, bit_mask >>= 1)
+                for(int x_pixel_offset=x * 8 * 3; x_pixel_offset<(x + 1) * 8 * 3; x_pixel_offset += 3, bit_mask >>= 1)
                 {
-                    int x_pixel_offset = ((int)x * 8 + xo) * 3;
                     int pixel_offset = x_pixel_offset + y_pixel_offset;
                     bool is_fg = (line & bit_mask) != 0;
                     if (is_fg)
@@ -295,7 +295,11 @@ class CGA : Display
 
     public override GraphicalFrame GetFrame()
     {
-        Redraw();
+        if (_render_version != _gf_version)
+        {
+            Redraw();
+            _render_version = _gf_version;
+        }
 
         return base.GetFrame();
     }
