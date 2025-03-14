@@ -237,8 +237,7 @@ class CGA : Display
 
     public override void WriteByte(uint offset, byte value)
     {
-        uint use_offset = (offset - 0xb8000) & 0x3fff;
-        _ram[use_offset] = value;
+        _ram[offset & 0x3fff] = value;
         _gf_version++;
     }
 
@@ -362,7 +361,7 @@ class CGA : Display
 
     public override byte ReadByte(uint offset)
     {
-        return _ram[(offset - 0xb8000) & 0x3fff];
+        return _ram[offset & 0x3fff];
     }
 
     public override bool Tick(int cycles, long clock)
