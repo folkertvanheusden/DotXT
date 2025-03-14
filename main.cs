@@ -305,9 +305,9 @@ if (mode == TMode.JSON)
         else if (line == "S")
         {
             Disassemble(d, p);
+            p.SetIgnoreBreakpoints();
             do
             {
-                p.SetIgnoreBreakpoints();
                 int rc = p.Tick();
                 if (rc == -1)
                     break;
@@ -331,11 +331,11 @@ if (mode == TMode.JSON)
         }
         else if (parts[0] == "set")
         {
-            CmdSet(parts, p, b);
+            CmdSet(parts, ref p, b);
         }
         else if (parts[0] == "get")
         {
-            CmdGet(parts, p, b);
+            CmdGet(parts, ref p, b);
         }
         else if (line == "c")
         {
@@ -598,11 +598,11 @@ else
             }
             else if (parts[0] == "set")
             {
-                CmdSet(parts, p, b);
+                CmdSet(parts, ref p, b);
             }
             else if (parts[0] == "get")
             {
-                CmdGet(parts, p, b);
+                CmdGet(parts, ref p, b);
             }
             else if (parts[0] == "gbp" || parts[0] == "lbp")
             {
@@ -780,7 +780,7 @@ int GetValue(string v, bool hex)
     return Convert.ToInt32(v, 10);
 }
 
-void CmdGet(string[] tokens, P8086 p, Bus b)
+void CmdGet(string[] tokens, ref P8086 p, Bus b)
 {
     if (tokens.Length != 3)
         Log.Cnsl("usage: get [reg|ram] [regname|address]");
@@ -848,7 +848,7 @@ void CmdGet(string[] tokens, P8086 p, Bus b)
     }
 }
 
-void CmdSet(string [] tokens, P8086 p, Bus b)
+void CmdSet(string [] tokens, ref P8086 p, Bus b)
 {
     if (tokens.Length != 4)
         Log.Cnsl("usage: set [reg|ram] [regname|address] value");
