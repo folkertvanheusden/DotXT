@@ -180,18 +180,18 @@ for set in j:
         #process.stdin.write(f'q\r\n'.encode('ascii'))
         #sys.exit(1)
 
-    cycles_used = int(docmd(process, 'cycles', True))
-    cycles_required = len(set['cycles'])
-    #if cycles_used != cycles_required:
-    if abs(cycles_used - cycles_required) > 0:
-        hex_ = [ f'{v:02x}' for v in set['bytes']]
-        while len(hex_) < 3:
-            hex_.append('-')
-        bytes_ = ', '.join(hex_[0:3])
-        diffs.append((cycles_used / cycles_required, f'{bytes_}\t{set["name"]}\tcycles used: {cycles_used}, should be: {cycles_required}'))
+#    cycles_used = int(docmd(process, 'cycles', True))
+#    cycles_required = len(set['cycles'])
+#    #if cycles_used != cycles_required:
+#    if abs(cycles_used - cycles_required) > 0:
+#        hex_ = [ f'{v:02x}' for v in set['bytes']]
+#        while len(hex_) < 3:
+#            hex_.append('-')
+#        bytes_ = ', '.join(hex_[0:3])
+#        diffs.append((cycles_used / cycles_required, f'{bytes_}\t{set["name"]}\tcycles used: {cycles_used}, should be: {cycles_required}'))
 
-diffs.sort(key=lambda x: x[0])
-for e in diffs[-25:]:
-    print(e[0], e[1])
+#diffs.sort(key=lambda x: x[0])
+#for e in diffs[-25:]:
+#    print(e[0], e[1])
 
 sys.exit(1 if error_nr > 0 else 0)

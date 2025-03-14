@@ -11,6 +11,9 @@ ushort initial_ip = 0xfff0;
 
 bool run_IO = true;
 bool self_test = false;
+bool stop_on_hlt = false;
+bool quit_on_hlt = false;
+bool start_immediately = false;
 
 uint ram_size = 1024;
 
@@ -45,6 +48,8 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("          no-io");
         Log.Cnsl("          xts-trace,<file>");
         Log.Cnsl("          self-test");
+        Log.Cnsl("          hlt-stop or hlt-quit");
+        Log.Cnsl("          go");
         Log.Cnsl("-l file   log to file");
         Log.Cnsl("-L        set loglevel (trace, debug, ...)");
         Log.Cnsl("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
@@ -94,6 +99,12 @@ for(int i=0; i<args.Length; i++)
         }
         else if (parts[0] == "self-test")
             self_test = true;
+        else if (parts[0] == "hlt-stop")
+            stop_on_hlt = true;
+        else if (parts[0] == "hlt-quit")
+            quit_on_hlt = true;
+        else if (parts[0] == "go")
+            start_immediately = true;
         else
         {
             Log.Cnsl($"{parts[0]} is not understood");
@@ -397,6 +408,12 @@ else
 
     bool echo_state = false;
     Log.EchoToConsole(echo_state);
+
+    if (start_immediately)
+    {
+        thread = CreateRunnerThread(runner_parameters);
+        running = true;
+    }
 
     for(;;)
     {
@@ -752,6 +769,14 @@ void Runner(object o)
             {
                 p.SetIgnoreBreakpoints();
                 break;
+            }
+
+            if (p.IsInHlt())
+            {
+                if (stop_on_hlt)
+                    break;
+                if (quit_on_hlt)
+                    System.Environment.Exit(0);
             }
 
             if (!throttle)
