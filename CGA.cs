@@ -12,6 +12,7 @@ class M6845
 
     public void Write(int reg, byte value)
     {
+        Log.DoLog($"M6845 set register {reg} to {value:X02}", LogLevel.DEBUG);
         if (reg < 18)
             _registers[reg] = value;
     }
@@ -117,10 +118,9 @@ class CGA : Display
     public override bool IsInVSync()
     {
         int scan_line = GetCurrentScanLine();
-        Log.DoLog($"Scan line: {scan_line}", LogLevel.TRACE);
+        //Log.DoLog($"Scan line: {scan_line}", LogLevel.TRACE);
         return scan_line < 16 || scan_line >= 216;
     }
-
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
@@ -154,7 +154,7 @@ class CGA : Display
 
     public override bool IO_Write(ushort port, ushort value)
     {
-        Log.DoLog($"CGA::IO_Write {port:X4} {value:X4}", LogLevel.TRACE);
+        Log.DoLog($"CGA::IO_Write {port:X4} {value:X4}", LogLevel.DEBUG);
 
         if (port == 0x3d4 || port == 0x3d6 || port == 0x3d0 || port == 0x3d2)
             _m6845_reg = (byte)value;
