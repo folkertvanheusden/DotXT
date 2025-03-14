@@ -10,6 +10,7 @@ ushort initial_cs = 0xf000;
 ushort initial_ip = 0xfff0;
 
 bool run_IO = true;
+bool self_test = false;
 
 uint ram_size = 1024;
 
@@ -43,6 +44,7 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("          set-start-addr,<segment:offset>");
         Log.Cnsl("          no-io");
         Log.Cnsl("          xts-trace,<file>");
+        Log.Cnsl("          self-test");
         Log.Cnsl("-l file   log to file");
         Log.Cnsl("-L        set loglevel (trace, debug, ...)");
         Log.Cnsl("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
@@ -90,6 +92,8 @@ for(int i=0; i<args.Length; i++)
             xts_trace_file = parts[1];
             Log.Cnsl($"XT-Server emulation output will go to {xts_trace_file}");
         }
+        else if (parts[0] == "self-test")
+            self_test = true;
         else
         {
             Log.Cnsl($"{parts[0]} is not understood");
@@ -287,6 +291,9 @@ if (mode == TMode.XTServer)
 if (mode == TMode.CC && bin_file != "")
     Tools.LoadBin(b, bin_file, bin_file_addr);
 
+if (self_test)
+    SelfTest(ref p, ref b);
+
 if (mode == TMode.JSON)
 {
     int cycle_count = 0;
@@ -331,11 +338,11 @@ if (mode == TMode.JSON)
         }
         else if (parts[0] == "set")
         {
-            CmdSet(parts, ref p, b);
+            CmdSet(parts, ref p, ref b);
         }
         else if (parts[0] == "get")
         {
-            CmdGet(parts, ref p, b);
+            CmdGet(parts, p, b);
         }
         else if (line == "c")
         {
@@ -598,11 +605,11 @@ else
             }
             else if (parts[0] == "set")
             {
-                CmdSet(parts, ref p, b);
+                CmdSet(parts, ref p, ref b);
             }
             else if (parts[0] == "get")
             {
-                CmdGet(parts, ref p, b);
+                CmdGet(parts, p, b);
             }
             else if (parts[0] == "gbp" || parts[0] == "lbp")
             {
@@ -780,7 +787,7 @@ int GetValue(string v, bool hex)
     return Convert.ToInt32(v, 10);
 }
 
-void CmdGet(string[] tokens, ref P8086 p, Bus b)
+void CmdGet(string[] tokens, P8086 p, Bus b)
 {
     if (tokens.Length != 3)
         Log.Cnsl("usage: get [reg|ram] [regname|address]");
@@ -848,7 +855,7 @@ void CmdGet(string[] tokens, ref P8086 p, Bus b)
     }
 }
 
-void CmdSet(string [] tokens, ref P8086 p, Bus b)
+void CmdSet(string [] tokens, ref P8086 p, ref Bus b)
 {
     if (tokens.Length != 4)
         Log.Cnsl("usage: set [reg|ram] [regname|address] value");
@@ -993,6 +1000,18 @@ void dump(Bus b, uint addr, int size, string filename)
     }
 
     Log.Cnsl($"Wrote {size} bytes to {filename}");
+}
+
+void SelfTest(ref P8086 p, ref Bus b)
+{
+    for(int i=0; i<65536; i+=8191)
+    {
+        p.GetState().SetAX((ushort)i);
+        Tools.Assert(p.GetState().GetAX() == (ushort)i);
+        p.GetState().SetIP((ushort)i);
+        Tools.Assert(p.GetState().GetIP() == (ushort)i);
+    }
+    Log.Cnsl("Self test: OK");
 }
 
 class ThreadSafe_Bool

@@ -29,4 +29,14 @@ class Tools
             Log.DoLog($"Failed to load {file}: {e}", LogLevel.ERROR);
         }
     }
+
+    public static void Assert(bool v)
+    {
+        if (v == false)
+        {
+            Console.WriteLine("Assertion failed");
+            Console.WriteLine(new System.Diagnostics.StackTrace().ToString());
+            System.Environment.Exit(1);
+        }
+    }
 }
