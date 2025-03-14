@@ -159,16 +159,9 @@ abstract class Display : Device
 
     public abstract override bool IO_Write(ushort port, ushort value);
 
-    protected bool IsHsync()
-    {
-        // 14318180Hz system clock
-        // 18432Hz mda clock
-        // 50Hz refreshes per second
-        bool hsync = Math.Abs(_clock - _last_hsync) >= (14318180 / 18432 / 50);
-        _last_hsync = _clock;
-
-        return hsync;
-    }
+    public abstract int GetCurrentScanLine();
+    public abstract bool IsInHSync();
+    public abstract bool IsInVSync();
 
     public abstract override (ushort, bool) IO_Read(ushort port);
 

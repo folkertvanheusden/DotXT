@@ -38,6 +38,29 @@ class MDA : Display
         return "MDA";
     }
 
+    public override int GetCurrentScanLine()
+    {
+        // 14318180 Hz system clock
+        // 18432 Hz mda clock
+        // 50 Hz refresh rate
+        // 200 (?) lines
+        return (int)((_clock / (14318180 / 18432 / 50 / 200)) % 200);
+    }
+
+    // taken from CGA thus not correct
+    public override bool IsInHSync()
+    {
+        int pixel = (int)(_clock % 304);
+        return pixel < 2 || pixel > 302;  // TODO
+    }
+
+    // taken from CGA thus not correct
+    public override bool IsInVSync()
+    {
+        int scan_line = GetCurrentScanLine();
+        return scan_line < 16 || scan_line >= 216;
+    }
+
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
         Log.DoLog("MDA::RegisterDevice", LogLevel.DEBUG);

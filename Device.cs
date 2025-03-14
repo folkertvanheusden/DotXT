@@ -18,7 +18,7 @@ abstract class Device
     public abstract bool IO_Write(ushort port, ushort value);
     public abstract (ushort, bool) IO_Read(ushort port);
 
-    public int GetWaitStateCycles()
+    public virtual int GetWaitStateCycles()
     {
         return 0;
     }

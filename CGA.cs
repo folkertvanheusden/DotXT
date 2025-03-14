@@ -35,8 +35,11 @@ class CGA : Display
     private uint _display_address = 0;
     private byte _graphics_mode = 255;
     private CGAMode _cga_mode = CGAMode.Text80;
-    private byte _color_configuration = 32;
+    private byte _color_configuration = 0;
+    private bool _color_configuration_changed = false;
+    private int _color_update_line_count = 0;
     private int _render_version = 1;
+    private byte [] _palette_index = new byte[200];
     private List<byte []> palette = new() {
             new byte[] {   0,   0,   0 },
             new byte[] {   0,   0, 127 },
@@ -73,6 +76,52 @@ class CGA : Display
         return "CGA";
     }
 
+    public override List<string> GetState()
+    {
+        List<string> @out = new();
+        @out.Add($"Mode: {_cga_mode} ({_graphics_mode})");
+        @out.Add($"Color configuration: {_color_configuration}, changed: {_color_configuration_changed}");
+
+        string pal = "Palette index per scan line: ";
+        for(int i=0; i<_palette_index.Length; i++)
+            pal += $"{_palette_index[i]}";
+        @out.Add(pal);
+
+        for(int i=0; i<18; i++)
+            @out.Add($"M6845 register {i} ({i:X02}): {_m6845.Read(i):X02}");
+
+        return @out;
+    }
+
+    public override int GetCurrentScanLine()
+    {
+        // 304 cpu cycles per scan line
+        // 262 scan lines
+        return (int)((_clock / 304) % 262);
+    }
+
+    public int GetVisibileScanline()
+    {
+        if (!IsInVSync())
+            return GetCurrentScanLine() - 16;
+        return -1;
+    }
+
+    public override bool IsInHSync()
+    {
+        int pixel = (int)(_clock % 304);
+        Log.DoLog($"Pixel: {pixel}", LogLevel.TRACE);
+        return pixel < 16 || pixel > 280;  // TODO
+    }
+
+    public override bool IsInVSync()
+    {
+        int scan_line = GetCurrentScanLine();
+        Log.DoLog($"Scan line: {scan_line}", LogLevel.TRACE);
+        return scan_line < 16 || scan_line >= 216;
+    }
+
+
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
         Log.DoLog("CGA::RegisterDevice", LogLevel.INFO);
@@ -92,7 +141,7 @@ class CGA : Display
         mappings[0x3dc] = this;
     }
 
-    public int GetWaitStateCycles()
+    public override int GetWaitStateCycles()
     {
         return 4;
     }
@@ -139,14 +188,15 @@ class CGA : Display
                 Log.DoLog($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
                 Console.WriteLine($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
 
-                var span = new Span<byte>(_gf.rgb_pixels);
-                span.Fill(0x00);
+                Array.Fill<byte>(_gf.rgb_pixels, 0x00);
             }
         }
         else if (port == 0x3d9)
         {
-            _color_configuration = (byte)value;
-            Log.DoLog($"CGA color configuration: {_color_configuration:X02}", LogLevel.DEBUG);
+            _color_configuration = (byte)((value >> 4) & 3);
+            _color_configuration_changed = true;
+            _color_update_line_count = 0;
+            Log.DoLog($"CGA color configuration: {_color_configuration:X02} at scanline {GetCurrentScanLine()} V-sync: {IsInVSync()} H-sync: {IsInHSync()} ", LogLevel.DEBUG);
         }
         else
         {
@@ -160,25 +210,28 @@ class CGA : Display
 
     public override (ushort, bool) IO_Read(ushort port)
     {
-        Log.DoLog("CGA::IO_Read", LogLevel.TRACE);
+        Log.DoLog($"CGA::IO_Read {port:X04}", LogLevel.TRACE);
+        byte rc = 0;
 
         if ((port == 0x3d5 || port == 0x3d7) && _m6845_reg >= 0x0c)
-            return (_m6845.Read(_m6845_reg), false);
-
-        if (port == 0x3da)
+            rc = _m6845.Read(_m6845_reg);
+        else if (port == 0x3da)
         {
-            int scanline = (int)((_clock / 304) % 262);  // 262 scanlines, 304 cpu cycles per scanline
-            Log.DoLog($"Scanline: {scanline}, clock: {_clock}", LogLevel.TRACE);
-
-            if (scanline >= 200)  // 200 scanlines visible
-                return (1 /* regen buffer */ | 8 /* in vertical retrace */, false);
-            return ((byte)(scanline & 1), false);
+            if (IsInVSync())
+                rc = 1 /* regen buffer */ | 8 /* in vertical retrace */;
+            else if (IsInHSync())
+                rc = 1;
+            else
+                rc = 0;
+        }
+        else if (port == 0x3d8)
+        {
+            rc = _graphics_mode;
         }
 
-        if (port == 0x3d8)
-            return (_graphics_mode, false);
+        Log.DoLog($"CGA::IO_Read {port:X04}: {rc:X02}", LogLevel.TRACE);
 
-        return (0xee, false);
+        return (rc, false);
     }
 
     public override void WriteByte(uint offset, byte value)
@@ -188,26 +241,28 @@ class CGA : Display
         _gf_version++;
     }
 
-    private byte [] GetPixelColor(int color_index)
+    private byte [] GetPixelColor(int line, int color_index)  // TODO
     {
         byte [] rgb = new byte[3];
-        if ((_color_configuration & 32) != 0)
+        if (_palette_index[line] == 2 || _palette_index[line] == 3)
         {
+            byte brightness = (byte)(_palette_index[line] == 3 ? 255 : 200);
             if (color_index == 1)
-                rgb[1] = rgb[2] = 255;
+                rgb[1] = rgb[2] = brightness;  // cyan
             else if (color_index == 2)
-                rgb[0] = rgb[2] = 255;
+                rgb[0] = rgb[2] = brightness;  // magenta
             else if (color_index == 3)
-                rgb[0] = rgb[1] = rgb[2] = 255;
+                rgb[0] = rgb[1] = rgb[2] = brightness;  // white
         }
         else
         {
+            byte brightness = (byte)(_palette_index[line] == 1 ? 255 : 200);
             if (color_index == 1)  // green
-                rgb[1] = 255;
+                rgb[1] = brightness;
             else if (color_index == 2)  // red
-                rgb[0] = 255;
+                rgb[0] = brightness;
             else if (color_index == 3)  // blue
-                rgb[2] = 255;
+                rgb[2] = brightness;
         }
         return rgb;
     }
@@ -307,5 +362,27 @@ class CGA : Display
     public override byte ReadByte(uint offset)
     {
         return _ram[(offset - 0xb8000) & 0x3fff];
+    }
+
+    public override bool Tick(int cycles, long clock)
+    {
+        _clock = clock;
+
+        int line = GetVisibileScanline();
+
+        if (_color_configuration_changed)
+        {
+            // 200: there's also a 160x100 mode for which this needs to be adjusted
+            if (line >= 0 && line < 200)
+            {
+                _palette_index[line] = _color_configuration;
+
+                _color_update_line_count++;
+                if (_color_update_line_count >= 200)
+                    _color_configuration_changed = false;
+            }
+        }
+
+        return base.Tick(cycles, clock);
     }
 }
