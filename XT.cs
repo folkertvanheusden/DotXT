@@ -1633,6 +1633,38 @@ internal class P8086
         return 0;  // TODO
     }
 
+    private int Op_MOV_AL_mem(byte opcode)  // 0xa0
+    {
+        // MOV AL,[...]
+        ushort a = GetPcWord();
+        _state.al = ReadMemByte(_state.segment_override_set ? _state.segment_override : _state.ds, a);
+        return 12;
+    }
+
+    private int Op_MOV_AX_mem(byte opcode)  // 0xa1
+    {
+        // MOV AX,[...]
+        ushort a = GetPcWord();
+        _state.SetAX(ReadMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, a));
+        return 12;
+    }
+
+    private int Op_MOV_mem_AL(byte opcode)  // 0xa2
+    {
+        // MOV [...],AL
+        ushort a = GetPcWord();
+        WriteMemByte(_state.segment_override_set ? _state.segment_override : _state.ds, a, _state.al);
+        return 13;
+    }
+
+    private int Op_MOV_mem_AX(byte opcode)  // 0xa3
+    {
+        // MOV [...],AX
+        ushort a = GetPcWord();
+        WriteMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, a, _state.GetAX());
+        return 13;
+    }
+
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -1703,6 +1735,10 @@ internal class P8086
         _ops[0x90] = this.Op_NOP;
         for(int i=0x91; i<=0x97; i++)
             _ops[i] = this.Op_XCHG_AX;
+        _ops[0xa0] = this.Op_MOV_AL_mem;
+        _ops[0xa1] = this.Op_MOV_AX_mem;
+        _ops[0xa2] = this.Op_MOV_mem_AL;
+        _ops[0xa3] = this.Op_MOV_mem_AX;
         _ops[0xa4] = this.Op_MOVSB;
         _ops[0xa5] = this.Op_MOVSW;
         _ops[0xa6] = this.Op_CMPSB;
@@ -3096,42 +3132,6 @@ internal class P8086
             _state.SetFlagI(false); // IF
 
             cycle_count += 2;
-        }
-        else if (opcode == 0xa0)
-        {
-            // MOV AL,[...]
-            ushort a = GetPcWord();
-
-            _state.al = ReadMemByte(_state.segment_override_set ? _state.segment_override : _state.ds, a);
-
-            cycle_count += 12;
-        }
-        else if (opcode == 0xa1)
-        {
-            // MOV AX,[...]
-            ushort a = GetPcWord();
-
-            _state.SetAX(ReadMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, a));
-
-            cycle_count += 12;
-        }
-        else if (opcode == 0xa2)
-        {
-            // MOV [...],AL
-            ushort a = GetPcWord();
-
-            WriteMemByte(_state.segment_override_set ? _state.segment_override : _state.ds, a, _state.al);
-
-            cycle_count += 13;
-        }
-        else if (opcode == 0xa3)
-        {
-            // MOV [...],AX
-            ushort a = GetPcWord();
-
-            WriteMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, a, _state.GetAX());
-
-            cycle_count += 13;
         }
         else if (opcode == 0x8d)
         {
