@@ -47,6 +47,32 @@ class State8086
         return clock;
     }
 
+    public string GetFlagsAsString()
+    {
+        string @out = String.Empty;
+
+        @out += GetFlagO() ? "o" : "-";
+        @out += GetFlagI() ? "I" : "-";
+        @out += GetFlagT() ? "T" : "-";
+        @out += GetFlagS() ? "s" : "-";
+        @out += GetFlagZ() ? "z" : "-";
+        @out += GetFlagA() ? "a" : "-";
+        @out += GetFlagP() ? "p" : "-";
+        @out += GetFlagC() ? "c" : "-";
+
+        return @out;
+    }
+
+    public void DumpState()
+    {
+        Log.DoLog($"State for clock {GetClock()}:", LogLevel.DEBUG);
+        Log.DoLog($"{GetFlagsAsString()} AX:{GetAX():X4} BX:{GetBX():X4} CX:{GetCX():X4} DX:{GetDX():X4} SP:{GetSP():X4} BP:{GetBP():X4} SI:{GetSI():X4} DI:{GetDI():X4} flags:{GetFlags():X4} ES:{GetES():X4} CS:{cs:X4} SS:{GetSS():X4} DS:{GetDS():X4} IP:{ip:X4}", LogLevel.DEBUG);
+        Log.DoLog($"REP: {rep}, do-nothing: {rep_do_nothing}, mode: {rep_mode}, addr {rep_addr}, opcode {rep_opcode}", LogLevel.DEBUG);
+        Log.DoLog($"In HLT: {in_hlt}, inhibit interrupts: {inhibit_interrupts}", LogLevel.DEBUG);
+        Log.DoLog($"Segment override: {segment_override_set}, value: {segment_override}", LogLevel.DEBUG);
+        Log.DoLog($"Crash counter: {crash_counter}", LogLevel.DEBUG);
+    }
+
     public void SetIP(ushort cs_in, ushort ip_in)
     {
         Log.DoLog($"Set CS/IP to {cs:X4}:{ip:X4}", LogLevel.DEBUG);

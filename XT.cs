@@ -2224,22 +2224,6 @@ internal class P8086
         return PutRegisterMem(reg, mod, word, v);
     }
 
-    public string GetFlagsAsString()
-    {
-        string @out = String.Empty;
-
-        @out += _state.GetFlagO() ? "o" : "-";
-        @out += _state.GetFlagI() ? "I" : "-";
-        @out += _state.GetFlagT() ? "T" : "-";
-        @out += _state.GetFlagS() ? "s" : "-";
-        @out += _state.GetFlagZ() ? "z" : "-";
-        @out += _state.GetFlagA() ? "a" : "-";
-        @out += _state.GetFlagP() ? "p" : "-";
-        @out += _state.GetFlagC() ? "c" : "-";
-
-        return @out;
-    }
-
     private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub, bool flag_c)
     {
         ushort in_reg_result = word ? (ushort)result : (byte)result;
@@ -2284,20 +2268,13 @@ internal class P8086
     public void push(ushort v)
     {
         _state.sp -= 2;
-
-        // Log.DoLog($"push({v:X4}) write @ {_state.ss:X4}:{_state.sp:X4}", true);
-
         WriteMemWord(_state.ss, _state.sp, v);
     }
 
     public ushort pop()
     {
         ushort v = ReadMemWord(_state.ss, _state.sp);
-
-        // Log.DoLog($"pop({v:X4}) read @ {_state.ss:X4}:{_state.sp:X4}", true);
-
         _state.sp += 2;
-
         return v;
     }
 
@@ -2356,28 +2333,6 @@ internal class P8086
                 s += " .";
         }
         return s;
-    }
-
-    public string GetTerminatedString(ushort segment, ushort p, char terminator)
-    {
-        string out_ = "";
-
-        for(;;)
-        {
-            byte byte_ = ReadMemByte(segment, p);
-
-            if (byte_ == terminator)
-                break;
-
-            out_ += (char)byte_;
-
-            p++;
-
-            if (p == 0)  // stop at end of segment
-                break;
-        }
-
-        return out_;
     }
 
     public bool IsProcessingRep()

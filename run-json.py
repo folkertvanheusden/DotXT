@@ -171,6 +171,7 @@ for set in j:
         log(f'dolog sp:ss is at {ss * 16 + sp:06x}')
         ip = is_['ip'] if 'ip' in is_ else -1
         memint0 = int(docmd(process, f'get ram 0').split()[1]) + int(docmd(process, f'get ram 1').split()[1]) * 256
+        docmd(process, 'dump-processor-state', False)
         istr = f'INT{ip:04x}' if ip == memint0 else 'NO-INT'
         log(f'dolog FAILED {set["name"]}, nr: {error_nr}/{test_nr}: {set["hash"]}, {sys.argv[1]} {istr}\r\n')
 

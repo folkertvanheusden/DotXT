@@ -5,6 +5,8 @@ namespace DotXT;
 class P8086Disassembler
 {
     private State8086 _state;
+    private ushort _cs;
+    private ushort _ip;
     private const uint MemMask = 0x00ffffff;
     private Bus _b;
     
@@ -23,9 +25,9 @@ class P8086Disassembler
 
     private byte GetByte(ref int instr_len, ref List<byte> bytes)
     {
-        byte b = ReadMemByte(_state.cs, _state.ip);
+        byte b = ReadMemByte(_cs, _ip);
         bytes.Add(b);
-        _state.ip++;
+        _ip++;
         instr_len++;
         return b;
     }
@@ -353,7 +355,7 @@ class P8086Disassembler
         if (reg == 0b000)
             return (_state.es, "ES");
         if (reg == 0b001)
-            return (_state.cs, "CS");  // TODO use _state.cs from Disassemble invocation?
+            return (_cs, "CS");  // TODO use _cs from Disassemble invocation?
         if (reg == 0b010)
             return (_state.ss, "SS");
         if (reg == 0b011)
@@ -393,11 +395,13 @@ class P8086Disassembler
     public void SetCPUState(in State8086 state)
     {
         _state = state;
+        _cs = state.GetCS();
+        _ip = state.GetIP();
     }
 
     public string GetRegisters()
     {
-        return  $"{GetFlagsAsString()} AX:{_state.GetAX():X4} BX:{_state.GetBX():X4} CX:{_state.GetCX():X4} DX:{_state.GetDX():X4} SP:{_state.GetSP():X4} BP:{_state.GetBP():X4} SI:{_state.GetSI():X4} DI:{_state.GetDI():X4} flags:{_state.GetFlags():X4} ES:{_state.GetES():X4} CS:{_state.cs:X4} SS:{_state.GetSS():X4} DS:{_state.GetDS():X4} IP:{_state.ip:X4}";
+        return $"{GetFlagsAsString()} AX:{_state.GetAX():X4} BX:{_state.GetBX():X4} CX:{_state.GetCX():X4} DX:{_state.GetDX():X4} SP:{_state.GetSP():X4} BP:{_state.GetBP():X4} SI:{_state.GetSI():X4} DI:{_state.GetDI():X4} flags:{_state.GetFlags():X4} ES:{_state.GetES():X4} CS:{_cs:X4} SS:{_state.GetSS():X4} DS:{_state.GetDS():X4} IP:{_ip:X4}";
     }
 
     // instruction length, instruction string, additional info, hex-string
@@ -592,8 +596,8 @@ class P8086Disassembler
         else if (opcode == 0xe9)
         {
             short offset = (short)GetWord(ref instr_len, ref bytes);
-            ushort word = (ushort)(_state.ip + offset);
-            instr = $"JMP {_state.ip:X}";
+            ushort word = (ushort)(_ip + offset);
+            instr = $"JMP {_ip:X}";
             meta = $"{offset:X4}";
         }
         else if (opcode == 0x50)
@@ -829,12 +833,12 @@ class P8086Disassembler
                 if (opcode == 0xce)
                 {
                     instr = $"INTO {@int:X2}";
-                    meta = $"{SegmentAddr(_state.cs, _state.ip)} (from {addr:X4})";
+                    meta = $"{SegmentAddr(_cs, _ip)} (from {addr:X4})";
                 }
                 else 
                 {
                     instr = $"INT {@int:X2}";
-                    meta = $"{SegmentAddr(_state.cs, _state.ip)} (from {addr:X4})";
+                    meta = $"{SegmentAddr(_cs, _ip)} (from {addr:X4})";
                 }
             }
         }
@@ -967,9 +971,9 @@ class P8086Disassembler
         else if (opcode == 0xe8)
         {
             short a = (short)GetWord(ref instr_len, ref bytes);
-            ushort temp_ip = (ushort)(a + _state.ip);
+            ushort temp_ip = (ushort)(a + _ip);
             instr = $"CALL {a:X4}";
-            meta = $"{SegmentAddr(_state.cs, temp_ip)}";
+            meta = $"{SegmentAddr(_cs, temp_ip)}";
         }
         else if (opcode == 0xea)
         {
@@ -1323,10 +1327,10 @@ class P8086Disassembler
             else
                 meta = "opcode {opcode:x2} not implemented";
 
-            ushort newAddress = (ushort)(_state.ip + (sbyte)to);
+            ushort newAddress = (ushort)(_ip + (sbyte)to);
 
             instr = $"{name} {to}";
-            meta = $"{_state.cs:X4}:{newAddress:X4} -> {SegmentAddr(_state.cs, newAddress)}";
+            meta = $"{_cs:X4}:{newAddress:X4} -> {SegmentAddr(_cs, newAddress)}";
         }
         else if (opcode == 0xd7)
         {
@@ -1337,7 +1341,7 @@ class P8086Disassembler
             // LOOP
             byte to = GetByte(ref instr_len, ref bytes);
             string name = "?";
-            ushort newAddresses = (ushort)(_state.ip + (sbyte)to);
+            ushort newAddresses = (ushort)(_ip + (sbyte)to);
 
             if (opcode == 0xe2)
                 name = "LOOP";
@@ -1393,7 +1397,7 @@ class P8086Disassembler
             // JMP
             sbyte to = (sbyte)GetByte(ref instr_len, ref bytes);
             instr = $"JP ${to:X2}";
-            meta = $"{_state.cs * 16 + _state.ip + to:X6} {_state.cs:X04}:{_state.ip:X04}";
+            meta = $"{_cs * 16 + _ip + to:X6} {_cs:X04}:{_ip:X04}";
         }
         else if (opcode == 0xf4)
         {
@@ -1442,7 +1446,7 @@ class P8086Disassembler
             else if (function == 2)
             {
                 instr = $"CALL {name}";
-                meta += $"${v:X4} -> {SegmentAddr(_state.cs, _state.ip)}";
+                meta += $"${v:X4} -> {SegmentAddr(_cs, _ip)}";
             }
             else if (function == 3)
             {
@@ -1453,7 +1457,7 @@ class P8086Disassembler
             else if (function == 4)
             {
                 instr = $"JMP {name}";
-                meta += $"{_state.cs * 16 + v:X6}";
+                meta += $"{_cs * 16 + v:X6}";
             }
             else if (function == 5)
             {
