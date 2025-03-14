@@ -944,6 +944,482 @@ internal class P8086
             return 3;
         }
 
+	private int Op_MOV2(byte opcode)
+        {
+		int cycle_count = 0;
+            bool dir = (opcode & 2) == 2; // direction
+            bool word = (opcode & 1) == 1; // b/w
+
+            byte o1 = GetPcByte();
+            int mode = o1 >> 6;
+            int reg = (o1 >> 3) & 7;
+            int rm = o1 & 7;
+
+            bool sreg = opcode == 0x8e || opcode == 0x8c;
+            if (sreg)
+            {
+                word = true;
+                _state.inhibit_interrupts = opcode == 0x8e;
+            }
+
+            cycle_count += 13;
+
+            // 88: rm < r (byte) 00  false,byte
+            // 89: rm < r (word) 01  false,word  <--
+            // 8a: r < rm (byte) 10  true, byte
+            // 8b: r < rm (word) 11  true, word
+
+            // 89|E6 mode 3, reg 4, rm 6, dir False, word True, sreg False
+
+            if (dir)
+            {
+                // to 'rm' from 'REG'
+                (ushort v, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mode, word);
+                cycle_count += get_cycles;
+
+                if (sreg)
+                    PutSRegister(reg, v);
+                else
+                    PutRegister(reg, word, v);
+            }
+            else
+            {
+                // from 'REG' to 'rm'
+                ushort v = 0;
+                if (sreg)
+                    v = GetSRegister(reg);
+                else
+                    v = GetRegister(reg, word);
+
+                int put_cycles = PutRegisterMem(rm, mode, word, v);
+                cycle_count += put_cycles;
+            }
+
+	    return cycle_count;
+        }
+
+	private int Op_TEST_others(byte opcode)
+        {
+            // TEST and others
+	    int cycle_count = 0;
+            bool word = (opcode & 1) == 1;
+
+            byte o1 = GetPcByte();
+            int mod = o1 >> 6;
+            int reg1 = o1 & 7;
+
+            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
+            cycle_count += get_cycles;
+
+            int function = (o1 >> 3) & 7;
+            if (function == 0 || function == 1)
+            {
+                // TEST
+                if (word) {
+                    ushort r2 = GetPcWord();
+
+                    ushort result = (ushort)(r1 & r2);
+                    SetLogicFuncFlags(true, result);
+
+                    _state.SetFlagC(false);
+                }
+                else {
+                    byte r2 = GetPcByte();
+                    ushort result = (ushort)(r1 & r2);
+                    SetLogicFuncFlags(word, result);
+
+                    _state.SetFlagC(false);
+                }
+            }
+            else if (function == 2)
+            {
+                // NOT
+                int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)~r1);
+                cycle_count += put_cycles;
+            }
+            else if (function == 3)
+            {
+                // NEG
+                int result = (ushort)-r1;
+
+                SetAddSubFlags(word, 0, r1, -r1, true, false);
+                _state.SetFlagC(r1 != 0);
+
+                int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)result);
+                cycle_count += put_cycles;
+            }
+            else if (function == 4)
+            {
+                bool negate = _state.rep_mode == RepMode.REP && _state.rep;
+                _state.rep = false;
+
+                // MUL
+                if (word) {
+                    ushort ax = _state.GetAX();
+                    int resulti = ax * r1;
+
+                    uint dx_ax = (uint)resulti;
+                    if (negate)
+                        dx_ax = (uint)-dx_ax;
+                    _state.SetAX((ushort)dx_ax);
+                    _state.SetDX((ushort)(dx_ax >> 16));
+
+                    bool flag = _state.GetDX() != 0;
+                    _state.SetFlagC(flag);
+                    _state.SetFlagO(flag);
+
+                    cycle_count += 118;
+                }
+                else {
+                    int result = _state.al * r1;
+                    if (negate)
+                        result = -result;
+                    _state.SetAX((ushort)result);
+
+                    bool flag = _state.ah != 0;
+                    _state.SetFlagC(flag);
+                    _state.SetFlagO(flag);
+
+                    cycle_count += 70;
+                }
+            }
+            else if (function == 5)
+            {
+                bool negate = _state.rep_mode == RepMode.REP && _state.rep;
+                _state.rep = false;
+
+                // IMUL
+                if (word) {
+                    short ax = (short)_state.GetAX();
+                    int resulti = ax * (short)r1;
+
+                    uint dx_ax = (uint)resulti;
+                    if (negate)
+                        dx_ax = (uint)-dx_ax;
+                    _state.SetAX((ushort)dx_ax);
+                    _state.SetDX((ushort)(dx_ax >> 16));
+
+                    bool flag = (int)(short)_state.GetAX() != resulti;
+                    _state.SetFlagC(flag);
+                    _state.SetFlagO(flag);
+
+                    cycle_count += 128;
+                }
+                else {
+                    int result = (sbyte)_state.al * (short)(sbyte)r1;
+                    if (negate)
+                        result = -result;
+                    _state.SetAX((ushort)result);
+
+                    _state.SetFlagS((_state.ah & 128) == 128);
+                    bool flag = (short)(sbyte)_state.al != (short)result;
+                    _state.SetFlagC(flag);
+                    _state.SetFlagO(flag);
+
+                    cycle_count += 80;
+                }
+            }
+            else if (function == 6)
+            {
+                _state.SetFlagC(false);
+                _state.SetFlagO(false);
+
+                // DIV
+                if (word) {
+                    uint dx_ax = (uint)((_state.GetDX() << 16) | _state.GetAX());
+
+                    if (r1 == 0 || dx_ax / r1 >= 0x10000)
+                    {
+                        _state.SetZSPFlags(_state.ah);
+                        _state.SetFlagA(false);
+                        InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
+                    }
+                    else
+                    {
+                        _state.SetAX((ushort)(dx_ax / r1));
+                        _state.SetDX((ushort)(dx_ax % r1));
+                    }
+                }
+                else {
+                    ushort ax = _state.GetAX();
+
+                    if (r1 == 0 || ax / r1 >= 0x100)
+                    {
+                        _state.SetZSPFlags(_state.ah);
+                        _state.SetFlagA(false);
+                        InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
+                    }
+                    else
+                    {
+                        _state.al = (byte)(ax / r1);
+                        _state.ah = (byte)(ax % r1);
+                    }
+                }
+            }
+            else if (function == 7)
+            {
+                bool negate = _state.rep_mode == RepMode.REP && _state.rep;
+                _state.rep = false;
+
+                _state.SetFlagC(false);
+                _state.SetFlagO(false);
+
+                // IDIV
+                if (word) {
+                    int dx_ax = (_state.GetDX() << 16) | _state.GetAX();
+                    int r1s = (int)(short)r1;
+
+                    if (r1s == 0 || dx_ax / r1s > 0x7fffffff || dx_ax / r1s < -0x80000000)
+                    {
+                        _state.SetZSPFlags(_state.ah);
+                        _state.SetFlagA(false);
+                        InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
+                    }
+                    else
+                    {
+                        if (negate)
+                            _state.SetAX((ushort)-(dx_ax / r1s));
+                        else
+                            _state.SetAX((ushort)(dx_ax / r1s));
+                        _state.SetDX((ushort)(dx_ax % r1s));
+                    }
+                }
+                else {
+                    short ax = (short)_state.GetAX();
+                    short r1s = (short)(sbyte)r1;
+
+                    if (r1s == 0 || ax / r1s > 0x7fff || ax / r1s < -0x8000)
+                    {
+                        _state.SetZSPFlags(_state.ah);
+                        _state.SetFlagA(false);
+                        InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
+                    }
+                    else
+                    {
+                        if (negate)
+                            _state.al = (byte)-(ax / r1s);
+                        else
+                            _state.al = (byte)(ax / r1s);
+                        _state.ah = (byte)(ax % r1s);
+                    }
+                }
+            }
+            else
+            {
+                Log.DoLog($"opcode {opcode:X2} o1 {o1:X2} function {function} not implemented", LogLevel.WARNING);
+            }
+
+            return cycle_count + 4;
+        }
+
+	private int Op_INT(byte opcode)
+        {
+            // INT 0x..
+            if (opcode != 0xce || _state.GetFlagO())
+            {
+                byte @int = 0;
+
+                if (opcode == 0xcc)
+                    @int = 3;
+                else if (opcode == 0xce)
+                    @int = 4;
+                else
+                    @int = GetPcByte();
+
+                ushort addr = (ushort)(@int * 4);
+
+                push(_state.flags);
+                push(_state.cs);
+                if (_state.rep)
+                {
+                    push(_state.rep_addr);
+                    Log.DoLog($"INT from rep {_state.rep_addr:X04}", LogLevel.TRACE);
+                }
+                else
+                {
+                    push(_state.ip);
+                }
+
+                _state.SetFlagI(false);
+
+                _state.ip = ReadMemWord(0, addr);
+                _state.cs = ReadMemWord(0, (ushort)(addr + 2));
+
+                return 51;  // 71  TODO
+            }
+
+	    return 0;  // TODO
+        }
+
+	private int Op_CMP(byte opcode)
+        {
+            // CMP
+            bool word = (opcode & 1) == 1;
+
+            int result = 0;
+
+            ushort r1 = 0;
+            ushort r2 = 0;
+
+            int cycle_count = 4;
+
+            if (opcode == 0x3d)
+            {
+                r1 = _state.GetAX();
+                r2 = GetPcWord();
+
+                result = r1 - r2;
+            }
+            else if (opcode == 0x3c)
+            {
+                r1 = _state.al;
+                r2 = GetPcByte();
+
+                result = r1 - r2;
+            }
+            else
+            {
+                Log.DoLog($"opcode {opcode:X2} not implemented", LogLevel.WARNING);
+            }
+
+            SetAddSubFlags(word, r1, r2, result, true, false);
+
+	    return cycle_count;
+        }
+
+	private int Op_logic_functions(byte opcode)
+        {
+            bool word = (opcode & 1) == 1;
+            bool direction = (opcode & 2) == 2;
+            byte o1 = GetPcByte();
+
+            int mod = o1 >> 6;
+            int reg1 = (o1 >> 3) & 7;
+            int reg2 = o1 & 7;
+
+            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
+            ushort r2 = GetRegister(reg1, word);
+
+            int cycle_count = get_cycles + 3;
+
+            ushort result = 0;
+
+            int function = opcode >> 4;
+            if (function == 0)
+            {
+                result = (ushort)(r1 | r2);
+            }
+            else if (function == 2)
+            {
+                result = (ushort)(r2 & r1);
+            }
+            else if (function == 3)
+            {
+                result = (ushort)(r2 ^ r1);
+            }
+            else
+            {
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
+            }
+
+            SetLogicFuncFlags(word, result);
+
+            if (direction)
+            {
+                PutRegister(reg1, word, result);
+            }
+            else
+            {
+                int put_cycles = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, result);
+                cycle_count += put_cycles;
+            }
+
+	    return cycle_count;
+        }
+
+	private int Op_OR_AND_XOR(byte opcode)
+        {
+            bool word = (opcode & 1) == 1;
+
+            byte bLow = GetPcByte();
+            byte bHigh = word ? GetPcByte() : (byte)0;
+
+            int function = opcode >> 4;
+
+            if (function == 0)
+            {
+                _state.al |= bLow;
+
+                if (word)
+                    _state.ah |= bHigh;
+            }
+            else if (function == 2)
+            {
+                _state.al &= bLow;
+
+                if (word)
+                    _state.ah &= bHigh;
+
+                _state.SetFlagC(false);
+            }
+            else if (function == 3)
+            {
+                _state.al ^= bLow;
+
+                if (word)
+                    _state.ah ^= bHigh;
+            }
+            else
+            {
+                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
+            }
+
+            SetLogicFuncFlags(word, word ? _state.GetAX() : _state.al);
+
+            _state.SetFlagP(_state.al);
+
+            return 4;
+        }
+
+	private int Op_RET2(byte opcode)
+        {
+            ushort nToRelease = GetPcWord();
+
+            // RET
+            _state.ip = pop();
+            _state.sp += nToRelease;
+
+            return 16;
+        }
+
+	private int Op_RET3(byte opcode)
+        {
+            // RET
+            _state.ip = pop();
+
+            return 16;
+        }
+
+	private int Op_LES_LDS(byte opcode)  // c4/c5
+        {
+            // LES (c4) / LDS (c5)
+            byte o1 = GetPcByte();
+            int mod = o1 >> 6;
+            int reg = (o1 >> 3) & 7;
+            int rm = o1 & 7;
+
+            (ushort val, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
+
+            if (opcode == 0xc4)
+                _state.es = ReadMemWord(seg, (ushort)(addr + 2));
+            else
+                _state.ds = ReadMemWord(seg, (ushort)(addr + 2));
+
+            PutRegister(reg, true, val);
+
+            return 24 + get_cycles;
+        }
+
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -957,6 +1433,12 @@ internal class P8086
 	_ops[0x03] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x04] = this.Op_ADD_AL_xx;
      	_ops[0x05] = this.Op_ADD_AX_xxxx;
+	_ops[0x08] = this.Op_logic_functions;
+	_ops[0x09] = this.Op_logic_functions;
+	_ops[0x0a] = this.Op_logic_functions;
+	_ops[0x0b] = this.Op_logic_functions;
+	_ops[0x0c] = this.Op_OR_AND_XOR;
+	_ops[0x0d] = this.Op_OR_AND_XOR;
 	_ops[0x10] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x11] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x12] = this.Op_ADD_SUB_ADC_SBC;
@@ -967,14 +1449,28 @@ internal class P8086
 	_ops[0x19] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x1a] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x1b] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x20] = this.Op_logic_functions;
+	_ops[0x21] = this.Op_logic_functions;
+	_ops[0x22] = this.Op_logic_functions;
+	_ops[0x23] = this.Op_logic_functions;
+	_ops[0x24] = this.Op_OR_AND_XOR;
+	_ops[0x25] = this.Op_OR_AND_XOR;
 	_ops[0x28] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x29] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x2a] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x2b] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x30] = this.Op_logic_functions;
+	_ops[0x31] = this.Op_logic_functions;
+	_ops[0x32] = this.Op_logic_functions;
+	_ops[0x33] = this.Op_logic_functions;
+	_ops[0x34] = this.Op_OR_AND_XOR;
+	_ops[0x35] = this.Op_OR_AND_XOR;
 	_ops[0x38] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x39] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x3a] = this.Op_ADD_SUB_ADC_SBC;
 	_ops[0x3b] = this.Op_ADD_SUB_ADC_SBC;
+	_ops[0x3c] = this.Op_CMP;
+	_ops[0x3d] = this.Op_CMP;
 	for(int i=0x40; i<=0x4f; i++)
 		_ops[i] = this.Op_INC_DEC;
     	_ops[0x80] = this.Op_CMP_OR_XOR_etc;
@@ -985,17 +1481,32 @@ internal class P8086
 	_ops[0x85] = this.Op_TEST;
 	_ops[0x86] = this.Op_XCHG;
 	_ops[0x87] = this.Op_XCHG;
+	_ops[0x88] = this.Op_MOV2;
+	_ops[0x89] = this.Op_MOV2;
+	_ops[0x8a] = this.Op_MOV2;
+	_ops[0x8b] = this.Op_MOV2;
+	_ops[0x8c] = this.Op_MOV2;
+	_ops[0x8e] = this.Op_MOV2;
 	_ops[0x90] = this.Op_NOP;
 	for(int i=0x91; i<=0x97; i++)
 		_ops[i] = this.Op_XCHG_AX;
 	for(int i=0xb0; i<=0xbf; i++)
 		_ops[i] = this.Op_MOV_reg_ib;
+	_ops[0xc0] = this.Op_RET2;
+	_ops[0xc1] = this.Op_RET3;
+	_ops[0xc2] = this.Op_RET2;
+	_ops[0xc3] = this.Op_RET3;
+	_ops[0xc4] = this.Op_LES_LDS;
+	_ops[0xc5] = this.Op_LES_LDS;
     	_ops[0xc6] = this.Op_MOV;
     	_ops[0xc7] = this.Op_MOV;
     	_ops[0xc8] = this.Op_REFT;
     	_ops[0xc9] = this.Op_REFT;
     	_ops[0xca] = this.Op_REFT;
     	_ops[0xcb] = this.Op_REFT;
+	_ops[0xcc] = this.Op_INT;
+	_ops[0xcd] = this.Op_INT;
+	_ops[0xce] = this.Op_INT;
 	_ops[0xd0] = this.Op_shift;
 	_ops[0xd1] = this.Op_shift;
 	_ops[0xd2] = this.Op_shift;
@@ -1005,6 +1516,8 @@ internal class P8086
     	_ops[0xe0] = this.Op_LOOP;
     	_ops[0xe1] = this.Op_LOOP;
     	_ops[0xe2] = this.Op_LOOP;
+	_ops[0xf6] = this.Op_TEST_others;
+	_ops[0xf7] = this.Op_TEST_others;
 	_ops[0xfe] = this.Op_fe_ff;
 	_ops[0xff] = this.Op_fe_ff;
 	for(int i=0x60; i<=0x7f; i++)
@@ -2389,78 +2902,6 @@ internal class P8086
                 cycle_count += 5;
             }
         }
-        else if (opcode == 0xc2 || opcode == 0xc0)
-        {
-            ushort nToRelease = GetPcWord();
-
-            // RET
-            _state.ip = pop();
-            _state.sp += nToRelease;
-
-            cycle_count += 16;
-        }
-        else if (opcode == 0xc3 || opcode == 0xc1)
-        {
-            // RET
-            _state.ip = pop();
-
-            cycle_count += 16;
-        }
-        else if (opcode == 0xc4 || opcode == 0xc5)
-        {
-            // LES (c4) / LDS (c5)
-            byte o1 = GetPcByte();
-            int mod = o1 >> 6;
-            int reg = (o1 >> 3) & 7;
-            int rm = o1 & 7;
-
-            (ushort val, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
-
-            if (opcode == 0xc4)
-                _state.es = ReadMemWord(seg, (ushort)(addr + 2));
-            else
-                _state.ds = ReadMemWord(seg, (ushort)(addr + 2));
-
-            PutRegister(reg, true, val);
-
-            cycle_count += 24 + get_cycles;
-        }
-        else if (opcode == 0xcc || opcode == 0xcd || opcode == 0xce)
-        {
-            // INT 0x..
-            if (opcode != 0xce || _state.GetFlagO())
-            {
-                byte @int = 0;
-
-                if (opcode == 0xcc)
-                    @int = 3;
-                else if (opcode == 0xce)
-                    @int = 4;
-                else
-                    @int = GetPcByte();
-
-                ushort addr = (ushort)(@int * 4);
-
-                push(_state.flags);
-                push(_state.cs);
-                if (_state.rep)
-                {
-                    push(_state.rep_addr);
-                    Log.DoLog($"INT from rep {_state.rep_addr:X04}", LogLevel.TRACE);
-                }
-                else
-                {
-                    push(_state.ip);
-                }
-
-                _state.SetFlagI(false);
-
-                _state.ip = ReadMemWord(0, addr);
-                _state.cs = ReadMemWord(0, (ushort)(addr + 2));
-
-                cycle_count += 51;  // 71  TODO
-            }
-        }
         else if (opcode == 0xcf)
         {
             // IRET
@@ -2475,129 +2916,6 @@ internal class P8086
                 back_from_trace = true;
 
             cycle_count += 32;  // 44
-        }
-        else if (opcode == 0x3c || opcode == 0x3d)
-        {
-            // CMP
-            bool word = (opcode & 1) == 1;
-
-            int result = 0;
-
-            ushort r1 = 0;
-            ushort r2 = 0;
-
-            cycle_count += 4;
-
-            if (opcode == 0x3d)
-            {
-                r1 = _state.GetAX();
-                r2 = GetPcWord();
-
-                result = r1 - r2;
-            }
-            else if (opcode == 0x3c)
-            {
-                r1 = _state.al;
-                r2 = GetPcByte();
-
-                result = r1 - r2;
-            }
-            else
-            {
-                Log.DoLog($"opcode {opcode:X2} not implemented", LogLevel.WARNING);
-            }
-
-            SetAddSubFlags(word, r1, r2, result, true, false);
-        }
-        else if (opcode is >= 0x30 and <= 0x33 || opcode is >= 0x20 and <= 0x23 || opcode is >= 0x08 and <= 0x0b)
-        {
-            bool word = (opcode & 1) == 1;
-            bool direction = (opcode & 2) == 2;
-            byte o1 = GetPcByte();
-
-            int mod = o1 >> 6;
-            int reg1 = (o1 >> 3) & 7;
-            int reg2 = o1 & 7;
-
-            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg2, mod, word);
-            ushort r2 = GetRegister(reg1, word);
-
-            cycle_count += get_cycles + 3;
-
-            ushort result = 0;
-
-            int function = opcode >> 4;
-            if (function == 0)
-            {
-                result = (ushort)(r1 | r2);
-            }
-            else if (function == 2)
-            {
-                result = (ushort)(r2 & r1);
-            }
-            else if (function == 3)
-            {
-                result = (ushort)(r2 ^ r1);
-            }
-            else
-            {
-                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
-            }
-
-            SetLogicFuncFlags(word, result);
-
-            if (direction)
-            {
-                PutRegister(reg1, word, result);
-            }
-            else
-            {
-                int put_cycles = UpdateRegisterMem(reg2, mod, a_valid, seg, addr, word, result);
-                cycle_count += put_cycles;
-            }
-        }
-        else if (opcode is (0x34 or 0x35 or 0x24 or 0x25 or 0x0c or 0x0d))
-        {
-            bool word = (opcode & 1) == 1;
-
-            byte bLow = GetPcByte();
-            byte bHigh = word ? GetPcByte() : (byte)0;
-
-            int function = opcode >> 4;
-
-            if (function == 0)
-            {
-                _state.al |= bLow;
-
-                if (word)
-                    _state.ah |= bHigh;
-            }
-            else if (function == 2)
-            {
-                _state.al &= bLow;
-
-                if (word)
-                    _state.ah &= bHigh;
-
-                _state.SetFlagC(false);
-            }
-            else if (function == 3)
-            {
-                _state.al ^= bLow;
-
-                if (word)
-                    _state.ah ^= bHigh;
-            }
-            else
-            {
-                Log.DoLog($"opcode {opcode:X2} function {function} not implemented", LogLevel.WARNING);
-            }
-
-            SetLogicFuncFlags(word, word ? _state.GetAX() : _state.al);
-
-            _state.SetFlagP(_state.al);
-
-            cycle_count += 4;
         }
         else if (opcode == 0xe8)
         {
@@ -2618,218 +2936,6 @@ internal class P8086
             _state.cs = temp_cs;
 
             cycle_count += 15;
-        }
-        else if (opcode == 0xf6 || opcode == 0xf7)
-        {
-            // TEST and others
-            bool word = (opcode & 1) == 1;
-
-            byte o1 = GetPcByte();
-            int mod = o1 >> 6;
-            int reg1 = o1 & 7;
-
-            (ushort r1, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(reg1, mod, word);
-            cycle_count += get_cycles;
-
-            int function = (o1 >> 3) & 7;
-            if (function == 0 || function == 1)
-            {
-                // TEST
-                if (word) {
-                    ushort r2 = GetPcWord();
-
-                    ushort result = (ushort)(r1 & r2);
-                    SetLogicFuncFlags(true, result);
-
-                    _state.SetFlagC(false);
-                }
-                else {
-                    byte r2 = GetPcByte();
-                    ushort result = (ushort)(r1 & r2);
-                    SetLogicFuncFlags(word, result);
-
-                    _state.SetFlagC(false);
-                }
-            }
-            else if (function == 2)
-            {
-                // NOT
-                int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)~r1);
-                cycle_count += put_cycles;
-            }
-            else if (function == 3)
-            {
-                // NEG
-                int result = (ushort)-r1;
-
-                SetAddSubFlags(word, 0, r1, -r1, true, false);
-                _state.SetFlagC(r1 != 0);
-
-                int put_cycles = UpdateRegisterMem(reg1, mod, a_valid, seg, addr, word, (ushort)result);
-                cycle_count += put_cycles;
-            }
-            else if (function == 4)
-            {
-                bool negate = _state.rep_mode == RepMode.REP && _state.rep;
-                _state.rep = false;
-
-                // MUL
-                if (word) {
-                    ushort ax = _state.GetAX();
-                    int resulti = ax * r1;
-
-                    uint dx_ax = (uint)resulti;
-                    if (negate)
-                        dx_ax = (uint)-dx_ax;
-                    _state.SetAX((ushort)dx_ax);
-                    _state.SetDX((ushort)(dx_ax >> 16));
-
-                    bool flag = _state.GetDX() != 0;
-                    _state.SetFlagC(flag);
-                    _state.SetFlagO(flag);
-
-                    cycle_count += 118;
-                }
-                else {
-                    int result = _state.al * r1;
-                    if (negate)
-                        result = -result;
-                    _state.SetAX((ushort)result);
-
-                    bool flag = _state.ah != 0;
-                    _state.SetFlagC(flag);
-                    _state.SetFlagO(flag);
-
-                    cycle_count += 70;
-                }
-            }
-            else if (function == 5)
-            {
-                bool negate = _state.rep_mode == RepMode.REP && _state.rep;
-                _state.rep = false;
-
-                // IMUL
-                if (word) {
-                    short ax = (short)_state.GetAX();
-                    int resulti = ax * (short)r1;
-
-                    uint dx_ax = (uint)resulti;
-                    if (negate)
-                        dx_ax = (uint)-dx_ax;
-                    _state.SetAX((ushort)dx_ax);
-                    _state.SetDX((ushort)(dx_ax >> 16));
-
-                    bool flag = (int)(short)_state.GetAX() != resulti;
-                    _state.SetFlagC(flag);
-                    _state.SetFlagO(flag);
-
-                    cycle_count += 128;
-                }
-                else {
-                    int result = (sbyte)_state.al * (short)(sbyte)r1;
-                    if (negate)
-                        result = -result;
-                    _state.SetAX((ushort)result);
-
-                    _state.SetFlagS((_state.ah & 128) == 128);
-                    bool flag = (short)(sbyte)_state.al != (short)result;
-                    _state.SetFlagC(flag);
-                    _state.SetFlagO(flag);
-
-                    cycle_count += 80;
-                }
-            }
-            else if (function == 6)
-            {
-                _state.SetFlagC(false);
-                _state.SetFlagO(false);
-
-                // DIV
-                if (word) {
-                    uint dx_ax = (uint)((_state.GetDX() << 16) | _state.GetAX());
-
-                    if (r1 == 0 || dx_ax / r1 >= 0x10000)
-                    {
-                        _state.SetZSPFlags(_state.ah);
-                        _state.SetFlagA(false);
-                        InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
-                    }
-                    else
-                    {
-                        _state.SetAX((ushort)(dx_ax / r1));
-                        _state.SetDX((ushort)(dx_ax % r1));
-                    }
-                }
-                else {
-                    ushort ax = _state.GetAX();
-
-                    if (r1 == 0 || ax / r1 >= 0x100)
-                    {
-                        _state.SetZSPFlags(_state.ah);
-                        _state.SetFlagA(false);
-                        InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
-                    }
-                    else
-                    {
-                        _state.al = (byte)(ax / r1);
-                        _state.ah = (byte)(ax % r1);
-                    }
-                }
-            }
-            else if (function == 7)
-            {
-                bool negate = _state.rep_mode == RepMode.REP && _state.rep;
-                _state.rep = false;
-
-                _state.SetFlagC(false);
-                _state.SetFlagO(false);
-
-                // IDIV
-                if (word) {
-                    int dx_ax = (_state.GetDX() << 16) | _state.GetAX();
-                    int r1s = (int)(short)r1;
-
-                    if (r1s == 0 || dx_ax / r1s > 0x7fffffff || dx_ax / r1s < -0x80000000)
-                    {
-                        _state.SetZSPFlags(_state.ah);
-                        _state.SetFlagA(false);
-                        InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
-                    }
-                    else
-                    {
-                        if (negate)
-                            _state.SetAX((ushort)-(dx_ax / r1s));
-                        else
-                            _state.SetAX((ushort)(dx_ax / r1s));
-                        _state.SetDX((ushort)(dx_ax % r1s));
-                    }
-                }
-                else {
-                    short ax = (short)_state.GetAX();
-                    short r1s = (short)(sbyte)r1;
-
-                    if (r1s == 0 || ax / r1s > 0x7fff || ax / r1s < -0x8000)
-                    {
-                        _state.SetZSPFlags(_state.ah);
-                        _state.SetFlagA(false);
-                        InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
-                    }
-                    else
-                    {
-                        if (negate)
-                            _state.al = (byte)-(ax / r1s);
-                        else
-                            _state.al = (byte)(ax / r1s);
-                        _state.ah = (byte)(ax % r1s);
-                    }
-                }
-            }
-            else
-            {
-                Log.DoLog($"opcode {opcode:X2} o1 {o1:X2} function {function} not implemented", LogLevel.WARNING);
-            }
-
-            cycle_count += 4;
         }
         else if (opcode == 0xfa)
         {
@@ -2893,56 +2999,6 @@ internal class P8086
             _state.SetFlagC(false);
 
             cycle_count += 5;
-        }
-        else if (opcode is (0x88 or 0x89 or 0x8a or 0x8b or 0x8e or 0x8c))
-        {
-            bool dir = (opcode & 2) == 2; // direction
-            bool word = (opcode & 1) == 1; // b/w
-
-            byte o1 = GetPcByte();
-            int mode = o1 >> 6;
-            int reg = (o1 >> 3) & 7;
-            int rm = o1 & 7;
-
-            bool sreg = opcode == 0x8e || opcode == 0x8c;
-            if (sreg)
-            {
-                word = true;
-                _state.inhibit_interrupts = opcode == 0x8e;
-            }
-
-            cycle_count += 13;
-
-            // 88: rm < r (byte) 00  false,byte
-            // 89: rm < r (word) 01  false,word  <--
-            // 8a: r < rm (byte) 10  true, byte
-            // 8b: r < rm (word) 11  true, word
-
-            // 89|E6 mode 3, reg 4, rm 6, dir False, word True, sreg False
-
-            if (dir)
-            {
-                // to 'rm' from 'REG'
-                (ushort v, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mode, word);
-                cycle_count += get_cycles;
-
-                if (sreg)
-                    PutSRegister(reg, v);
-                else
-                    PutRegister(reg, word, v);
-            }
-            else
-            {
-                // from 'REG' to 'rm'
-                ushort v = 0;
-                if (sreg)
-                    v = GetSRegister(reg);
-                else
-                    v = GetRegister(reg, word);
-
-                int put_cycles = PutRegisterMem(rm, mode, word, v);
-                cycle_count += put_cycles;
-            }
         }
         else if (opcode == 0x8d)
         {
