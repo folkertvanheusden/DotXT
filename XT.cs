@@ -862,6 +862,12 @@ internal class P8086
         return get_cycles + 2;
     }
 
+    private int Op_FWAIT(byte opcode)  // 0x9b
+    {
+        // FWAIT
+        return 2;  // TODO
+    }
+
     private int Op_REFT(byte opcode)
     {
         // RETF n / RETF
@@ -2087,6 +2093,221 @@ internal class P8086
         return 2;
     }
 
+    private int Op_CMC(byte opcode)  // 0xf5
+    {
+        // CMC
+        _state.SetFlagC(! _state.GetFlagC());
+        return 2;
+    }
+
+    private int Op_CLC(byte opcode)  // 0xf8
+    {
+        // CLC
+        _state.SetFlagC(false);
+        return 2;
+    }
+
+    private int Op_STC(byte opcode)  // 0xf9
+    {
+        // STC
+        _state.SetFlagC(true);
+        return 2;
+    }
+
+    private int Op_CLI(byte opcode)  // 0xfa
+    {
+        // CLI
+        _state.SetFlagI(false); // IF
+        return 2;
+    }
+
+    private int Op_STI(byte opcode)  // 0xfb
+    {
+        // STI
+        _state.SetFlagI(true); // IF
+        _state.inhibit_interrupts = true;
+        return 2;
+    }
+
+    private int Op_CLD(byte opcode)  // 0xfc
+    {
+        // CLD
+        _state.SetFlagD(false);
+        return 2;
+    }
+
+    private int Op_STD(byte opcode)  // 0xfd
+    {
+        // STD
+        _state.SetFlagD(true);
+        return 2;
+    }
+
+    private int Op_CBW(byte opcode)  // 0x98
+    {
+        // CBW
+        ushort new_value = _state.al;
+        if ((_state.al & 128) == 128)
+            new_value |= 0xff00;
+        _state.SetAX(new_value);
+
+        return 2;
+    }
+
+    private int Op_CWD(byte opcode)  // 0x99
+    {
+        // CWD
+        if ((_state.ah & 128) == 128)
+            _state.SetDX(0xffff);
+        else
+            _state.SetDX(0);
+
+        return 5;
+    }
+
+    private int Op_LODSB(byte opcode)  // 0xac
+    {
+        if (PrefixMustRun())
+        {
+            // LODSB
+            _state.al = ReadMemByte(_state.segment_override_set ? _state.segment_override : _state.ds, _state.si);
+            _state.si += (ushort)(_state.GetFlagD() ? -1 : 1);
+
+            return 5;
+        }
+
+        return 0;  // TODO
+    }
+
+    private int Op_LODSW(byte opcode)  // 0xad
+    {
+        if (PrefixMustRun())
+        {
+            // LODSW
+            _state.SetAX(ReadMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, _state.si));
+            _state.si += (ushort)(_state.GetFlagD() ? -2 : 2);
+
+            return 5;
+        }
+
+        return 0;  // TODO
+    }
+
+    private int Op_LEA(byte opcode)  // 0x8d
+    {
+        // LEA
+        byte o1 = GetPcByte();
+        int mod = o1 >> 6;
+        int reg = (o1 >> 3) & 7;
+        int rm = o1 & 7;
+
+        (ushort val, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
+        PutRegister(reg, true, addr);
+
+        return get_cycles + 3;
+    }
+
+    private int Op_SAHF(byte opcode)  // 0x9e
+    {
+        // SAHF
+        ushort keep = (ushort)(_state.flags & 0b1111111100101010);
+        ushort add = (ushort)(_state.ah & 0b11010101);
+
+        _state.flags = (ushort)(keep | add);
+        _state.FixFlags();
+
+        return 4;
+    }
+
+    private int Op_LAHF(byte opcode)  // 0x9f
+    {
+        // LAHF
+        _state.ah = (byte)_state.flags;
+        return 2;
+    }
+
+    private int Op_SCASB(byte opcode)  // 0xae
+    {
+        if (PrefixMustRun())
+        {
+            // SCASB
+            byte v = ReadMemByte(_state.es, _state.di);
+            int result = _state.al - v;
+            SetAddSubFlags(false, _state.al, v, result, true, false);
+            _state.di += (ushort)(_state.GetFlagD() ? -1 : 1);
+
+            return 15;
+        }
+
+        return 0;
+    }
+
+    private int Op_SCASW(byte opcode)  // 0xaf
+    {
+        if (PrefixMustRun())
+        {
+            // SCASW
+            ushort ax = _state.GetAX();
+            ushort v = ReadMemWord(_state.es, _state.di);
+            int result = ax - v;
+            SetAddSubFlags(true, ax, v, result, true, false);
+            _state.di += (ushort)(_state.GetFlagD() ? -2 : 2);
+
+            return 15;
+        }
+
+        return 0;
+    }
+
+    private int Op_AAM(byte opcode)  // 0xd4
+    {
+        // AAM
+        byte b2 = GetPcByte();
+
+        if (b2 != 0)
+        {
+            _state.ah = (byte)(_state.al / b2);
+            _state.al %= b2;
+
+            _state.SetZSPFlags(_state.al);
+        }
+        else
+        {
+            _state.SetZSPFlags(0);
+
+            _state.SetFlagO(false);
+            _state.SetFlagA(false);
+            _state.SetFlagC(false);
+
+            InvokeInterrupt(_state.ip, 0x00, false);
+        }
+
+        return 83;
+    }
+
+    private int Op_AAD(byte opcode)  // 0xd5
+    {
+        // AAD
+        byte b2 = GetPcByte();
+
+        _state.al = (byte)(_state.al + _state.ah * b2);
+        _state.ah = 0;
+        _state.SetZSPFlags(_state.al);
+
+        return 60;
+    }
+
+    private int Op_SALC(byte opcode)  // 0xd6
+    {
+        // SALC
+        if (_state.GetFlagC())
+            _state.al = 0xff;
+        else
+            _state.al = 0x00;
+
+        return 2;  // TODO
+    }
+
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -2172,6 +2393,8 @@ internal class P8086
         _ops[0x5d] = this.Op_POP_BP;
         _ops[0x5e] = this.Op_POP_SI;
         _ops[0x5f] = this.Op_POP_DI;
+        for(int i=0x60; i<=0x7f; i++)
+            _ops[i] = this.Op_Jxx;
         _ops[0x80] = this.Op_CMP_OR_XOR_etc;
         _ops[0x81] = this.Op_CMP_OR_XOR_etc;
         _ops[0x82] = this.Op_CMP_OR_XOR_etc;
@@ -2185,14 +2408,20 @@ internal class P8086
         _ops[0x8a] = this.Op_MOV2;
         _ops[0x8b] = this.Op_MOV2;
         _ops[0x8c] = this.Op_MOV2;
+        _ops[0x8d] = this.Op_LEA;
         _ops[0x8e] = this.Op_MOV2;
         _ops[0x8f] = this.Op_POP_rmw;
         _ops[0x90] = this.Op_NOP;
         for(int i=0x91; i<=0x97; i++)
             _ops[i] = this.Op_XCHG_AX;
+        _ops[0x98] = this.Op_CBW;
+        _ops[0x99] = this.Op_CWD;
         _ops[0x9a] = this.Op_CALL_far;
+        _ops[0x9b] = this.Op_FWAIT;
         _ops[0x9c] = this.Op_PUSHF;
         // _ops[0x9d] = this.Op_POPF;  special case
+        _ops[0x9e] = this.Op_SAHF;
+        _ops[0x9f] = this.Op_LAHF;
         _ops[0xa0] = this.Op_MOV_AL_mem;
         _ops[0xa1] = this.Op_MOV_AX_mem;
         _ops[0xa2] = this.Op_MOV_mem_AL;
@@ -2205,6 +2434,10 @@ internal class P8086
         _ops[0xa9] = this.Op_TEST_AX;
         _ops[0xaa] = this.Op_STOSB;
         _ops[0xab] = this.Op_STOSW;
+        _ops[0xac] = this.Op_LODSB;
+        _ops[0xad] = this.Op_LODSW;
+        _ops[0xae] = this.Op_SCASB;
+        _ops[0xaf] = this.Op_SCASW;
         for(int i=0xb0; i<=0xbf; i++)
             _ops[i] = this.Op_MOV_reg_ib;
         _ops[0xc0] = this.Op_RET2;
@@ -2222,10 +2455,14 @@ internal class P8086
         _ops[0xcc] = this.Op_INT;
         _ops[0xcd] = this.Op_INT;
         _ops[0xce] = this.Op_INT;
+//        _ops[0xcf] = this.Op_IRET; special case
         _ops[0xd0] = this.Op_shift;
         _ops[0xd1] = this.Op_shift;
         _ops[0xd2] = this.Op_shift;
         _ops[0xd3] = this.Op_shift;
+        _ops[0xd4] = this.Op_AAM;
+        _ops[0xd5] = this.Op_AAD;
+        _ops[0xd6] = this.Op_SALC;
         _ops[0xd7] = this.Op_XLATB;
         for(int i=0xd8; i<=0xdf; i++)
             _ops[i] = this.Op_FPU;
@@ -2246,12 +2483,17 @@ internal class P8086
         _ops[0xee] = this.Op_OUT_DX_AL;
         _ops[0xef] = this.Op_OUT_DX_AX;
         _ops[0xf4] = this.Op_HLT;
+        _ops[0xf5] = this.Op_CMC;
         _ops[0xf6] = this.Op_TEST_others;
         _ops[0xf7] = this.Op_TEST_others;
+        _ops[0xf8] = this.Op_CLC;
+        _ops[0xf9] = this.Op_STC;
+        _ops[0xfa] = this.Op_CLI;
+        _ops[0xfb] = this.Op_STI;
+        _ops[0xfc] = this.Op_CLD;
+        _ops[0xfd] = this.Op_STD;
         _ops[0xfe] = this.Op_fe_ff;
         _ops[0xff] = this.Op_fe_ff;
-        for(int i=0x60; i<=0x7f; i++)
-            _ops[i] = this.Op_Jxx;
 
         // bit 1 of the flags register is always 1
         // https://www.righto.com/2023/02/silicon-reverse-engineering-intel-8086.html
@@ -3052,52 +3294,6 @@ internal class P8086
 
             cycle_count += 12;
         }
-        else if (opcode == 0x98)
-        {
-            // CBW
-            ushort new_value = _state.al;
-
-            if ((_state.al & 128) == 128)
-                new_value |= 0xff00;
-
-            _state.SetAX(new_value);
-
-            cycle_count += 2;
-        }
-        else if (opcode == 0x99)
-        {
-            // CWD
-            if ((_state.ah & 128) == 128)
-                _state.SetDX(0xffff);
-            else
-                _state.SetDX(0);
-
-            cycle_count += 5;
-        }
-        else if (opcode == 0xac)
-        {
-            if (PrefixMustRun())
-            {
-                // LODSB
-                _state.al = ReadMemByte(_state.segment_override_set ? _state.segment_override : _state.ds, _state.si);
-
-                _state.si += (ushort)(_state.GetFlagD() ? -1 : 1);
-
-                cycle_count += 5;
-            }
-        }
-        else if (opcode == 0xad)
-        {
-            if (PrefixMustRun())
-            {
-                // LODSW
-                _state.SetAX(ReadMemWord(_state.segment_override_set ? _state.segment_override : _state.ds, _state.si));
-
-                _state.si += (ushort)(_state.GetFlagD() ? -2 : 2);
-
-                cycle_count += 5;
-            }
-        }
         else if (opcode == 0xcf)
         {
             // IRET
@@ -3112,169 +3308,6 @@ internal class P8086
                 back_from_trace = true;
 
             cycle_count += 32;  // 44
-        }
-        else if (opcode == 0xfa)
-        {
-            // CLI
-            _state.SetFlagI(false); // IF
-
-            cycle_count += 2;
-        }
-        else if (opcode == 0x8d)
-        {
-            // LEA
-            byte o1 = GetPcByte();
-            int mod = o1 >> 6;
-            int reg = (o1 >> 3) & 7;
-            int rm = o1 & 7;
-
-            (ushort val, bool a_valid, ushort seg, ushort addr, int get_cycles) = GetRegisterMem(rm, mod, true);
-            cycle_count += get_cycles + 3;
-
-            PutRegister(reg, true, addr);
-        }
-        else if (opcode == 0x9e)
-        {
-            // SAHF
-            ushort keep = (ushort)(_state.flags & 0b1111111100101010);
-            ushort add = (ushort)(_state.ah & 0b11010101);
-
-            _state.flags = (ushort)(keep | add);
-
-            _state.FixFlags();
-
-            cycle_count += 4;
-        }
-        else if (opcode == 0x9f)
-        {
-            // LAHF
-            _state.ah = (byte)_state.flags;
-
-            cycle_count += 2;
-        }
-        else if (opcode == 0xae)
-        {
-            if (PrefixMustRun())
-            {
-                // SCASB
-                byte v = ReadMemByte(_state.es, _state.di);
-                int result = _state.al - v;
-                SetAddSubFlags(false, _state.al, v, result, true, false);
-
-                _state.di += (ushort)(_state.GetFlagD() ? -1 : 1);
-
-                cycle_count += 15;
-            }
-        }
-        else if (opcode == 0xaf)
-        {
-            if (PrefixMustRun())
-            {
-                // SCASW
-                ushort ax = _state.GetAX();
-                ushort v = ReadMemWord(_state.es, _state.di);
-                int result = ax - v;
-                SetAddSubFlags(true, ax, v, result, true, false);
-
-                _state.di += (ushort)(_state.GetFlagD() ? -2 : 2);
-
-                cycle_count += 15;
-            }
-        }
-        else if (opcode == 0xd4)
-        {
-            // AAM
-            byte b2 = GetPcByte();
-
-            if (b2 != 0)
-            {
-                _state.ah = (byte)(_state.al / b2);
-                _state.al %= b2;
-
-                _state.SetZSPFlags(_state.al);
-            }
-            else
-            {
-                _state.SetZSPFlags(0);
-
-                _state.SetFlagO(false);
-                _state.SetFlagA(false);
-                _state.SetFlagC(false);
-
-                InvokeInterrupt(_state.ip, 0x00, false);
-            }
-
-            cycle_count += 83;
-        }
-        else if (opcode == 0xd5)
-        {
-            // AAD
-            byte b2 = GetPcByte();
-
-            _state.al = (byte)(_state.al + _state.ah * b2);
-            _state.ah = 0;
-
-            _state.SetZSPFlags(_state.al);
-
-            cycle_count += 60;
-        }
-        else if (opcode == 0xd6)
-        {
-            // SALC
-            if (_state.GetFlagC())
-                _state.al = 0xff;
-            else
-                _state.al = 0x00;
-
-            cycle_count += 2;  // TODO
-        }
-        else if (opcode == 0x9b)
-        {
-            // FWAIT
-            cycle_count += 2;  // TODO
-        }
-        else if (opcode == 0xf5)
-        {
-            // CMC
-            _state.SetFlagC(! _state.GetFlagC());
-
-            cycle_count += 2;
-        }
-        else if (opcode == 0xf8)
-        {
-            // CLC
-            _state.SetFlagC(false);
-
-            cycle_count += 2;
-        }
-        else if (opcode == 0xf9)
-        {
-            // STC
-            _state.SetFlagC(true);
-
-            cycle_count += 2;
-        }
-        else if (opcode == 0xfb)
-        {
-            // STI
-            _state.SetFlagI(true); // IF
-            _state.inhibit_interrupts = true;
-
-            cycle_count += 2;
-        }
-        else if (opcode == 0xfc)
-        {
-            // CLD
-            _state.SetFlagD(false);
-
-            cycle_count += 2;
-        }
-        else if (opcode == 0xfd)
-        {
-            // STD
-            _state.SetFlagD(true);
-
-            cycle_count += 2;
         }
         else
         {
