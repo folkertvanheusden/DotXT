@@ -5,6 +5,8 @@ namespace DotXT;
 class P8086Disassembler
 {
     private State8086 _state;
+    private ushort _cs;
+    private ushort _ip;
     private const uint MemMask = 0x00ffffff;
     private Bus _b;
     
@@ -21,31 +23,11 @@ class P8086Disassembler
         return (ushort)(ReadMemByte(segment, offset) + (ReadMemByte(segment, (ushort)(offset + 1)) << 8));
     } 
 
-    public ushort GetAX()
-    {
-        return (ushort)((_state.ah << 8) | _state.al);
-    }
-
-    public ushort GetBX()
-    {
-        return (ushort)((_state.bh << 8) | _state.bl);
-    }
-
-    public ushort GetCX()
-    {
-        return (ushort)((_state.ch << 8) | _state.cl);
-    }
-
-    public ushort GetDX()
-    {
-        return (ushort)((_state.dh << 8) | _state.dl);
-    }
-
     private byte GetByte(ref int instr_len, ref List<byte> bytes)
     {
-        byte b = ReadMemByte(_state.cs, _state.ip);
+        byte b = ReadMemByte(_cs, _ip);
         bytes.Add(b);
-        _state.ip++;
+        _ip++;
         instr_len++;
         return b;
     }
@@ -66,12 +48,12 @@ class P8086Disassembler
 
         if (reg == 0)
         {
-            a = (ushort)(GetBX() + _state.si);
+            a = (ushort)(_state.GetBX() + _state.si);
             name = "[BX+SI]";
         }
         else if (reg == 1)
         {
-            a = (ushort)(GetBX() + _state.di);
+            a = (ushort)(_state.GetBX() + _state.di);
             name = "[BX+DI]";
         }
         else if (reg == 2)
@@ -101,7 +83,7 @@ class P8086Disassembler
         }
         else if (reg == 7)
         {
-            a = GetBX();
+            a = _state.GetBX();
             name = "[BX]";
         }
         else
@@ -276,13 +258,13 @@ class P8086Disassembler
         if (w)
         {
             if (reg == 0)
-                return (GetAX(), "AX");
+                return (_state.GetAX(), "AX");
             if (reg == 1)
-                return (GetCX(), "CX");
+                return (_state.GetCX(), "CX");
             if (reg == 2)
-                return (GetDX(), "DX");
+                return (_state.GetDX(), "DX");
             if (reg == 3)
-                return (GetBX(), "BX");
+                return (_state.GetBX(), "BX");
             if (reg == 4)
                 return (_state.sp, "SP");
             if (reg == 5)
@@ -373,7 +355,7 @@ class P8086Disassembler
         if (reg == 0b000)
             return (_state.es, "ES");
         if (reg == 0b001)
-            return (_state.cs, "CS");  // TODO use _state.cs from Disassemble invocation?
+            return (_cs, "CS");  // TODO use _cs from Disassemble invocation?
         if (reg == 0b010)
             return (_state.ss, "SS");
         if (reg == 0b011)
@@ -382,101 +364,6 @@ class P8086Disassembler
         Log.DoLog($"reg {reg} not supported for {nameof(GetSRegister)}", LogLevel.WARNING);
 
         return (0, "error");
-    }
-
-    public ushort GetFlags()
-    {
-        return _state.flags;
-    }
-
-    private bool GetFlag(int bit)
-    {
-        return (_state.flags & (1 << bit)) != 0;
-    }
-
-    private bool GetFlagC()
-    {
-        return GetFlag(0);
-    }
-
-    private bool GetFlagP()
-    {
-        return GetFlag(2);
-    }
-
-    private bool GetFlagA()
-    {
-        return GetFlag(4);
-    }
-
-    private bool GetFlagZ()
-    {
-        return GetFlag(6);
-    }
-
-    private bool GetFlagS()
-    {
-        return GetFlag(7);
-    }
-
-    private bool GetFlagT()
-    {
-        return GetFlag(8);
-    }
-
-    private bool GetFlagI()
-    {
-        return GetFlag(9);
-    }
-
-    private bool GetFlagD()
-    {
-        return GetFlag(10);
-    }
-
-    private bool GetFlagO()
-    {
-        return GetFlag(11);
-    }
-
-    public ushort GetSS()
-    {
-        return _state.ss;
-    }
-
-    public ushort GetCS()
-    {
-        return _state.cs;
-    }
-
-    public ushort GetDS()
-    {
-        return _state.ds;
-    }
-
-    public ushort GetES()
-    {
-        return _state.es;
-    }
-
-    public ushort GetSP()
-    {
-        return _state.sp;
-    }
-
-    public ushort GetBP()
-    {
-        return _state.bp;
-    }
-
-    public ushort GetSI()
-    {
-        return _state.si;
-    }
-
-    public ushort GetDI()
-    {
-        return _state.di;
     }
 
     private string SegmentAddr(ushort seg, ushort a)
@@ -488,14 +375,14 @@ class P8086Disassembler
     {
         string @out = String.Empty;
 
-        @out += GetFlagO() ? "o" : "-";
-        @out += GetFlagI() ? "I" : "-";
-        @out += GetFlagT() ? "T" : "-";
-        @out += GetFlagS() ? "s" : "-";
-        @out += GetFlagZ() ? "z" : "-";
-        @out += GetFlagA() ? "a" : "-";
-        @out += GetFlagP() ? "p" : "-";
-        @out += GetFlagC() ? "c" : "-";
+        @out += _state.GetFlagO() ? "o" : "-";
+        @out += _state.GetFlagI() ? "I" : "-";
+        @out += _state.GetFlagT() ? "T" : "-";
+        @out += _state.GetFlagS() ? "s" : "-";
+        @out += _state.GetFlagZ() ? "z" : "-";
+        @out += _state.GetFlagA() ? "a" : "-";
+        @out += _state.GetFlagP() ? "p" : "-";
+        @out += _state.GetFlagC() ? "c" : "-";
 
         return @out;
     }
@@ -508,11 +395,13 @@ class P8086Disassembler
     public void SetCPUState(in State8086 state)
     {
         _state = state;
+        _cs = state.GetCS();
+        _ip = state.GetIP();
     }
 
     public string GetRegisters()
     {
-        return  $"{GetFlagsAsString()} AX:{GetAX():X4} BX:{GetBX():X4} CX:{GetCX():X4} DX:{GetDX():X4} SP:{GetSP():X4} BP:{GetBP():X4} SI:{GetSI():X4} DI:{GetDI():X4} flags:{GetFlags():X4} ES:{GetES():X4} CS:{_state.cs:X4} SS:{GetSS():X4} DS:{GetDS():X4} IP:{_state.ip:X4}";
+        return $"{GetFlagsAsString()} AX:{_state.GetAX():X4} BX:{_state.GetBX():X4} CX:{_state.GetCX():X4} DX:{_state.GetDX():X4} SP:{_state.GetSP():X4} BP:{_state.GetBP():X4} SI:{_state.GetSI():X4} DI:{_state.GetDI():X4} flags:{_state.GetFlags():X4} ES:{_state.GetES():X4} CS:{_cs:X4} SS:{_state.GetSS():X4} DS:{_state.GetDS():X4} IP:{_ip:X4}";
     }
 
     // instruction length, instruction string, additional info, hex-string
@@ -707,8 +596,8 @@ class P8086Disassembler
         else if (opcode == 0xe9)
         {
             short offset = (short)GetWord(ref instr_len, ref bytes);
-            ushort word = (ushort)(_state.ip + offset);
-            instr = $"JMP {_state.ip:X}";
+            ushort word = (ushort)(_ip + offset);
+            instr = $"JMP {_ip:X}";
             meta = $"{offset:X4}";
         }
         else if (opcode == 0x50)
@@ -929,7 +818,7 @@ class P8086Disassembler
         else if (opcode == 0xcc || opcode == 0xcd || opcode == 0xce)
         {
             // INT 0x..
-            if (opcode != 0xce || GetFlagO())
+            if (opcode != 0xce || _state.GetFlagO())
             {
                 byte @int = 0;
                 if (opcode == 0xcc)
@@ -944,12 +833,12 @@ class P8086Disassembler
                 if (opcode == 0xce)
                 {
                     instr = $"INTO {@int:X2}";
-                    meta = $"{SegmentAddr(_state.cs, _state.ip)} (from {addr:X4})";
+                    meta = $"{SegmentAddr(_cs, _ip)} (from {addr:X4})";
                 }
                 else 
                 {
                     instr = $"INT {@int:X2}";
-                    meta = $"{SegmentAddr(_state.cs, _state.ip)} (from {addr:X4})";
+                    meta = $"{SegmentAddr(_cs, _ip)} (from {addr:X4})";
                 }
             }
         }
@@ -1014,7 +903,7 @@ class P8086Disassembler
 
             if (opcode == 0x3d)
             {
-                r1 = GetAX();
+                r1 = _state.GetAX();
                 r2 = GetWord(ref instr_len, ref bytes);
                 instr = $"CMP AX,#${r2:X4}";
             }
@@ -1082,9 +971,9 @@ class P8086Disassembler
         else if (opcode == 0xe8)
         {
             short a = (short)GetWord(ref instr_len, ref bytes);
-            ushort temp_ip = (ushort)(a + _state.ip);
+            ushort temp_ip = (ushort)(a + _ip);
             instr = $"CALL {a:X4}";
-            meta = $"{SegmentAddr(_state.cs, temp_ip)}";
+            meta = $"{SegmentAddr(_cs, temp_ip)}";
         }
         else if (opcode == 0xea)
         {
@@ -1136,9 +1025,9 @@ class P8086Disassembler
             {
                 name = function == 6 ? "DIV" : "IDIV";
                 if (word)
-                    meta = $"DX:AX ({GetDX():X04}:{GetAX():X04} / {r1:X04})";
+                    meta = $"DX:AX ({_state.GetDX():X04}:{_state.GetAX():X04} / {r1:X04})";
                 else
-                    meta = $"AX ({GetAX():X04} / {r1:X04})";
+                    meta = $"AX ({_state.GetAX():X04} / {r1:X04})";
             }
             else
             {
@@ -1438,10 +1327,10 @@ class P8086Disassembler
             else
                 meta = "opcode {opcode:x2} not implemented";
 
-            ushort newAddress = (ushort)(_state.ip + (sbyte)to);
+            ushort newAddress = (ushort)(_ip + (sbyte)to);
 
             instr = $"{name} {to}";
-            meta = $"{_state.cs:X4}:{newAddress:X4} -> {SegmentAddr(_state.cs, newAddress)}";
+            meta = $"{_cs:X4}:{newAddress:X4} -> {SegmentAddr(_cs, newAddress)}";
         }
         else if (opcode == 0xd7)
         {
@@ -1452,7 +1341,7 @@ class P8086Disassembler
             // LOOP
             byte to = GetByte(ref instr_len, ref bytes);
             string name = "?";
-            ushort newAddresses = (ushort)(_state.ip + (sbyte)to);
+            ushort newAddresses = (ushort)(_ip + (sbyte)to);
 
             if (opcode == 0xe2)
                 name = "LOOP";
@@ -1508,7 +1397,7 @@ class P8086Disassembler
             // JMP
             sbyte to = (sbyte)GetByte(ref instr_len, ref bytes);
             instr = $"JP ${to:X2}";
-            meta = $"{_state.cs * 16 + _state.ip + to:X6} {_state.cs:X04}:{_state.ip:X04}";
+            meta = $"{_cs * 16 + _ip + to:X6} {_cs:X04}:{_ip:X04}";
         }
         else if (opcode == 0xf4)
         {
@@ -1557,7 +1446,7 @@ class P8086Disassembler
             else if (function == 2)
             {
                 instr = $"CALL {name}";
-                meta += $"${v:X4} -> {SegmentAddr(_state.cs, _state.ip)}";
+                meta += $"${v:X4} -> {SegmentAddr(_cs, _ip)}";
             }
             else if (function == 3)
             {
@@ -1568,7 +1457,7 @@ class P8086Disassembler
             else if (function == 4)
             {
                 instr = $"JMP {name}";
-                meta += $"{_state.cs * 16 + v:X6}";
+                meta += $"{_cs * 16 + v:X6}";
             }
             else if (function == 5)
             {

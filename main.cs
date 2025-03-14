@@ -10,6 +10,10 @@ ushort initial_cs = 0xf000;
 ushort initial_ip = 0xfff0;
 
 bool run_IO = true;
+bool self_test = false;
+bool stop_on_hlt = false;
+bool quit_on_hlt = false;
+bool start_immediately = false;
 
 uint ram_size = 1024;
 
@@ -43,6 +47,9 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("          set-start-addr,<segment:offset>");
         Log.Cnsl("          no-io");
         Log.Cnsl("          xts-trace,<file>");
+        Log.Cnsl("          self-test");
+        Log.Cnsl("          hlt-stop or hlt-quit");
+        Log.Cnsl("          go");
         Log.Cnsl("-l file   log to file");
         Log.Cnsl("-L        set loglevel (trace, debug, ...)");
         Log.Cnsl("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
@@ -70,14 +77,14 @@ for(int i=0; i<args.Length; i++)
         if (parts[0] == "load-bin")
         {
             bin_file = parts[1];
-            bin_file_addr = (uint)GetValue(parts[2], true);
+            bin_file_addr = (uint)Tools.GetValue(parts[2], true);
             Log.Cnsl($"Load {bin_file} at {bin_file_addr:X06}");
         }
         else if (parts[0] == "set-start-addr")
         {
             string[] aparts = parts[1].Split(":");
-            initial_cs = (ushort)GetValue(aparts[0], true);
-            initial_ip = (ushort)GetValue(aparts[1], true);
+            initial_cs = (ushort)Tools.GetValue(aparts[0], true);
+            initial_ip = (ushort)Tools.GetValue(aparts[1], true);
             Log.Cnsl($"Start running at {initial_cs:X04}:{initial_ip:X04}");
         }
         else if (parts[0] == "no-io")
@@ -90,6 +97,14 @@ for(int i=0; i<args.Length; i++)
             xts_trace_file = parts[1];
             Log.Cnsl($"XT-Server emulation output will go to {xts_trace_file}");
         }
+        else if (parts[0] == "self-test")
+            self_test = true;
+        else if (parts[0] == "hlt-stop")
+            stop_on_hlt = true;
+        else if (parts[0] == "hlt-quit")
+            quit_on_hlt = true;
+        else if (parts[0] == "go")
+            start_immediately = true;
         else
         {
             Log.Cnsl($"{parts[0]} is not understood");
@@ -171,15 +186,15 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-F")
         floppies.Add(args[++i]);
     else if (args[i] == "-s")
-        ram_size = (uint)GetValue(args[++i], false);
+        ram_size = (uint)Tools.GetValue(args[++i], false);
     else if (args[i] == "-R")
     {
         string[] parts = args[++i].Split(',');
         string file = parts[0];
 
         string[] aparts = parts[1].Split(':');
-        uint seg = (uint)GetValue(aparts[0], true);
-        uint ip = (uint)GetValue(aparts[1], true);
+        uint seg = (uint)Tools.GetValue(aparts[0], true);
+        uint ip = (uint)Tools.GetValue(aparts[1], true);
         uint addr = seg * 16 + ip;
 
         Log.Cnsl($"Loading {file} to {addr:X06}");
@@ -279,13 +294,16 @@ var d = new P8086Disassembler(b);
 var p = new P8086(ref b, ref devices, run_IO);
 
 if (mode == TMode.Normal || mode == TMode.XTServer || mode == TMode.CC)
-    p.SetIP(initial_cs, initial_ip);
+    p.GetState().SetIP(initial_cs, initial_ip);
 
 if (mode == TMode.XTServer)
-    AddXTServerBootROM(b);
+    XTServer.AddXTServerBootROM(b);
 
 if (mode == TMode.CC && bin_file != "")
     Tools.LoadBin(b, bin_file, bin_file_addr);
+
+if (self_test)
+    SelfTest(ref p, ref b);
 
 if (mode == TMode.JSON)
 {
@@ -294,31 +312,36 @@ if (mode == TMode.JSON)
     for(;;)
     {
         string line = Console.ReadLine();
-        Log.DoLog($"CMDLINE: {line}", LogLevel.DEBUG);
-
         string[] parts = line.Split(' ');
 
         if (line == "s")
         {
+            Log.Cnsl($">s");
             Disassemble(d, p);
             p.SetIgnoreBreakpoints();
             cycle_count = p.Tick();
         }
         else if (line == "S")
         {
+            Log.Cnsl($">S");
             Disassemble(d, p);
+            p.SetIgnoreBreakpoints();
+            int iteration_count = 0;
             do
             {
-                p.SetIgnoreBreakpoints();
                 int rc = p.Tick();
                 if (rc == -1)
                     break;
                 cycle_count += rc;
+                iteration_count++;
             }
             while(p.IsProcessingRep());
+            Log.Cnsl($"Iteration count: {iteration_count}");
         }
         else if (line == "cycles")
             Console.WriteLine($">CYCLES {cycle_count}");
+        else if (line == "dump-processor-state")
+            p.GetState().DumpState();
         else if (line == "q")
             break;
         else if (parts[0] == "dolog")
@@ -357,7 +380,7 @@ else if (mode == TMode.CC)
 {
     for(;;)
     {
-        int opcode = p.ReadMemByte(p.GetCS(), p.GetIP());
+        int opcode = p.ReadMemByte(p.GetState().GetCS(), p.GetState().GetIP());
         int rc = p.Tick();
         if (rc == -1)
         {
@@ -367,7 +390,7 @@ else if (mode == TMode.CC)
 
         if (opcode == 0xf4)
         {
-            Log.Cnsl($"Running program (including HLT) took {p.GetClock()} cycles");
+            Log.Cnsl($"Running program (including HLT) took {p.GetState().GetClock()} cycles");
             break;
         }
     }
@@ -385,6 +408,12 @@ else
 
     bool echo_state = false;
     Log.EchoToConsole(echo_state);
+
+    if (start_immediately)
+    {
+        thread = CreateRunnerThread(runner_parameters);
+        running = true;
+    }
 
     for(;;)
     {
@@ -434,6 +463,7 @@ else
 
                 if (parts[0] == "S")
                 {
+                    int iteration_count = 0;
                     do
                     {
                         if (runner_parameters.disassemble)
@@ -444,8 +474,11 @@ else
                             rc = false;
                             break;
                         }
+
+                        iteration_count++;
                     }
                     while(p.IsProcessingRep());
+                    Log.Cnsl($"{iteration_count} iterations");
                 }
                 else
                 {
@@ -475,8 +508,8 @@ else
             else if (parts[0] == "dump")
             {
                 string[] aparts = parts[1].Split(",");
-                uint addr = (uint)GetValue(aparts[0], true);
-                int size = GetValue(aparts[1], false);
+                uint addr = (uint)Tools.GetValue(aparts[0], true);
+                int size = Tools.GetValue(aparts[1], false);
 
                 dump(b, addr, size, parts[2]);
             }
@@ -616,7 +649,7 @@ else
                     Log.Cnsl("Please stop emulation first");
                 else
                 {
-                    uint addr = (uint)GetValue(parts[1], false);
+                    uint addr = (uint)Tools.GetValue(parts[1], false);
                     p.AddBreakpoint(addr);
                 }
             }
@@ -626,7 +659,7 @@ else
                     Log.Cnsl("Please stop emulation first");
                 else
                 {
-                    uint addr = (uint)GetValue(parts[1], false);
+                    uint addr = (uint)Tools.GetValue(parts[1], false);
                     p.DelBreakpoint(addr);
                 }
             }
@@ -641,24 +674,24 @@ else
             }
             else if (parts[0] == "hd")
             {
-                uint addr = (uint)GetValue(parts[1], true);
+                uint addr = (uint)Tools.GetValue(parts[1], true);
 
                 for(int i=0; i<256; i+=16)
                     Log.Cnsl($"{addr + i:X6} {p.HexDump((uint)(addr + i))} {p.CharDump((uint)(addr + i))}");
             }
             else if (parts[0] == "dr")
             {
-                Log.Cnsl($"AX: {p.GetAX():X04}, BX: {p.GetBX():X04}, CX: {p.GetCX():X04}, DX: {p.GetDX():X04}");
-                Log.Cnsl($"DS: {p.GetDS():X04}, ES: {p.GetES():X04}");
-                ushort ss = p.GetSS();
-                ushort sp = p.GetSP();
+                Log.Cnsl($"AX: {p.GetState().GetAX():X04}, BX: {p.GetState().GetBX():X04}, CX: {p.GetState().GetCX():X04}, DX: {p.GetState().GetDX():X04}");
+                Log.Cnsl($"DS: {p.GetState().GetDS():X04}, ES: {p.GetState().GetES():X04}");
+                ushort ss = p.GetState().GetSS();
+                ushort sp = p.GetState().GetSP();
                 uint full_stack_addr = (uint)(ss * 16 + sp);
                 Log.Cnsl($"SS: {ss:X04}, SP: {sp:X04} => ${full_stack_addr:X06}, {p.HexDump(full_stack_addr)}");
-                Log.Cnsl($"BP: {p.GetBP():X04}, SI: {p.GetSI():X04}, DI: {p.GetDI():X04}");
-                ushort cs = p.GetCS();
-                ushort ip = p.GetIP();
+                Log.Cnsl($"BP: {p.GetState().GetBP():X04}, SI: {p.GetState().GetSI():X04}, DI: {p.GetState().GetDI():X04}");
+                ushort cs = p.GetState().GetCS();
+                ushort ip = p.GetState().GetIP();
                 Log.Cnsl($"CS: {cs:X04}, IP: {ip:X04} => ${cs * 16 + ip:X06}");
-                Log.Cnsl($"flags: {p.GetFlagsAsString()}");
+                Log.Cnsl($"flags: {p.GetState().GetFlagsAsString()}");
             }
             else
             {
@@ -686,7 +719,7 @@ if (avi != null)
 }
 
 if (mode == TMode.Tests)
-    System.Environment.Exit(p.GetSI() == 0xa5ee ? 123 : 0);
+    System.Environment.Exit(p.GetState().GetSI() == 0xa5ee ? 123 : 0);
 
 System.Environment.Exit(0);
 
@@ -698,7 +731,7 @@ Thread CreateRunnerThread(RunnerParameters runner_parameters)
     return thread;
 }
 
-void Disassemble(P8086Disassembler d, in P8086 p)
+void Disassemble(P8086Disassembler d, P8086 p)
 {
     State8086 state = p.GetState();
     ushort cs = state.cs;
@@ -712,7 +745,7 @@ void Disassemble(P8086Disassembler d, in P8086 p)
     string registers_str = d.GetRegisters();
     Log.DoLog($"{d.GetRegisters()} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
 
-    System.Diagnostics.Debug.Assert(cs == state.cs && ip == state.ip, "Should not be modified by disassembler");
+    Tools.Assert(cs == state.cs && ip == state.ip);
 }
 
 void Runner(object o)
@@ -738,10 +771,18 @@ void Runner(object o)
                 break;
             }
 
+            if (p.IsInHlt())
+            {
+                if (stop_on_hlt)
+                    break;
+                if (quit_on_hlt)
+                    System.Environment.Exit(0);
+            }
+
             if (!throttle)
                 continue;
 
-            long now_clock = p.GetClock();
+            long now_clock = p.GetState().GetClock();
             if (now_clock - prev_clock >= 4770000 / throttle_hz)
             {
                 long now_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
@@ -767,21 +808,6 @@ void Runner(object o)
     Log.Cnsl("Emulation stopped");
 }
 
-int GetValue(string v, bool hex)
-{
-    string[] aparts = v.Split(":");
-    if (aparts.Length == 2)
-        return Convert.ToInt32(aparts[0], 16) * 16 + Convert.ToInt32(aparts[1], 16);
-
-    if (v.Length > 2 && v[0] == '0' && v[1] == 'x')
-        return Convert.ToInt32(v.Substring(2), 16);
-
-    if (hex)
-        return Convert.ToInt32(v, 16);
-
-    return Convert.ToInt32(v, 10);
-}
-
 void CmdGet(string[] tokens, P8086 p, Bus b)
 {
     if (tokens.Length != 3)
@@ -794,33 +820,33 @@ void CmdGet(string[] tokens, P8086 p, Bus b)
             ushort value   = 0;
 
             if (regname == "ax")
-                value = p.GetAX();
+                value = p.GetState().GetAX();
             else if (regname == "bx")
-                value = p.GetBX();
+                value = p.GetState().GetBX();
             else if (regname == "cx")
-                value = p.GetCX();
+                value = p.GetState().GetCX();
             else if (regname == "dx")
-                value = p.GetDX();
+                value = p.GetState().GetDX();
             else if (regname == "ss")
-                value = p.GetSS();
+                value = p.GetState().GetSS();
             else if (regname == "cs")
-                value = p.GetCS();
+                value = p.GetState().GetCS();
             else if (regname == "ds")
-                value = p.GetDS();
+                value = p.GetState().GetDS();
             else if (regname == "es")
-                value = p.GetES();
+                value = p.GetState().GetES();
             else if (regname == "sp")
-                value = p.GetSP();
+                value = p.GetState().GetSP();
             else if (regname == "bp")
-                value = p.GetBP();
+                value = p.GetState().GetBP();
             else if (regname == "si")
-                value = p.GetSI();
+                value = p.GetState().GetSI();
             else if (regname == "di")
-                value = p.GetDI();
+                value = p.GetState().GetDI();
             else if (regname == "ip")
-                value = p.GetIP();
+                value = p.GetState().GetIP();
             else if (regname == "flags")
-                value = p.GetFlags();
+                value = p.GetState().GetFlags();
             else
             {
                 Log.Cnsl($"Register {regname} not known");
@@ -838,7 +864,7 @@ void CmdGet(string[] tokens, P8086 p, Bus b)
     {
         try
         {
-            uint addr = (uint)GetValue(tokens[2], false);
+            uint addr = (uint)Tools.GetValue(tokens[2], false);
             ushort value = b.ReadByte(addr).Item1;
 
             Log.Cnsl($">GET {addr} {value}");
@@ -857,38 +883,38 @@ void CmdSet(string [] tokens, P8086 p, Bus b)
     else if (tokens[1] == "reg")
     {
         string regname = tokens[2];
-        ushort value = (ushort)GetValue(tokens[3], false);
+        ushort value = (ushort)Tools.GetValue(tokens[3], false);
 
         try
         {
             if (regname == "ax")
-                p.SetAX(value);
+                p.GetState().SetAX(value);
             else if (regname == "bx")
-                p.SetBX(value);
+                p.GetState().SetBX(value);
             else if (regname == "cx")
-                p.SetCX(value);
+                p.GetState().SetCX(value);
             else if (regname == "dx")
-                p.SetDX(value);
+                p.GetState().SetDX(value);
             else if (regname == "ss")
-                p.SetSS(value);
+                p.GetState().SetSS(value);
             else if (regname == "cs")
-                p.SetCS(value);
+                p.GetState().SetCS(value);
             else if (regname == "ds")
-                p.SetDS(value);
+                p.GetState().SetDS(value);
             else if (regname == "es")
-                p.SetES(value);
+                p.GetState().SetES(value);
             else if (regname == "sp")
-                p.SetSP(value);
+                p.GetState().SetSP(value);
             else if (regname == "bp")
-                p.SetBP(value);
+                p.GetState().SetBP(value);
             else if (regname == "si")
-                p.SetSI(value);
+                p.GetState().SetSI(value);
             else if (regname == "di")
-                p.SetDI(value);
+                p.GetState().SetDI(value);
             else if (regname == "ip")
-                p.SetIP(value);
+                p.GetState().SetIP(value);
             else if (regname == "flags")
-                p.SetFlags(value);
+                p.GetState().SetFlags(value);
             else
             {
                 Log.Cnsl($"Register {regname} not known");
@@ -906,8 +932,8 @@ void CmdSet(string [] tokens, P8086 p, Bus b)
     {
         try
         {
-            uint addr = (uint)GetValue(tokens[2], false);
-            byte value = (byte)GetValue(tokens[3], false);
+            uint addr = (uint)Tools.GetValue(tokens[2], false);
+            byte value = (byte)Tools.GetValue(tokens[3], false);
 
             b.WriteByte(addr, value);
 
@@ -939,9 +965,9 @@ void MeasureSpeed(P8086 p, bool continuously)
         Log.Cnsl("Press any key to stop measuring");
     do
     {
-        long start_clock = p.GetClock();
+        long start_clock = p.GetState().GetClock();
         Thread.Sleep(1000);
-        long end_clock = p.GetClock();
+        long end_clock = p.GetState().GetClock();
 
         Log.Cnsl($"Estimated emulation speed: {(end_clock - start_clock) * 100 / 4772730}%");
     }
@@ -949,37 +975,6 @@ void MeasureSpeed(P8086 p, bool continuously)
 
     if (continuously)
         ClearConsoleInputBuffer();
-}
-
-void AddXTServerBootROM(Bus b)
-{
-    uint start_addr = 0xd000 * 16 + 0x0000;
-    uint addr = start_addr;
-
-    byte [] option_rom = new byte[] {
-        0x55, 0xaa, 0x01, 0xba, 0x01, 0xf0, 0xb0, 0xff, 0xee, 0x31, 0xc0, 0x8e,
-        0xd8, 0xbe, 0x80, 0x01, 0xb9, 0x0b, 0x00, 0xc7, 0x04, 0x5a, 0x00, 0xc7,
-        0x44, 0x02, 0x00, 0xd0, 0x83, 0xc6, 0x04, 0xe0, 0xf2, 0xbe, 0x80, 0x01,
-        0xc7, 0x04, 0x5b, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xbe, 0x8c, 0x01,
-        0xc7, 0x04, 0x71, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xbe, 0x90, 0x01,
-        0xc7, 0x04, 0x7e, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xbe, 0x94, 0x01,
-        0xc7, 0x04, 0x91, 0x00, 0xc7, 0x44, 0x02, 0x00, 0xd0, 0xea, 0x00, 0x00,
-        0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0xcf, 0xa3, 0x56, 0x00, 0x89, 0x16,
-        0x58, 0x00, 0xba, 0x01, 0xf0, 0xb8, 0x01, 0x60, 0xef, 0x8b, 0x16, 0x58,
-        0x00, 0xa1, 0x56, 0x00, 0xcf, 0x89, 0x16, 0x58, 0x00, 0xba, 0x63, 0xf0,
-        0xef, 0x8b, 0x16, 0x58, 0x00, 0xcf, 0x89, 0x16, 0x58, 0x00, 0xba, 0x64,
-        0xf0, 0x8a, 0x04, 0x46, 0xee, 0x49, 0xe0, 0xf9, 0x8b, 0x16, 0x58, 0x00,
-        0xcf, 0x89, 0x16, 0x58, 0x00, 0xba, 0x65, 0xf0, 0xee, 0x8b, 0x16, 0x58,
-        0x00, 0xcf
-    };
-
-    for(int i=0; i<option_rom.Length; i++)
-        b.WriteByte(addr++, option_rom[i]);
-
-    byte checksum = 0;
-    for(int i=0; i<512; i++)
-        checksum += b.ReadByte((uint)(start_addr + i)).Item1;
-    b.WriteByte(start_addr + 511, (byte)(~checksum));
 }
 
 void dump(Bus b, uint addr, int size, string filename)
@@ -995,6 +990,18 @@ void dump(Bus b, uint addr, int size, string filename)
     }
 
     Log.Cnsl($"Wrote {size} bytes to {filename}");
+}
+
+void SelfTest(ref P8086 p, ref Bus b)
+{
+    for(int i=0; i<65536; i+=8191)
+    {
+        p.GetState().SetAX((ushort)i);
+        Tools.Assert(p.GetState().GetAX() == (ushort)i);
+        p.GetState().SetIP((ushort)i);
+        Tools.Assert(p.GetState().GetIP() == (ushort)i);
+    }
+    Log.Cnsl("Self test: OK");
 }
 
 class ThreadSafe_Bool
