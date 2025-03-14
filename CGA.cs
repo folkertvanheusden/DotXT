@@ -143,7 +143,8 @@ class CGA : Display
 
     public override int GetWaitStateCycles()
     {
-        return 4;
+        // 5.8125 really, see https://www.reenigne.org/blog/the-cga-wait-states/
+        return 6;
     }
 
     public override bool HasAddress(uint addr)
