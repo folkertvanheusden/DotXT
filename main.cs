@@ -305,25 +305,32 @@ if (mode == TMode.JSON)
 
         if (line == "s")
         {
+            Log.Cnsl($">s");
             Disassemble(d, p);
             p.SetIgnoreBreakpoints();
             cycle_count = p.Tick();
         }
         else if (line == "S")
         {
+            Log.Cnsl($">S");
             Disassemble(d, p);
             p.SetIgnoreBreakpoints();
+            int iteration_count = 0;
             do
             {
                 int rc = p.Tick();
                 if (rc == -1)
                     break;
                 cycle_count += rc;
+                iteration_count++;
             }
             while(p.IsProcessingRep());
+            Log.Cnsl($"Iteration count: {iteration_count}");
         }
         else if (line == "cycles")
             Console.WriteLine($">CYCLES {cycle_count}");
+        else if (line == "dump-processor-state")
+            p.GetState().DumpState();
         else if (line == "q")
             break;
         else if (parts[0] == "dolog")
@@ -338,7 +345,7 @@ if (mode == TMode.JSON)
         }
         else if (parts[0] == "set")
         {
-            CmdSet(parts, ref p, ref b);
+            CmdSet(parts, p, b);
         }
         else if (parts[0] == "get")
         {
@@ -439,6 +446,7 @@ else
 
                 if (parts[0] == "S")
                 {
+                    int iteration_count = 0;
                     do
                     {
                         if (runner_parameters.disassemble)
@@ -449,8 +457,11 @@ else
                             rc = false;
                             break;
                         }
+
+                        iteration_count++;
                     }
                     while(p.IsProcessingRep());
+                    Log.Cnsl($"{iteration_count} iterations");
                 }
                 else
                 {
@@ -605,7 +616,7 @@ else
             }
             else if (parts[0] == "set")
             {
-                CmdSet(parts, ref p, ref b);
+                CmdSet(parts, p, b);
             }
             else if (parts[0] == "get")
             {
@@ -663,7 +674,7 @@ else
                 ushort cs = p.GetState().GetCS();
                 ushort ip = p.GetState().GetIP();
                 Log.Cnsl($"CS: {cs:X04}, IP: {ip:X04} => ${cs * 16 + ip:X06}");
-                Log.Cnsl($"flags: {p.GetFlagsAsString()}");
+                Log.Cnsl($"flags: {p.GetState().GetFlagsAsString()}");
             }
             else
             {
@@ -703,7 +714,7 @@ Thread CreateRunnerThread(RunnerParameters runner_parameters)
     return thread;
 }
 
-void Disassemble(P8086Disassembler d, in P8086 p)
+void Disassemble(P8086Disassembler d, P8086 p)
 {
     State8086 state = p.GetState();
     ushort cs = state.cs;
@@ -717,7 +728,7 @@ void Disassemble(P8086Disassembler d, in P8086 p)
     string registers_str = d.GetRegisters();
     Log.DoLog($"{d.GetRegisters()} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
 
-    System.Diagnostics.Debug.Assert(cs == state.cs && ip == state.ip, "Should not be modified by disassembler");
+    Tools.Assert(cs == state.cs && ip == state.ip);
 }
 
 void Runner(object o)
@@ -840,7 +851,7 @@ void CmdGet(string[] tokens, P8086 p, Bus b)
     }
 }
 
-void CmdSet(string [] tokens, ref P8086 p, ref Bus b)
+void CmdSet(string [] tokens, P8086 p, Bus b)
 {
     if (tokens.Length != 4)
         Log.Cnsl("usage: set [reg|ram] [regname|address] value");

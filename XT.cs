@@ -31,6 +31,11 @@ internal class P8086
         return ref _state;
     }
 
+    public State8086 GetStateNoModifications()
+    {
+        return _state;
+    }
+
     public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
     {
         _b = b;
@@ -470,22 +475,6 @@ internal class P8086
         }
 
         return PutRegisterMem(reg, mod, word, v);
-    }
-
-    public string GetFlagsAsString()
-    {
-        string @out = String.Empty;
-
-        @out += _state.GetFlagO() ? "o" : "-";
-        @out += _state.GetFlagI() ? "I" : "-";
-        @out += _state.GetFlagT() ? "T" : "-";
-        @out += _state.GetFlagS() ? "s" : "-";
-        @out += _state.GetFlagZ() ? "z" : "-";
-        @out += _state.GetFlagA() ? "a" : "-";
-        @out += _state.GetFlagP() ? "p" : "-";
-        @out += _state.GetFlagC() ? "c" : "-";
-
-        return @out;
     }
 
     private void SetAddSubFlags(bool word, ushort r1, ushort r2, int result, bool issub, bool flag_c)
