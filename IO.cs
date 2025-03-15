@@ -46,16 +46,28 @@ class IO
             return (65535, false);
 
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87)
+        {
+            Tools.Assert(b16 == false, "i8237");
             return _i8237.In(addr);
+        }
 
         if (addr == 0x0008)  // DMA status register
+        {
+            Tools.Assert(b16 == false, "DMA status register");
             return (0x0f, false);  // 'transfer complete'
+        }
 
         if (addr == 0x0020 || addr == 0x0021)  // PIC
+        {
+            Tools.Assert(b16 == false, "PIC");
             return _pic.In(addr);
+        }
 
         if (addr == 0x0210)  // verify expansion bus data
+        {
+            Tools.Assert(b16 == false, "expansion bus data");
             return (0xa5, false);
+        }
 
         if (_io_map.ContainsKey(addr))
         {
@@ -106,9 +118,15 @@ class IO
         // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})", true);
 
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87) // 8237
+        {
+            Tools.Assert(b16 == false, "i8237");
             return _i8237.Out(addr, (byte)value);
+        }
         else if (addr == 0x0020 || addr == 0x0021)  // PIC
+        {
+            Tools.Assert(b16 == false, "PIC");
             return _pic.Out(addr, (byte)value);
+        }
         else
         {
             bool rc = false;

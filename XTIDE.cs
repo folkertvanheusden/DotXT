@@ -95,7 +95,7 @@ class XTIDE : Device
         PushSectorBufferWord(0);  // dma related
         for(int i=0; i<256-64; i++)
             PushSectorBufferWord(0);  // reserved
-        System.Diagnostics.Debug.Assert(_sector_buffer_offset == 512, "CMDIdentifyDrive bug");
+        Tools.Assert(_sector_buffer_offset == 512, "CMDIdentifyDrive bug");
         _sector_buffer_offset = 0;
     }
 
