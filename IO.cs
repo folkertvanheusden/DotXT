@@ -4,7 +4,6 @@ class IO
     private i8237 _i8237;
     private Bus _b;
     private bool _test_mode = false;
-    private Dictionary <ushort, byte> _values = new Dictionary <ushort, byte>();
     private Dictionary <ushort, Device> _io_map = new Dictionary <ushort, Device>();
     private List<Device> _devices;
 
@@ -47,12 +46,6 @@ class IO
             return _pic.In(addr);
         }
 
-        if (addr == 0x0210)  // verify expansion bus data
-        {
-            Tools.Assert(b16 == false, "expansion bus data");
-            return (0xa5, false);
-        }
-
         if (_io_map.ContainsKey(addr))
         {
             var temp = _io_map[addr].IO_Read(addr);
@@ -77,6 +70,12 @@ class IO
             Log.DoLog($"IN: read {rc:X} from device on I/O port {addr:X4} (16 bit: {b16}), int flag: {i}", LogLevel.TRACE);
 
             return (rc, i);
+        }
+
+        if (addr == 0x0210)  // verify expansion bus data
+        {
+            Tools.Assert(b16 == false, "expansion bus data");
+            return (0xa5, false);
         }
 
         Log.DoLog($"IN: I/O port {addr:X4} not implemented", LogLevel.WARNING);
@@ -121,12 +120,15 @@ class IO
                 else
                     Log.DoLog($"OUT: confused: 'next port' ({next_port:X04}) for a 16 bit read is not mapped", LogLevel.WARNING);
             }
+            else
+            {
+                Tools.Assert(value < 256, "b8");
+            }
 
             return rc;
         }
 
         Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", LogLevel.WARNING);
-        _values[addr] = (byte)value;
 
         return false;
     }

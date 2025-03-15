@@ -120,11 +120,11 @@ internal class i8237: Device
             _reached_tc[0] = true;
     }
 
-    public override (ushort, bool) IO_Read(ushort addr)
+    public override (byte, bool) IO_Read(ushort addr)
     {
         Log.DoLog($"i8237_IN: read {addr:X04}", LogLevel.DEBUG);
 
-        ushort v = 0;
+        byte v = 0;
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
             v = _channel_address_register[addr / 2].Get();
@@ -158,31 +158,31 @@ internal class i8237: Device
             _channel_mask[i] = state;
     }
 
-    public override bool IO_Write(ushort addr, ushort value)
+    public override bool IO_Write(ushort addr, byte value)
     {
         Log.DoLog($"i8237_OUT: addr {addr:X4} value {value:X2}", LogLevel.DEBUG);
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
-            _channel_address_register[addr / 2].Put((byte)value);
+            _channel_address_register[addr / 2].Put(value);
             Log.DoLog($"i8237 set channel {addr / 2} to address {_channel_address_register[addr / 2].GetValue():X04}", LogLevel.DEBUG);
         }
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
         {
-            _channel_word_count[addr / 2].Put((byte)value);
+            _channel_word_count[addr / 2].Put(value);
             Log.DoLog($"i8237 set channel {addr / 2} to count {_channel_word_count[addr / 2].GetValue()}", LogLevel.DEBUG);
             _reached_tc[addr / 2] = false;
         }
         else if (addr == 8)
         {
-            _command = (byte)value;
+            _command = value;
             _dma_enabled = (_command & 4) == 0;
         }
         else if (addr == 0x0a)  // mask
             _channel_mask[value & 3] = (value & 4) == 4;  // dreq enable/disable
         else if (addr == 0x0b)  // mode register
         {
-            _channel_mode[value & 3] = (byte)value;
+            _channel_mode[value & 3] = value;
             string [] type = new string[] { "controller self test", "read transfer", "write transfer", "invalid" };
             string [] mode = new string[] { "on demand", "block", "single", "cascade" };
             for(int i=0; i<4; i++)

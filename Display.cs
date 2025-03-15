@@ -157,13 +157,13 @@ abstract class Display : Device
 
     public abstract override bool HasAddress(uint addr);
 
-    public abstract override bool IO_Write(ushort port, ushort value);
+    public abstract override bool IO_Write(ushort port, byte value);
 
     public abstract int GetCurrentScanLine();
     public abstract bool IsInHSync();
     public abstract bool IsInVSync();
 
-    public abstract override (ushort, bool) IO_Read(ushort port);
+    public abstract override (byte, bool) IO_Read(ushort port);
 
     protected void EmulateTextDisplay(uint x, uint y, byte character, byte attributes)
     {

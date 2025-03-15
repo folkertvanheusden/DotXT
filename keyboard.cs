@@ -42,11 +42,11 @@ class Keyboard : Device
         // see PPI
     }
 
-    public override bool IO_Write(ushort port, ushort value)
+    public override bool IO_Write(ushort port, byte value)
     {
         if (port == 0x0061)
         {
-            _0x61_bits = (byte)value;
+            _0x61_bits = value;
 
             if ((value & 0x40) == 0x00)
             {
@@ -73,7 +73,7 @@ class Keyboard : Device
         return false;
     }
 
-    public override (ushort, bool) IO_Read(ushort port)
+    public override (byte, bool) IO_Read(ushort port)
     {
         if (port == 0x60)
         {

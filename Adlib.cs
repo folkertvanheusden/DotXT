@@ -46,7 +46,7 @@ internal class Adlib : Device
         mappings[0x0389] = this;
     }
 
-    public override (ushort, bool) IO_Read(ushort port)
+    public override (byte, bool) IO_Read(ushort port)
     {
         Log.DoLog($"Adlib::IO_Read {port:X04}", LogLevel.TRACE);
 
@@ -271,22 +271,22 @@ internal class Adlib : Device
         }
     }
 
-    public override bool IO_Write(ushort port, ushort value)
+    public override bool IO_Write(ushort port, byte value)
     {
         Log.DoLog($"Adlib::IO_Write {port:X4} {value:X4}", LogLevel.TRACE);
 
         if (port == 0x388)
-            _address[0] = _address[1] = (byte)value;
+            _address[0] = _address[1] = value;
         else if (port == 0x220)
-            _address[0] = (byte)value;
+            _address[0] = value;
         else if (port == 0x222)
-            _address[1] = (byte)value;
+            _address[1] = value;
         else if (port == 0x389 || port == 0x221 || port == 0x223)
         {
             if (port == 0x221 || port == 0x389)
-                _registers[0, _address[0]] = (byte)value;
+                _registers[0, _address[0]] = value;
             if (port == 0x223 || port == 0x389)
-                _registers[1, _address[1]] = (byte)value;
+                _registers[1, _address[1]] = value;
 
             if (_address[0] == 4)
                 _status_byte[0] = 0;
@@ -296,9 +296,9 @@ internal class Adlib : Device
             lock(_channel_lock)
             {
                 if (port == 0x221 || port == 0x389)
-                    SetParameters(0, (byte)value);
+                    SetParameters(0, value);
                 if (port == 0x223 || port == 0x389)
-                    SetParameters(1, (byte)value);
+                    SetParameters(1, value);
             }
         }
 

@@ -38,14 +38,14 @@ internal class LotechEMS : Device
         mappings[0x0263] = this;
     }
 
-    public override (ushort, bool) IO_Read(ushort port)
+    public override (byte, bool) IO_Read(ushort port)
     {
         return (_page_number[port - 0x260], false);
     }
 
-    public override bool IO_Write(ushort port, ushort value)
+    public override bool IO_Write(ushort port, byte value)
     {
-        _page_number[port - 0x260] = (byte)value;
+        _page_number[port - 0x260] = value;
 
         return false;
     }
