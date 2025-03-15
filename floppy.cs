@@ -521,9 +521,9 @@ class FloppyDisk : Device
         {
             if ((value & 4) == 0)
             {
-                want_interrupt = true;  // FDC enable (controller reset) (IRQ 6)
                 _data_state = DataState.WaitCmd;
                 _just_resetted = true;
+                ScheduleInterrupt(19);  // in 4 microseconds
             }
             _dma = (value & 8) == 8;
             if (_dma == false)
@@ -694,7 +694,7 @@ class FloppyDisk : Device
         if (want_interrupt)
         {
             Log.DoLog($"Floppy-OUT triggers IRQ", LogLevel.TRACE);
-            _pic.RequestInterruptPIC(_irq_nr);
+            ScheduleInterrupt(4770);  // in 10 milliseconds
         }
 
         return want_interrupt;
@@ -702,10 +702,11 @@ class FloppyDisk : Device
 
     public override bool Tick(int cycles, long clock)
     {
-        if (CheckScheduledInterrupt(4770)) {  // after 10 ms
-        //if (CheckScheduledInterrupt(1000)) {
+        if (CheckScheduledInterrupt(cycles)) {
             Log.DoLog("Fire floppy interrupt", LogLevel.TRACE);
             _pic.RequestInterruptPIC(_irq_nr);
+            if ((_registers[2] & 4) == 0)  // 3f2
+                _registers[2] |= 4;
         }
 
         return false;
