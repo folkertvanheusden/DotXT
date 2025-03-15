@@ -215,18 +215,19 @@ if (mode == TMode.Normal)
     Log.Cnsl("Released in the public domain");
 }
 
+RTSPServer audio = null;
+AVI avi = null;
+
 //Console.TreatControlCAsInput = true;
+AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
 
 #if DEBUG
 Log.Cnsl("Debug build");
 #endif
 
-RTSPServer audio = null;
-AVI avi = null;
-
 List<Device> devices = new();
 
-if (mode != TMode.Empty)
+if (mode != TMode.Empty && run_IO == true)
 {
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks
@@ -343,7 +344,10 @@ if (mode == TMode.JSON)
         else if (line == "dump-processor-state")
             p.GetState().DumpState();
         else if (line == "q")
+        {
+            Console.WriteLine("OK");
             break;
+        }
         else if (parts[0] == "dolog")
         {
             Log.DoLog(line, LogLevel.INFO);
@@ -709,15 +713,6 @@ else
     }
 }
 
-Log.EmitDisassembly();
-
-Log.EndLogging();
-
-if (avi != null)
-{
-    avi.Close();
-}
-
 if (mode == TMode.Tests)
     System.Environment.Exit(p.GetState().GetSI() == 0xa5ee ? 123 : 0);
 
@@ -1002,6 +997,18 @@ void SelfTest(ref P8086 p, ref Bus b)
         Tools.Assert(p.GetState().GetIP() == (ushort)i);
     }
     Log.Cnsl("Self test: OK");
+}
+
+void OnProcessExit(object sender, EventArgs e)
+{
+    Log.Cnsl($"Terminating: {sender} {e}");
+
+    Log.EmitDisassembly();
+
+    if (avi != null)
+        avi.Close();
+
+    Log.EndLogging();
 }
 
 class ThreadSafe_Bool
