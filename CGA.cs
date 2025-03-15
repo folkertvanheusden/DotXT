@@ -329,14 +329,56 @@ class CGA : Display
         }
     }
 
+    private void RenderG320FrameGraphical()  // TODO: text render for telnet
+    {
+        for(uint addr=_display_address; addr<16384; addr++)
+        {
+            int x = 0;
+            int y = 0;
+
+            if (addr - _display_address >= 8192)
+            {
+                uint addr_without_base = addr - 8192 - _display_address;
+                y = (int)addr_without_base / 80 * 2 + 1;
+                x = (int)(addr_without_base % 80) * 4;
+            }
+            else
+            {
+                uint addr_without_base = addr - _display_address;
+                y = (int)addr_without_base / 80 * 2;
+                x = (int)(addr_without_base % 80) * 4;
+            }
+
+            if (y >= 200 || x >= 320)
+                break;
+
+            byte b = _ram[addr];
+
+            int y_offset = y * 320 * 3 * 4;
+            for(int x_i = 0; x_i < 4; x_i++)
+            {
+                int color_index = (b >> (x_i * 2)) & 3;
+                int x_offset = (x + 3 - x_i) * 3 * 2;
+                int offset = y_offset + x_offset;
+
+                byte [] color = GetPixelColor(y, color_index);
+                _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
+                _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = color[1];
+                _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = color[2];
+                offset += 320 * 3 * 2;
+                _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
+                _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = color[1];
+                _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = color[2];
+            }
+        }
+    }
+
     private void Redraw()
     {
         if (_cga_mode == CGAMode.Text40 || _cga_mode == CGAMode.Text80)
             RenderTextFrameGraphical();
         else if (_cga_mode == CGAMode.G320)
-        {
-            // TODO
-        }
+            RenderG320FrameGraphical();
         else if (_cga_mode == CGAMode.G640)
         {
             // TODO
