@@ -1429,7 +1429,7 @@ internal class P8086
     private int Op_IN_AL_DX(byte opcode)  // 0xec
     {
         // IN AL,DX
-        (ushort val, bool i) = _io.In(_state.GetDX());
+        (ushort val, bool i) = _io.In(_state.GetDX(), false);
         _state.al = (byte)val;
 
         return 12;
@@ -1438,7 +1438,7 @@ internal class P8086
     private int Op_IN_AX_DX(byte opcode)  // 0xed
     {
         // IN AX,DX
-        (ushort val, bool i) = _io.In(_state.GetDX());
+        (ushort val, bool i) = _io.In(_state.GetDX(), true);
         _state.SetAX(val);
         return 12;
     }
@@ -1522,7 +1522,7 @@ internal class P8086
         // IN AL,ib
         byte @from = GetPcByte();
 
-        (ushort val, bool i) = _io.In(@from);
+        (ushort val, bool i) = _io.In(@from, false);
         _state.al = (byte)val;
 
         return 14;
@@ -1533,7 +1533,7 @@ internal class P8086
         // IN AX,ib
         byte @from = GetPcByte();
 
-        (ushort val, bool i) = _io.In(@from);
+        (ushort val, bool i) = _io.In(@from, true);
         _state.SetAX(val);
 
         return 14;

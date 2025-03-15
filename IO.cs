@@ -40,7 +40,7 @@ class IO
         return _pic;
     }
 
-    public (ushort, bool) In(ushort addr)
+    public (ushort, bool) In(ushort addr, bool b16)
     {
         if (_test_mode)
             return (65535, false);
@@ -59,14 +59,29 @@ class IO
 
         if (_io_map.ContainsKey(addr))
         {
-            var rc = _io_map[addr].IO_Read(addr);
-            Log.DoLog($"IN: read {rc.Item1:X02} from device on I/O port {addr:X4}", LogLevel.TRACE);
-            return rc;
+            var temp = _io_map[addr].IO_Read(addr);
+            ushort rc = temp.Item1;
+            bool i = temp.Item2;
+
+            if (b16)
+            {
+                ushort next_port = (ushort)(addr + 1);
+                if (_io_map.ContainsKey(next_port))
+                {
+                    temp = _io_map[next_port].IO_Read(next_port);
+                    rc += (ushort)(temp.Item1 << 8);
+                    i |= temp.Item2;
+                }
+            }
+
+            Log.DoLog($"IN: read {rc:X} from device on I/O port {addr:X4} (16 bit: {b16}), int flag: {i}", LogLevel.TRACE);
+
+            return (rc, i);
         }
 
         Log.DoLog($"IN: I/O port {addr:X4} not implemented", LogLevel.WARNING);
 
-        return (0xff, false);
+        return ((ushort)(b16 ? 0xffff : 0xff), false);
     }
 
     public bool Tick(int ticks, long clock)
@@ -106,7 +121,7 @@ class IO
             {
                 ushort next_port = (ushort)(addr + 1);
                 if (_io_map.ContainsKey(next_port))
-                    rc |= _io_map[addr].IO_Write(next_port, (byte)(value >> 8));
+                    rc |= _io_map[next_port].IO_Write(next_port, (byte)(value >> 8));
             }
 
             return rc;
