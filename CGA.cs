@@ -408,10 +408,30 @@ class CGA : Display
         }
     }
 
+    void RenderTextFrameText()
+    {
+        int width = _cga_mode == CGAMode.Text40 ? 40 : 80;
+
+        for(uint y=0; y<25; y++)
+        {
+            for(uint x=0; x<width; x++)
+            {
+                uint offset = (uint)(_display_address + y * width * 2 + x * 2);
+
+                byte character = _ram[offset + 0];
+                byte attributes = _ram[offset + 1];
+                EmulateTextDisplay(x, y, character, attributes);
+            }
+        }
+    }
+
     private void Redraw()
     {
         if (_cga_mode == CGAMode.Text40 || _cga_mode == CGAMode.Text80)
+        {
             RenderTextFrameGraphical();
+            RenderTextFrameText();
+        }
         else if (_cga_mode == CGAMode.G320)
             RenderG320FrameGraphical();
         else if (_cga_mode == CGAMode.G640)

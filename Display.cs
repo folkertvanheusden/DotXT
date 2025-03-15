@@ -181,8 +181,6 @@ abstract class Display : Device
         int fg = colormap[(attributes >> 4) & 7];
         int bg = colormap[attributes & 7];
 
-        //	if (fg == bg) { fg = 7; bg = 0; }  // TODO temporary workaround
-
         WriteTextConsole((char)27);  // set attributes
         WriteTextConsole($"[0;{40 + fg};{30 + bg}m");  // BG & FG color
         if ((attributes & 8) == 8)
