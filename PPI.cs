@@ -27,7 +27,7 @@ internal class PPI : Device
         mappings[0x0063] = this;
     }
 
-    public override (ushort, bool) IO_Read(ushort port)
+    public override (byte, bool) IO_Read(ushort port)
     {
         Log.DoLog($"PPI::IO_Read: {port:X4}", LogLevel.TRACE);
 
@@ -44,7 +44,7 @@ internal class PPI : Device
         return _kb.IO_Read(port);
     }
 
-    public override bool IO_Write(ushort port, ushort value)
+    public override bool IO_Write(ushort port, byte value)
     {
         Log.DoLog($"PPI::IO_Write: {port:X4} {value:X2}", LogLevel.TRACE);
 
@@ -59,7 +59,7 @@ internal class PPI : Device
         }
         else if (port == 0x0063)
         {
-            _control = (byte)value;
+            _control = value;
             return false;
         }
 

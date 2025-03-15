@@ -68,12 +68,12 @@ internal class XTServer : Device
         mappings[0xf065] = this;
     }
 
-    public override (ushort, bool) IO_Read(ushort port)
+    public override (byte, bool) IO_Read(ushort port)
     {
         return (0xaa, false);
     }
 
-    public override bool IO_Write(ushort port, ushort value)
+    public override bool IO_Write(ushort port, byte value)
     {
         Log.DoLog($"XTServer emulation {value:X2}", LogLevel.DEBUG);
 
@@ -123,7 +123,7 @@ internal class XTServer : Device
             {
                 using (FileStream stream = new FileStream(_trace_file, FileMode.Append, FileAccess.Write))
                 {
-                    byte[] data = new byte[] { (byte)value };
+                    byte[] data = new byte[] { value };
                     stream.Write(data, 0, data.Length);
                 }
             }

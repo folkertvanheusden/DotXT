@@ -158,15 +158,15 @@ class CGA : Display
         return addr >= 0xb8000 && addr < 0xc0000;
     }
 
-    public override bool IO_Write(ushort port, ushort value)
+    public override bool IO_Write(ushort port, byte value)
     {
         Log.DoLog($"CGA::IO_Write {port:X4} {value:X4}", LogLevel.DEBUG);
 
         if (port == 0x3d4 || port == 0x3d6 || port == 0x3d0 || port == 0x3d2)
-            _m6845_reg = (byte)value;
+            _m6845_reg = value;
         else if (port == 0x3d5 || port == 0x3d7 || port == 0x3d1 || port == 0x3d3)
         {
-            _m6845.Write(_m6845_reg, (byte)value);
+            _m6845.Write(_m6845_reg, value);
 
             if (_m6845_reg == 12 || _m6845_reg == 13)
             {
@@ -179,7 +179,7 @@ class CGA : Display
         }
         else if (port == 0x3d8)
         {
-            if (_graphics_mode != (byte)value)
+            if (_graphics_mode != value)
             {
                 if ((value & 2) == 2)  // graphics 320x200
                 {
@@ -195,7 +195,7 @@ class CGA : Display
                     else
                         _cga_mode = CGAMode.Text40;
                 }
-                _graphics_mode = (byte)value;
+                _graphics_mode = value;
                 Log.DoLog($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
                 Console.WriteLine($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
 
@@ -221,7 +221,7 @@ class CGA : Display
         return false;
     }
 
-    public override (ushort, bool) IO_Read(ushort port)
+    public override (byte, bool) IO_Read(ushort port)
     {
         Log.DoLog($"CGA::IO_Read {port:X04}", LogLevel.TRACE);
         byte rc = 0;

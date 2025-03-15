@@ -37,7 +37,7 @@ internal class RTC : Device
         return (byte)((d1 << 4) | d2);
     }
 
-    public override (ushort, bool) IO_Read(ushort port)
+    public override (byte, bool) IO_Read(ushort port)
     {
         byte rc = 0xff;
 
@@ -87,7 +87,7 @@ internal class RTC : Device
         return (rc, false);
     }
 
-    public override bool IO_Write(ushort port, ushort value)
+    public override bool IO_Write(ushort port, byte value)
     {
         Log.DoLog($"RTC OUT {port:X04}, value {value:X02} (index: {_cmos_ram_index:X02})", LogLevel.TRACE);
 
@@ -95,7 +95,7 @@ internal class RTC : Device
             _cmos_ram_index = (byte)(value & 127);
         else
         {
-            _ram[_cmos_ram_index] = (byte)value;
+            _ram[_cmos_ram_index] = value;
         }
 
         return false;

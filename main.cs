@@ -740,7 +740,7 @@ void Disassemble(P8086Disassembler d, P8086 p)
     string registers_str = d.GetRegisters();
     Log.DoLog($"{d.GetRegisters()} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
 
-    Tools.Assert(cs == state.cs && ip == state.ip);
+    Tools.Assert(cs == state.cs && ip == state.ip, "disassembler");
 }
 
 void Runner(object o)
@@ -992,9 +992,9 @@ void SelfTest(ref P8086 p, ref Bus b)
     for(int i=0; i<65536; i+=8191)
     {
         p.GetState().SetAX((ushort)i);
-        Tools.Assert(p.GetState().GetAX() == (ushort)i);
+        Tools.Assert(p.GetState().GetAX() == (ushort)i, "SelfTest AX");
         p.GetState().SetIP((ushort)i);
-        Tools.Assert(p.GetState().GetIP() == (ushort)i);
+        Tools.Assert(p.GetState().GetIP() == (ushort)i, "SelfTest IP");
     }
     Log.Cnsl("Self test: OK");
 }

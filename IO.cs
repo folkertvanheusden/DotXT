@@ -4,7 +4,6 @@ class IO
     private i8237 _i8237;
     private Bus _b;
     private bool _test_mode = false;
-    private Dictionary <ushort, byte> _values = new Dictionary <ushort, byte>();
     private Dictionary <ushort, Device> _io_map = new Dictionary <ushort, Device>();
     private List<Device> _devices;
 
@@ -18,17 +17,13 @@ class IO
         foreach(var device in devices)
         {
             device.RegisterDevice(_io_map);
-
-            if (device is i8253)
-                ((i8253)device).SetDma(_i8237);
-
-            if (device is FloppyDisk)
-                ((FloppyDisk)device).SetDma(_i8237);
-
+            device.SetDma(_i8237);
             device.SetPic(_pic);
-
             device.SetBus(b);
         }
+
+        _i8237.RegisterDevice(_io_map);
+        devices.Add(_i8237);
 
         _devices = devices;
 
@@ -45,17 +40,11 @@ class IO
         if (_test_mode)
             return (65535, false);
 
-        if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87)
-            return _i8237.In(addr);
-
-        if (addr == 0x0008)  // DMA status register
-            return (0x0f, false);  // 'transfer complete'
-
         if (addr == 0x0020 || addr == 0x0021)  // PIC
+        {
+            Tools.Assert(b16 == false, "PIC");
             return _pic.In(addr);
-
-        if (addr == 0x0210)  // verify expansion bus data
-            return (0xa5, false);
+        }
 
         if (_io_map.ContainsKey(addr))
         {
@@ -72,11 +61,21 @@ class IO
                     rc += (ushort)(temp.Item1 << 8);
                     i |= temp.Item2;
                 }
+                else
+                {
+                    Log.DoLog($"IN: confused: 'next port' ({next_port:X04}) for a 16 bit read is not mapped", LogLevel.WARNING);
+                }
             }
 
             Log.DoLog($"IN: read {rc:X} from device on I/O port {addr:X4} (16 bit: {b16}), int flag: {i}", LogLevel.TRACE);
 
             return (rc, i);
+        }
+
+        if (addr == 0x0210)  // verify expansion bus data
+        {
+            Tools.Assert(b16 == false, "expansion bus data");
+            return (0xa5, false);
         }
 
         Log.DoLog($"IN: I/O port {addr:X4} not implemented", LogLevel.WARNING);
@@ -101,15 +100,11 @@ class IO
 
         // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})", true);
 
-        if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87) // 8237
-            return _i8237.Out(addr, (byte)value);
-
-        else if (addr == 0x0020 || addr == 0x0021)  // PIC
+        if (addr == 0x0020 || addr == 0x0021)  // PIC
+        {
+            Tools.Assert(b16 == false, "PIC");
             return _pic.Out(addr, (byte)value);
-
-        else if (addr == 0x0080)
-            Log.DoLog($"Manufacturer systems checkpoint {value:X2}", LogLevel.DEBUG);
-
+        }
         else
         {
             bool rc = false;
@@ -122,13 +117,18 @@ class IO
                 ushort next_port = (ushort)(addr + 1);
                 if (_io_map.ContainsKey(next_port))
                     rc |= _io_map[next_port].IO_Write(next_port, (byte)(value >> 8));
+                else
+                    Log.DoLog($"OUT: confused: 'next port' ({next_port:X04}) for a 16 bit read is not mapped", LogLevel.WARNING);
+            }
+            else
+            {
+                Tools.Assert(value < 256, "b8");
             }
 
             return rc;
         }
 
         Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", LogLevel.WARNING);
-        _values[addr] = (byte)value;
 
         return false;
     }

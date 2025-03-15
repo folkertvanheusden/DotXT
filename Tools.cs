@@ -30,11 +30,11 @@ class Tools
         }
     }
 
-    public static void Assert(bool v)
+    public static void Assert(bool v, string reason)
     {
         if (v == false)
         {
-            Console.WriteLine("Assertion failed");
+            Console.WriteLine($"Assertion failed ({reason})");
             Console.WriteLine(new System.Diagnostics.StackTrace().ToString());
             System.Environment.Exit(1);
         }

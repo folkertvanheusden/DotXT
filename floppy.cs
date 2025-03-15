@@ -2,7 +2,7 @@ internal enum DataState { NotSet, WaitCmd, HaveData, WantData }
 
 class FloppyDisk : Device
 {
-    private ushort [] _registers = new ushort[8];
+    private byte [] _registers = new byte[8];
     private i8237 _dma_controller = null;
     protected int _irq_nr = 6;
     private bool _dma = false;
@@ -62,7 +62,7 @@ class FloppyDisk : Device
         return _irq_nr;
     }
 
-    public void SetDma(i8237 dma_instance)
+    public override void SetDma(i8237 dma_instance)
     {
         _dma_controller = dma_instance;
     }
@@ -111,7 +111,7 @@ class FloppyDisk : Device
         return _data_state == DataState.WantData;
     }
 
-    public override (ushort, bool) IO_Read(ushort port)
+    public override (byte, bool) IO_Read(ushort port)
     {
         int bytes_left = _data == null ? 0 : (_data.Length - _data_offset);
         Log.DoLog($"Floppy-IN {_io_names[port - 0x3f0]}: {port:X4} {_data_state}, bytes left: {bytes_left}", LogLevel.DEBUG);
@@ -506,7 +506,7 @@ class FloppyDisk : Device
 #endif
     }
 
-    public override bool IO_Write(ushort port, ushort value)
+    public override bool IO_Write(ushort port, byte value)
     {
         if (_data_state == DataState.WantData || _data_state == DataState.HaveData)
             Log.DoLog($"Floppy-OUT {_io_names[port - 0x3f0]}: {port:X4} {value:X2} {_data_state} cmd:{_data[0]:X} data left:{_data.Length - _data_offset}", LogLevel.DEBUG);
@@ -521,9 +521,9 @@ class FloppyDisk : Device
         {
             if ((value & 4) == 0)
             {
-                want_interrupt = true;  // FDC enable (controller reset) (IRQ 6)
                 _data_state = DataState.WaitCmd;
                 _just_resetted = true;
+                ScheduleInterrupt(19);  // in 4 microseconds
             }
             _dma = (value & 8) == 8;
             if (_dma == false)
@@ -557,7 +557,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command READ DATA", LogLevel.DEBUG);
                     _data = new byte[9];
-                    _data[0] = (byte)value;
+                    _data[0] = value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -565,7 +565,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command WRITE DATA", LogLevel.DEBUG);
                     _data = new byte[9];
-                    _data[0] = (byte)value;
+                    _data[0] = value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -573,7 +573,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command FORMAT", LogLevel.DEBUG);
                     _data = new byte[6];
-                    _data[0] = (byte)value;
+                    _data[0] = value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -581,7 +581,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command SEEK", LogLevel.DEBUG);
                     _data = new byte[_extended ? 4 : 3];
-                    _data[0] = (byte)value;
+                    _data[0] = value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -589,7 +589,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command SPECIFY", LogLevel.DEBUG);
                     _data = new byte[3];
-                    _data[0] = (byte)value;
+                    _data[0] = value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -597,7 +597,7 @@ class FloppyDisk : Device
                 {
                     Log.DoLog($"Floppy-OUT command RECALIBRATE", LogLevel.DEBUG);
                     _data = new byte[2];
-                    _data[0] = (byte)value;
+                    _data[0] = value;
                     _data_offset = 1;
                     _data_state = DataState.WantData;
                 }
@@ -636,7 +636,7 @@ class FloppyDisk : Device
                         return false;
                 }
 
-                _data[_data_offset++] = (byte)value;  // FIXME
+                _data[_data_offset++] = value;  // FIXME
                 if (_data_offset == _data.Length)
                 {
                     byte cmd = (byte)(_data[0] & 31);
@@ -694,7 +694,7 @@ class FloppyDisk : Device
         if (want_interrupt)
         {
             Log.DoLog($"Floppy-OUT triggers IRQ", LogLevel.TRACE);
-            _pic.RequestInterruptPIC(_irq_nr);
+            ScheduleInterrupt(4770);  // in 10 milliseconds
         }
 
         return want_interrupt;
@@ -702,10 +702,11 @@ class FloppyDisk : Device
 
     public override bool Tick(int cycles, long clock)
     {
-        if (CheckScheduledInterrupt(4770)) {  // after 10 ms
-        //if (CheckScheduledInterrupt(1000)) {
+        if (CheckScheduledInterrupt(cycles)) {
             Log.DoLog("Fire floppy interrupt", LogLevel.TRACE);
             _pic.RequestInterruptPIC(_irq_nr);
+            if ((_registers[2] & 4) == 0)  // 3f2
+                _registers[2] |= 4;
         }
 
         return false;

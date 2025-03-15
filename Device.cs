@@ -15,8 +15,8 @@ abstract class Device
     }
 
     public abstract void RegisterDevice(Dictionary <ushort, Device> mappings);
-    public abstract bool IO_Write(ushort port, ushort value);
-    public abstract (ushort, bool) IO_Read(ushort port);
+    public abstract bool IO_Write(ushort port, byte value);
+    public abstract (byte, bool) IO_Read(ushort port);
 
     public virtual int GetWaitStateCycles()
     {
@@ -34,6 +34,10 @@ abstract class Device
     }
 
     public abstract int GetIRQNumber();
+
+    public virtual void SetDma(i8237 dma_instance)
+    {
+    }
 
     protected void ScheduleInterrupt(int cycles_delay)
     {
