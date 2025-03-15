@@ -194,4 +194,6 @@ for set in j:
 #for e in diffs[-25:]:
 #    print(e[0], e[1])
 
+docmd(process, 'q', False)
+
 sys.exit(1 if error_nr > 0 else 0)

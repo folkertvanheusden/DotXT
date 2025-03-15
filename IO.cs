@@ -81,6 +81,9 @@ class IO
 
     public bool Out(ushort addr, ushort value)
     {
+        if (_test_mode)
+            return false;
+
         // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})", true);
 
         if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87) // 8237
