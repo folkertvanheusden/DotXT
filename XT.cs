@@ -1446,14 +1446,14 @@ internal class P8086
     private int Op_OUT_DX_AL(byte opcode)  // 0xee
     {
         // OUT
-        _io.Out(_state.GetDX(), _state.al);
+        _io.Out(_state.GetDX(), _state.al, false);
         return 12;
     }
 
     private int Op_OUT_DX_AX(byte opcode)  // 0xef
     {
         // OUT
-        _io.Out(_state.GetDX(), _state.GetAX());
+        _io.Out(_state.GetDX(), _state.GetAX(), true);
         return 12;
     }
 
@@ -1543,7 +1543,7 @@ internal class P8086
     {
         // OUT
         byte to = GetPcByte();
-        _io.Out(@to, _state.al);
+        _io.Out(@to, _state.al, false);
         return 10;  // max 14
     }
 
@@ -1551,7 +1551,7 @@ internal class P8086
     {
         // OUT
         byte to = GetPcByte();
-        _io.Out(@to, _state.GetAX());
+        _io.Out(@to, _state.GetAX(), true);
         return 10;  // max 14
     }
 

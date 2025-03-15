@@ -79,7 +79,7 @@ class IO
         return rc;
     }
 
-    public bool Out(ushort addr, ushort value)
+    public bool Out(ushort addr, ushort value, bool b16)
     {
         if (_test_mode)
             return false;
@@ -97,8 +97,19 @@ class IO
 
         else
         {
+            bool rc = false;
+
             if (_io_map.ContainsKey(addr))
-                return _io_map[addr].IO_Write(addr, value);
+                rc |= _io_map[addr].IO_Write(addr, (byte)(value & 255));
+
+            if (b16)
+            {
+                ushort next_port = (ushort)(addr + 1);
+                if (_io_map.ContainsKey(next_port))
+                    rc |= _io_map[addr].IO_Write(next_port, (byte)(value >> 8));
+            }
+
+            return rc;
         }
 
         Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2}) not implemented", LogLevel.WARNING);
