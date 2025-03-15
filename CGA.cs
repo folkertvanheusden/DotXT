@@ -35,6 +35,7 @@ class CGA : Display
     private byte _m6845_reg;
     private uint _display_address = 0;
     private byte _graphics_mode = 255;
+    private int _cursor_location = -1;
     private CGAMode _cga_mode = CGAMode.Text80;
     private byte _color_configuration = 0;
     private bool _color_configuration_changed = false;
@@ -161,11 +162,15 @@ class CGA : Display
         else if (port == 0x3d5 || port == 0x3d7 || port == 0x3d1 || port == 0x3d3)
         {
             _m6845.Write(_m6845_reg, (byte)value);
+
             if (_m6845_reg == 12 || _m6845_reg == 13)
             {
                 _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
                 Log.DoLog($"Set base address to {_display_address:X04}", LogLevel.DEBUG);
             }
+
+            if (_m6845_reg == 14 || _m6845_reg == 15)
+                _cursor_location = (_m6845.Read(14) << 8) | _m6845.Read(15);
         }
         else if (port == 0x3d8)
         {
@@ -190,6 +195,8 @@ class CGA : Display
                 Console.WriteLine($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
 
                 Array.Fill<byte>(_gf.rgb_pixels, 0x00);
+
+                _cursor_location = -1;
             }
         }
         else if (port == 0x3d9)
@@ -286,7 +293,7 @@ class CGA : Display
             uint char_base_offset = mem_pointer & 16382;
             byte character = _ram[char_base_offset + 0];
             byte attributes = _ram[char_base_offset + 1];
-            mem_pointer += 2;
+            bool cursor = _cursor_location == (mem_pointer >> 1);
 
             int char_offset = character * font_descr.height;
             int fg = attributes & 15;
@@ -295,7 +302,7 @@ class CGA : Display
             for(int yo=0; yo<render_n; yo++)
             {
                 int y_pixel_offset = (y + yo) * _gf.width * 3 * 2;
-                byte line = font_descr.pixels[char_offset + yo];
+                byte line = (byte)(font_descr.pixels[char_offset + yo] ^ (cursor ? 255 : 0));
                 byte bit_mask = 128;
                 for(int x_pixel_offset=x * 8 * 3; x_pixel_offset<(x + 1) * 8 * 3; x_pixel_offset += 3, bit_mask >>= 1)
                 {
@@ -326,6 +333,8 @@ class CGA : Display
 
             if (x == width - 1)
                 y += reg_9;
+
+            mem_pointer += 2;
         }
     }
 
