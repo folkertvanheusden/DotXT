@@ -62,7 +62,7 @@ class FloppyDisk : Device
         return _irq_nr;
     }
 
-    public void SetDma(i8237 dma_instance)
+    public override void SetDma(i8237 dma_instance)
     {
         _dma_controller = dma_instance;
     }

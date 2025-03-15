@@ -104,7 +104,7 @@ internal class i8253 : Device
         return 0xee;
     }
 
-    public void SetDma(i8237 dma_instance)
+    public override void SetDma(i8237 dma_instance)
     {
         _i8237 = dma_instance;
     }

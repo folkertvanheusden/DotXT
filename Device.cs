@@ -35,6 +35,10 @@ abstract class Device
 
     public abstract int GetIRQNumber();
 
+    public virtual void SetDma(i8237 dma_instance)
+    {
+    }
+
     protected void ScheduleInterrupt(int cycles_delay)
     {
         next_interrupt.Add(cycles_delay);

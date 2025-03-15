@@ -64,7 +64,7 @@ internal class b16buffer
     }
 }
 
-internal class i8237
+internal class i8237: Device
 {
     byte [] _channel_page = new byte[4];
     b16buffer [] _channel_address_register = new b16buffer[4];
@@ -75,7 +75,6 @@ internal class i8237
     byte [] _channel_mode = new byte[4];
     FlipFlop _ff = new();
     bool _dma_enabled = true;
-    Bus _b;
 
     public i8237(Bus b)
     {
@@ -86,6 +85,26 @@ internal class i8237
         }
 
         _b = b;
+    }
+
+    public override int GetIRQNumber()
+    {
+        return -1;
+    }
+
+    public override String GetName()
+    {
+        return "i8237";
+    }
+
+    public override void RegisterDevice(Dictionary <ushort, Device> mappings)
+    {
+        for(int i=0; i<0x10; i++)
+            mappings[(ushort)i] = this;
+        mappings[0x81] = this;
+        mappings[0x82] = this;
+        mappings[0x83] = this;
+        mappings[0x87] = this;
     }
 
     public void TickChannel0()
@@ -101,10 +120,11 @@ internal class i8237
             _reached_tc[0] = true;
     }
 
-    public (byte, bool) In(ushort addr)
+    public override (ushort, bool) IO_Read(ushort addr)
     {
-        byte v = 0;
+        Log.DoLog($"i8237_IN: read {addr:X04}", LogLevel.DEBUG);
 
+        ushort v = 0;
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
             v = _channel_address_register[addr / 2].Get();
@@ -138,31 +158,31 @@ internal class i8237
             _channel_mask[i] = state;
     }
 
-    public bool Out(ushort addr, byte value)
+    public override bool IO_Write(ushort addr, ushort value)
     {
         Log.DoLog($"i8237_OUT: addr {addr:X4} value {value:X2}", LogLevel.DEBUG);
 
         if (addr == 0 || addr == 2 || addr == 4 || addr == 6)
         {
-            _channel_address_register[addr / 2].Put(value);
+            _channel_address_register[addr / 2].Put((byte)value);
             Log.DoLog($"i8237 set channel {addr / 2} to address {_channel_address_register[addr / 2].GetValue():X04}", LogLevel.DEBUG);
         }
         else if (addr == 1 || addr == 3 || addr == 5 || addr == 7)
         {
-            _channel_word_count[addr / 2].Put(value);
+            _channel_word_count[addr / 2].Put((byte)value);
             Log.DoLog($"i8237 set channel {addr / 2} to count {_channel_word_count[addr / 2].GetValue()}", LogLevel.DEBUG);
             _reached_tc[addr / 2] = false;
         }
         else if (addr == 8)
         {
-            _command = value;
+            _command = (byte)value;
             _dma_enabled = (_command & 4) == 0;
         }
         else if (addr == 0x0a)  // mask
             _channel_mask[value & 3] = (value & 4) == 4;  // dreq enable/disable
         else if (addr == 0x0b)  // mode register
         {
-            _channel_mode[value & 3] = value;
+            _channel_mode[value & 3] = (byte)value;
             string [] type = new string[] { "controller self test", "read transfer", "write transfer", "invalid" };
             string [] mode = new string[] { "on demand", "block", "single", "cascade" };
             for(int i=0; i<4; i++)
@@ -298,5 +318,19 @@ internal class i8237
         _channel_word_count[channel].SetValue(count);
 
         return true;
+    }
+
+    public override bool HasAddress(uint addr)
+    {
+        return false;
+    }
+
+    public override void WriteByte(uint offset, byte value)
+    {
+    }
+
+    public override byte ReadByte(uint offset)
+    {
+        return 0xee;
     }
 }

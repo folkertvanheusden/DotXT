@@ -18,17 +18,13 @@ class IO
         foreach(var device in devices)
         {
             device.RegisterDevice(_io_map);
-
-            if (device is i8253)
-                ((i8253)device).SetDma(_i8237);
-
-            if (device is FloppyDisk)
-                ((FloppyDisk)device).SetDma(_i8237);
-
+            device.SetDma(_i8237);
             device.SetPic(_pic);
-
             device.SetBus(b);
         }
+
+        _i8237.RegisterDevice(_io_map);
+        devices.Add(_i8237);
 
         _devices = devices;
 
@@ -44,18 +40,6 @@ class IO
     {
         if (_test_mode)
             return (65535, false);
-
-        if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87)
-        {
-            Tools.Assert(b16 == false, "i8237");
-            return _i8237.In(addr);
-        }
-
-        if (addr == 0x0008)  // DMA status register
-        {
-            Tools.Assert(b16 == false, "DMA status register");
-            return (0x0f, false);  // 'transfer complete'
-        }
 
         if (addr == 0x0020 || addr == 0x0021)  // PIC
         {
@@ -86,7 +70,7 @@ class IO
                 }
                 else
                 {
-                    Log.DoLog($"IN: confused: 'next port' ({next_port:X04}) for a 16 bit read is not mapped", LogLevel.DEBUG);
+                    Log.DoLog($"IN: confused: 'next port' ({next_port:X04}) for a 16 bit read is not mapped", LogLevel.WARNING);
                 }
             }
 
@@ -117,12 +101,7 @@ class IO
 
         // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})", true);
 
-        if (addr <= 0x000f || addr == 0x81 || addr == 0x82 || addr == 0x83 || addr == 0xc2 || addr == 0x87) // 8237
-        {
-            Tools.Assert(b16 == false, "i8237");
-            return _i8237.Out(addr, (byte)value);
-        }
-        else if (addr == 0x0020 || addr == 0x0021)  // PIC
+        if (addr == 0x0020 || addr == 0x0021)  // PIC
         {
             Tools.Assert(b16 == false, "PIC");
             return _pic.Out(addr, (byte)value);
@@ -140,7 +119,7 @@ class IO
                 if (_io_map.ContainsKey(next_port))
                     rc |= _io_map[next_port].IO_Write(next_port, (byte)(value >> 8));
                 else
-                    Log.DoLog($"OUT: confused: 'next port' ({next_port:X04}) for a 16 bit read is not mapped", LogLevel.DEBUG);
+                    Log.DoLog($"OUT: confused: 'next port' ({next_port:X04}) for a 16 bit read is not mapped", LogLevel.WARNING);
             }
 
             return rc;
