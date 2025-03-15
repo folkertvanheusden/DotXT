@@ -331,7 +331,7 @@ class CGA : Display
 
     private void RenderG320FrameGraphical()  // TODO: text render for telnet
     {
-        for(uint addr=_display_address; addr<16384; addr++)
+        for(uint addr=_display_address; addr<Math.Min(_display_address + 16000, 16384); addr++)
         {
             int x = 0;
             int y = 0;
@@ -349,7 +349,7 @@ class CGA : Display
                 x = (int)(addr_without_base % 80) * 4;
             }
 
-            if (y >= 200 || x >= 320)
+            if (y >= 200)
                 break;
 
             byte b = _ram[addr];
@@ -373,6 +373,41 @@ class CGA : Display
         }
     }
 
+    private void RenderG640FrameGraphical()  // TODO: text render for telnet
+    {
+        for(uint addr=_display_address; addr<Math.Min(_display_address + 16000, 16384); addr++)
+        {
+            int x = 0;
+            int y = 0;
+            if (addr - _display_address >= 8192)
+            {
+                uint addr_without_base = addr - 8192 - _display_address;
+                y = (int)addr_without_base / 80 * 2 + 1;
+                x = (int)(addr_without_base % 80) * 8;
+            }
+            else
+            {
+                uint addr_without_base = addr - _display_address;
+                y = (int)addr_without_base / 80 * 2;
+                x = (int)(addr_without_base % 80) * 8;
+            }
+
+            if (y >= 200)
+                break;
+
+            byte b = _ram[addr];
+            for(int x_i = 0; x_i < 8; x_i++)
+            {
+                byte value = (byte)((b & 1) != 0 ? 255 : 0);
+                int offset1 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
+                _gf.rgb_pixels[offset1 + 0] = _gf.rgb_pixels[offset1 + 1] = _gf.rgb_pixels[offset1 + 2] = value;
+                int offset2 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
+                _gf.rgb_pixels[offset2 + 0] = _gf.rgb_pixels[offset2 + 1] = _gf.rgb_pixels[offset2 + 2] = value;
+                b >>= 1;
+            }
+        }
+    }
+
     private void Redraw()
     {
         if (_cga_mode == CGAMode.Text40 || _cga_mode == CGAMode.Text80)
@@ -380,9 +415,7 @@ class CGA : Display
         else if (_cga_mode == CGAMode.G320)
             RenderG320FrameGraphical();
         else if (_cga_mode == CGAMode.G640)
-        {
-            // TODO
-        }
+            RenderG640FrameGraphical();
         else
         {
             Log.DoLog($"Unexpected mode {_cga_mode}", LogLevel.WARNING);
