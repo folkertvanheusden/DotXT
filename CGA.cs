@@ -69,13 +69,18 @@ class CGA : Display
         _m6845.Write(9, 8);
 
         _gf.width = 640;
-        _gf.height = 400;
+        _gf.height = 512;
         _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
     }
 
     public override String GetName()
     {
         return "CGA";
+    }
+
+    public override int GetHeight()
+    {
+        return 512;
     }
 
     public override List<string> GetState()
@@ -283,10 +288,10 @@ class CGA : Display
 
         uint mem_pointer = _display_address;
         int y = 0;
-        int reg_9 = _m6845.Read(9);
-        int n_lines_from_char = Math.Min(font_descr.height, reg_9);
+        int reg_9 = _m6845.Read(9) + 1;
+        int n_lines_from_char = reg_9;
 
-        while(y < 200 && mem_pointer < 16384)
+        while(y < 256 && mem_pointer < 16384)
         {
             int x = (int)(mem_pointer % (width * 2)) / 2;
 
@@ -302,9 +307,11 @@ class CGA : Display
             for(int yo=0; yo<render_n; yo++)
             {
                 int y_pixel_offset = (y + yo) * _gf.width * 3 * 2;
-                byte line = (byte)(font_descr.pixels[char_offset + yo] ^ (cursor ? 255 : 0));
+                byte line = 0;
+                if (yo < font_descr.height)
+                    line = (byte)(font_descr.pixels[char_offset + yo] ^ (cursor ? 255 : 0));
                 byte bit_mask = 128;
-                for(int x_pixel_offset=x * 8 * 3; x_pixel_offset<(x + 1) * 8 * 3; x_pixel_offset += 3, bit_mask >>= 1)
+                for(int x_pixel_offset=x * n_lines_from_char * 3; x_pixel_offset<(x + 1) * n_lines_from_char * 3; x_pixel_offset += 3, bit_mask >>= 1)
                 {
                     int pixel_offset = x_pixel_offset + y_pixel_offset;
                     bool is_fg = (line & bit_mask) != 0;
