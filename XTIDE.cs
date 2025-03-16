@@ -217,7 +217,7 @@ class XTIDE : Device
         return -1;
     }
 
-    public override void SetPic(pic8259 pic_instance)
+    public override void SetPic(i8259 pic_instance)
     {
         // not used
     }

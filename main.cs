@@ -457,7 +457,7 @@ else
                 Log.Cnsl("sbp x          set breakpoint");
                 Log.Cnsl("dbp x          delete breakpoint");
                 Log.Cnsl("cbp            remove all breakpoints");
-                Log.Cnsl("stats x        \"x\" must be \"cpu-speed\" currently");
+                Log.Cnsl("stats x        \"cpu-speed\", \"timers\", \"pic\"");
                 Log.Cnsl("setll x        set loglevel (trace, debug, ...)");
                 Log.Cnsl("trunclf        truncate logfile");
             }
@@ -544,11 +544,15 @@ else
                     foreach(var device in devices)
                     {
                         if (device is i8253)
-                        {
-                            var state = device.GetState();
-                            foreach(var state_line in state)
-                                Log.Cnsl(state_line);
-                        }
+                            DumpState(device);
+                    }
+                }
+                else if (parts[1] == "i8259" || parts[1] == "pic")
+                {
+                    foreach(var device in devices)
+                    {
+                        if (device is i8259)
+                            DumpState(device);
                     }
                 }
                 else
@@ -1009,6 +1013,14 @@ void OnProcessExit(object sender, EventArgs e)
         avi.Close();
 
     Log.EndLogging();
+}
+
+void DumpState(Device device)
+{
+    var state = device.GetState();
+
+    foreach(var state_line in state)
+        Log.Cnsl(state_line);
 }
 
 class ThreadSafe_Bool

@@ -1,5 +1,5 @@
 // programmable interrupt controller (PIC)
-class pic8259
+class i8259: Device
 {
     private int _int_offset = 8;  // TODO updaten bij ICW (OCW?) en dan XT::Tick() de juiste vector
     private byte _irr = 0;  // which irqs are requested
@@ -11,14 +11,44 @@ class pic8259
     private bool _has_slave = false;
     private int _int_in_service = -1;  // used by EOI
 
+    private byte _icw1 = 0;
     private bool _in_init = false;
     private bool _ii_icw2 = false;
+    private byte _icw2 = 0;
     private bool _ii_icw3 = false;
+    private byte _icw3 = 0;
     private bool _ii_icw4 = false;
+    private byte _icw4 = 0;
     private bool _ii_icw4_req = false;
 
-    public pic8259()
+    public i8259()
     {
+    }
+
+    public override int GetIRQNumber()
+    {
+        return -1;
+    }
+
+    public override String GetName()
+    {
+        return "i8259";
+    }
+
+    public override List<string> GetState()
+    {
+        List<string> @out = new();
+        @out.Add($"IRR: {_irr:X2}, ISR: {_isr:X2}, IMR: {_imr:X2}, int in serice: {_int_in_service}");
+        @out.Add($"auto eoi: {_auto_eoi}, request level: {_irq_request_level}");
+        @out.Add($"read irr: {_read_irr}");
+        @out.Add($"in init: {_in_init}, icw1: {_icw1:X2}, icw2: {_ii_icw2}/{_icw2:X2}, ic3w: {_ii_icw3}/{_icw3:X2}, icw4: {_ii_icw4}/{_icw4:X2}, icw4 req: {_ii_icw4_req}");
+        return @out;
+    }
+
+    public override void RegisterDevice(Dictionary <ushort, Device> mappings)
+    {
+        mappings[0x0020] = this;
+        mappings[0x0021] = this;
     }
 
     public byte GetPendingInterrupt()
@@ -80,7 +110,7 @@ class pic8259
         }
     }
 
-    public (byte, bool) In(ushort addr)
+    public override (byte, bool) IO_Read(ushort addr)
     {
         byte rc = 0;
 
@@ -102,15 +132,15 @@ class pic8259
         return (rc, false);
     }
 
-    public bool Out(ushort addr, byte value)
+    public override bool IO_Write(ushort addr, byte value)
     {
         Log.DoLog($"i8259 OUT port {addr:X2} value {value:X2}", LogLevel.TRACE);
 
         if (addr == 0x0020)
         {
             _in_init = (value & 16) == 16;
-
             _has_slave = (value & 2) == 0;
+            _icw1 = value;
 
             if (_in_init)  // ICW
             {
@@ -183,7 +213,7 @@ class pic8259
                 if (_ii_icw2 == false)
                 {
                     Log.DoLog($"i8259 OUT: is ICW2", LogLevel.TRACE);
-
+                    _icw2 = value;
                     _ii_icw2 = true;
                     if (value != 0x00 && value != 0x08)
                         Log.DoLog($"i8259 OUT: ICW2 assigned strange value: 0x{value:X2}", LogLevel.DEBUG);
@@ -194,6 +224,7 @@ class pic8259
                     Log.DoLog($"i8259 OUT: is ICW3", LogLevel.TRACE);
 
                     _ii_icw3 = true;
+                    _icw3 = value;
 
                     // ignore value: slave-devices are not supported in this emulator
 
@@ -208,6 +239,7 @@ class pic8259
                     Log.DoLog($"i8259 OUT: is ICW4", LogLevel.TRACE);
 
                     _ii_icw4 = true;
+                    _icw4 = value;
                     _in_init = false;
                     bool new_auto_eoi = (value & 2) == 2;
                     if (new_auto_eoi != _auto_eoi)
@@ -240,5 +272,19 @@ class pic8259
     public byte GetInterruptMask()
     {
         return _imr;
+    }
+
+    public override bool HasAddress(uint addr)
+    {
+        return false;
+    }
+
+    public override void WriteByte(uint offset, byte value)
+    {
+    }
+
+    public override byte ReadByte(uint offset)
+    {
+        return 0xee;
     }
 }

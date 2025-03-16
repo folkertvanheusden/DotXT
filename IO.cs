@@ -1,6 +1,6 @@
 class IO
 {
-    private pic8259 _pic;
+    private i8259 _pic;
     private i8237 _i8237;
     private Bus _b;
     private bool _test_mode = false;
@@ -16,21 +16,23 @@ class IO
 
         foreach(var device in devices)
         {
-            device.RegisterDevice(_io_map);
             device.SetDma(_i8237);
             device.SetPic(_pic);
             device.SetBus(b);
         }
 
-        _i8237.RegisterDevice(_io_map);
         devices.Add(_i8237);
+        devices.Add(_pic);
+
+        foreach(var device in devices)
+            device.RegisterDevice(_io_map);
 
         _devices = devices;
 
         _test_mode = test_mode;
     }
 
-    public pic8259 GetPIC()
+    public i8259 GetPIC()
     {
         return _pic;
     }
@@ -39,12 +41,6 @@ class IO
     {
         if (_test_mode)
             return (65535, false);
-
-        if (addr == 0x0020 || addr == 0x0021)  // PIC
-        {
-            Tools.Assert(b16 == false, "PIC");
-            return _pic.In(addr);
-        }
 
         if (_io_map.ContainsKey(addr))
         {
@@ -98,19 +94,11 @@ class IO
         if (_test_mode)
             return false;
 
-        // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})", true);
+        bool rc = false;
 
-        if (addr == 0x0020 || addr == 0x0021)  // PIC
+        if (_io_map.ContainsKey(addr))
         {
-            Tools.Assert(b16 == false, "PIC");
-            return _pic.Out(addr, (byte)value);
-        }
-        else
-        {
-            bool rc = false;
-
-            if (_io_map.ContainsKey(addr))
-                rc |= _io_map[addr].IO_Write(addr, (byte)(value & 255));
+            rc |= _io_map[addr].IO_Write(addr, (byte)(value & 255));
 
             if (b16)
             {
@@ -118,7 +106,7 @@ class IO
                 if (_io_map.ContainsKey(next_port))
                     rc |= _io_map[next_port].IO_Write(next_port, (byte)(value >> 8));
                 else
-                    Log.DoLog($"OUT: confused: 'next port' ({next_port:X04}) for a 16 bit read is not mapped", LogLevel.WARNING);
+                    Log.DoLog($"OUT: confused: 'next port' ({next_port:X04}) for a 16 bit write is not mapped", LogLevel.WARNING);
             }
             else
             {
