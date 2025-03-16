@@ -20,6 +20,8 @@ class i8259: Device
     private bool _ii_icw4 = false;
     private byte _icw4 = 0;
     private bool _ii_icw4_req = false;
+    private byte _ocw2 = 0;
+    private byte _ocw3 = 0;
 
     public i8259()
     {
@@ -42,6 +44,7 @@ class i8259: Device
         @out.Add($"auto eoi: {_auto_eoi}, request level: {_irq_request_level}");
         @out.Add($"read irr: {_read_irr}");
         @out.Add($"in init: {_in_init}, icw1: {_icw1:X2}, icw2: {_ii_icw2}/{_icw2:X2}, ic3w: {_ii_icw3}/{_icw3:X2}, icw4: {_ii_icw4}/{_icw4:X2}, icw4 req: {_ii_icw4_req}");
+        @out.Add($"ocw2: {_ocw2:X2}, ocw3: {_ocw3:X2}");
         return @out;
     }
 
@@ -166,11 +169,13 @@ class i8259: Device
                 {
                     Log.DoLog($"i8259 OUT: OCW3", LogLevel.TRACE);
                     _read_irr = (value & 3) == 2;
+                    _ocw3 = value;
                 }
                 else  // OCW2
                 {
                     Log.DoLog($"i8259 OUT: OCW2", LogLevel.TRACE);
                     _irq_request_level = value & 7;
+                    _ocw2 = value;
 
                     // EOI
                     if (((value >> 5) & 1) == 1)  // EOI set (in OCW2)?
