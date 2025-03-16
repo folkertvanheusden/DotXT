@@ -11,14 +11,16 @@ internal struct Timer
     public int    latch_n_cur { get; set; }
     public bool   is_running  { get; set; }
     public bool   is_pending  { get; set; }
+    public bool   is_bcd      { get; set; }
 }
 
 internal class i8253 : Device
 {
-    Timer [] _timers = new Timer[3];
-    protected int _irq_nr = 0;
-    i8237 _i8237 = null;
-    long clock = 0;
+    private Timer [] _timers = new Timer[3];
+    private protected int _irq_nr = 0;
+    private i8237 _i8237 = null;
+    private long clock = 0;
+    private string [] _mode_names = new string[] { "interrupt on terminal count", "hardware retriggerable one-shot", "rate generator", "square wave", "software triggered strobe", "hardware triggered strobe", "rate generator", "square wave" };
 
     // using a static seed to make it behave
     // the same every invocation (until threads
@@ -38,7 +40,7 @@ internal class i8253 : Device
         for(int i=0; i<_timers.Length; i++)
         {
             Timer t = _timers[i];
-            out_.Add($"Timer {i}: counter cur/prv/ini {t.counter_cur}/{t.counter_prv}/{t.counter_ini}, mode {t.mode} running {t.is_running} pending {t.is_pending}");
+            out_.Add($"Timer {i}: counter cur/prv/ini {t.counter_cur}/{t.counter_prv}/{t.counter_ini}, mode {t.mode} ({_mode_names[t.mode]}) running {t.is_running} pending {t.is_pending}, BCD: {t.is_bcd}");
         }
 
         return out_;
@@ -206,9 +208,10 @@ internal class i8253 : Device
         if (latch != 0)
         {
             Log.DoLog($"OUT 8253: command timer {nr}, latch {latch}, mode {mode}, type {type}", LogLevel.DEBUG);
-            _timers[nr].mode       = mode;
+            _timers[nr].mode = mode;
             _timers[nr].latch_type = latch;
             _timers[nr].is_running = false;
+            _timers[nr].is_bcd = type == 1;
 
             _timers[nr].counter_ini = 0;
 
