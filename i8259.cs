@@ -1,5 +1,5 @@
 // programmable interrupt controller (PIC)
-class i8259
+class i8259: Device
 {
     private int _int_offset = 8;  // TODO updaten bij ICW (OCW?) en dan XT::Tick() de juiste vector
     private byte _irr = 0;  // which irqs are requested
@@ -19,6 +19,22 @@ class i8259
 
     public i8259()
     {
+    }
+
+    public override int GetIRQNumber()
+    {
+        return -1;
+    }
+
+    public override String GetName()
+    {
+        return "i8259";
+    }
+
+    public override void RegisterDevice(Dictionary <ushort, Device> mappings)
+    {
+        mappings[0x0020] = this;
+        mappings[0x0021] = this;
     }
 
     public byte GetPendingInterrupt()
@@ -80,7 +96,7 @@ class i8259
         }
     }
 
-    public (byte, bool) In(ushort addr)
+    public override (byte, bool) IO_Read(ushort addr)
     {
         byte rc = 0;
 
@@ -102,7 +118,7 @@ class i8259
         return (rc, false);
     }
 
-    public bool Out(ushort addr, byte value)
+    public override bool IO_Write(ushort addr, byte value)
     {
         Log.DoLog($"i8259 OUT port {addr:X2} value {value:X2}", LogLevel.TRACE);
 
@@ -240,5 +256,19 @@ class i8259
     public byte GetInterruptMask()
     {
         return _imr;
+    }
+
+    public override bool HasAddress(uint addr)
+    {
+        return false;
+    }
+
+    public override void WriteByte(uint offset, byte value)
+    {
+    }
+
+    public override byte ReadByte(uint offset)
+    {
+        return 0xee;
     }
 }

@@ -16,14 +16,16 @@ class IO
 
         foreach(var device in devices)
         {
-            device.RegisterDevice(_io_map);
             device.SetDma(_i8237);
             device.SetPic(_pic);
             device.SetBus(b);
         }
 
-        _i8237.RegisterDevice(_io_map);
         devices.Add(_i8237);
+        devices.Add(_pic);
+
+        foreach(var device in devices)
+            device.RegisterDevice(_io_map);
 
         _devices = devices;
 
@@ -39,12 +41,6 @@ class IO
     {
         if (_test_mode)
             return (65535, false);
-
-        if (addr == 0x0020 || addr == 0x0021)  // PIC
-        {
-            Tools.Assert(b16 == false, "PIC");
-            return _pic.In(addr);
-        }
 
         if (_io_map.ContainsKey(addr))
         {
@@ -98,17 +94,11 @@ class IO
         if (_test_mode)
             return false;
 
-        if (addr == 0x0020 || addr == 0x0021)  // PIC
-        {
-            Tools.Assert(b16 == false, "PIC");
-            return _pic.Out(addr, (byte)value);
-        }
-        else
-        {
-            bool rc = false;
+        bool rc = false;
 
-            if (_io_map.ContainsKey(addr))
-                rc |= _io_map[addr].IO_Write(addr, (byte)(value & 255));
+        if (_io_map.ContainsKey(addr))
+        {
+            rc |= _io_map[addr].IO_Write(addr, (byte)(value & 255));
 
             if (b16)
             {
