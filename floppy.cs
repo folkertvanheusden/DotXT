@@ -454,9 +454,8 @@ class FloppyDisk : Device
 
         Log.DoLog($"Floppy FORMAT unit {unit} head {_head[unit]} cylinder {_cylinder[unit]}, filler {_data[5]:X02}", LogLevel.TRACE);
 
-        byte[]b = new byte[512];  // TODO retrieve from _data[2]
-        var span = new Span<byte>(b);
-        span.Fill(_data[5]);
+        byte[] b = new byte[512];  // TODO retrieve from _data[2]
+        Array.Fill<byte>(b, _data[5]);
 
         byte [] old_data = _data;
         _data = new byte[7];
@@ -498,12 +497,10 @@ class FloppyDisk : Device
 
     public void DumpReply()
     {
-#if DEBUG
         string str = "";
         for(int i=0; i<_data.Length; i++)
             str += $" {_data[i]:X02}";
         Log.DoLog($"Floppy-reply:{str}", LogLevel.TRACE);
-#endif
     }
 
     public override bool IO_Write(ushort port, byte value)

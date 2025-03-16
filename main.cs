@@ -747,10 +747,10 @@ void Disassemble(P8086Disassembler d, P8086 p)
     Log.SetMeta(state.clock, cs, ip);
 
     d.SetCPUState(state);
+    string registers_str = d.GetRegisters();
 
     (int length, string instruction, string meta, string hex) = d.Disassemble();
-    string registers_str = d.GetRegisters();
-    Log.DoLog($"{d.GetRegisters()} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
+    Log.DoLog($"{registers_str} | {instruction} | {hex} | {meta}", LogLevel.TRACE);
 
     Tools.Assert(cs == state.cs && ip == state.ip, "disassembler");
 }
