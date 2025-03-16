@@ -73,7 +73,7 @@ class Keyboard : Device
         return false;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
         if (port == 0x60)
         {
@@ -88,17 +88,17 @@ class Keyboard : Device
 
             Log.DoLog($"Keyboard: scan code {rc:X02}", LogLevel.TRACE);
 
-            return (rc, false);
+            return rc;
         }
         else if (port == 0x61)
-            return (_0x61_bits, false);
+            return _0x61_bits;
         else if (port == 0x64)
         {
             Log.DoLog($"Keyboard: 0x64", LogLevel.TRACE);
-            return (0x10, false);
+            return 0x10;
         }
 
-        return (0x00, false);
+        return 0x00;
     }
 
     public override bool HasAddress(uint addr)

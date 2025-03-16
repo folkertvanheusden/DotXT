@@ -27,7 +27,7 @@ internal class PPI : Device
         mappings[0x0063] = this;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
         Log.DoLog($"PPI::IO_Read: {port:X4}", LogLevel.TRACE);
 
@@ -36,9 +36,9 @@ internal class PPI : Device
             byte switches = 0b01100000;  // 1 floppy, CGA80, 256kB, reserved
 
             if (_dipswitches_high == true)
-                return ((byte)(switches & 0x0f), false);
+                return (byte)(switches & 0x0f);
 
-            return ((byte)(switches >> 4), false);
+            return (byte)(switches >> 4);
         }
 
         return _kb.IO_Read(port);

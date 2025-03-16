@@ -111,7 +111,7 @@ class FloppyDisk : Device
         return _data_state == DataState.WantData;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
         int bytes_left = _data == null ? 0 : (_data.Length - _data_offset);
         Log.DoLog($"Floppy-IN {_io_names[port - 0x3f0]}: {port:X4} {_data_state}, bytes left: {bytes_left}", LogLevel.DEBUG);
@@ -128,7 +128,7 @@ class FloppyDisk : Device
             if (_busy == true)
                 rc |= 16;
             Log.DoLog($"Floppy-IN for MSR returns {rc:X2}", LogLevel.DEBUG);
-            return (rc, false);
+            return rc;
         }
 
         if (port == 0x3f5)  // fifo
@@ -147,12 +147,12 @@ class FloppyDisk : Device
                 Log.DoLog($"Floppy-IN reading from empty FIFO", LogLevel.DEBUG);
             }
             Log.DoLog($"Floppy-IN for FIFO returns {rc:X2}", LogLevel.DEBUG);
-            return (rc, false);
+            return rc;
         }
 
         Log.DoLog("Floppy-IN read from cache", LogLevel.DEBUG);
 
-        return (_registers[port - 0x3f0], false);
+        return _registers[port - 0x3f0];
     }
 
     private int GetSectorsPerTrack(int unit)

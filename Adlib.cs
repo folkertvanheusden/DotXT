@@ -46,17 +46,17 @@ internal class Adlib : Device
         mappings[0x0389] = this;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
         Log.DoLog($"Adlib::IO_Read {port:X04}", LogLevel.TRACE);
 
         if (port == 0x0388 || port == 0x0220)
-            return (_status_byte[0], false);
+            return _status_byte[0];
 
         if (port == 0x0222)
-            return (_status_byte[1], false);
+            return _status_byte[1];
 
-        return (0x00, false);
+        return 0x00;
     }
 
     public byte GetRegister(int ear, byte i)

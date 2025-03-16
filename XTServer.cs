@@ -68,9 +68,9 @@ internal class XTServer : Device
         mappings[0xf065] = this;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
-        return (0xaa, false);
+        return 0xaa;
     }
 
     public override bool IO_Write(ushort port, byte value)

@@ -113,7 +113,7 @@ class i8259: Device
         }
     }
 
-    public override (byte, bool) IO_Read(ushort addr)
+    public override byte IO_Read(ushort addr)
     {
         byte rc = 0;
 
@@ -132,7 +132,7 @@ class i8259: Device
 
         Log.DoLog($"i8259 IN: read addr {addr:X4}: {rc:X2}", LogLevel.TRACE);
 
-        return (rc, false);
+        return rc;
     }
 
     public override bool IO_Write(ushort addr, byte value)

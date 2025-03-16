@@ -81,7 +81,7 @@ class MDA : Display
         return false;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
         byte rc = 0;
 
@@ -93,7 +93,7 @@ class MDA : Display
 
         Log.DoLog($"MDA::IO_Read {port:X4}: {rc:X2}", LogLevel.TRACE);
 
-        return (rc, false);
+        return rc;
     }
 
     public override void WriteByte(uint offset, byte value)

@@ -30,12 +30,12 @@ internal class MIDI : Device
         mappings[0x0331] = this;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
         if (port == 0x331)
-            return (0, false);
+            return 0;
 
-        return (0xaa, false);
+        return 0xaa;
     }
 
     public override bool IO_Write(ushort port, byte value)

@@ -120,7 +120,7 @@ internal class i8237: Device
             _reached_tc[0] = true;
     }
 
-    public override (byte, bool) IO_Read(ushort addr)
+    public override byte IO_Read(ushort addr)
     {
         Log.DoLog($"i8237_IN: read {addr:X04}", LogLevel.DEBUG);
 
@@ -149,7 +149,7 @@ internal class i8237: Device
 
         Log.DoLog($"i8237_IN: {addr:X4} {v:X2}", LogLevel.DEBUG);
 
-        return (v, false);
+        return v;
     }
 
     void reset_masks(bool state)

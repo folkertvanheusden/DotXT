@@ -37,25 +37,22 @@ class IO
         return _pic;
     }
 
-    public (ushort, bool) In(ushort addr, bool b16)
+    public ushort In(ushort addr, bool b16)
     {
         if (_test_mode)
-            return (65535, false);
+            return 65535;
 
         if (_io_map.ContainsKey(addr))
         {
-            var temp = _io_map[addr].IO_Read(addr);
-            ushort rc = temp.Item1;
-            bool i = temp.Item2;
+            ushort rc = _io_map[addr].IO_Read(addr);
 
             if (b16)
             {
                 ushort next_port = (ushort)(addr + 1);
                 if (_io_map.ContainsKey(next_port))
                 {
-                    temp = _io_map[next_port].IO_Read(next_port);
-                    rc += (ushort)(temp.Item1 << 8);
-                    i |= temp.Item2;
+                    ushort temp = _io_map[next_port].IO_Read(next_port);
+                    rc |= (ushort)(temp << 8);
                 }
                 else
                 {
@@ -63,20 +60,20 @@ class IO
                 }
             }
 
-            Log.DoLog($"IN: read {rc:X} from device on I/O port {addr:X4} (16 bit: {b16}), int flag: {i}", LogLevel.TRACE);
+            Log.DoLog($"IN: read {rc:X} from device on I/O port {addr:X4} (16 bit: {b16})", LogLevel.TRACE);
 
-            return (rc, i);
+            return rc;
         }
 
         if (addr == 0x0210)  // verify expansion bus data
         {
             Tools.Assert(b16 == false, "expansion bus data");
-            return (0xa5, false);
+            return 0xa5;
         }
 
         Log.DoLog($"IN: I/O port {addr:X4} not implemented", LogLevel.WARNING);
 
-        return ((ushort)(b16 ? 0xffff : 0xff), false);
+        return (ushort)(b16 ? 0xffff : 0xff);
     }
 
     public bool Tick(int ticks, long clock)

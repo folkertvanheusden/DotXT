@@ -163,7 +163,7 @@ abstract class Display : Device
     public abstract bool IsInHSync();
     public abstract bool IsInVSync();
 
-    public abstract override (byte, bool) IO_Read(ushort port);
+    public abstract override byte IO_Read(ushort port);
 
     protected void EmulateTextDisplay(uint x, uint y, byte character, byte attributes)
     {

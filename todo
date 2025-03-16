@@ -12,6 +12,7 @@
 * acid88 (reenigne)
 
 * fs1
+  should read several screens of "garbage", fails after first screen
 
 * run Tick from timer:
   "i have a 14.318MHz timer ticking and every 3 cycles it does cpu.cycle(), and every 12 cycles it does a pit.cycle()" (granite)

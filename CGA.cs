@@ -216,7 +216,7 @@ class CGA : Display
         return false;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
         Log.DoLog($"CGA::IO_Read {port:X04}", LogLevel.TRACE);
         byte rc = 0;
@@ -239,7 +239,7 @@ class CGA : Display
 
         Log.DoLog($"CGA::IO_Read {port:X04}: {rc:X02}", LogLevel.TRACE);
 
-        return (rc, false);
+        return rc;
     }
 
     public override void WriteByte(uint offset, byte value)

@@ -280,7 +280,7 @@ class XTIDE : Device
         SetDRDY();
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
         int register = (port - 0x300) / 2;
         string name = _io_names[register];
@@ -314,7 +314,7 @@ class XTIDE : Device
             Log.DoLog($"XT-IDE IN {name}: {port:X4}, value: {rc:X02}", LogLevel.TRACE);
         }
 
-        return (rc, false);
+        return rc;
     }
 
     private void StoreSectorBuffer()

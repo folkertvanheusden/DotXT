@@ -64,18 +64,18 @@ internal class i8253 : Device
         mappings[0x0043] = this;
     }
 
-    public override (byte, bool) IO_Read(ushort port)
+    public override byte IO_Read(ushort port)
     {
         if (port == 0x0040)
-            return (GetCounter(0), _timers[0].is_pending);
+            return GetCounter(0);
 
         if (port == 0x0041)
-            return (GetCounter(1), _timers[1].is_pending);
+            return GetCounter(1);
 
         if (port == 0x0042)
-            return (GetCounter(2), _timers[2].is_pending);
+            return GetCounter(2);
 
-        return (0xaa, false);
+        return 0xaa;
     }
 
     public override bool IO_Write(ushort port, byte value)
