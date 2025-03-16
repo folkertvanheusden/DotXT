@@ -1,6 +1,6 @@
 class IO
 {
-    private pic8259 _pic;
+    private i8259 _pic;
     private i8237 _i8237;
     private Bus _b;
     private bool _test_mode = false;
@@ -30,7 +30,7 @@ class IO
         _test_mode = test_mode;
     }
 
-    public pic8259 GetPIC()
+    public i8259 GetPIC()
     {
         return _pic;
     }

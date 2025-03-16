@@ -67,7 +67,7 @@ class FloppyDisk : Device
         _dma_controller = dma_instance;
     }
 
-    public override void SetPic(pic8259 pic_instance)
+    public override void SetPic(i8259 pic_instance)
     {
         _pic = pic_instance;
     }
