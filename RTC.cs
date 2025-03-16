@@ -64,7 +64,7 @@ internal class RTC : Device
             else if (_cmos_ram_index == 0x0b)
                 rc = 2;  // 24h mode
             else if (_cmos_ram_index == 0x10)
-                rc = 4;  // 1.44 MB floppy drive
+                rc = 0x11;  // 2x 360 kB floppy drive
             else if (_cmos_ram_index == 0x0a)
             {
                 rc = _ram[_cmos_ram_index];
