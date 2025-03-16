@@ -98,8 +98,6 @@ class IO
         if (_test_mode)
             return false;
 
-        // Log.DoLog($"OUT: I/O port {addr:X4} ({value:X2})", true);
-
         if (addr == 0x0020 || addr == 0x0021)  // PIC
         {
             Tools.Assert(b16 == false, "PIC");
@@ -118,7 +116,7 @@ class IO
                 if (_io_map.ContainsKey(next_port))
                     rc |= _io_map[next_port].IO_Write(next_port, (byte)(value >> 8));
                 else
-                    Log.DoLog($"OUT: confused: 'next port' ({next_port:X04}) for a 16 bit read is not mapped", LogLevel.WARNING);
+                    Log.DoLog($"OUT: confused: 'next port' ({next_port:X04}) for a 16 bit write is not mapped", LogLevel.WARNING);
             }
             else
             {
