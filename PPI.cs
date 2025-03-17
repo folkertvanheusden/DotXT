@@ -8,18 +8,21 @@ internal class PPI : Device
     private byte _SW1 = 0;
     private byte _SW2 = 0;
 
-    public PPI(Keyboard kb, SystemType system_type)
+    public PPI(Keyboard kb, SystemType system_type, int n_floppies)
     {
         _kb = kb;
         _system_type = system_type;
 
         if (_system_type == SystemType.XT)
-            _SW1 = 0b01100001;  // 2 floppy-drives, CGA80, 256kB, IPL bit
+            _SW1 = 0b00100000;  // 2 floppy-drives, CGA80, 256kB, IPL bit
         else
         {
-            _SW1 = (1 /*floppies*/) | (2 << 4) /*(cga80)*/ | (3 << 2 /* memory banks*/) | ((2 - 1) << 6 /*floppy count*/);
+            _SW1 = (2 << 4) /*(cga80)*/ | (3 << 2 /* memory banks*/);
             _SW2 = 0b01101101;
         }
+
+        if (n_floppies > 0)
+            _SW1 |= (byte)(1 | ((n_floppies - 1) << 6));
     }
 
     public override int GetIRQNumber()

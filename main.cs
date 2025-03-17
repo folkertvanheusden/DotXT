@@ -235,7 +235,7 @@ if (mode != TMode.Empty && run_IO == true)
 {
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks
-    devices.Add(new PPI(kb, system_type));
+    devices.Add(new PPI(kb, system_type, floppies.Count()));
 
     Adlib adlib = null;
     if (use_adlib)

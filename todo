@@ -11,8 +11,6 @@
 
 * acid88 (reenigne)
 
-* PPI: reflect number of drives! in bit6/7
-
 * fs1
   should read several screens of "garbage", fails after first screen
 
@@ -22,8 +20,6 @@
 * multiple RTSP streams parallel gives bad results
 
 * 48 kHz audio ivm adlib (49 kHz?)
-
-* floppy niet herkent
 
 * clean-up disassembler
 * wrong disassembly: MOV word [SI],$D000 | C7 44 02 00 D0 | disp 0002
