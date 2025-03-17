@@ -11,6 +11,8 @@
 
 * acid88 (reenigne)
 
+* PPI: reflect number of drives! in bit6/7
+
 * fs1
   should read several screens of "garbage", fails after first screen
 

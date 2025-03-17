@@ -5,6 +5,7 @@ uint bin_file_addr = 0;
 string xts_trace_file = "";
 
 TMode mode = TMode.Normal;
+SystemType system_type = SystemType.XT;
 
 ushort initial_cs = 0xf000;
 ushort initial_ip = 0xfff0;
@@ -50,6 +51,7 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("          self-test");
         Log.Cnsl("          hlt-stop or hlt-quit");
         Log.Cnsl("          go");
+        Log.Cnsl("          pc  (or ibm 5150, default is \"xt\" (ibm 5160))");
         Log.Cnsl("-l file   log to file");
         Log.Cnsl("-L        set loglevel (trace, debug, ...)");
         Log.Cnsl("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
@@ -105,6 +107,8 @@ for(int i=0; i<args.Length; i++)
             quit_on_hlt = true;
         else if (parts[0] == "go")
             start_immediately = true;
+        else if (parts[0] == "pc")
+            system_type = SystemType.PC;
         else
         {
             Log.Cnsl($"{parts[0]} is not understood");
@@ -231,7 +235,7 @@ if (mode != TMode.Empty && run_IO == true)
 {
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks
-    devices.Add(new PPI(kb));
+    devices.Add(new PPI(kb, system_type));
 
     Adlib adlib = null;
     if (use_adlib)
@@ -1072,4 +1076,10 @@ internal enum TMode
     CC,
     Tests,
     Empty
+}
+
+internal enum SystemType
+{
+    PC,
+    XT
 }
