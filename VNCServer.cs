@@ -135,12 +135,15 @@ class VNCServer: GraphicalConsole
                 { 0x7a, new byte[] { 0x2c } },  // z
                 { 0x20, new byte[] { 0x39 } },  // space
                 { 0x2e, new byte[] { 0x34 } },  // .
+                { 0x25, new byte[] { 0x06 } },  // %
+                { 0x24, new byte[] { 0x05 } },  // $
                 { 0x2d, new byte[] { 0x0c } },  // -
                 { 0x5f, new byte[] { 0x0c } },  // _
                 { 0x3a, new byte[] { 0x27 } },  // :
                 { 0x2f, new byte[] { 0x35 } },  // /
                 { 0x2a, new byte[] { 0x09 } },  // *  (shift)
                 { 0x26, new byte[] { 0x08 } },  // &  (shift)
+                { 0x40, new byte[] { 0x03 } },  // @
                 { 0x5c, new byte[] { 0x2b } },  // \
                 { 0x7c, new byte[] { 0x2b } },  // |  (shift)
                 { 0x3d, new byte[] { 0x0d } },  // =
