@@ -35,6 +35,7 @@ bool use_midi = false;
 bool use_rtc = false;
 bool use_adlib = false;
 bool use_lotechems = false;
+int adlib_port = 5540;
 
 string avi_file = null;
 int avi_quality = 95;
@@ -52,6 +53,7 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("          hlt-stop or hlt-quit");
         Log.Cnsl("          go");
         Log.Cnsl("          pc  (or ibm 5150, default is \"xt\" (ibm 5160))");
+        Log.Cnsl("          adlib-port,<port>");
         Log.Cnsl("-l file   log to file");
         Log.Cnsl("-L        set loglevel (trace, debug, ...)");
         Log.Cnsl("-R file,address   load rom \"file\" to address(xxxx:yyyy)");
@@ -109,6 +111,8 @@ for(int i=0; i<args.Length; i++)
             start_immediately = true;
         else if (parts[0] == "pc")
             system_type = SystemType.PC;
+        else if (parts[0] == "adlib-port")
+            adlib_port = Tools.GetValue(parts[1], false);
         else
         {
             Log.Cnsl($"{parts[0]} is not understood");
@@ -242,7 +246,7 @@ if (mode != TMode.Empty && run_IO == true)
     {
         adlib = new Adlib();
         devices.Add(adlib);
-        audio = new RTSPServer(adlib, 5540);  // TODO port & instantiating; make optional
+        audio = new RTSPServer(adlib, adlib_port);
     }
 
     Display display = null;
