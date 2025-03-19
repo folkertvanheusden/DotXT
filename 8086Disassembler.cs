@@ -14,7 +14,6 @@ class P8086Disassembler
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
         var rc = _b.ReadByte(a);
-        _state.clock += rc.Item2;
         return rc.Item1;
     } 
 
