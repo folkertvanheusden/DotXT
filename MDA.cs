@@ -69,9 +69,9 @@ class MDA : Display
             mappings[port] = this;
     }
 
-    public override bool HasAddress(uint addr)
+    public override List<Tuple<uint, int> > GetAddressList()
     {
-        return addr >= 0xb0000 && addr < 0xb8000;
+        return new() { new(0xb0000, 0x8000) };
     }
 
     public override bool IO_Write(ushort port, byte value)

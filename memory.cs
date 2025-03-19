@@ -1,35 +1,54 @@
-internal class Memory
+class Memory : Device
 {
     private readonly byte[] _m;
 
     public Memory(uint size)
     {
         _m = new byte[size];
-        var span = new Span<byte>(_m);
-        span.Fill(255);
+        Array.Fill<byte>(_m, 255);
     }
 
-    public byte ReadByte(uint address)
+    public override byte ReadByte(uint address)
     {
-        if (address >= _m.Length)
-        {
-#if DEBUG
-            Log.DoLog($"Memory::ReadByte: {address} > {_m.Length}", LogLevel.TRACE);
-#endif
-            return 0xee;
-        }
-
         return _m[address];
     }
 
-    public void WriteByte(uint address, byte v)
+    public override void WriteByte(uint address, byte v)
     {
-        if (address < _m.Length)
-            _m[address] = v;
+        _m[address] = v;
+    }
+
+    public override string GetName()
+    {
+        return "RAM";
+    }
+
+    public override byte IO_Read(ushort port)
+    {
+        return 0xff;
+    }
+
+    public override int GetIRQNumber()
+    {
+        return -1;
+    }
+
+    public override List<Tuple<uint, int> > GetAddressList()
+    {
+        return new() { new(0, _m.Length) };
+    }
+
+    public override bool IO_Write(ushort port, byte value)
+    {
+        return false;
+    }
+
+    public override void RegisterDevice(Dictionary <ushort, Device> mappings)
+    {
     }
 }
 
-internal class Rom
+class Rom : Device
 {
     private readonly byte[] _contents;
     private readonly uint _offset;
@@ -47,21 +66,51 @@ internal class Rom
         }
     }
 
-    public uint GetSize()
+    public override byte ReadByte(uint address)
     {
-        return (uint)_contents.Length;
+        return _contents[address - _offset];
     }
 
-    public uint GetOffset()
+    public override string GetName()
     {
-        return _offset;
+        return "ROM";
     }
 
-    public byte ReadByte(uint address)
+    public override void WriteByte(uint address, byte v)
     {
-        address -= _offset;
-        return _contents[address];
     }
+
+    public override List<Tuple<uint, int> > GetAddressList()
+    {
+        return new() { new(_offset, _contents.Length) };
+    }
+
+    public override byte IO_Read(ushort port)
+    {
+        return 0xff;
+    }
+
+    public override int GetIRQNumber()
+    {
+        return -1;
+    }
+
+    public override bool IO_Write(ushort port, byte value)
+    {
+        return false;
+    }
+
+    public override void RegisterDevice(Dictionary <ushort, Device> mappings)
+    {
+    }
+}
+
+struct CacheEntry
+{
+    public uint start_addr { get; set; }
+    public uint end_addr { get; set; }
+    public int wait_states { get; set; }
+    public Device device { get; set; }
 }
 
 class Bus
@@ -70,56 +119,96 @@ class Bus
 
     private List<Device> _devices;
     private List<Rom> _roms;
+    private List<CacheEntry> _cache;
 
     private uint _size;
 
-    public Bus(uint size, ref List<Device> devices, ref List<Rom> roms)
+    public Bus(uint size, List<Device> devices, List<Rom> roms)
     {
         _size = size;
         _m = new Memory(size);
 
         _devices = devices;
         _roms = roms;
+
+        RecreateCache();
+    }
+
+    public List<string> GetState()
+    {
+        List<string> @out = new();
+        foreach(var entry in _cache)
+            @out.Add($"{entry.device.GetName()}, start address: {entry.start_addr:X06}, end address: {entry.end_addr:X06}, wait states: {entry.wait_states}");
+        return @out;
+    }
+
+    private void AddEntries(List<Device> devices)
+    {
+        Log.DoLog($"Adding {devices.Count()} devices to cache", LogLevel.DEBUG);
+        foreach(var device in devices)
+        {
+            var segments = device.GetAddressList();
+            Log.DoLog($"Adding device {device.GetName()} with {segments.Count()} segments", LogLevel.DEBUG);
+            foreach(var segment in segments)
+            {
+                CacheEntry entry = new();
+                entry.start_addr = segment.Item1;
+                entry.end_addr = (uint)(entry.start_addr + segment.Item2);
+                entry.wait_states = device.GetWaitStateCycles();  // different per segment?
+                entry.device = device;
+                Log.DoLog($"Start address: {entry.start_addr:X06}, end address: {entry.end_addr:X06}, wait states: {entry.wait_states}", LogLevel.DEBUG);
+                _cache.Add(entry);
+            }
+        }
+    }
+
+    public void RecreateCache()
+    {
+        Log.DoLog("Recreate bus cache", LogLevel.DEBUG);
+        _cache = new();
+
+        AddEntries(_devices);
+
+        foreach(var rom in _roms)
+            AddEntries(new List<Device> { rom });
+
+        // last! because it is a full 1 MB
+        AddEntries(new List<Device> { _m });
     }
 
     public void ClearMemory()
     {
         _m = new Memory(_size);
+
+        RecreateCache();
     }
 
     public (byte, int) ReadByte(uint address)
     {
-        address &= 0x000fffff;
-
-        foreach(var rom in _roms)
+        foreach(var entry in _cache)
         {
-            if (address >= rom.GetOffset() && address < rom.GetOffset() + rom.GetSize())
-                return (rom.ReadByte(address), 0);  // ROM is infinite fast (TODO)
+            if (address >= entry.start_addr && address < entry.end_addr)
+                return (entry.device.ReadByte(address), entry.wait_states);
         }
 
-        foreach(var device in _devices)
-        {
-            if (device.HasAddress(address))
-                return (device.ReadByte(address), device.GetWaitStateCycles());
-        }
+        Log.DoLog($"{address:X06} not found for READ ({_cache.Count()})", LogLevel.INFO);
 
-        return (_m.ReadByte(address), 0);  // TODO see ROM
+        return (0xff, 1);  // TODO
     }
 
     public int WriteByte(uint address, byte v)
     {
-        address &= 0x000fffff;
-
-        foreach(var device in _devices)
+        foreach(var entry in _cache)
         {
-            if (device.HasAddress(address))
+            if (address >= entry.start_addr && address < entry.end_addr)
             {
-                device.WriteByte(address, v);
-                return device.GetWaitStateCycles();
+                entry.device.WriteByte(address, v);
+                return entry.wait_states;
             }
         }
 
-        _m.WriteByte(address, v);
-        return 0;
+        Log.DoLog($"{address:X06} not found for WRITE ({_cache.Count()})", LogLevel.INFO);
+
+        return 1;  // TODO
     }
 }

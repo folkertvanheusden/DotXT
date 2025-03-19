@@ -175,7 +175,9 @@ internal class Adlib : Device
 
             long end_ts = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 
-            Thread.Sleep((int)((1000 - (end_ts - start_ts)) / interval));
+            int sleep_duration = (int)((1000 - (end_ts - start_ts)) / interval);
+            if (sleep_duration > 0)
+                Thread.Sleep(sleep_duration);
         }
 
         Log.Cnsl("Adlib Player-thread terminating");
@@ -305,9 +307,9 @@ internal class Adlib : Device
         return false;
     }
 
-    public override bool HasAddress(uint addr)
+    public override List<Tuple<uint, int> > GetAddressList()
     {
-        return false;
+        return new() { };
     }
 
     public override void WriteByte(uint offset, byte value)

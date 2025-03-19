@@ -1,7 +1,5 @@
 namespace DotXT;
 
-// TODO this needs a rewrite/clean-up
-
 internal enum RepMode
 {
     NotSet,
@@ -2308,11 +2306,11 @@ internal class P8086
         return 2;  // TODO
     }
 
-    public P8086(ref Bus b, ref List<Device> devices, bool run_IO)
+    public P8086(Bus b, List<Device> devices, bool run_IO)
     {
         _b = b;
         _devices = devices;
-        _io = new IO(b, ref devices, !run_IO);
+        _io = new IO(b, devices, !run_IO);
         _terminate_on_off_the_rails = run_IO;
 
         _ops[0x00] = this.Op_ADD_SUB_ADC_SBC;

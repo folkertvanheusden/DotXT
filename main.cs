@@ -298,9 +298,9 @@ if (mode != TMode.Empty && run_IO == true)
 }
 
 // Bus gets the devices for memory mapped i/o
-Bus b = new Bus(ram_size * 1024, ref devices, ref roms);
+Bus b = new Bus(ram_size * 1024, devices, roms);
 var d = new P8086Disassembler(b);
-var p = new P8086(ref b, ref devices, run_IO);
+var p = new P8086(b, devices, run_IO);
 
 if (mode == TMode.Normal || mode == TMode.XTServer || mode == TMode.CC)
     p.GetState().SetIP(initial_cs, initial_ip);
@@ -310,6 +310,8 @@ if (mode == TMode.XTServer)
 
 if (mode == TMode.CC && bin_file != "")
     Tools.LoadBin(b, bin_file, bin_file_addr);
+
+b.RecreateCache();
 
 if (self_test)
     SelfTest(ref p, ref b);
@@ -465,7 +467,7 @@ else
                 Log.Cnsl("sbp x          set breakpoint");
                 Log.Cnsl("dbp x          delete breakpoint");
                 Log.Cnsl("cbp            remove all breakpoints");
-                Log.Cnsl("stats x        \"cpu-speed\", \"timers\", \"cga\" or \"pic\"");
+                Log.Cnsl("stats x        \"cpu-speed\", \"timers\", \"cga\", \"bus\" or \"pic\"");
                 Log.Cnsl("setll x        set loglevel (trace, debug, ...)");
                 Log.Cnsl("trunclf        truncate logfile");
             }
@@ -573,6 +575,12 @@ else
                             if (device is CGA)
                                 DumpState(device);
                         }
+                    }
+                    else if (type == "bus")
+                    {
+                        var state = b.GetState();
+                        foreach(var state_line in state)
+                            Log.Cnsl(state_line);
                     }
                 }
             }

@@ -50,9 +50,9 @@ internal class LotechEMS : Device
         return false;
     }
 
-    public override bool HasAddress(uint addr)
+    public override List<Tuple<uint, int> > GetAddressList()
     {
-        return addr >= 0xe0000 && addr <= 0xeffff;
+        return new() { new(0xe0000, 0x10000) };
     }
 
     public override void WriteByte(uint addr, byte value)

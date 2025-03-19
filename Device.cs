@@ -23,7 +23,7 @@ abstract class Device
         return 0;
     }
 
-    public abstract bool HasAddress(uint addr);
+    public abstract List<Tuple<uint, int> > GetAddressList();
     public abstract void WriteByte(uint offset, byte value);
     public abstract byte ReadByte(uint offset);
 

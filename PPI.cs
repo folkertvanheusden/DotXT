@@ -93,9 +93,9 @@ internal class PPI : Device
         return _kb.IO_Write(port, value);
     }
 
-    public override bool HasAddress(uint addr)
+    public override List<Tuple<uint, int> > GetAddressList()
     {
-        return false;
+        return new() { };
     }
 
     public override void WriteByte(uint offset, byte value)

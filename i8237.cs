@@ -320,9 +320,9 @@ internal class i8237: Device
         return true;
     }
 
-    public override bool HasAddress(uint addr)
+    public override List<Tuple<uint, int> > GetAddressList()
     {
-        return false;
+        return new() { };
     }
 
     public override void WriteByte(uint offset, byte value)

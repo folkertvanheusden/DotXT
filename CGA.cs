@@ -148,9 +148,9 @@ class CGA : Display
         return 6;
     }
 
-    public override bool HasAddress(uint addr)
+    public override List<Tuple<uint, int> > GetAddressList()
     {
-        return addr >= 0xb8000 && addr < 0xc0000;
+        return new() { new(0xb8000, 0x8000) };
     }
 
     public override bool IO_Write(ushort port, byte value)

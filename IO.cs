@@ -7,7 +7,7 @@ class IO
     private Dictionary <ushort, Device> _io_map = new Dictionary <ushort, Device>();
     private List<Device> _devices;
 
-    public IO(Bus b, ref List<Device> devices, bool test_mode)
+    public IO(Bus b, List<Device> devices, bool test_mode)
     {
         _b = b;
 

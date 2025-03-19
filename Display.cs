@@ -155,8 +155,6 @@ abstract class Display : Device
 
     public abstract override void RegisterDevice(Dictionary <ushort, Device> mappings);
 
-    public abstract override bool HasAddress(uint addr);
-
     public abstract override bool IO_Write(ushort port, byte value);
 
     public abstract int GetCurrentScanLine();

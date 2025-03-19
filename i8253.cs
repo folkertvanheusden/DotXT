@@ -92,9 +92,9 @@ internal class i8253 : Device
         return _timers[0].is_pending || _timers[1].is_pending || _timers[2].is_pending;
     }
 
-    public override bool HasAddress(uint addr)
+    public override List<Tuple<uint, int> > GetAddressList()
     {
-        return false;
+        return new() { };
     }
 
     public override void WriteByte(uint offset, byte value)
