@@ -470,6 +470,11 @@ class CGA : Display
         return _ram[offset & 0x3fff];
     }
 
+    public override bool Ticks()
+    {
+        return true;
+    }
+
     public override bool Tick(int cycles, long clock)
     {
         _clock = clock;

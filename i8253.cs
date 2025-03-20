@@ -228,6 +228,11 @@ internal class i8253 : Device
         }
     }
 
+    public override bool Ticks()
+    {
+        return true;
+    }
+
     public override bool Tick(int ticks, long ignored)
     {
         clock += ticks;

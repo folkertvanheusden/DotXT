@@ -292,4 +292,9 @@ class i8259: Device
     {
         return 0xee;
     }
+
+    public override bool Ticks()
+    {
+        return false;
+    }
 }

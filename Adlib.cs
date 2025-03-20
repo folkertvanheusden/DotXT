@@ -321,6 +321,11 @@ internal class Adlib : Device
         return 0xee;
     }
 
+    public override bool Ticks()
+    {
+        return true;
+    }
+
     public override bool Tick(int ticks, long clock)
     {
         for(int ear=0; ear<2; ear++)

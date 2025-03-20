@@ -106,4 +106,9 @@ internal class PPI : Device
     {
         return 0xee;
     }
+
+    public override bool Ticks()
+    {
+        return false;
+    }
 }

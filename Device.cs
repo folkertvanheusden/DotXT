@@ -27,6 +27,8 @@ abstract class Device
     public abstract void WriteByte(uint offset, byte value);
     public abstract byte ReadByte(uint offset);
 
+    public abstract bool Ticks();
+
     public virtual bool Tick(int cycles, long clock)
     {
         _clock = clock;

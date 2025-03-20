@@ -697,6 +697,11 @@ class FloppyDisk : Device
         return want_interrupt;
     }
 
+    public override bool Ticks()
+    {
+        return true;
+    }
+
     public override bool Tick(int cycles, long clock)
     {
         if (CheckScheduledInterrupt(cycles)) {

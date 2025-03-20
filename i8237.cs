@@ -333,4 +333,9 @@ internal class i8237: Device
     {
         return 0xee;
     }
+
+    public override bool Ticks()
+    {
+        return false;
+    }
 }

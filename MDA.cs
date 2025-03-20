@@ -163,4 +163,9 @@ class MDA : Display
     {
         return _ram[(offset - 0xb0000) & 0x3fff];
     }
+
+    public override bool Ticks()
+    {
+        return false;
+    }
 }

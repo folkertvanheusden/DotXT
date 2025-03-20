@@ -6,6 +6,7 @@ class IO
     private bool _test_mode = false;
     private Dictionary <ushort, Device> _io_map = new Dictionary <ushort, Device>();
     private List<Device> _devices;
+    private List<Device> _tick_devices = new();
 
     public IO(Bus b, List<Device> devices, bool test_mode)
     {
@@ -19,6 +20,9 @@ class IO
             device.SetDma(_i8237);
             device.SetPic(_pic);
             device.SetBus(b);
+
+            if (device.Ticks())
+                _tick_devices.Add(device);
         }
 
         devices.Add(_i8237);
@@ -30,6 +34,8 @@ class IO
         _devices = devices;
 
         _test_mode = test_mode;
+
+        Log.DoLog($"IO: got {_tick_devices.Count()} clock-dependent devices", LogLevel.DEBUG);
     }
 
     public i8259 GetPIC()
@@ -79,10 +85,8 @@ class IO
     public bool Tick(int ticks, long clock)
     {
         bool rc = false;
-
-        foreach(var device in _devices)
+        foreach(var device in _tick_devices)
             rc |= device.Tick(ticks, clock);
-
         return rc;
     }
 

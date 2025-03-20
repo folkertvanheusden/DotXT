@@ -412,4 +412,9 @@ class XTIDE : Device
 
         return false;
     }
+
+    public override bool Ticks()
+    {
+        return false;
+    }
 }

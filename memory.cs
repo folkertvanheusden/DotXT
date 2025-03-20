@@ -46,6 +46,11 @@ class Memory : Device
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
     }
+
+    public override bool Ticks()
+    {
+        return false;
+    }
 }
 
 class Rom : Device
@@ -102,6 +107,11 @@ class Rom : Device
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
+    }
+
+    public override bool Ticks()
+    {
+        return false;
     }
 }
 

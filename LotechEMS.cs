@@ -67,6 +67,11 @@ internal class LotechEMS : Device
         return _pages[_page_number[page]][addr & _page_mask];
     }
 
+    public override bool Ticks()
+    {
+        return false;
+    }
+
     public override bool Tick(int ticks, long ignored)
     {
         return false;
