@@ -249,30 +249,49 @@ class CGA : Display
         _gf_version++;
     }
 
-    private byte [] GetPixelColor(int line, int color_index)  // TODO
+    private void GetPixelColor(int line, int color_index, byte [] rgb)  // TODO
     {
-        byte [] rgb = new byte[3];
         if (_palette_index[line] == 2 || _palette_index[line] == 3)
         {
             byte brightness = (byte)(_palette_index[line] == 3 ? 255 : 200);
             if (color_index == 1)
+            {
                 rgb[1] = rgb[2] = brightness;  // cyan
+                rgb[0] = 0;
+            }
             else if (color_index == 2)
+            {
                 rgb[0] = rgb[2] = brightness;  // magenta
+                rgb[1] = 0;
+            }
             else if (color_index == 3)
+            {
                 rgb[0] = rgb[1] = rgb[2] = brightness;  // white
+            }
         }
         else
         {
             byte brightness = (byte)(_palette_index[line] == 1 ? 255 : 200);
             if (color_index == 1)  // green
+            {
+                rgb[0] = rgb[2] = 0;
                 rgb[1] = brightness;
+            }
             else if (color_index == 2)  // red
+            {
                 rgb[0] = brightness;
+                rgb[1] = rgb[2] = 0;
+            }
             else if (color_index == 3)  // blue
+            {
+                rgb[0] = rgb[1] = 0;
                 rgb[2] = brightness;
+            }
+            else
+            {
+                rgb[0] = rgb[1] = rgb[2] = 0;
+            }
         }
-        return rgb;
     }
 
     private void RenderTextFrameGraphical()  // TODO: text render for telnet
@@ -343,6 +362,7 @@ class CGA : Display
 
     private void RenderG320FrameGraphical()  // TODO: text render for telnet
     {
+        byte [] rgb = new byte[3];
         for(uint addr=_display_address; addr<Math.Min(_display_address + 16000, 16384); addr++)
         {
             int x = 0;
@@ -373,14 +393,14 @@ class CGA : Display
                 int x_offset = (x + 3 - x_i) * 3 * 2;
                 int offset = y_offset + x_offset;
 
-                byte [] color = GetPixelColor(y, color_index);
-                _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
-                _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = color[1];
-                _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = color[2];
+                GetPixelColor(y, color_index, rgb);
+                _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = rgb[0];
+                _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = rgb[1];
+                _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = rgb[2];
                 offset += 320 * 3 * 2;
-                _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = color[0];
-                _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = color[1];
-                _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = color[2];
+                _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = rgb[0];
+                _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = rgb[1];
+                _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = rgb[2];
             }
         }
     }
