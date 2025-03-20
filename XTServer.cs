@@ -86,7 +86,7 @@ internal class XTServer : Device
                     try
                     {
                         var frame = _d.GetFrame(false);
-                        var bmp = _d.GraphicalFrameToBmp(frame);
+                        var bmp = Tools.GraphicalFrameToBmp(frame);
 
                         using (FileStream stream = new FileStream($"{DateTime.Now.Ticks}.bmp", FileMode.Create, FileAccess.Write))
                         {
