@@ -514,15 +514,14 @@ class VNCServer: GraphicalConsole
 
                 Log.Cnsl("VNC: Starting graphics transmission");
                 int version = 0;
-                var prev_send = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                bool first = true;
                 for(;;)
                 {
-                    var now = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
                     int new_version = parameters.vs.GetFrameVersion();
-                    if (new_version != version || now - prev_send >= 1000)
+                    if (new_version != version || first)
                     {
                         version = new_version;
-                        prev_send = now;
+                        first = false;
 
                         VNCSendFrame(parameters.vs, ref session);
                     }
