@@ -7,6 +7,7 @@ abstract class Display : Device
     private List<EmulatorConsole> _consoles = null;
     protected GraphicalFrame _gf = new();
     protected int _gf_version = 1;
+    private Mutex _vsync_lock = new();
 
     public Display(List<EmulatorConsole> consoles)
     {
@@ -38,8 +39,10 @@ abstract class Display : Device
         return _gf_version;
     }
 
-    public virtual GraphicalFrame GetFrame()
+    public virtual GraphicalFrame GetFrame(bool force)
     {
+        if (force == false)
+            WaitVSync();
         // TODO locking
         GraphicalFrame gf = new();
         gf.width = _gf.width;
@@ -160,6 +163,22 @@ abstract class Display : Device
     public abstract int GetCurrentScanLine();
     public abstract bool IsInHSync();
     public abstract bool IsInVSync();
+
+    public void WaitVSync()
+    {
+        lock(_vsync_lock)
+        {
+            Monitor.Wait(_vsync_lock);
+        }
+    }
+
+    protected void PublishVSync()
+    {
+        lock(_vsync_lock)
+        {
+            Monitor.Pulse(_vsync_lock);
+        }
+    }
 
     public abstract override byte IO_Read(ushort port);
 

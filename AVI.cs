@@ -82,7 +82,7 @@ class AVI
 
     public void PushFrame()
     {
-        byte[] frame = EncodeFrame(_d.GetFrame());
+        byte[] frame = EncodeFrame(_d.GetFrame(false));
         if (frame != null)
         {
             byte[] content_list = GenList(new char[] { 'm', 'o', 'v', 'i' }, frame);

@@ -20,13 +20,13 @@ abstract class GraphicalConsole: EmulatorConsole
         return _d.GetFrameVersion();
     }
 
-    public GraphicalFrame GetFrame()
+    public GraphicalFrame GetFrame(bool force)
     {
-        return _d.GetFrame();
+        return _d.GetFrame(force);
     }
 
     public byte [] GetBmp()
     {
-        return _d.GraphicalFrameToBmp(GetFrame());
+        return _d.GraphicalFrameToBmp(GetFrame(false));
     }
 };

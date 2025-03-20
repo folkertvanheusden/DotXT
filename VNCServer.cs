@@ -199,7 +199,7 @@ class VNCServer: GraphicalConsole
         byte[] shared = new byte[1];
         stream.ReadExactly(shared);
 
-        var example = vnc.GetFrame();
+        var example = vnc.GetFrame(true);
         int width = vnc._compatible ? compatible_width : example.width;
         int height = vnc._compatible ? compatible_height : example.height;
         byte[] reply = new byte[24];
@@ -315,9 +315,9 @@ class VNCServer: GraphicalConsole
         return true;
     }
 
-    private static void VNCSendFrame(VNCServer vs, ref VNCSession session)
+    private static void VNCSendFrame(VNCServer vs, ref VNCSession session, bool first)
     {
-        var frame = vs.GetFrame();
+        var frame = vs.GetFrame(first);
 
         int width = vs._compatible ? compatible_width : frame.width;
         int height = vs._compatible ? compatible_height : frame.height;
@@ -521,9 +521,8 @@ class VNCServer: GraphicalConsole
                     if (new_version != version || first)
                     {
                         version = new_version;
+                        VNCSendFrame(parameters.vs, ref session, first);
                         first = false;
-
-                        VNCSendFrame(parameters.vs, ref session);
                     }
 
                     if (VNCWaitForEvent(parameters.vs, ref session) == false)

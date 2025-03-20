@@ -38,15 +38,6 @@ class MDA : Display
         return "MDA";
     }
 
-    public override int GetCurrentScanLine()
-    {
-        // 14318180 Hz system clock
-        // 18432 Hz mda clock
-        // 50 Hz refresh rate
-        // 200 (?) lines
-        return (int)((_clock / (14318180 / 18432 / 50 / 200)) % 200);
-    }
-
     // taken from CGA thus not correct
     public override bool IsInHSync()
     {
@@ -164,8 +155,26 @@ class MDA : Display
         return _ram[(offset - 0xb0000) & 0x3fff];
     }
 
+    public override int GetCurrentScanLine()
+    {
+        // 304 cpu cycles per scan line  <-- from CGA, TODO
+        // 262 scan lines
+        return (int)((_clock / 304) % 262);
+    }
+
     public override bool Ticks()
     {
-        return false;
+        return true;
+    }
+
+    public override bool Tick(int cycles, long clock)
+    {
+        _clock = clock;
+
+        int line = GetCurrentScanLine();
+        if (line == 200)
+            PublishVSync();
+
+        return base.Tick(cycles, clock);
     }
 }

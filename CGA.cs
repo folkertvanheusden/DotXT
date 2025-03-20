@@ -41,6 +41,7 @@ class CGA : Display
     private bool _color_configuration_changed = false;
     private int _color_update_line_count = 0;
     private int _render_version = 1;
+    private bool _pulse_vsync = false;
     private byte [] _palette_index = new byte[200];
     private List<byte []> palette = new() {
             new byte[] {   0,   0,   0 },
@@ -102,13 +103,6 @@ class CGA : Display
         return (int)((_clock / 304) % 262);
     }
 
-    public int GetVisibileScanline()
-    {
-        if (!IsInVSync())
-            return GetCurrentScanLine() - 16;
-        return -1;
-    }
-
     public override bool IsInHSync()
     {
         int pixel = (int)(_clock % 304);
@@ -116,11 +110,14 @@ class CGA : Display
         return pixel < 16 || pixel > 280;  // TODO
     }
 
+    public bool IsInVSync(int scan_line)
+    {
+        return scan_line < 16 || scan_line >= 216;
+    }
+
     public override bool IsInVSync()
     {
-        int scan_line = GetCurrentScanLine();
-        //Log.DoLog($"Scan line: {scan_line}", LogLevel.TRACE);
-        return scan_line < 16 || scan_line >= 216;
+        return IsInVSync(GetCurrentScanLine());
     }
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
@@ -176,6 +173,8 @@ class CGA : Display
         {
             if (_graphics_mode != value)
             {
+                CGAMode prev_cga_mode = _cga_mode;
+
                 if ((value & 2) == 2)  // graphics 320x200
                 {
                     if ((value & 16) == 16)  // graphics 640x200
@@ -191,12 +190,14 @@ class CGA : Display
                         _cga_mode = CGAMode.Text40;
                 }
                 _graphics_mode = value;
-                Log.DoLog($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
-                Console.WriteLine($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
 
-                Array.Fill<byte>(_gf.rgb_pixels, 0x00);
+                if (_cga_mode != prev_cga_mode)
+                {
+                    Log.DoLog($"CGA mode is now {value:X04} ({_cga_mode}), {_gf.width}x{_gf.height}", LogLevel.DEBUG);
 
-                _cursor_location = -1;
+                    Array.Fill<byte>(_gf.rgb_pixels, 0x00);
+                    _cursor_location = -1;
+                }
             }
         }
         else if (port == 0x3d9)
@@ -454,15 +455,15 @@ class CGA : Display
         }
     }
 
-    public override GraphicalFrame GetFrame()
+    public override GraphicalFrame GetFrame(bool force)
     {
-        if (_render_version != _gf_version)
+        if (_render_version != _gf_version || force)
         {
             Redraw();
             _render_version = _gf_version;
         }
 
-        return base.GetFrame();
+        return base.GetFrame(force);
     }
 
     public override byte ReadByte(uint offset)
@@ -479,19 +480,32 @@ class CGA : Display
     {
         _clock = clock;
 
-        int line = GetVisibileScanline();
+        int line = GetCurrentScanLine();
 
         if (_color_configuration_changed)
         {
             // 200: there's also a 160x100 mode for which this needs to be adjusted
-            if (line >= 0 && line < 200)
+            if (line >= 16 && line < 216)
             {
-                _palette_index[line] = _color_configuration;
+                _palette_index[line - 16] = _color_configuration;
 
                 _color_update_line_count++;
                 if (_color_update_line_count >= 200)
                     _color_configuration_changed = false;
             }
+        }
+
+        if (line >= 216)  // VSync start
+        {
+            if (_pulse_vsync == false)
+            {
+                _pulse_vsync = true;
+                PublishVSync();
+            }
+        }
+        else
+        {
+            _pulse_vsync = false;
         }
 
         return base.Tick(cycles, clock);
