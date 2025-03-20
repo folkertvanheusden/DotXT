@@ -9,13 +9,12 @@
 	1624214178 0070:4017 | TRACE | -I-s--p- AX:0000 BX:0009 CX:0002 DX:0000 SP:7C00 BP:0096 SI:7DF6 DI:002B flags:F286 ES:0070 CS:0070 SS:0000 DS:0000 IP:4019 | ADD [BX+SI],AL | 00 00 |
 	1624214178 0070:4017 | WARNING | Terminating because of 5x 0x00 opcode (004717)
 
-* acid88 (reenigne)
+* VNC: wait for VSYNC, Display-device shall have a WaitVSync() method
+
+* acid88 (reenigne) -> problematic due to microcode emulation requirement
 
 * fs1
   should read several screens of "garbage", fails after first screen
-
-* run Tick from timer:
-  "i have a 14.318MHz timer ticking and every 3 cycles it does cpu.cycle(), and every 12 cycles it does a pit.cycle()" (granite)
 
 * multiple RTSP streams parallel gives bad results
 
@@ -23,6 +22,9 @@
 
 * clean-up disassembler
 * wrong disassembly: MOV word [SI],$D000 | C7 44 02 00 D0 | disp 0002
+
+* run Tick from timer:
+  "i have a 14.318MHz timer ticking and every 3 cycles it does cpu.cycle(), and every 12 cycles it does a pit.cycle()" (granite)
 
 
 https://cp437.github.io/

@@ -82,6 +82,7 @@ internal class Adlib : Device
 
         for(;;)
         {
+            bool any_on = false;
             long start_ts = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
             for(int ear=0; ear<2; ear++)
             {
@@ -90,6 +91,8 @@ internal class Adlib : Device
                     var channel = a.GetChannel(ear, ch_nr);
                     if (channel.updated == false)
                         continue;
+
+                    any_on = true;  // also for silenced channels as it is a modification
 
                     if (channel.on_)
                     {
@@ -110,68 +113,75 @@ internal class Adlib : Device
                 }
             }
 
-            bool [] waveforms_enabled = new bool[] { (a.GetRegister(0, 1) & 32) != 0, (a.GetRegister(1, 1) & 32) != 0 };
-            bool too_loud = false;
-            double min = 10;
-            double max = -10;
-            int buffer_offset = 0;
-            for(int sample=0; sample<count; sample++)
+            if (any_on)
             {
-                for(int ear=0; ear<2; ear++) {
-                    double v = 0.0;
+                bool [] waveforms_enabled = new bool[] { (a.GetRegister(0, 1) & 32) != 0, (a.GetRegister(1, 1) & 32) != 0 };
+                bool too_loud = false;
+                double min = 10;
+                double max = -10;
+                int buffer_offset = 0;
+                for(int sample=0; sample<count; sample++)
+                {
+                    for(int ear=0; ear<2; ear++) {
+                        double v = 0.0;
 
-                    for(int ch_nr=0; ch_nr<9; ch_nr++)
-                    {
-                        if (frequencies[ear,ch_nr] <= 0.0)
-                            continue;
-
-                        double cur_v = Math.Sin(phase[ear,ch_nr]) * volume[ear,ch_nr];
-                        if (waveforms_enabled[ear])
+                        for(int ch_nr=0; ch_nr<9; ch_nr++)
                         {
-                            if (waveform[ear,ch_nr] == 0)
+                            if (frequencies[ear,ch_nr] <= 0.0)
+                                continue;
+
+                            double cur_v = Math.Sin(phase[ear,ch_nr]) * volume[ear,ch_nr];
+                            if (waveforms_enabled[ear])
+                            {
+                                if (waveform[ear,ch_nr] == 0)
+                                    v += cur_v;
+                                else if (waveform[ear,ch_nr] == 1)
+                                {
+                                    if (cur_v >= 0)
+                                        v += cur_v;
+                                }
+                                else if (waveform[ear,ch_nr] == 2)
+                                    v += Math.Abs(cur_v);
+                                else  // 3
+                                {
+                                    if (Math.IEEERemainder(Math.Abs(phase[ear,ch_nr]), phase_add[ear,ch_nr]) <= phase_add[ear,ch_nr] / 4)
+                                        v += cur_v;
+                                }
+                            }
+                            else
+                            {
                                 v += cur_v;
-                            else if (waveform[ear,ch_nr] == 1)
-                            {
-                                if (cur_v >= 0)
-                                    v += cur_v;
                             }
-                            else if (waveform[ear,ch_nr] == 2)
-                                v += Math.Abs(cur_v);
-                            else  // 3
-                            {
-                                if (Math.IEEERemainder(Math.Abs(phase[ear,ch_nr]), phase_add[ear,ch_nr]) <= phase_add[ear,ch_nr] / 4)
-                                    v += cur_v;
-                            }
+
+                            phase[ear,ch_nr] += phase_add[ear,ch_nr];
                         }
-                        else
+
+                        if (v < -1.0)
                         {
-                            v += cur_v;
+                            min = Math.Min(min, v);
+                            v = -1.0;
+                            too_loud = true;
+                        }
+                        else if (v > 1.0)
+                        {
+                            max = Math.Max(max, v);
+                            v = 1.0;
+                            too_loud = true;
                         }
 
-                        phase[ear,ch_nr] += phase_add[ear,ch_nr];
+                        samples[buffer_offset++] = (short)(v * 32767);
                     }
-
-                    if (v < -1.0)
-                    {
-                        min = Math.Min(min, v);
-                        v = -1.0;
-                        too_loud = true;
-                    }
-                    else if (v > 1.0)
-                    {
-                        max = Math.Max(max, v);
-                        v = 1.0;
-                        too_loud = true;
-                    }
-
-                    samples[buffer_offset++] = (short)(v * 32767);
                 }
+
+                if (too_loud)
+                    Log.DoLog($"Adlib: audio is clipping (too loud: {min}...{max})", LogLevel.DEBUG);
+
+                a.PushSamples(samples);
             }
-
-            if (too_loud)
-                Log.DoLog($"Adlib: audio is clipping (too loud: {min}...{max})", LogLevel.DEBUG);
-
-            a.PushSamples(samples);
+            else
+            {
+                a.PushSamples(null);
+            }
 
             long end_ts = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
 
@@ -197,7 +207,8 @@ internal class Adlib : Device
     {
         lock(_samples_lock)
         {
-            _samples = samples;
+            if (samples != null)
+                _samples = samples;
             _samples_version++;
         }
 
