@@ -1,3 +1,5 @@
+* printer emulation -> convert to e.g. a bitmap
+
 * IBM diagnostics
   setfloppy a /home/folkert/t/dos/6139804.IMG
 	1624214064 0000:7CD9 | TRACE | -I--z-p- AX:0000 BX:0009 CX:0002 DX:0000 SP:7C00 BP:0096 SI:7DF6 DI:002B flags:F246 ES:0070 CS:0000 SS:0000 DS:0000 IP:7CDE | JMP 0070:0000 | EA 00 00 70 00 |
