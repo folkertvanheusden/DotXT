@@ -397,7 +397,7 @@ class CGA : Display
                 _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = rgb[0];
                 _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = rgb[1];
                 _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = rgb[2];
-                offset += 320 * 3 * 2;
+                offset += 320 * 3;
                 _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = rgb[0];
                 _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = rgb[1];
                 _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = rgb[2];
@@ -433,7 +433,7 @@ class CGA : Display
                 byte value = (byte)((b & 1) != 0 ? 255 : 0);
                 int offset1 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
                 _gf.rgb_pixels[offset1 + 0] = _gf.rgb_pixels[offset1 + 1] = _gf.rgb_pixels[offset1 + 2] = value;
-                int offset2 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
+                int offset2 = ((y + 1) * 640 * 2 + x + 7 - x_i) * 3;
                 _gf.rgb_pixels[offset2 + 0] = _gf.rgb_pixels[offset2 + 1] = _gf.rgb_pixels[offset2 + 2] = value;
                 b >>= 1;
             }
