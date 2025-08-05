@@ -22,6 +22,7 @@ List<Rom> roms = new();
 
 string key_mda = "mda";
 string key_cga = "cga";
+string key_hercules = "hercules";
 
 List<string> ide = new();
 Dictionary<string, List<Tuple<string, int> > > consoles = new();
@@ -64,7 +65,7 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("-S        try to run at real speed");
         Log.Cnsl("-O        enable option. currently: adlib, midi, rtc, lotechems");
         Log.Cnsl("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
-        Log.Cnsl($"-p device,type,port   display output. type must be \"telnet\", \"http\" or \"vnc\". device can be \"{key_cga}\" or \"{key_mda}\".");
+        Log.Cnsl($"-p device,type,port   display output. type must be \"telnet\", \"http\" or \"vnc\". device can be \"{key_cga}\", \"{key_mda}\" or \"{key_hercules}\".");
         Log.Cnsl("-P avi,quality    avi file to render display to, quality is 0...100");
         System.Environment.Exit(0);
     }
@@ -162,7 +163,7 @@ for(int i=0; i<args.Length; i++)
     else if (args[i] == "-p")
     {
         string[] parts = args[++i].Split(',');
-        if (parts[0] != key_cga && parts[0] != key_mda)
+        if (parts[0] != key_cga && parts[0] != key_mda && parts[0] != key_hercules)
         {
             Log.Cnsl($"{parts[0]} is not understood");
             System.Environment.Exit(1);
@@ -268,6 +269,8 @@ if (mode != TMode.Empty && run_IO == true)
             display = new MDA(console_instances);
         else if (current_console.Key == key_cga)
             display = new CGA(console_instances);
+        else if (current_console.Key == key_hercules)
+            display = new Hercules(console_instances);
         devices.Add(display);
         displays.Add(display);
     }

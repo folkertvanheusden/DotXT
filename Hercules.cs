@@ -1,63 +1,36 @@
-class MDA : Display
+class Hercules : MDA
 {
-    protected byte [] _ram = null;
-    protected bool _hsync = false;
-    protected Fonts fonts = new();
-    protected FontDescriptor font_descr;
-    protected M6845 _m6845 = new();
-    protected byte _m6845_reg;
-    protected uint _display_address = 0;
-    protected List<byte []> palette = new() {
-            new byte[] {   0,   0,   0 },
-            new byte[] {   0,   0, 127 },
-            new byte[] {   0, 127,   0 },
-            new byte[] {   0, 127, 127 },
-            new byte[] { 127,   0,   0 },
-            new byte[] { 127,   0, 127 },
-            new byte[] { 127, 127,   0 },
-            new byte[] { 127, 127, 127 },
-            new byte[] { 127, 127, 127 },
-            new byte[] {   0,   0, 255 },
-            new byte[] {   0, 255,   0 },
-            new byte[] {   0, 255, 255 },
-            new byte[] { 255,   0,   0 },
-            new byte[] { 255,   0, 255 },
-            new byte[] { 255, 255,   0 },
-            new byte[] { 255, 255, 255 }
-    };
+    private bool _graphics_mode = false;
 
-    public MDA(List<EmulatorConsole> consoles) : base(consoles)
+    public Hercules(List<EmulatorConsole> consoles) : base(consoles)
     {
-        _ram = new byte[16384];
-        font_descr = fonts.get_font(FontName.VGA);
+        _ram = new byte[65536];
         _gf.rgb_pixels = null;
-        _gf.width = 640;
-        _gf.height = font_descr.height * 25;
+        _gf.width = 720;
+        _gf.height = 350;
         _gf.rgb_pixels = new byte[_gf.width * _gf.height * 3];
     }
 
     public override String GetName()
     {
-        return "MDA";
+        return "Hercules";
     }
 
-    // taken from CGA thus not correct
     public override bool IsInHSync()
     {
         int pixel = (int)(_clock % 304);
-        return pixel < 2 || pixel > 302;  // TODO
+        return pixel < 2 || pixel > 302;  // FIXME
     }
 
-    // taken from CGA thus not correct
     public override bool IsInVSync()
     {
         int scan_line = GetCurrentScanLine();
-        return scan_line < 16 || scan_line >= 216;
+        return scan_line < 16 || scan_line >= 216;  // FIXME
     }
 
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
-        Log.DoLog("MDA::RegisterDevice", LogLevel.DEBUG);
+        Log.DoLog("Hercules::RegisterDevice", LogLevel.DEBUG);
 
         for(ushort port=0x3b0; port<0x3c0; port++)
             mappings[port] = this;
@@ -65,40 +38,21 @@ class MDA : Display
 
     public override List<Tuple<uint, int> > GetAddressList()
     {
-        return new() { new(0xb0000, 0x8000) };
+        return new() { new(0xb0000, 0x10000) };
     }
 
     public override bool IO_Write(ushort port, byte value)
     {
-        if (port == 0x3b4)
-            _m6845_reg = value;
-        else if (port == 0x3b5)
-        {
-            _m6845.Write(_m6845_reg, value);
+        Log.DoLog($"Hercules::IO_Write {port:X4} {value:X4}", LogLevel.TRACE);
 
-            if (_m6845_reg == 12 || _m6845_reg == 13)
-            {
-                _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
-                Log.DoLog($"Set base address to {_display_address:X04}", LogLevel.DEBUG);
-            }
-        }
+        _graphics_mode = port == 0x3bf && (value & 1) == 1;
 
-        return false;
+        return base.IO_Write(port, value);
     }
 
     public override byte IO_Read(ushort port)
     {
-        byte rc = 0;
-
-        if (port == 0x03ba)
-        {
-            rc = (byte)(_hsync ? 9 : 0);
-            _hsync = !_hsync;
-        }
-
-        Log.DoLog($"MDA::IO_Read {port:X4}: {rc:X2}", LogLevel.TRACE);
-
-        return rc;
+        return base.IO_Read(port);
     }
 
     public override void WriteByte(uint offset, byte value)
@@ -110,8 +64,32 @@ class MDA : Display
 
     public void DrawOnConsole(uint offset)
     {
-        if (offset < 80 * 25 * 2)
+        if (_graphics_mode)
         {
+            offset -= _display_address;
+            uint bank = offset / 0x2000;
+            uint byte_in_bank = offset % 0x2000;
+            uint y_in_bank = byte_in_bank / 90;
+            uint y = y_in_bank * 4 + bank;
+            uint x_byte = byte_in_bank % 90;
+            uint x = x_byte * 8;
+
+            if (y < 348 && x < 720) {
+                uint pixel_offset = y * 720;
+                for(int x_use=0; x_use<8; x++)
+                {
+                    byte color = (byte)((_ram[offset] & (1 << x_use)) != 0 ? 255 : 0);
+                    _gf.rgb_pixels[pixel_offset + (x_use + x) * 3 + 0] = color;
+                    _gf.rgb_pixels[pixel_offset + (x_use + x) * 3 + 1] = color;
+                    _gf.rgb_pixels[pixel_offset + (x_use + x) * 3 + 2] = color;
+                }
+            }
+        }
+        else
+        {
+            offset -= _display_address;
+            if (offset >= 80 * 25 * 2)
+                return;
             uint y = offset / (80 * 2);
             uint x = (offset % (80 * 2)) / 2;
 
@@ -158,15 +136,21 @@ class MDA : Display
 
     public void Redraw()
     {
-        for(uint i=0; i<80 * 25 * 2; i += 2)
+        if (_graphics_mode)
         {
-            DrawOnConsole(i);
+            for(uint i=0; i<90 * 348; i++)
+                DrawOnConsole(i);
+        }
+        else
+        {
+            for(uint i=0; i<80 * 25 * 2; i += 2)
+                DrawOnConsole(i);
         }
     }
 
     public override byte ReadByte(uint offset)
     {
-        return _ram[(offset - 0xb0000) & 0x3fff];
+        return _ram[(offset - 0xb0000) & 0xffff];
     }
 
     public override int GetCurrentScanLine()

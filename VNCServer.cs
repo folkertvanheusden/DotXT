@@ -27,7 +27,7 @@ class VNCServer: GraphicalConsole
     private Keyboard _kb = null;
     private int _listen_port = 5900;
     private bool _compatible = false;
-    private static int compatible_width = 640;
+    private static int compatible_width = 720;
     private static int compatible_height = 400;
     private Adlib _adlib = null;
 
