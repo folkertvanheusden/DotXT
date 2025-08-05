@@ -195,6 +195,8 @@ class Bus
 
     public (byte, int) ReadByte(uint address)
     {
+        address &= 0x000fffff;
+
         foreach(var entry in _cache)
         {
             if (address >= entry.start_addr && address < entry.end_addr)
@@ -208,6 +210,8 @@ class Bus
 
     public int WriteByte(uint address, byte v)
     {
+        address &= 0x000fffff;
+
         foreach(var entry in _cache)
         {
             if (address >= entry.start_addr && address < entry.end_addr)
