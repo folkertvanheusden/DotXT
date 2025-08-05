@@ -489,7 +489,10 @@ internal class P8086
         if (!word)
             v &= 0xff;
 
-        int put_cycles = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, v);
+        int put_cycles = 0;
+
+        if (!(mod == 3 && reg == 4 && word == true))
+            put_cycles = UpdateRegisterMem(reg, mod, a_valid, seg, addr, word, v);
 
         return cycle_count + put_cycles;
     }
