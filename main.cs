@@ -234,6 +234,7 @@ Log.Cnsl("Debug build");
 #endif
 
 List<Device> devices = new();
+List<Display> displays = new();
 
 if (mode != TMode.Empty && run_IO == true)
 {
@@ -268,6 +269,7 @@ if (mode != TMode.Empty && run_IO == true)
         else if (current_console.Key == key_cga)
             display = new CGA(console_instances);
         devices.Add(display);
+        displays.Add(display);
     }
 
     devices.Add(new i8253());
@@ -470,6 +472,7 @@ else
                 Log.Cnsl("stats x        \"cpu-speed\", \"timers\", \"cga\", \"bus\" or \"pic\"");
                 Log.Cnsl("setll x        set loglevel (trace, debug, ...)");
                 Log.Cnsl("trunclf        truncate logfile");
+                Log.Cnsl("ppsl x         set palette-per-scanline (false, true)");
             }
             else if (parts[0] == "s" || parts[0] == "step" || parts[0] == "S")
             {
@@ -537,6 +540,16 @@ else
                     Log.Cnsl("Parameter missing");
                 else
                     Log.SetLogLevel(Log.StringToLogLevel(parts[1]));
+            }
+            else if (parts[0] == "ppsl")
+            {
+                if (parts.Length != 2)
+                    Log.Cnsl("Parameter missing");
+                else
+                {
+                    foreach(var display in displays)
+                        display.RegisterPalettePerScanline(parts[1].ToLower() == "true");
+                }
             }
             else if (parts[0] == "stats")
             {

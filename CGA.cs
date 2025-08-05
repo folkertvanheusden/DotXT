@@ -393,7 +393,7 @@ class CGA : Display
                 int x_offset = (x + 3 - x_i) * 3 * 2;
                 int offset = y_offset + x_offset;
 
-                GetPixelColor(y, color_index, rgb);
+                GetPixelColor(_palette_per_scanline ? y : 0, color_index, rgb);
                 _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = rgb[0];
                 _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = rgb[1];
                 _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = rgb[2];
@@ -508,6 +508,8 @@ class CGA : Display
             if (line >= 16 && line < 216)
             {
                 _palette_index[line - 16] = _color_configuration;
+                if (_palette_per_scanline == false)
+                    _palette_index[0] = _color_configuration;
 
                 _color_update_line_count++;
                 if (_color_update_line_count >= 200)

@@ -8,6 +8,7 @@ abstract class Display : Device
     protected GraphicalFrame _gf = new();
     protected int _gf_version = 1;
     private Mutex _vsync_lock = new();
+    protected bool _palette_per_scanline = false;
 
     public Display(List<EmulatorConsole> consoles)
     {
@@ -37,6 +38,11 @@ abstract class Display : Device
     public int GetFrameVersion()
     {
         return _gf_version;
+    }
+
+    public void RegisterPalettePerScanline(bool state)
+    {
+        _palette_per_scanline = state;
     }
 
     public virtual GraphicalFrame GetFrame(bool force)
