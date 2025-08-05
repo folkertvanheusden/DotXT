@@ -57,7 +57,7 @@ class Hercules : MDA
 
     public override void WriteByte(uint offset, byte value)
     {
-        uint use_offset = (offset - 0xb0000) & 0x3fff;
+        uint use_offset = (offset - 0xb0000) & 0xffff;
         _ram[use_offset] = value;
         DrawOnConsole(use_offset);
     }
