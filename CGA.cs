@@ -382,7 +382,7 @@ class CGA : Display
             }
 
             if (y >= 200)
-                break;
+                continue;
 
             byte b = _ram[addr];
 
@@ -425,15 +425,15 @@ class CGA : Display
             }
 
             if (y >= 200)
-                break;
+                continue;
 
             byte b = _ram[addr];
             for(int x_i = 0; x_i < 8; x_i++)
             {
                 byte value = (byte)((b & 1) != 0 ? 255 : 0);
-                int offset1 = ((y + 0) * 640 * 2 + x + 7 - x_i) * 3;
+                int offset1 = (y * 640 * 2 + x + 7 - x_i) * 3;
                 _gf.rgb_pixels[offset1 + 0] = _gf.rgb_pixels[offset1 + 1] = _gf.rgb_pixels[offset1 + 2] = value;
-                int offset2 = ((y + 1) * 640 * 2 + x + 7 - x_i) * 3;
+                int offset2 = offset1 + 640 * 3;
                 _gf.rgb_pixels[offset2 + 0] = _gf.rgb_pixels[offset2 + 1] = _gf.rgb_pixels[offset2 + 2] = value;
                 b >>= 1;
             }

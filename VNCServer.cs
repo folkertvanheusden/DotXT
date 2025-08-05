@@ -134,6 +134,7 @@ class VNCServer: GraphicalConsole
                 { 0x79, new byte[] { 0x15 } },
                 { 0x7a, new byte[] { 0x2c } },  // z
                 { 0x20, new byte[] { 0x39 } },  // space
+                { 0x22, new byte[] { 0x28 } },  // "
                 { 0x2c, new byte[] { 0x33 } },  // ,
                 { 0x2e, new byte[] { 0x34 } },  // .
                 { 0x25, new byte[] { 0x06 } },  // %
