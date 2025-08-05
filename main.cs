@@ -470,6 +470,7 @@ else
                 Log.Cnsl("dbp x          delete breakpoint");
                 Log.Cnsl("cbp            remove all breakpoints");
                 Log.Cnsl("stats x        \"cpu-speed\", \"timers\", \"cga\", \"bus\" or \"pic\"");
+                Log.Cnsl("setlf x        set logfile to file x");
                 Log.Cnsl("setll x        set loglevel (trace, debug, ...)");
                 Log.Cnsl("trunclf        truncate logfile");
                 Log.Cnsl("ppsl x         set palette-per-scanline (false, true)");
@@ -533,6 +534,13 @@ else
             else if (parts[0] == "trunclf")
             {
                 Log.TruncateLogfile();
+            }
+            else if (parts[0] == "setlf")
+            {
+                if (parts.Length != 2)
+                    Log.Cnsl("Parameter missing");
+                else
+                    Log.SetLogFile(parts[1]);
             }
             else if (parts[0] == "setll")
             {
