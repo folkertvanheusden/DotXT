@@ -32,8 +32,9 @@ class Hercules : MDA
     {
         Log.DoLog("Hercules::RegisterDevice", LogLevel.DEBUG);
 
-        for(ushort port=0x3b0; port<0x3c0; port++)
+        for(ushort port=0x3b0; port<0x3bc; port++)
             mappings[port] = this;
+        mappings[0x3bf] = this;
     }
 
     public override List<Tuple<uint, int> > GetAddressList()
@@ -43,7 +44,7 @@ class Hercules : MDA
 
     public override bool IO_Write(ushort port, byte value)
     {
-        Log.DoLog($"Hercules::IO_Write {port:X4} {value:X4}", LogLevel.TRACE);
+        Log.DoLog($"Hercules::IO_Write {port:X4} {value:X4}", LogLevel.DEBUG);
 
         _graphics_mode = port == 0x3bf && (value & 1) == 1;
 
@@ -52,6 +53,8 @@ class Hercules : MDA
 
     public override byte IO_Read(ushort port)
     {
+        Log.DoLog($"Hercules::IO_Read {port:X4}", LogLevel.DEBUG);
+
         return base.IO_Read(port);
     }
 

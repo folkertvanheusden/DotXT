@@ -243,6 +243,8 @@ if (mode != TMode.Empty && run_IO == true)
     devices.Add(kb);  // still needed because of clock ticks
     devices.Add(new PPI(kb, system_type, floppies.Count()));
 
+    devices.Add(new LPT());
+
     Adlib adlib = null;
     if (use_adlib)
     {
