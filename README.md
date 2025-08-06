@@ -74,6 +74,8 @@ screenshots
 
 ![ruud's diagnostics](images/ruudsdiagnostics.png)
 
+![pcpaint in hercules mode](images/pcpaint_hercules.png)
+
 
 This software is © Folkert van Heusden.
 

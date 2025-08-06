@@ -47,7 +47,8 @@ class Hercules : MDA
     {
         Log.DoLog($"Hercules::IO_Write {port:X4} {value:X4}", LogLevel.DEBUG);
 
-        _graphics_mode = port == 0x3bf && (value & 1) == 1;
+        if (port == 0x3bf)
+            _graphics_mode = (value & 1) == 1;
 
         return base.IO_Write(port, value);
     }
@@ -93,10 +94,10 @@ class Hercules : MDA
             uint x = x_byte * 8;
 
             if (y < 348 && x < 720) {
-                uint pixel_offset = y * 720;
-                for(int x_use=0; x_use<8; x++)
+                uint pixel_offset = y * 720 * 3;
+                for(int x_use=0; x_use<8; x_use++)
                 {
-                    byte color = (byte)((_ram[offset] & (1 << x_use)) != 0 ? 255 : 0);
+                    byte color = (byte)((_ram[offset] & (1 << (7 - x_use))) != 0 ? 255 : 0);
                     _gf.rgb_pixels[pixel_offset + (x_use + x) * 3 + 0] = color;
                     _gf.rgb_pixels[pixel_offset + (x_use + x) * 3 + 1] = color;
                     _gf.rgb_pixels[pixel_offset + (x_use + x) * 3 + 2] = color;
