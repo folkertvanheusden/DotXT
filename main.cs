@@ -684,6 +684,10 @@ else
                         Log.Cnsl("Failed: invalid unit number or file does not exist");
                 }
             }
+            else if (parts[0] == "ltext")
+            {
+                Log.Cnsl(line);
+            }
             else if (parts[0] == "set")
             {
                 CmdSet(parts, p, b);

@@ -51,6 +51,11 @@ See https://vanheusden.com/emulation/ibmpc/demo.zip contains all the bios-files 
 And https://www.youtube.com/watch?v=9jfngoD6r70 and https://www.youtube.com/watch?v=9jfngoD6r70
 
 
+screenshots
+===========
+
+![Running microsoft windows 3.0](images/win3.0.png)
+
 
 This software is © Folkert van Heusden.
 
