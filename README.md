@@ -56,6 +56,20 @@ screenshots
 
 ![Running microsoft windows 3.0](images/win3.0.png)
 
+![hwinfo16](images/hwinfo16-1.png)
+
+![topbench](images/topbench.png)
+
+![checkit3](images/checkit3.png)
+
+![checkit3 benchmark](images/checkit3-bench.png)
+
+![hwinfo16](images/hwinfo16-1.png)
+
+![norton utilities](images/norton_utilities.png)
+
+![topbench](images/topbench.png)
+
 
 This software is © Folkert van Heusden.
 
