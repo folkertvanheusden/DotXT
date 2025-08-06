@@ -1,6 +1,7 @@
 class Hercules : MDA
 {
     private bool _graphics_mode = false;
+    private int _read_3ba_count = 0;
 
     public Hercules(List<EmulatorConsole> consoles) : base(consoles)
     {
@@ -55,7 +56,20 @@ class Hercules : MDA
     {
         Log.DoLog($"Hercules::IO_Read {port:X4}", LogLevel.DEBUG);
 
-        return base.IO_Read(port);
+        byte rc = base.IO_Read(port);
+
+        if (port == 0x03ba)
+        {
+            rc &= 0x0f;
+
+            if (++_read_3ba_count >= 31000)
+            {
+                _read_3ba_count = 0;
+                rc |= 0x80;
+            }
+        }
+
+        return rc;
     }
 
     public override void WriteByte(uint offset, byte value)

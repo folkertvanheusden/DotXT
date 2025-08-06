@@ -74,7 +74,8 @@ class MDA : Display
             _m6845_reg = value;
         else if (port == 0x3b5)
         {
-            _m6845.Write(_m6845_reg, value);
+            if (_m6845_reg != 15)
+                _m6845.Write(_m6845_reg, value);
 
             if (_m6845_reg == 12 || _m6845_reg == 13)
             {
@@ -92,8 +93,16 @@ class MDA : Display
 
         if (port == 0x03ba)
         {
-            rc = (byte)(_hsync ? 9 : 0);
+            rc &= 9 ^ 0xff;
+            rc |= (byte)(_hsync ? 9 : 0);
             _hsync = !_hsync;
+        }
+        else if (port == 0x03b5)
+        {
+            if (_m6845_reg == 15)
+                rc = 0x5a;
+            else
+                rc = _m6845.Read(_m6845_reg);
         }
 
         Log.DoLog($"MDA::IO_Read {port:X4}: {rc:X2}", LogLevel.TRACE);

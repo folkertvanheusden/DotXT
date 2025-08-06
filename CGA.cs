@@ -15,12 +15,19 @@ class M6845
         Log.DoLog($"M6845 set register {reg} to {value:X02}", LogLevel.DEBUG);
         if (reg < 18)
             _registers[reg] = value;
+        else
+            Log.DoLog($"M6845 ignore write to register {reg}", LogLevel.DEBUG);
     }
 
     public byte Read(int reg)
     {
         if (reg < 18)
+        {
+            Log.DoLog($"M6845 read {_registers[reg]:X02} from register {reg}", LogLevel.DEBUG);
            return _registers[reg];
+        }
+
+        Log.DoLog($"M6845 ignore read from register {reg}", LogLevel.DEBUG);
 
         return 0xee;
     }
