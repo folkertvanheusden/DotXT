@@ -72,6 +72,8 @@ screenshots
 
 ![gwbasic](images/gwbasic.png)
 
+![ruud's diagnostics](images/ruudsdiagnostics.png)
+
 
 This software is © Folkert van Heusden.
 
