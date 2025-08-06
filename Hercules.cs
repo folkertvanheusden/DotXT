@@ -60,9 +60,10 @@ class Hercules : MDA
         uint use_offset = (offset - 0xb0000) & 0xffff;
         _ram[use_offset] = value;
         DrawOnConsole(use_offset);
+        _gf_version++;
     }
 
-    public void DrawOnConsole(uint offset)
+    public override void DrawOnConsole(uint offset)
     {
         if (_graphics_mode)
         {
@@ -134,7 +135,7 @@ class Hercules : MDA
         }
     }
 
-    public void Redraw()
+    public override void Redraw()
     {
         if (_graphics_mode)
         {

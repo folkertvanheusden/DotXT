@@ -106,9 +106,10 @@ class MDA : Display
         uint use_offset = (offset - 0xb0000) & 0x3fff;
         _ram[use_offset] = value;
         DrawOnConsole(use_offset);
+        _gf_version++;
     }
 
-    public void DrawOnConsole(uint offset)
+    public virtual void DrawOnConsole(uint offset)
     {
         if (offset < 80 * 25 * 2)
         {
@@ -156,7 +157,7 @@ class MDA : Display
         }
     }
 
-    public void Redraw()
+    public virtual void Redraw()
     {
         for(uint i=0; i<80 * 25 * 2; i += 2)
         {
