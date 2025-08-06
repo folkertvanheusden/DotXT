@@ -1,5 +1,3 @@
-using Commons.Music.Midi;
-
 internal class LotechEMS : Device
 {
     private int _irq_nr = -1;
