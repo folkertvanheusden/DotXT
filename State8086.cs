@@ -274,16 +274,10 @@ class State8086
 
     public void SetFlagP(byte v)
     {
-        int count = 0;
-
-        while (v != 0)
-        {
-            count++;
-
-            v &= (byte)(v - 1);
-        }
-
-        SetFlag(2, (count & 1) == 0);
+        byte y = (byte)(v ^ (v >> 1));
+        y = (byte)(y ^ (y >> 2));
+        y = (byte)(y ^ (y >> 4));
+        SetFlag(2, (y & 1) == 0);
     }
 
     public bool GetFlagP()
