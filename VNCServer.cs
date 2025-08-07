@@ -30,6 +30,7 @@ class VNCServer: GraphicalConsole
     private static int compatible_width = 720;
     private static int compatible_height = 400;
     private Adlib _adlib = null;
+    private List<SerialMouse> _mouses = new();
 
     public VNCServer(Keyboard kb, int port, bool compatible, Adlib adlib)
     {
@@ -46,6 +47,11 @@ class VNCServer: GraphicalConsole
         _thread = new Thread(VNCServer.VNCThread);
         _thread.Name = "vnc-server-thread";
         _thread.Start(parameters);
+    }
+
+    public void RegisterMouse(SerialMouse sm)
+    {
+        _mouses.Add(sm);
     }
 
     public void PushChar(uint c, bool press)
@@ -196,6 +202,13 @@ class VNCServer: GraphicalConsole
         stream.Write(reply, 0, reply.Length);
     }
 
+    public void TriggerMouses(int x, int y, int buttons)
+    {
+        // Console.WriteLine($"{x},{y} {buttons} {_mouses.Count}");
+        foreach(var mouse in _mouses)
+            mouse.SetPosition(x, y, buttons);
+    }
+
     private static void VNCClientServerInit(NetworkStream stream, VNCServer vnc)
     {
         byte[] shared = new byte[1];
@@ -299,7 +312,10 @@ class VNCServer: GraphicalConsole
         {
             byte[] buffer = new byte[5];
             session.stream.ReadExactly(buffer);
-            // TODO
+            int mouse_buttons = buffer[0];
+            int mouse_x = (buffer[1] << 8) | buffer[2];
+            int mouse_y = (buffer[3] << 8) | buffer[4];
+            vnc.TriggerMouses(mouse_x, mouse_y, mouse_buttons);
         }
         else if (type[0] == 6)  // ClientCutText
         {
