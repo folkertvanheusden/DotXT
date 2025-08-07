@@ -1137,6 +1137,7 @@ internal class P8086
 
                 if (r1 == 0 || dx_ax / r1 >= 0x10000)
                 {
+                    Log.DoLog("DIV error", LogLevel.DEBUG);
                     _state.SetZSPFlags(_state.ah);
                     _state.SetFlagA(false);
                     InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
@@ -1152,6 +1153,7 @@ internal class P8086
 
                 if (r1 == 0 || ax / r1 >= 0x100)
                 {
+                    Log.DoLog("DIV error", LogLevel.DEBUG);
                     _state.SetZSPFlags(_state.ah);
                     _state.SetFlagA(false);
                     InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
@@ -1178,6 +1180,7 @@ internal class P8086
 
                 if (r1s == 0 || dx_ax / r1s > 0x7fffffff || dx_ax / r1s < -0x80000000)
                 {
+                    Log.DoLog("IDIV error", LogLevel.DEBUG);
                     _state.SetZSPFlags(_state.ah);
                     _state.SetFlagA(false);
                     InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
@@ -1197,6 +1200,7 @@ internal class P8086
 
                 if (r1s == 0 || ax / r1s > 0x7fff || ax / r1s < -0x8000)
                 {
+                    Log.DoLog("IDIV error", LogLevel.DEBUG);
                     _state.SetZSPFlags(_state.ah);
                     _state.SetFlagA(false);
                     InvokeInterrupt(_state.ip, 0x00, false);  // divide by zero or divisor too small
