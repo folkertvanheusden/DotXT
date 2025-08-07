@@ -7,6 +7,7 @@ class MDA : Display
     protected M6845 _m6845 = new();
     protected byte _m6845_reg;
     protected uint _display_address = 0;
+    protected bool _is_hercules = false;
     protected List<byte []> palette = new() {
             new byte[] {   0,   0,   0 },
             new byte[] {   0,   0, 127 },
@@ -26,10 +27,11 @@ class MDA : Display
             new byte[] { 255, 255, 255 }
     };
 
-    public MDA(List<EmulatorConsole> consoles) : base(consoles)
+    public MDA(List<EmulatorConsole> consoles, bool is_hercules) : base(consoles)
     {
         _ram = new byte[16384];
         font_descr = fonts.get_font(FontName.VGA);
+        _is_hercules = is_hercules;
         _gf.rgb_pixels = null;
         _gf.width = 640;
         _gf.height = font_descr.height * 25;
@@ -99,7 +101,7 @@ class MDA : Display
         }
         else if (port == 0x03b5)
         {
-            if (_m6845_reg == 15)
+            if (_m6845_reg == 15 && _is_hercules)
                 rc = 0x5a;
             else
                 rc = _m6845.Read(_m6845_reg);

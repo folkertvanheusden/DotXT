@@ -8,13 +8,18 @@ internal class PPI : Device
     private byte _SW1 = 0;
     private byte _SW2 = 0;
 
-    public PPI(Keyboard kb, SystemType system_type, int n_floppies)
+    public PPI(Keyboard kb, SystemType system_type, int n_floppies, bool mda_hercules)
     {
         _kb = kb;
         _system_type = system_type;
 
         if (_system_type == SystemType.XT)
-            _SW1 = 0b01000011;  // 2 floppy-drives, MDA, 256kB, IPL bit
+        {
+            if (mda_hercules)
+                _SW1 = 0b01000011;  // 2 floppy-drives, MDA, 256kB, IPL bit
+            else
+                _SW1 = 0b00010000;  // 2 floppy-drives, CGA80, 256kB, IPL bit
+        }
         else
         {
             _SW1 = (0 << 4) /*(MDA)*/ | (3 << 2 /* memory banks*/);

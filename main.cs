@@ -241,7 +241,6 @@ if (mode != TMode.Empty && run_IO == true)
 {
     Keyboard kb = new();
     devices.Add(kb);  // still needed because of clock ticks
-    devices.Add(new PPI(kb, system_type, floppies.Count()));
 
     devices.Add(new LPT());
 
@@ -254,6 +253,7 @@ if (mode != TMode.Empty && run_IO == true)
     }
 
     Display display = null;
+    bool mda_hercules = false;
     foreach(KeyValuePair<string, List<Tuple<string, int> > > current_console in consoles)
     {
         List<EmulatorConsole> console_instances = new();
@@ -268,14 +268,23 @@ if (mode != TMode.Empty && run_IO == true)
         }
 
         if (current_console.Key == key_mda)
-            display = new MDA(console_instances);
+        {
+            mda_hercules = true;
+            display = new MDA(console_instances, false);
+        }
         else if (current_console.Key == key_cga)
             display = new CGA(console_instances);
         else if (current_console.Key == key_hercules)
+        {
+            mda_hercules = true;
             display = new Hercules(console_instances);
+        }
+
         devices.Add(display);
         displays.Add(display);
     }
+
+    devices.Add(new PPI(kb, system_type, floppies.Count(), mda_hercules));
 
     devices.Add(new i8253());
 

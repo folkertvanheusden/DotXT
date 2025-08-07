@@ -3,7 +3,7 @@ class Hercules : MDA
     private bool _graphics_mode = false;
     private int _read_3ba_count = 0;
 
-    public Hercules(List<EmulatorConsole> consoles) : base(consoles)
+    public Hercules(List<EmulatorConsole> consoles) : base(consoles, true)
     {
         _ram = new byte[65536];
         _gf.rgb_pixels = null;
