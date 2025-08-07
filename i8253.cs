@@ -2,7 +2,7 @@
 
 internal struct Timer
 {
-    public ushort counter_cur { get; set; }
+    public int    counter_cur { get; set; }
     public ushort counter_prv { get; set; }
     public ushort counter_ini { get; set; }
     public int    mode        { get; set; }
@@ -164,7 +164,7 @@ internal class i8253 : Device
     {
         ushort current_prv = _timers[nr].counter_prv;
 
-        _timers[nr].counter_prv = _timers[nr].counter_cur;
+        _timers[nr].counter_prv = (ushort)_timers[nr].counter_cur;
 
         if (Math.Abs(_timers[nr].counter_cur - current_prv) >= 2)
             return (byte)(_random.Next(2) == 1 ? _timers[nr].counter_cur ^ 1 : _timers[nr].counter_cur);
@@ -236,38 +236,44 @@ internal class i8253 : Device
     public override bool Tick(int ticks, long ignored)
     {
         clock += ticks;
+        if (clock < 4)
+            return false;
 
         bool interrupt = false;
+        int n_to_subtract = (int)(clock / 4);
 
-        while (clock >= 4)
+        for(int i=0; i<3; i++)
         {
-            for(int i=0; i<3; i++)
+            if (_timers[i].is_running == false)
+                continue;
+
+            _timers[i].counter_cur -= n_to_subtract;
+            int n_interrupts = _timers[i].counter_cur < 0 ? -_timers[i].counter_cur / 0x10000 : 0;
+
+            if (n_interrupts > 0)
             {
-                if (_timers[i].is_running == false)
-                    continue;
-
-                _timers[i].counter_cur--;
-
-                if (_timers[i].counter_cur == 0)
+                // timer 1 is RAM refresh counter
+                if (i == 1)
                 {
-                    // timer 1 is RAM refresh counter
-                    if (i == 1)
+                    for(int k=0; k<n_interrupts; k++)
                         _i8237.TickChannel0();
+                }
 
-                    if (_timers[i].mode != 1)
-                        _timers[i].counter_cur = _timers[i].counter_ini;
+                if (_timers[i].mode != 1)
+                    _timers[i].counter_cur = _timers[i].counter_ini - (-_timers[i].counter_cur % (_timers[i].counter_ini == 0 ? 0x10000 : _timers[i].counter_ini));
+                else
+                    _timers[i].counter_cur &= 0xffff;
 
-                    if (i == 0)
-                    {
-                        _timers[i].is_pending = true;
-                        interrupt = true;
-                        Log.DoLog($"i8253: interrupt for timer {i} fires ({_timers[i].counter_ini})", LogLevel.TRACE);
-                    }
-                }   
-            }
-
-            clock -= 4;
+                if (i == 0)
+                {
+                    _timers[i].is_pending = true;
+                    interrupt = true;
+                    Log.DoLog($"i8253: interrupt for timer {i} fires ({_timers[i].counter_ini})", LogLevel.TRACE);
+                }
+            }   
         }
+
+        clock -= n_to_subtract * 4;
 
         if (interrupt)
             _pic.RequestInterruptPIC(_irq_nr);  // Timers are on IRQ0
