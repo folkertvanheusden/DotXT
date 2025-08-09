@@ -6,17 +6,17 @@ class SerialMouse : Device
     private int _last_x = -1;
     private int _last_y = -1;
     private List<byte> _mouse_msgs = null;
-    private int _mouse_msgs_idx = -1;
     private string [] _io_names = new string[] { "RHR/THR", "IER", "ISR/FCR", "LCR", "MCR", "LSR", "MSR", "SPR" };
     private bool _reset_on = false;
     private bool _reset_on_bit_toggle = false;
     private long _reset_since = 0;
+    private bool prts = false;
 
     public SerialMouse(ushort base_port, int irq)
     {
-        Log.Cnsl("SerialMouse instantiated");
         _base_port = base_port;
         _irq_nr = irq;
+        Log.Cnsl($"SerialMouse instantiated on port {_base_port:X04} with IRQ {_irq_nr}");
     }
 
     public override int GetIRQNumber()
@@ -38,10 +38,7 @@ class SerialMouse : Device
     public void SetPosition(int x, int y, int buttons)
     {
         if (_mouse_msgs == null)
-        {
             _mouse_msgs = new();
-            _mouse_msgs_idx = 0;
-        }
 
         int delta_x = 0;
         int delta_y = 0;
@@ -58,14 +55,21 @@ class SerialMouse : Device
             else if (delta_y > 127)
                 delta_y = 127;
         }
+        else {
+            _last_x = x;
+            _last_y = y;
+        }
         _last_x += delta_x;
         _last_y += delta_y;
 
-        _mouse_msgs.Add((byte)(64 | ((buttons & 1) << 5) | ((buttons & 2) << 3) | (((delta_y >> 6) & 3) << 2) | ((delta_x >> 6) & 3)));
-        _mouse_msgs.Add((byte)(delta_x & 63));
-        _mouse_msgs.Add((byte)(delta_y & 63));
-        ScheduleInterrupt(1);
-        Console.WriteLine($"{_mouse_msgs_idx} {_mouse_msgs.Count}");
+        byte b1 = (byte)(64 | ((buttons & 1) << 5) | ((buttons & 2) << 3) | (((delta_y >> 6) & 3) << 2) | ((delta_x >> 6) & 3));
+        byte b2 = (byte)(delta_x & 63);
+        byte b3 = (byte)(delta_y & 63);
+        _mouse_msgs.Add(b1);
+        _mouse_msgs.Add(b2);
+        _mouse_msgs.Add(b3);
+        ScheduleInterrupt(0);
+        Console.WriteLine($"{_mouse_msgs.Count} - {delta_x} {delta_y} {buttons} | {b1:X02} {b2:X02} {b3:X02} | {next_interrupt.Count()}");
     }
 
     public override byte IO_Read(ushort port)
@@ -78,12 +82,15 @@ class SerialMouse : Device
         {
             if (_mouse_msgs != null)
             {
-                byte rc = _mouse_msgs[_mouse_msgs_idx++];
-                if (_mouse_msgs_idx == _mouse_msgs.Count)
+                byte rc = _mouse_msgs[0];
+                _mouse_msgs.RemoveAt(0);
+                if (_mouse_msgs.Count == 0)
                     _mouse_msgs = null;
+                else
+                    ScheduleInterrupt(100);
                 return rc;
             }
-            return 0;
+            return 128;
         }
 
         if (index == 2)  // ISR
@@ -95,7 +102,9 @@ class SerialMouse : Device
             {
                 bool bit = _reset_on_bit_toggle;
                 _reset_on_bit_toggle = !_reset_on_bit_toggle;
-                return (byte)(ports[index] | (bit ? 1 : 0) | 64);  // Data ready set, Transmitter empty set
+                byte v = ports[index];
+                v &= 190;
+                return (byte)(v | (bit ? 64 + 1 : 0));  // Data ready set, Transmitter empty set
             }
         }
 
@@ -108,7 +117,13 @@ class SerialMouse : Device
         int index = port - _base_port;
         if (index == 4)
         {
-            if ((value & 1) == 0)
+            bool rts = (value & 1) == 1;
+            if (rts != prts) {
+                Log.DoLog($"SerialMouse RTS {prts} -> {rts}, since {_reset_since}", LogLevel.DEBUG);
+                prts = rts;
+            }
+
+            if (rts == false && prts == true)
             {
                 if (_reset_on == false)
                 {
@@ -121,7 +136,7 @@ class SerialMouse : Device
                     Log.DoLog($"SerialMouse RTS high for {_clock - _reset_since} ticks", LogLevel.DEBUG);
                 }
             }
-            else if (_reset_on && _clock - _reset_since >= 4770000 / 150)
+            else if (rts == true && prts == false && _reset_on && _clock - _reset_since >= 4770000 / 150)
             {
                 if (_mouse_msgs == null)
                     _mouse_msgs = new();
@@ -129,10 +144,11 @@ class SerialMouse : Device
                     _mouse_msgs.Clear();
                 Log.DoLog($"SerialMouse reset", LogLevel.DEBUG);
                 _mouse_msgs.Add(0x4d);  // reset ack
-                _mouse_msgs_idx = 0;
                 ScheduleInterrupt(0);
                 _reset_on = false;
             }
+
+            prts = rts;
         }
 
         ports[index] = value;
@@ -157,5 +173,15 @@ class SerialMouse : Device
     public override bool Ticks()
     {
         return true;
+    }
+
+    public override bool Tick(int cycles, long clock)
+    {
+        if (CheckScheduledInterrupt(cycles)) {
+            Log.DoLog("Fire SerialPort interrupt", LogLevel.TRACE);
+            _pic.RequestInterruptPIC(_irq_nr);
+        }
+
+        return base.Tick(cycles, clock);
     }
 }
