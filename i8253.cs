@@ -248,7 +248,8 @@ internal class i8253 : Device
                 continue;
 
             _timers[i].counter_cur -= n_to_subtract;
-            int n_interrupts = _timers[i].counter_cur < 0 ? -_timers[i].counter_cur / 0x10000 : 0;
+            int divider = _timers[i].counter_ini == 0 ? 0x10000 : _timers[i].counter_ini;
+            int n_interrupts = _timers[i].counter_cur < 0 ? -_timers[i].counter_cur / divider : 0;
 
             if (n_interrupts > 0)
             {
@@ -260,7 +261,7 @@ internal class i8253 : Device
                 }
 
                 if (_timers[i].mode != 1)
-                    _timers[i].counter_cur = _timers[i].counter_ini - (-_timers[i].counter_cur % (_timers[i].counter_ini == 0 ? 0x10000 : _timers[i].counter_ini));
+                    _timers[i].counter_cur = _timers[i].counter_ini - (-_timers[i].counter_cur % divider);
                 else
                     _timers[i].counter_cur &= 0xffff;
 
