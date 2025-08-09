@@ -255,10 +255,7 @@ internal class i8253 : Device
             {
                 // timer 1 is RAM refresh counter
                 if (i == 1)
-                {
-                    for(int k=0; k<n_interrupts; k++)
-                        _i8237.TickChannel0();
-                }
+                    _i8237.TickChannel0(n_interrupts);
 
                 if (_timers[i].mode != 1)
                     _timers[i].counter_cur = _timers[i].counter_ini - (-_timers[i].counter_cur % divider);
