@@ -107,17 +107,15 @@ internal class i8237: Device
         mappings[0x87] = this;
     }
 
-    public void TickChannel0()
+    public void TickChannel0(int n)
     {
         // RAM refresh
-        _channel_address_register[0].SetValue((ushort)(_channel_address_register[0].GetValue() + 1));
+        _channel_address_register[0].SetValue((ushort)(_channel_address_register[0].GetValue() + n));
 
-        ushort count = _channel_word_count[0].GetValue();
-        count--;
-        _channel_word_count[0].SetValue(count);
-
-        if (count == 0xffff)
+        int new_count = _channel_word_count[0].GetValue() - n;
+        if (new_count < 0)
             _reached_tc[0] = true;
+        _channel_word_count[0].SetValue((ushort)new_count);
     }
 
     public override byte IO_Read(ushort addr)
