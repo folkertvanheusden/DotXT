@@ -258,7 +258,7 @@ class CGA : Display
 
     private void GetPixelColor(int line, int color_index, byte [] rgb)  // TODO
     {
-        if (_palette_index[line] == 2 || _palette_index[line] == 3)
+        if (_palette_index[line] >= 2)
         {
             byte brightness = (byte)(_palette_index[line] == 3 ? 255 : 200);
             if (color_index == 1)
