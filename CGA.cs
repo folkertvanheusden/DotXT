@@ -408,7 +408,7 @@ class CGA : Display
                 _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = rgb[0];
                 _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = rgb[1];
                 _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = rgb[2];
-                offset += 320 * 3 * 4;
+                offset += 320 * 3 * 2;
                 _gf.rgb_pixels[offset + 0] = _gf.rgb_pixels[offset + 3] = rgb[0];
                 _gf.rgb_pixels[offset + 1] = _gf.rgb_pixels[offset + 4] = rgb[1];
                 _gf.rgb_pixels[offset + 2] = _gf.rgb_pixels[offset + 5] = rgb[2];
