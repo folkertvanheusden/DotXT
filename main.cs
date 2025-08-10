@@ -252,6 +252,9 @@ if (mode != TMode.Empty && run_IO == true)
         audio = new RTSPServer(adlib, adlib_port);
     }
 
+    SerialMouse mouse = new SerialMouse(0x3f8, 4);
+    devices.Add(mouse);
+
     Display display = null;
     bool mda_hercules = false;
     foreach(KeyValuePair<string, List<Tuple<string, int> > > current_console in consoles)
@@ -264,7 +267,11 @@ if (mode != TMode.Empty && run_IO == true)
             else if (c.Item1 == "http")
                 console_instances.Add(new HTTPServer(kb, c.Item2));
             else if (c.Item1 == "vnc")
-                console_instances.Add(new VNCServer(kb, c.Item2, true, adlib));
+            {
+                VNCServer s = new VNCServer(kb, c.Item2, true, adlib);
+                s.RegisterMouse(mouse);
+                console_instances.Add(s);
+            }
         }
 
         if (current_console.Key == key_mda)

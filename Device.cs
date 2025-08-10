@@ -4,7 +4,7 @@ abstract class Device
 {
     protected i8259 _pic = null;
     protected Bus _b = null;
-    private List<int> next_interrupt = new();
+    protected List<int> next_interrupt = new();
     protected long _clock = 0;
 
     public abstract String GetName();

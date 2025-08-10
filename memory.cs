@@ -158,7 +158,7 @@ class Bus
         foreach(var device in devices)
         {
             var segments = device.GetAddressList();
-            Log.DoLog($"Adding device {device.GetName()} with {segments.Count()} segments", LogLevel.DEBUG);
+            Log.DoLog($"Adding device {device.GetName()} with {segments.Count()} memory segments", LogLevel.DEBUG);
             foreach(var segment in segments)
             {
                 CacheEntry entry = new();
