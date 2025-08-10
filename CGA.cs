@@ -170,7 +170,7 @@ class CGA : Display
             if (_m6845_reg == 12 || _m6845_reg == 13)
             {
                 _display_address = (uint)(_m6845.Read(12) << 8) | _m6845.Read(13);
-                Log.DoLog($"Set base address to {_display_address:X04}", LogLevel.DEBUG);
+                Log.DoLog($"CGA Set base address to {_display_address:X04}", LogLevel.DEBUG);
             }
 
             if (_m6845_reg == 14 || _m6845_reg == 15)
