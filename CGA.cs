@@ -275,6 +275,10 @@ class CGA : Display
             {
                 rgb[0] = rgb[1] = rgb[2] = brightness;  // white
             }
+            else
+            {
+                rgb[0] = rgb[1] = rgb[2] = 0;  // black
+            }
         }
         else
         {
