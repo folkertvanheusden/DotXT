@@ -1162,6 +1162,7 @@ internal class P8086
                 {
                     _state.al = (byte)(ax / r1);
                     _state.ah = (byte)(ax % r1);
+                    _state.SetZSPFlags(_state.ah);
                 }
             }
         }
