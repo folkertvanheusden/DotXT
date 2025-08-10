@@ -331,7 +331,7 @@ if (mode == TMode.Normal || mode == TMode.XTServer || mode == TMode.CC)
 if (mode == TMode.XTServer)
     XTServer.AddXTServerBootROM(b);
 
-if (mode == TMode.CC && bin_file != "")
+if (bin_file != "")
     Tools.LoadBin(b, bin_file, bin_file_addr);
 
 b.RecreateCache();
