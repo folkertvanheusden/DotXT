@@ -69,7 +69,7 @@ class SerialMouse : Device
         _mouse_msgs.Add(b2);
         _mouse_msgs.Add(b3);
         ScheduleInterrupt(0);
-        Console.WriteLine($"{_mouse_msgs.Count} - {delta_x} {delta_y} {buttons} | {b1:X02} {b2:X02} {b3:X02} | {next_interrupt.Count()}");
+        // Console.WriteLine($"{_mouse_msgs.Count} - {delta_x} {delta_y} {buttons} | {b1:X02} {b2:X02} {b3:X02} | {next_interrupt.Count()}");
     }
 
     public override byte IO_Read(ushort port)
