@@ -14,7 +14,7 @@ internal class PPI : Device
         _system_type = system_type;
 
         if (_system_type == SystemType.XT)
-            _SW1 = 0b00010000;  // 2 floppy-drives, MDA, 256kB, IPL bit
+            _SW1 = 0b00100000;  // 2 floppy-drives, MDA, 256kB, IPL bit
         else
         {
             _SW1 = (2 << 4) /*(cga80)*/ | (3 << 2 /* memory banks*/);
