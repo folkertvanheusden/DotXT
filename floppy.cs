@@ -119,7 +119,7 @@ class FloppyDisk : Device
         if (port == 0x3f4)  // main status register
         {
             byte rc = 0;
-            if (_data_state == DataState.WantData || _data_state == DataState.WaitCmd || _data_state == DataState.HaveData)
+            if (_data_state == DataState.WaitCmd || _data_state == DataState.WantData || _data_state == DataState.HaveData)
                 rc |= 128;  // Data register is ready for data transfer
             if (_data_state == DataState.HaveData)
                 rc |= 64;  // has data for cpu
@@ -140,6 +140,7 @@ class FloppyDisk : Device
                 {
                     _data_state = DataState.WaitCmd;
                     _busy = false;
+                    Log.DoLog($"Floppy-IN FIFO is now empty", LogLevel.DEBUG);
                 }
             }
             else
@@ -536,6 +537,7 @@ class FloppyDisk : Device
 
             if (_data_state == DataState.WaitCmd)
             {
+                Log.DoLog($"Floppy-OUT set busy to true", LogLevel.TRACE);
                 _busy = true;
 
                 byte cmd = (byte)(value & 31);
