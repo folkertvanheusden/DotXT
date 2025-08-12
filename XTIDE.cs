@@ -230,9 +230,7 @@ class XTIDE : Device
     public override void RegisterDevice(Dictionary <ushort, Device> mappings)
     {
         for(ushort port=0x0300; port<0x0310; port++)
-        {
             mappings[port] = this;
-        }
     }
 
     public override List<Tuple<uint, int> > GetAddressList()
