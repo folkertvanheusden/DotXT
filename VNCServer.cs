@@ -87,6 +87,8 @@ class VNCServer: GraphicalConsole
                 { 0x38, new byte[] { 0x09 } },
                 { 0x39, new byte[] { 0x0a } },  // 9
                 { 0x30, new byte[] { 0x0b } },  // 0
+                { 0x3c, new byte[] { 0x33 } },  // <
+                { 0x3e, new byte[] { 0x34 } },  // >
                 { 0x41, new byte[] { 0x1e } },  // A
                 { 0x42, new byte[] { 0x30 } },
                 { 0x43, new byte[] { 0x2e } },
@@ -169,6 +171,10 @@ class VNCServer: GraphicalConsole
             var messages = key_map[c];
             for(int i=0; i<messages.Length; i++)
                 _kb.PushKeyboardScancode(press ? messages[i] : (messages[i] | 0x80));
+        }
+        else
+        {
+            Log.DoLog($"VNC: key {c} not mapped", LogLevel.DEBUG);
         }
     }
 
