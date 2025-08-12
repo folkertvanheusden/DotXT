@@ -180,6 +180,7 @@ class SerialMouse : Device
         if (CheckScheduledInterrupt(cycles)) {
             Log.DoLog("Fire SerialPort interrupt", LogLevel.TRACE);
             _pic.RequestInterruptPIC(_irq_nr);
+            return true;
         }
 
         return base.Tick(cycles, clock);
