@@ -14,15 +14,10 @@ internal class PPI : Device
         _system_type = system_type;
 
         if (_system_type == SystemType.XT)
-        {
-            if (mda_hercules)
-                _SW1 = 0b01000011;  // 2 floppy-drives, MDA, 256kB, IPL bit
-            else
-                _SW1 = 0b00010000;  // 2 floppy-drives, CGA80, 256kB, IPL bit
-        }
+            _SW1 = 0b00010000;  // 2 floppy-drives, MDA, 256kB, IPL bit
         else
         {
-            _SW1 = (0 << 4) /*(MDA)*/ | (3 << 2 /* memory banks*/);
+            _SW1 = (2 << 4) /*(cga80)*/ | (3 << 2 /* memory banks*/);
             _SW2 = 0b01101101;
         }
 
@@ -57,7 +52,7 @@ internal class PPI : Device
 
         if (port == 0x0062)  // PC0
         {
-            byte switches = (byte)((_system_type == SystemType.XT ? _SW1 : _SW2) ^ 0xff);
+            byte switches = _system_type == SystemType.XT ? _SW1 : _SW2;
 
             if (_dipswitches_high == true)
                 return (byte)(switches >> 4);
