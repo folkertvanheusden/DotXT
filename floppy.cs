@@ -175,6 +175,9 @@ class FloppyDisk : Device
             return null;
         }
 
+        if (sector == 0)
+            sector = 1;
+
         byte[] b = new byte[256 * n];
         int lba = (cylinder * 2 + head) * sectors_per_track + sector - 1;
         long offset = lba * b.Length;
@@ -185,17 +188,26 @@ class FloppyDisk : Device
             if (sector > sectors_per_track)
                 Log.DoLog($"Floppy-ReadData: GetFromFloppyImage reading beyond sector-count? ({sector} > {sectors_per_track})", LogLevel.DEBUG);
 
-            for(int nr=0; nr<n; nr++)
+            try
             {
-                using (FileStream fs = File.Open(_filenames[unit], FileMode.Open, FileAccess.Read, FileShare.None))
+                for(int nr=0; nr<n; nr++)
                 {
-                    fs.Seek(offset, SeekOrigin.Begin);
-                    if (fs.Read(b, 256 * nr, 256) != 256)
-                        Log.DoLog($"Floppy-ReadData GetFromFloppyImage failed reading from backend ({_filenames[unit]}, offset: {offset})", LogLevel.ERROR);
-                    if (fs.Position != offset + 256)
-                        Log.DoLog($"Floppy-ReadData GetFromFloppyImage backend data processing error?", LogLevel.ERROR);
-                    offset += 256;
+                    using (FileStream fs = File.Open(_filenames[unit], FileMode.Open, FileAccess.Read, FileShare.None))
+                    {
+                        Log.DoLog($"Floppy-ReadData GetFromFloppyImage reading offset {offset} from backend ({_filenames[unit]}), {nr}/{n}", LogLevel.ERROR);
+                        fs.Seek(offset, SeekOrigin.Begin);
+                        if (fs.Read(b, 256 * nr, 256) != 256)
+                            Log.DoLog($"Floppy-ReadData GetFromFloppyImage failed reading from backend ({_filenames[unit]}, offset: {offset})", LogLevel.ERROR);
+                        if (fs.Position != offset + 256)
+                            Log.DoLog($"Floppy-ReadData GetFromFloppyImage backend data processing error?", LogLevel.ERROR);
+                        offset += 256;
+                    }
                 }
+            }
+            catch(IOException e)
+            {
+                Log.DoLog($"Floppy-ReadData GetFromFloppyImage I/O exception: {e}", LogLevel.ERROR);
+                return null;
             }
         }
 
