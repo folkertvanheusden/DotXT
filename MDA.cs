@@ -61,7 +61,7 @@ class MDA : Display
     {
         Log.DoLog("MDA::RegisterDevice", LogLevel.DEBUG);
 
-        for(ushort port=0x3b0; port<0x3c0; port++)
+        for(ushort port=0x3b0; port<0x3bc; port++)
             mappings[port] = this;
     }
 
