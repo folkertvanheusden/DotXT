@@ -36,6 +36,7 @@ bool use_midi = false;
 bool use_rtc = false;
 bool use_adlib = false;
 bool use_lotechems = false;
+bool use_mouse = false;
 int adlib_port = 5540;
 
 string avi_file = null;
@@ -63,7 +64,7 @@ for(int i=0; i<args.Length; i++)
         Log.Cnsl("-F file   load floppy image (multiple for drive A-D)");
         Log.Cnsl("-D file   disassemble to file");
         Log.Cnsl("-S        try to run at real speed");
-        Log.Cnsl("-O        enable option. currently: adlib, midi, rtc, lotechems");
+        Log.Cnsl("-O        enable option. currently: adlib, midi, rtc, lotechems and mouse");
         Log.Cnsl("-X file   add an XT-IDE harddisk (must be 614/4/17 CHS)");
         Log.Cnsl($"-p device,type,port   display output. type must be \"telnet\", \"http\" or \"vnc\". device can be \"{key_cga}\", \"{key_mda}\" or \"{key_hercules}\".");
         Log.Cnsl("-P avi,quality    avi file to render display to, quality is 0...100");
@@ -154,6 +155,8 @@ for(int i=0; i<args.Length; i++)
             use_rtc = true;
         else if (what == "lotechems")
             use_lotechems = true;
+        else if (what == "mouse")
+            use_mouse = true;
         else
         {
             Log.Cnsl($"{what} is not understood");
@@ -252,8 +255,9 @@ if (mode != TMode.Empty && run_IO == true)
         audio = new RTSPServer(adlib, adlib_port);
     }
 
-    SerialMouse mouse = new SerialMouse(0x3f8, 4);
-    devices.Add(mouse);
+    SerialMouse mouse = use_mouse ? new SerialMouse(0x3f8, 4) : null;
+    if (use_mouse)
+        devices.Add(mouse);
 
     Display display = null;
     bool mda_hercules = false;
@@ -269,7 +273,8 @@ if (mode != TMode.Empty && run_IO == true)
             else if (c.Item1 == "vnc")
             {
                 VNCServer s = new VNCServer(kb, c.Item2, true, adlib);
-                s.RegisterMouse(mouse);
+                if (mouse != null)
+                    s.RegisterMouse(mouse);
                 console_instances.Add(s);
             }
         }
