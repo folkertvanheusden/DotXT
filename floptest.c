@@ -8,11 +8,9 @@
 #include <i86.h>
 #include <stdio.h>
 
-char buffer[512];
-unsigned segment;
-unsigned offset;
-long addr;
-unsigned page;
+#define byte unsigned char
+
+byte buffer[18 * 512];  // max HD floppy
 
 enum FloppyRegisters
 {
@@ -52,6 +50,14 @@ enum FloppyCommands
 	SCAN_HIGH_OR_EQUAL =         29
 };
 
+void dump(byte *p, int n)
+{
+	int i;
+	for(i=0; i<n; i++)
+		printf(" %02x", p[i]);
+	printf("\n");
+}
+
 long get_ticks()
 {
 	long time_of_day;
@@ -59,7 +65,7 @@ long get_ticks()
 	return time_of_day;
 }
 
-volatile char received_irq = 0;
+volatile byte received_irq = 0;
 void interrupt floppy_handler()  // FIXME int 6
 {
 	received_irq = 1;
@@ -69,16 +75,31 @@ void interrupt floppy_handler()  // FIXME int 6
 
 void switch_on()
 {
-	long s;
+	long s = get_ticks();  /* wait a second */
+
 	outp(DIGITAL_OUTPUT_REGISTER, 0x1c);  /* 0x10: motor 0 on, 0x04: set (instead of reset), 0x08: dma */
 
-	s = get_ticks();  /* wait a second */
+	while(get_ticks() - s < 18) {
+	}
+}
+
+void switch_off()
+{
+	long s = get_ticks();  /* wait a second */
+
+	outp(DIGITAL_OUTPUT_REGISTER, 0x18);  /* 0x10: motor 0 on, 0x00: reset (instead of 0x04), 0x08: dma */
+
 	while(get_ticks() - s < 18) {
 	}
 }
 
 void start_dma()
 {
+	unsigned segment = FP_SEG(buffer);
+	unsigned offset  = FP_OFF(buffer);
+	long addr = (long)segment * 16 + offset;
+	byte page = addr >> 16;
+
 	outp(0x08, 0x14);  // init & disable dma controller
 
 	outp(0x0b, 0x46);  // single write transfer to main mem, channel 2
@@ -99,7 +120,7 @@ void start_dma()
 	outp(0x08, 0x10);  // enable dma
 }
 
-int send_command(char cmd[], int send_n, char wait_reply, char result[], int recv_n)
+int send_command(byte cmd[], int send_n, byte wait_reply, byte result[], int recv_n)
 {
 	int i;
 	long start;
@@ -173,58 +194,59 @@ void enter()
 void main()
 {
 	int i;
-	char cmd_read[] = { 0x06 /* read */, 0x00 /* head/unit 0 */, 0/*c*/, 0/*h*/, 1/*r*/, 2/*n*/, 9/*eot*/, 42/*gpl*/, 255/*dtl*/ };
-	char cmd_specify[] = { 0x04 /*specify*/, 0xff/*SPRT/HUT: max delay*/, 254/*loadtimemax + dma */ };
-	char cmd_seek[] = { 0x0f /*seek*/, 0x00/*head/unit*/, 0/*cylinder*/ };
-	char result[7] = { 0 };
+	byte cmd_read[] = { 0x06 /* read */, 0x00 /* head/unit 0 */, 0/*c*/, 0/*h*/, 1/*r*/, 2/*n*/, 9/*eot*/, 42/*gpl*/, 255/*dtl*/ };
+	byte cmd_specify[] = { 0x04 /*specify*/, 0xff/*SPRT/HUT: max delay*/, 254/*loadtimemax + dma */ };
+	byte cmd_seek[] = { 0x0f /*seek*/, 0x00/*head/unit*/, 0/*cylinder*/ };
+	byte result[7] = { 0 };
 	typedef void interrupt (*inthandler)();
 	inthandler far *ivt = (inthandler far *)0;
 	inthandler oldhandler;
 
 	printf(__DATE__ " " __TIME__ "\n");
 
-	segment = FP_SEG(buffer);
-	offset  = FP_OFF(buffer);
-	addr = (long)segment * 16 + offset;
-	page = addr >> 16;
+	// INIT
+	oldhandler = ivt[0x0e];  // Save old handler, https://wiki.osdev.org/Interrupt_Vector_Table
+	ivt[0x0e] = floppy_handler;    // Install new handler
 
-	printf("buffer: %p\n", buffer);
-	printf("buffer: %04x:%04x %06x %02x\n", segment, offset, addr, page);
-
-	for(i=0; i<512; i++)
+	for(i=0; i<sizeof buffer; i++)
 		buffer[i] = i;
 
 	enter();
 
-	outp(0xffff, 1);
-
-	oldhandler = ivt[0x0e];  // Save old handler, https://wiki.osdev.org/Interrupt_Vector_Table
-	ivt[0x0e] = floppy_handler;    // Install new handler
-
-	outp(0xffff, 2);
-
+	// enable floppy motor
 	switch_on();
 
-	outp(0xffff, 3);
+	printf("* seek to start of floppy\n");
+	printf(send_command(cmd_seek, 3, 1, result, 7) == 0 ? "> OK\n": "> failed\n");
 
-//	printf("%d\n", send_command(cmd_specify, 3, 0, result, 0));
-	printf("%d\n", send_command(cmd_seek, 3, 1, result, 7));
+	// regular read
+	printf("* regular read of 1 sector\n");
+	if (send_command(cmd_read, 9, 2, result, 7) == 0) {
+		if (result[0] == 0 && result[1] == 0 && result[2] == 0) {
+			printf("> OK\n");
+			dump(buffer, 23);
+		}
+		else {
+			printf("> failed - ST0: %02x, ST1: %02x, ST2: %02x\n", result[0], result[1], result[2]);
+		}
+	}
+	else {
+		printf("> failed\n");
+	}
 
-	printf("%d\n", send_command(cmd_read, 9, 2, result, 7));
-	outp(0xffff, 4);
-	printf("ST0: %02x\n", result[0]);
-	printf("ST1: %02x\n", result[1]);
-	printf("ST2: %02x\n", result[2]);
-	printf("C  : %d\n", result[3]);
-	printf("H  : %d\n", result[4]);
-	printf("R  : %d\n", result[5]);
-	printf("N  : %d\n", result[6]);
+	// disable floppy motor
+	switch_off();
 
-	for(i=0; i<128; i++)
-		printf("%02x ", buffer[i]);
-	printf("\n");
+	// should fail
+	printf("* seek to start of floppy with motor off, should fail\n");
+	if (send_command(cmd_seek, 3, 1, result, 7) == 0)
+		printf("> failed: seek succeeded\n");
+	else
+		printf("> OK: seek failed\n");
 
+	// finish
 	ivt[0x0e] = oldhandler;    // Install new handler
 
+	printf("> finished\n");
 	enter();
 }
