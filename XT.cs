@@ -2565,7 +2565,7 @@ internal class P8086
         return v;
     }
 
-    private void WriteMemByte(ushort segment, ushort offset, byte v)
+    public void WriteMemByte(ushort segment, ushort offset, byte v)
     {
         uint a = (uint)(((segment << 4) + offset) & MemMask);
         _state.clock += _b.WriteByte(a, v);

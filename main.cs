@@ -136,6 +136,8 @@ for(int i=0; i<args.Length; i++)
             mode = TMode.CC;
         else if (type == "xtserver")
             mode = TMode.XTServer;
+        else if (type == "benchmark")
+            mode = TMode.Benchmark;
         else
         {
             Log.Cnsl($"{type} is not understood");
@@ -436,6 +438,38 @@ else if (mode == TMode.CC)
             break;
         }
     }
+}
+else if (mode == TMode.Benchmark)
+{
+    ushort offset = 0x1000;
+    byte [] program = { 0xbb, 0x0a, 0x00, 0xba, 0x50, 0xc3, 0x89, 0xd1, 0xcd, 0x80, 0xe2, 0xfc, 0x4b, 0x75, 0xf7, 0xc3 };
+    for(int i=0; i<program.Length; i++)
+        p.WriteMemByte(0, (ushort)(offset + i), program[i]);
+
+    p.WriteMemByte(0, 0x0200, (byte)((offset + 0x0200) & 0xff));  // ip
+    p.WriteMemByte(0, 0x0201, (byte)((offset + 0x0200) >> 8));
+    p.WriteMemByte(0, 0x0202, 0);  // cs
+    p.WriteMemByte(0, 0x0203, 0);
+
+    p.WriteMemByte(0, (ushort)(offset + 0x0200), 0xcf);  // IRET
+
+
+    long start_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+    long end_time = 0;
+    int n = 0;
+    do {
+        Console.WriteLine(n);
+        n++;
+        p.GetState().SetCS(0);
+        p.GetState().SetIP(offset);
+        p.GetState().SetSP((ushort)(offset - 4));
+        while(p.GetState().GetIP() != offset + program.Length - 1)
+            p.Tick();
+        end_time = DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+    }
+    while(end_time - start_time <= 5000);
+    double per_iteration = (end_time - start_time) / (n * 1000.0);
+    Log.Cnsl($"{n} iterations, {per_iteration:N3} seconds per iteration, is {11.53 / per_iteration:N2}x speed of original PC");
 }
 else
 {
@@ -1138,6 +1172,7 @@ internal enum TMode
     XTServer,
     CC,
     Tests,
+    Benchmark,
     Empty
 }
 
