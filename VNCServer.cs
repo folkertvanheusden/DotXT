@@ -566,7 +566,10 @@ class VNCServer: GraphicalConsole
 
             Log.Cnsl("VNC waiting for audio thread to stop");
             cts.Cancel();
-            session.audio_thread.Join();
+            if (session.audio_thread != null)
+            {
+                session.audio_thread.Join();
+            }
 
             Log.Cnsl("VNC session ended");
         }
